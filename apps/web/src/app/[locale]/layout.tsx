@@ -3,6 +3,7 @@ import { NextIntlClientProvider } from 'next-intl';
 import { getMessages, setRequestLocale } from 'next-intl/server';
 import { routing } from '@/i18n/routing';
 import { notFound } from 'next/navigation';
+import { Header } from '@kunacademy/ui/header';
 import "../globals.css";
 
 export function generateStaticParams() {
@@ -33,6 +34,7 @@ export default async function LocaleLayout({
     <html lang={locale} dir={dir}>
       <body>
         <NextIntlClientProvider messages={messages}>
+          <Header locale={locale} />
           {children}
         </NextIntlClientProvider>
       </body>

@@ -7,3 +7,4 @@ export { Card, ProgramCard, TestimonialCard, CoachCard, EventCard } from './card
 export { TrustBar } from './trust-bar';
 export { LocaleText } from './locale-text';
 export { PriceDisplay } from './price-display';
+export { Header } from './header';
