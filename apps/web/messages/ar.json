@@ -1,0 +1,31 @@
+{
+  "common": {
+    "siteName": "أكاديمية كُن للكوتشينج",
+    "tagline": "وعى يتخطى الحدود",
+    "language": "العربية",
+    "switchLanguage": "English",
+    "home": "الرئيسية",
+    "programs": "البرامج",
+    "methodology": "المنهجية",
+    "about": "عن كُن",
+    "blog": "المقالات",
+    "events": "الفعاليات",
+    "contact": "تواصل",
+    "login": "تسجيل الدخول",
+    "startJourney": "ابدأ رحلتك",
+    "book": "احجز",
+    "register": "سجّل الآن",
+    "readMore": "اقرأ المزيد",
+    "viewAll": "عرض الكل"
+  },
+  "home": {
+    "heroTitle": "النمو لا يبدأ من الأعلى، بل من الجذور",
+    "heroSubtitle": "أكاديمية كوتشينج معتمدة دوليًا من ICF",
+    "trustStats": {
+      "coaches": "٥٠٠+ كوتش",
+      "continents": "٤ قارات",
+      "firstArabMCC": "أول عربي MCC",
+      "icfAccredited": "ICF L1 + L2"
+    }
+  }
+}

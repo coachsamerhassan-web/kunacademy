@@ -1,0 +1,31 @@
+{
+  "common": {
+    "siteName": "Kun Coaching Academy",
+    "tagline": "Growing Beyond Limits",
+    "language": "English",
+    "switchLanguage": "العربية",
+    "home": "Home",
+    "programs": "Programs",
+    "methodology": "Methodology",
+    "about": "About",
+    "blog": "Blog",
+    "events": "Events",
+    "contact": "Contact",
+    "login": "Login",
+    "startJourney": "Start Your Journey",
+    "book": "Book",
+    "register": "Register Now",
+    "readMore": "Read More",
+    "viewAll": "View All"
+  },
+  "home": {
+    "heroTitle": "Growth doesn't start from the top — it starts from the roots",
+    "heroSubtitle": "ICF-Accredited International Coaching Academy",
+    "trustStats": {
+      "coaches": "500+ Coaches",
+      "continents": "4 Continents",
+      "firstArabMCC": "First Arab MCC",
+      "icfAccredited": "ICF L1 + L2"
+    }
+  }
+}

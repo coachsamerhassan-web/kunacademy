@@ -1,26 +1,166 @@
 @import "tailwindcss";
 
+/* ============================================
+   Kun Academy — Design Tokens (Tailwind v4)
+   Source: @kunacademy/brand
+   ============================================ */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Colors — Primary: Dark Slate Blue (40% usage) */
+  --color-primary-50: #EEEDFA;
+  --color-primary-100: #D5D3F2;
+  --color-primary-200: #ABA7E5;
+  --color-primary-300: #817BD8;
+  --color-primary-400: #5F58BD;
+  --color-primary: #474099;
+  --color-primary-600: #39337A;
+  --color-primary-700: #2B265C;
+  --color-primary-800: #1D1A3D;
+  --color-primary-900: #0E0D1F;
+
+  /* Colors — Accent: Mandarin (20% usage — CTAs, energy) */
+  --color-accent-50: #FEF0E8;
+  --color-accent-100: #FDE1D1;
+  --color-accent-200: #FBC3A3;
+  --color-accent-300: #F8A575;
+  --color-accent: #F47E42;
+  --color-accent-500: #E4601E;
+  --color-accent-600: #B54C18;
+  --color-accent-700: #873912;
+  --color-accent-800: #5A260C;
+  --color-accent-900: #2D1306;
+
+  /* Colors — Text: Charleston Green (10%) */
+  --color-text: #2C2C2D;
+
+  /* Colors — Secondary: Sky Blue (10%) */
+  --color-secondary-50: #EDF6FC;
+  --color-secondary-100: #DBEEF9;
+  --color-secondary-200: #B7DDF3;
+  --color-secondary: #82C4E8;
+  --color-secondary-400: #55AEDC;
+  --color-secondary-500: #2E96CC;
+  --color-secondary-600: #2478A3;
+  --color-secondary-700: #1B5A7A;
+  --color-secondary-800: #123C52;
+  --color-secondary-900: #091E29;
+
+  /* Colors — Background: Cosmic Latte (10%) */
+  --color-background: #FFF5E9;
+  --foreground: #2C2C2D;
+
+  /* Colors — Neutral: Platinum (10%) */
+  --color-neutral-50: #F7F7F8;
+  --color-neutral-100: #F0F0F1;
+  --color-neutral: #E6E7E8;
+  --color-neutral-300: #CDCED0;
+  --color-neutral-400: #B4B5B8;
+  --color-neutral-500: #9B9DA0;
+  --color-neutral-600: #7C7E82;
+  --color-neutral-700: #5D5F62;
+  --color-neutral-800: #3E4042;
+  --color-neutral-900: #1F2021;
+
+  /* Typography */
+  --font-arabic-heading: 'Noor', 'Tajawal', sans-serif;
+  --font-arabic-body: 'Tajawal', 'Cairo', 'Noto Naskh Arabic', sans-serif;
+  --font-english-heading: 'STIX Two Text', serif;
+  --font-english-body: 'Inter', sans-serif;
+
+  --text-body: 18px;
+  --text-h1: 48px;
+  --text-h2: 40px;
+  --text-h3: 36px;
+  --text-h4: 30px;
+  --text-h5: 24px;
+  --text-h6: 20px;
+
+  /* Spacing */
+  --section-padding: 80px;
+  --section-padding-mobile: 48px;
+  --max-content-width: 1200px;
+  --component-gap: 24px;
+  --card-radius: 12px;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+  /* Colors */
+  --color-primary-50: var(--color-primary-50);
+  --color-primary-100: var(--color-primary-100);
+  --color-primary-200: var(--color-primary-200);
+  --color-primary-300: var(--color-primary-300);
+  --color-primary-400: var(--color-primary-400);
+  --color-primary: var(--color-primary);
+  --color-primary-600: var(--color-primary-600);
+  --color-primary-700: var(--color-primary-700);
+  --color-primary-800: var(--color-primary-800);
+  --color-primary-900: var(--color-primary-900);
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-accent-50: var(--color-accent-50);
+  --color-accent-100: var(--color-accent-100);
+  --color-accent-200: var(--color-accent-200);
+  --color-accent-300: var(--color-accent-300);
+  --color-accent: var(--color-accent);
+  --color-accent-500: var(--color-accent-500);
+  --color-accent-600: var(--color-accent-600);
+  --color-accent-700: var(--color-accent-700);
+  --color-accent-800: var(--color-accent-800);
+  --color-accent-900: var(--color-accent-900);
+
+  --color-text: var(--color-text);
+
+  --color-secondary-50: var(--color-secondary-50);
+  --color-secondary-100: var(--color-secondary-100);
+  --color-secondary-200: var(--color-secondary-200);
+  --color-secondary: var(--color-secondary);
+  --color-secondary-400: var(--color-secondary-400);
+  --color-secondary-500: var(--color-secondary-500);
+  --color-secondary-600: var(--color-secondary-600);
+  --color-secondary-700: var(--color-secondary-700);
+  --color-secondary-800: var(--color-secondary-800);
+  --color-secondary-900: var(--color-secondary-900);
+
+  --color-background: var(--color-background);
+  --color-foreground: var(--foreground);
+
+  --color-neutral-50: var(--color-neutral-50);
+  --color-neutral-100: var(--color-neutral-100);
+  --color-neutral: var(--color-neutral);
+  --color-neutral-300: var(--color-neutral-300);
+  --color-neutral-400: var(--color-neutral-400);
+  --color-neutral-500: var(--color-neutral-500);
+  --color-neutral-600: var(--color-neutral-600);
+  --color-neutral-700: var(--color-neutral-700);
+  --color-neutral-800: var(--color-neutral-800);
+  --color-neutral-900: var(--color-neutral-900);
+
+  /* Fonts */
+  --font-arabic-heading: var(--font-arabic-heading);
+  --font-arabic-body: var(--font-arabic-body);
+  --font-english-heading: var(--font-english-heading);
+  --font-english-body: var(--font-english-body);
+
+  /* Spacing */
+  --radius-card: var(--card-radius);
 }
 
 body {
-  background: var(--background);
+  background: var(--color-background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-english-body);
+  font-size: var(--text-body);
+  line-height: 1.6;
+}
+
+/* RTL support */
+[dir="rtl"] body,
+html[lang="ar"] body {
+  font-family: var(--font-arabic-body);
+}
+
+[dir="rtl"] h1, [dir="rtl"] h2, [dir="rtl"] h3,
+[dir="rtl"] h4, [dir="rtl"] h5, [dir="rtl"] h6,
+html[lang="ar"] h1, html[lang="ar"] h2, html[lang="ar"] h3,
+html[lang="ar"] h4, html[lang="ar"] h5, html[lang="ar"] h6 {
+  font-family: var(--font-arabic-heading);
 }
