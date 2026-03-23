@@ -14,6 +14,12 @@ importers:
 
   apps/web:
     dependencies:
+      '@kunacademy/brand':
+        specifier: workspace:*
+        version: link:../../packages/brand
+      '@kunacademy/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
