@@ -1,0 +1,19 @@
+{
+  "name": "@kunacademy/payments",
+  "version": "0.0.0",
+  "private": true,
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "build": "tsc --build",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src/",
+    "clean": "rm -rf dist .turbo"
+  },
+  "dependencies": {
+    "stripe": "*"
+  },
+  "devDependencies": {
+    "typescript": "*"
+  }
+}
