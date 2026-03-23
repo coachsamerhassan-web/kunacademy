@@ -2,12 +2,16 @@
   "name": "kunacademy",
   "private": true,
   "scripts": {
-    "build": "turbo run build",
+    "build": "cd apps/web && npm run build",
+    "start": "cd apps/web && npm start",
     "dev": "turbo run dev",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
     "clean": "turbo run clean"
+  },
+  "dependencies": {
+    "next": "16.2.1"
   },
   "devDependencies": {
     "turbo": "^2"
