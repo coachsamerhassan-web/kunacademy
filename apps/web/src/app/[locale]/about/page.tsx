@@ -1,6 +1,8 @@
 import { setRequestLocale } from 'next-intl/server';
 import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
+import { FAQSection, faqJsonLd } from '@kunacademy/ui/faq-section';
+import { aboutFaqs } from '@/data/faqs';
 
 export default async function AboutPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
@@ -34,6 +36,15 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
             ? 'تخريج كوتشز يقودون بالنَّفْس لا بالنظرية — كوتشز يُجسّدون الإحسان في كل جلسة.'
             : 'To graduate coaches who lead with the self, not theory — coaches who embody Ihsan in every session.'}
         </p>
+      </Section>
+
+      
+      <Section variant="white">
+        <FAQSection items={aboutFaqs} locale={locale} />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd(aboutFaqs, locale)) }}
+        />
       </Section>
 
       <Section>

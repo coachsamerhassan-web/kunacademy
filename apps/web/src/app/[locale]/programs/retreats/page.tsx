@@ -1,6 +1,8 @@
 import { setRequestLocale } from 'next-intl/server';
 import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
+import { FAQSection, faqJsonLd } from '@kunacademy/ui/faq-section';
+import { retreatsFaqs } from '@/data/faqs';
 
 export default async function RetreatsPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
@@ -20,6 +22,15 @@ export default async function RetreatsPage({ params }: { params: Promise<{ local
               : 'Immersive experiences combining Somatic Thinking, nature, and reflection'}
           </p>
         </div>
+      </Section>
+
+      
+      <Section variant="white">
+        <FAQSection items={retreatsFaqs} locale={locale} />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd(retreatsFaqs, locale)) }}
+        />
       </Section>
 
       <Section variant="white">

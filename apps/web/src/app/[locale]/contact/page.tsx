@@ -1,6 +1,8 @@
 import { setRequestLocale } from 'next-intl/server';
 import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
+import { FAQSection, faqJsonLd } from '@kunacademy/ui/faq-section';
+import { contactFaqs } from '@/data/faqs';
 
 export default async function ContactPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
@@ -16,6 +18,15 @@ export default async function ContactPage({ params }: { params: Promise<{ locale
             ? 'نسعد بتواصلك. املأ النموذج أدناه وسنردّ عليك في أقرب وقت.'
             : 'We would love to hear from you. Fill out the form below and we will get back to you shortly.'}
         </p>
+      </Section>
+
+      
+      <Section variant="white">
+        <FAQSection items={contactFaqs} locale={locale} />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd(contactFaqs, locale)) }}
+        />
       </Section>
 
       <Section>

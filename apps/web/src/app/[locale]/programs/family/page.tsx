@@ -1,6 +1,8 @@
 import { setRequestLocale } from 'next-intl/server';
 import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
+import { FAQSection, faqJsonLd } from '@kunacademy/ui/faq-section';
+import { familyFaqs } from '@/data/faqs';
 
 export default async function FamilyPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
@@ -32,6 +34,15 @@ export default async function FamilyPage({ params }: { params: Promise<{ locale:
               : 'Somatic Thinking for the whole family — from children to parents'}
           </p>
         </div>
+      </Section>
+
+      
+      <Section variant="white">
+        <FAQSection items={familyFaqs} locale={locale} />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd(familyFaqs, locale)) }}
+        />
       </Section>
 
       <Section variant="white">

@@ -2,6 +2,8 @@ import { setRequestLocale } from 'next-intl/server';
 import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
 import { Button } from '@kunacademy/ui/button';
+import { FAQSection, faqJsonLd } from '@kunacademy/ui/faq-section';
+import { corporateFaqs } from '@/data/faqs';
 
 export default async function CorporatePage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
@@ -49,6 +51,15 @@ export default async function CorporatePage({ params }: { params: Promise<{ loca
             </div>
           ))}
         </div>
+      </Section>
+
+      
+      <Section variant="white">
+        <FAQSection items={corporateFaqs} locale={locale} />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd(corporateFaqs, locale)) }}
+        />
       </Section>
 
       <Section variant="dark" pattern>

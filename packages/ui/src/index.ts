@@ -8,3 +8,4 @@ export { TrustBar } from './trust-bar';
 export { LocaleText } from './locale-text';
 export { PriceDisplay } from './price-display';
 export { Header } from './header';
+export { FAQSection, faqJsonLd, type FAQItem } from './faq-section';

@@ -1,6 +1,8 @@
 import { setRequestLocale } from 'next-intl/server';
 import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
+import { FAQSection, faqJsonLd } from '@kunacademy/ui/faq-section';
+import { freeFaqs } from '@/data/faqs';
 
 export default async function FreeResourcesPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
@@ -20,6 +22,15 @@ export default async function FreeResourcesPage({ params }: { params: Promise<{ 
               : 'Discover the Somatic Thinking methodology for free — introductory courses, articles, and tools'}
           </p>
         </div>
+      </Section>
+
+      
+      <Section variant="white">
+        <FAQSection items={freeFaqs} locale={locale} />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd(freeFaqs, locale)) }}
+        />
       </Section>
 
       <Section variant="white">

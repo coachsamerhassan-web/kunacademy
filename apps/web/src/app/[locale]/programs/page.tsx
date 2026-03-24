@@ -2,6 +2,8 @@ import { setRequestLocale } from 'next-intl/server';
 import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
 import { Button } from '@kunacademy/ui/button';
+import { FAQSection, faqJsonLd } from '@kunacademy/ui/faq-section';
+import { programsFaqs } from '@/data/faqs';
 
 const pathways = {
   ar: [
@@ -64,6 +66,15 @@ export default async function ProgramsPage({ params }: { params: Promise<{ local
             </div>
           ))}
         </div>
+      </Section>
+
+      
+      <Section variant="white">
+        <FAQSection items={programsFaqs} locale={locale} />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd(programsFaqs, locale)) }}
+        />
       </Section>
 
       <Section variant="dark" pattern>

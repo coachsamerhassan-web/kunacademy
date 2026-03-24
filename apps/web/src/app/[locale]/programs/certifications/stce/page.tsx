@@ -2,6 +2,8 @@ import { setRequestLocale } from 'next-intl/server';
 import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
 import { Button } from '@kunacademy/ui/button';
+import { FAQSection, faqJsonLd } from '@kunacademy/ui/faq-section';
+import { stceFaqs } from '@/data/faqs';
 
 const levels = {
   ar: [
@@ -71,6 +73,15 @@ export default async function STCEPage({ params }: { params: Promise<{ locale: s
             </div>
           ))}
         </div>
+      </Section>
+
+      
+      <Section variant="white">
+        <FAQSection items={stceFaqs} locale={locale} />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd(stceFaqs, locale)) }}
+        />
       </Section>
 
       <Section variant="default">

@@ -1,6 +1,8 @@
 import { setRequestLocale } from 'next-intl/server';
 import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
+import { FAQSection, faqJsonLd } from '@kunacademy/ui/faq-section';
+import { shopFaqs } from '@/data/faqs';
 
 export default async function ShopPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
@@ -16,6 +18,15 @@ export default async function ShopPage({ params }: { params: Promise<{ locale: s
             ? 'كتب ومواد تعليمية وأدوات كوتشنغ من أكاديمية كُن.'
             : 'Books, educational materials, and coaching tools from Kun Academy.'}
         </p>
+      </Section>
+
+      
+      <Section variant="white">
+        <FAQSection items={shopFaqs} locale={locale} />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd(shopFaqs, locale)) }}
+        />
       </Section>
 
       <Section>

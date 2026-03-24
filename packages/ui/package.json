@@ -14,6 +14,7 @@
     "./locale-text": "./src/locale-text.tsx",
     "./price-display": "./src/price-display.tsx",
     "./header": "./src/header.tsx",
+    "./faq-section": "./src/faq-section.tsx",
     "./utils": "./src/utils.ts"
   },
   "scripts": {

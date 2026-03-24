@@ -1,6 +1,8 @@
 import { setRequestLocale } from 'next-intl/server';
 import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
+import { FAQSection, faqJsonLd } from '@kunacademy/ui/faq-section';
+import { bookingFaqs } from '@/data/faqs';
 
 export default async function BookingPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
@@ -16,6 +18,15 @@ export default async function BookingPage({ params }: { params: Promise<{ locale
             ? 'اختر نوع الجلسة والموعد المناسب لك.'
             : 'Select a session type and choose a time that works for you.'}
         </p>
+      </Section>
+
+      
+      <Section variant="white">
+        <FAQSection items={bookingFaqs} locale={locale} />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd(bookingFaqs, locale)) }}
+        />
       </Section>
 
       <Section>
