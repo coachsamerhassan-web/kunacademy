@@ -15,7 +15,8 @@
     "./price-display": "./src/price-display.tsx",
     "./header": "./src/header.tsx",
     "./faq-section": "./src/faq-section.tsx",
-    "./utils": "./src/utils.ts"
+    "./utils": "./src/utils.ts",
+    "./patterns": "./src/patterns.tsx"
   },
   "scripts": {
     "build": "tsc --build",

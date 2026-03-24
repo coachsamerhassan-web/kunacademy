@@ -1,18 +1,44 @@
 import * as React from 'react';
 import { cn } from './utils';
 
-/* ── Base Card ── */
-interface CardProps extends React.HTMLAttributes<HTMLDivElement> {}
+/**
+ * Card — Stitch "Tonal Layering" design.
+ * Uses primary-tinted ambient shadows instead of black drop shadows.
+ * No 1px borders per "No-Line Rule".
+ * Optional Mashrabiya corner watermark at 10% opacity.
+ */
 
-export function Card({ className, children, ...props }: CardProps) {
+/* ── Base Card ── */
+interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
+  /** Add a subtle geometric corner accent */
+  accent?: boolean;
+}
+
+export function Card({ accent = false, className, children, ...props }: CardProps) {
   return (
     <div
       className={cn(
-        'rounded-[var(--card-radius)] bg-white shadow-[0_2px_12px_rgba(0,0,0,0.08)] transition-shadow hover:shadow-[0_4px_20px_rgba(0,0,0,0.12)]',
+        'relative rounded-2xl bg-white',
+        'shadow-[0_4px_24px_rgba(71,64,153,0.06)]',
+        'transition-all duration-500 ease-out',
+        'hover:shadow-[0_8px_32px_rgba(71,64,153,0.1)]',
+        'hover:-translate-y-0.5',
         className
       )}
       {...props}
     >
+      {accent && (
+        <div
+          className="absolute top-0 end-0 w-20 h-20 pointer-events-none opacity-[0.06]"
+          aria-hidden="true"
+          style={{
+            backgroundImage: `url("data:image/svg+xml,${encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 80 80'><path d='M40 0l11.18 28.82L80 40 51.18 51.18 40 80 28.82 51.18 0 40l28.82-11.18z' fill='#474099'/></svg>")}")`,
+            backgroundSize: '80px 80px',
+            backgroundRepeat: 'no-repeat',
+            backgroundPosition: 'top right',
+          }}
+        />
+      )}
       {children}
     </div>
   );
@@ -41,8 +67,7 @@ export function ProgramCard({
   const ctaLabel = locale === 'ar' ? 'عرض' : 'View';
 
   return (
-    <Card className={cn('overflow-hidden', className)}>
-      {/* Arch-shaped image */}
+    <Card accent className={cn('overflow-hidden', className)}>
       <div className="relative aspect-[4/3] overflow-hidden rounded-b-[40%_20%]">
         {thumbnailUrl ? (
           <img src={thumbnailUrl} alt={title} className="h-full w-full object-cover" />
@@ -55,7 +80,7 @@ export function ProgramCard({
           </span>
         )}
       </div>
-      <div className="p-4 flex flex-col gap-2">
+      <div className="p-5 flex flex-col gap-2">
         <h3 className="text-lg font-bold line-clamp-2">{title}</h3>
         {instructorName && (
           <p className="text-sm text-[var(--color-neutral-600)]">{instructorName}</p>
@@ -68,7 +93,7 @@ export function ProgramCard({
           )}
           <a
             href={`/${locale}/programs/courses/${slug}`}
-            className="inline-flex items-center justify-center rounded-lg bg-[var(--color-accent)] px-4 py-2 text-sm font-medium text-white min-h-[44px] hover:bg-[var(--color-accent-500)] transition-colors"
+            className="inline-flex items-center justify-center rounded-xl bg-[var(--color-accent)] px-4 py-2 text-sm font-medium text-white min-h-[44px] hover:bg-[var(--color-accent-500)] transition-all duration-300 hover:scale-[1.02]"
           >
             {ctaLabel}
           </a>
@@ -93,7 +118,7 @@ export function TestimonialCard({
   authorName, content, program, rating, photoUrl, videoUrl, className,
 }: TestimonialCardProps) {
   return (
-    <Card className={cn('p-6', className)}>
+    <Card accent className={cn('p-6', className)}>
       <div className="flex items-start gap-4">
         <div className="relative shrink-0">
           <div className="h-16 w-16 rounded-full overflow-hidden bg-[var(--color-neutral-100)]">
@@ -107,7 +132,7 @@ export function TestimonialCard({
           </div>
           {videoUrl && (
             <div className="absolute inset-0 flex items-center justify-center">
-              <div className="h-8 w-8 rounded-full bg-[var(--color-accent)] flex items-center justify-center">
+              <div className="h-8 w-8 rounded-full bg-[var(--color-accent)] flex items-center justify-center shadow-[0_2px_8px_rgba(244,126,66,0.3)]">
                 <span className="text-white text-xs ms-0.5">▶</span>
               </div>
             </div>
@@ -116,7 +141,7 @@ export function TestimonialCard({
         <div className="flex-1 min-w-0">
           <p className="font-bold">{authorName}</p>
           {program && (
-            <span className="inline-block text-xs bg-[var(--color-primary-50)] text-[var(--color-primary)] px-2 py-0.5 rounded-full mt-1">
+            <span className="inline-block text-xs bg-[var(--color-primary-50)] text-[var(--color-primary)] px-2.5 py-0.5 rounded-full mt-1 font-medium">
               {program}
             </span>
           )}
@@ -157,7 +182,7 @@ export function CoachCard({
   const ctaLabel = locale === 'ar' ? 'احجز' : 'Book';
 
   return (
-    <Card className={cn('p-6 text-center', className)}>
+    <Card accent className={cn('p-6 text-center', className)}>
       <div className="mx-auto h-20 w-20 rounded-full overflow-hidden bg-[var(--color-neutral-100)]">
         {photoUrl ? (
           <img src={photoUrl} alt={name} className="h-full w-full object-cover" />
@@ -188,7 +213,7 @@ export function CoachCard({
       )}
       <a
         href={`/${locale}/programs/coaching/${slug}`}
-        className="mt-4 inline-flex items-center justify-center rounded-lg bg-[var(--color-accent)] px-6 py-2 text-sm font-medium text-white min-h-[44px] hover:bg-[var(--color-accent-500)] transition-colors"
+        className="mt-4 inline-flex items-center justify-center rounded-xl bg-[var(--color-accent)] px-6 py-2 text-sm font-medium text-white min-h-[44px] hover:bg-[var(--color-accent-500)] transition-all duration-300 hover:scale-[1.02]"
       >
         {ctaLabel}
       </a>
@@ -213,7 +238,7 @@ export function EventCard({ name, date, location, locale, slug, className }: Eve
 
   return (
     <Card className={cn('flex overflow-hidden', className)}>
-      <div className="flex flex-col items-center justify-center bg-[var(--color-accent)] text-white px-5 py-4 min-w-[80px]">
+      <div className="flex flex-col items-center justify-center bg-gradient-to-b from-[var(--color-accent)] to-[var(--color-accent-500)] text-white px-5 py-4 min-w-[80px]">
         <span className="text-2xl font-bold">{day}</span>
         <span className="text-xs uppercase">{month}</span>
       </div>
