@@ -10,3 +10,4 @@ export { PriceDisplay } from './price-display';
 export { Header } from './header';
 export { FAQSection, faqJsonLd, type FAQItem } from './faq-section';
 export { GeometricPattern, type PatternName } from './patterns';
+export { RTLProvider, type RTLProviderProps } from './rtl-provider';
