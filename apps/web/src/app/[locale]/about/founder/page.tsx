@@ -1,6 +1,8 @@
 import { setRequestLocale } from 'next-intl/server';
 import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
+import { Button } from '@kunacademy/ui/button';
+import { Card } from '@kunacademy/ui/card';
 
 export default async function FounderPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
@@ -9,57 +11,95 @@ export default async function FounderPage({ params }: { params: Promise<{ locale
 
   return (
     <main>
-      <Section>
-        <Heading level={1}>{isAr ? 'سامر حسن' : 'Samer Hassan'}</Heading>
-        <p className="mt-2 text-lg font-medium text-[var(--color-primary)]">
-          {isAr ? 'مؤسس أكاديمية كُن ومنهجية التفكير الحسّي®' : 'Founder of Kun Academy & Somatic Thinking®'}
-        </p>
+      {/* ── HERO ── */}
+      <Section variant="surface" pattern="eight-star" hero>
+        <div className="flex flex-col md:flex-row items-center gap-8 md:gap-14">
+          <div className="relative shrink-0">
+            <div className="relative w-48 h-48 rounded-2xl overflow-hidden bg-gradient-to-br from-[var(--color-primary-100)] to-[var(--color-primary-200)]">
+              <div className="w-full h-full flex items-center justify-center text-6xl text-[var(--color-primary-300)] font-bold">
+                SH
+              </div>
+            </div>
+          </div>
+          <div className="flex-1 text-center md:text-start">
+            <p className="text-sm font-medium tracking-widest uppercase text-[var(--color-accent)] mb-4">
+              {isAr ? 'المؤسس' : 'Founder'}
+            </p>
+            <Heading level={1} className="!text-[var(--color-primary)] !leading-[1.15]">
+              {isAr ? 'سامر حسن' : 'Samer Hassan'}
+            </Heading>
+            <p className="mt-2 text-lg font-medium text-[var(--color-accent)]">
+              {isAr ? 'مؤسس أكاديمية كُن ومنهجية التفكير الحسّي®' : 'Founder of Kun Academy & Somatic Thinking®'}
+            </p>
+          </div>
+        </div>
       </Section>
 
-      <Section>
-        <Heading level={2}>{isAr ? 'الإنجازات' : 'Credentials'}</Heading>
-        <ul className="mt-4 space-y-3 text-[var(--color-neutral-700)]">
-          <li>
-            {isAr
-              ? 'أول عربي يحصل على شهادة Master Certified Coach (MCC) من الاتحاد الدولي للكوتشنغ (ICF)'
-              : 'ICF Master Certified Coach (MCC) — first Arab to hold this credential'}
-          </li>
-          <li>
-            {isAr
-              ? 'حائز على جائزة القائد الشاب من ICF لعام 2019'
-              : 'ICF Young Leader Award 2019'}
-          </li>
-          <li>
-            {isAr
-              ? 'أكثر من 10,000 جلسة كوتشنغ فردية'
-              : '10,000+ individual coaching sessions'}
-          </li>
-          <li>
-            {isAr
-              ? 'تخريج أكثر من 500 كوتش عبر 4 قارات'
-              : '500+ coaches graduated across 4 continents'}
-          </li>
-          <li>
-            {isAr
-              ? 'مؤسس منهجية التفكير الحسّي® — إطار كوتشنغ يربط الفكر بالإشارات الحسّية الجسدية'
-              : 'Creator of Somatic Thinking® — a coaching framework connecting thought to somatic bodily signals'}
-          </li>
-        </ul>
+      {/* ── CREDENTIALS — Cards on white ── */}
+      <Section variant="white">
+        <Heading level={2} className="text-center mb-8">
+          {isAr ? 'الإنجازات' : 'Credentials'}
+        </Heading>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {(isAr
+            ? [
+                { icon: '🏅', text: 'أول عربي يحصل على شهادة Master Certified Coach (MCC) من ICF' },
+                { icon: '🏆', text: 'حائز على جائزة القائد الشاب من ICF لعام 2019' },
+                { icon: '💬', text: 'أكثر من 10,000 جلسة كوتشنغ فردية' },
+                { icon: '🎓', text: 'تخريج أكثر من 500 كوتش عبر 4 قارات' },
+                { icon: '🧠', text: 'مؤسس منهجية التفكير الحسّي® — إطار كوتشنغ يربط الفكر بالإشارات الحسّية الجسدية' },
+              ]
+            : [
+                { icon: '🏅', text: 'ICF Master Certified Coach (MCC) — first Arab to hold this credential' },
+                { icon: '🏆', text: 'ICF Young Leader Award 2019' },
+                { icon: '💬', text: '10,000+ individual coaching sessions' },
+                { icon: '🎓', text: '500+ coaches graduated across 4 continents' },
+                { icon: '🧠', text: 'Creator of Somatic Thinking® — connecting thought to somatic bodily signals' },
+              ]
+          ).map((item, i) => (
+            <Card key={i} accent className="p-6 flex items-start gap-4">
+              <span className="text-2xl shrink-0">{item.icon}</span>
+              <p className="text-[var(--color-neutral-700)] leading-relaxed">{item.text}</p>
+            </Card>
+          ))}
+        </div>
       </Section>
 
-      <Section>
-        <Heading level={2}>{isAr ? 'عن سامر' : 'About Samer'}</Heading>
-        <div className="mt-4 space-y-4 text-[var(--color-neutral-700)]">
-          <p>
-            {isAr
-              ? 'سامر حسن كوتش ومدرّب كوتشنغ إيطالي-مصري مقيم في دبي. طوّر منهجية التفكير الحسّي® من واقع آلاف الجلسات والتجارب العملية — منهجية تُعيد الجسد إلى مركز عملية التغيير، لأن التحوّل الحقيقي لا يبدأ بالفكرة بل بالإحساس.'
-              : 'Samer Hassan is an Italian-Egyptian coach and coaching educator based in Dubai. He developed Somatic Thinking® from thousands of sessions and lived experience — a methodology that places the body at the center of the change process, because real transformation begins with sensation, not idea.'}
-          </p>
-          <p>
-            {isAr
-              ? 'يعمل سامر بثلاث لغات ويُدرّب كوتشز في الخليج والشرق الأوسط وأوروبا وأفريقيا. يقود من خلال أكاديمية كُن برامج معتمدة من ICF لتأهيل كوتشز يجسّدون الإحسان في ممارستهم المهنية.'
-              : 'Working in three languages, Samer trains coaches across the Gulf, Middle East, Europe, and Africa. Through Kun Academy, he leads ICF-accredited programs that develop coaches who embody Ihsan in their professional practice.'}
-          </p>
+      {/* ── BIOGRAPHY — Tonal surface ── */}
+      <Section variant="surface-high" pattern="flower-of-life">
+        <div className="max-w-3xl mx-auto">
+          <Heading level={2} className="text-center mb-6">
+            {isAr ? 'عن سامر' : 'About Samer'}
+          </Heading>
+          <div className="space-y-4 text-[var(--color-neutral-700)] leading-relaxed text-lg">
+            <p>
+              {isAr
+                ? 'سامر حسن كوتش ومدرّب كوتشنغ إيطالي-مصري مقيم في دبي. طوّر منهجية التفكير الحسّي® من واقع آلاف الجلسات والتجارب العملية — منهجية تُعيد الجسد إلى مركز عملية التغيير، لأن التحوّل الحقيقي لا يبدأ بالفكرة بل بالإحساس.'
+                : 'Samer Hassan is an Italian-Egyptian coach and coaching educator based in Dubai. He developed Somatic Thinking® from thousands of sessions and lived experience — a methodology that places the body at the center of the change process, because real transformation begins with sensation, not idea.'}
+            </p>
+            <p>
+              {isAr
+                ? 'يعمل سامر بثلاث لغات ويُدرّب كوتشز في الخليج والشرق الأوسط وأوروبا وأفريقيا. يقود من خلال أكاديمية كُن برامج معتمدة من ICF لتأهيل كوتشز يجسّدون الإحسان في ممارستهم المهنية.'
+                : 'Working in three languages, Samer trains coaches across the Gulf, Middle East, Europe, and Africa. Through Kun Academy, he leads ICF-accredited programs that develop coaches who embody Ihsan in their professional practice.'}
+            </p>
+          </div>
+        </div>
+      </Section>
+
+      {/* ── CTA ── */}
+      <Section variant="dark" pattern="girih">
+        <div className="text-center py-8">
+          <Heading level={2} className="!text-white">
+            {isAr ? 'ابدأ رحلتك مع سامر' : 'Start Your Journey with Samer'}
+          </Heading>
+          <div className="mt-8 flex flex-wrap justify-center gap-4">
+            <Button variant="primary" size="lg">
+              {isAr ? 'استكشف البرامج' : 'Explore Programs'}
+            </Button>
+            <Button variant="white" size="lg">
+              {isAr ? 'احجز جلسة' : 'Book a Session'}
+            </Button>
+          </div>
         </div>
       </Section>
     </main>

@@ -1,0 +1,266 @@
+// @kunacademy/cms — Content types matching the 5-sheet CMS architecture
+// Sheet schemas from Blueprint v2, Board Critique §Part 4
+//
+// 5 sheets:
+//   1. PageContent — Static page content (hero, body, cta per page slug)
+//   2. Programs — 59-program catalog with pricing, dates, nav groups
+//   3. Services — Coaching sessions, mentoring, pricing, discounts
+//   4. Team — Coaches, instructors, credentials
+//   5. Settings — Global config (social, contact, footer, branding)
+
+// ── Shared ──────────────────────────────────────────────────────────────────
+
+/** Bilingual string pair — every content field has AR + EN */
+export interface BilingualText {
+  ar: string;
+  en: string;
+}
+
+/** Audit columns present on every sheet row */
+export interface AuditFields {
+  published: boolean;
+  last_edited_by?: string;
+  last_edited_at?: string;
+}
+
+/** Theater pricing — Gulf (AED), Egypt (EGP), Global (USD/EUR) */
+export interface TheaterPricing {
+  price_aed: number;
+  price_egp: number;
+  price_usd: number;
+  price_eur: number;
+}
+
+// ── Sheet 1: Page Content ───────────────────────────────────────────────────
+
+export interface PageContent extends AuditFields {
+  /** Page URL slug, e.g. "about", "contact", "faq" */
+  slug: string;
+  /** Section within the page: "hero", "body", "cta", "stats", "faq" */
+  section: string;
+  /** Content key within the section, e.g. "title", "subtitle", "description" */
+  key: string;
+  /** Arabic value */
+  value_ar: string;
+  /** English value */
+  value_en: string;
+  /** Page type: "page" | "landing" | "legal" */
+  type: 'page' | 'landing' | 'legal';
+  /** SEO: meta title */
+  meta_title_ar?: string;
+  meta_title_en?: string;
+  /** SEO: meta description */
+  meta_description_ar?: string;
+  meta_description_en?: string;
+  /** SEO: Open Graph image URL */
+  og_image_url?: string;
+  /** SEO: canonical URL override */
+  canonical_url?: string;
+  /** Landing pages: hero image URL */
+  hero_image_url?: string;
+  /** Landing pages: CTA text */
+  cta_text_ar?: string;
+  cta_text_en?: string;
+  /** Landing pages: CTA link */
+  cta_url?: string;
+  /** Landing pages: form embed code */
+  form_embed?: string;
+}
+
+// ── Sheet 2: Programs ───────────────────────────────────────────────────────
+
+/** Navigation groups for the mega-menu (7 groups from site structure) */
+export type NavGroup =
+  | 'certifications'
+  | 'courses'
+  | 'retreats'
+  | 'micro-courses'
+  | 'corporate'
+  | 'free'
+  | 'community';
+
+/** Program type classification */
+export type ProgramType =
+  | 'certification'
+  | 'diploma'
+  | 'recorded-course'
+  | 'live-course'
+  | 'retreat'
+  | 'micro-course'
+  | 'workshop'
+  | 'free-resource';
+
+/** Program format */
+export type ProgramFormat = 'online' | 'in-person' | 'hybrid';
+
+export interface Program extends AuditFields, TheaterPricing {
+  slug: string;
+  title_ar: string;
+  title_en: string;
+  subtitle_ar?: string;
+  subtitle_en?: string;
+  description_ar?: string;
+  description_en?: string;
+  /** Navigation group for mega-menu placement */
+  nav_group: NavGroup;
+  type: ProgramType;
+  format: ProgramFormat;
+  /** Location (for in-person/hybrid) */
+  location?: string;
+  /** Instructor/lead coach slug (references Sheet 4) */
+  instructor_slug?: string;
+  /** Duration: "40 hours", "3 days", etc. */
+  duration?: string;
+  /** Next cohort start date (ISO 8601) */
+  next_start_date?: string;
+  /** Enrollment deadline (ISO 8601) */
+  enrollment_deadline?: string;
+  /** Early bird pricing */
+  early_bird_price_aed?: number;
+  early_bird_deadline?: string;
+  /** Discount */
+  discount_percentage?: number;
+  discount_valid_until?: string;
+  /** Installments via Tabby */
+  installment_enabled: boolean;
+  /** Bundle reference (for package deals) */
+  bundle_id?: string;
+  /** ICF accreditation */
+  is_icf_accredited: boolean;
+  icf_details?: string;
+  /** CCE units (for credential renewal) */
+  cce_units?: number;
+  /** Materials folder URL (Google Drive/WorkDrive) */
+  materials_folder_url?: string;
+  /** Access duration in days after program ends */
+  access_duration_days?: number;
+  /** Learning journey stages (Hakima's pedagogical model) */
+  journey_stages?: string;
+  /** Thumbnail/card image */
+  thumbnail_url?: string;
+  /** Featured on homepage */
+  is_featured: boolean;
+  is_free: boolean;
+  /** Display order within nav_group */
+  display_order: number;
+  /** SEO fields */
+  meta_title_ar?: string;
+  meta_title_en?: string;
+  meta_description_ar?: string;
+  meta_description_en?: string;
+  og_image_url?: string;
+}
+
+// ── Sheet 3: Services & Packages ────────────────────────────────────────────
+
+/** Service audience category (Nashit's critique) */
+export type ServiceCategory = 'seeker' | 'student' | 'corporate';
+
+export interface Service extends AuditFields, TheaterPricing {
+  slug: string;
+  name_ar: string;
+  name_en: string;
+  description_ar?: string;
+  description_en?: string;
+  /** Category determines booking flow visibility */
+  category: ServiceCategory;
+  /** Session duration in minutes */
+  duration_minutes: number;
+  /** Coach slug (references Sheet 4) — null = any available coach */
+  coach_slug?: string;
+  /** Package: number of sessions included */
+  sessions_count?: number;
+  /** Package: validity period in days */
+  validity_days?: number;
+  /** Discount */
+  discount_percentage?: number;
+  discount_valid_until?: string;
+  /** Installments */
+  installment_enabled: boolean;
+  /** Bundle reference */
+  bundle_id?: string;
+  /** Display order */
+  display_order: number;
+}
+
+// ── Sheet 4: Team ───────────────────────────────────────────────────────────
+
+/** Coach/instructor credential level */
+export type CoachLevel = 'ACC' | 'PCC' | 'MCC' | 'instructor' | 'facilitator' | 'guest';
+
+export interface TeamMember extends AuditFields {
+  slug: string;
+  name_ar: string;
+  name_en: string;
+  title_ar?: string;
+  title_en?: string;
+  bio_ar?: string;
+  bio_en?: string;
+  /** Photo URL (Supabase Storage or external) */
+  photo_url?: string;
+  /** Credential level (for coaches) */
+  coach_level?: CoachLevel;
+  /** ICF credential details */
+  credentials?: string;
+  /** Specialties list (comma-separated in sheet → string[]) */
+  specialties: string[];
+  /** Coaching styles */
+  coaching_styles: string[];
+  /** Languages spoken */
+  languages: string[];
+  /** Whether they appear on the public site */
+  is_visible: boolean;
+  /** Whether they can receive bookings */
+  is_bookable: boolean;
+  /** Display order on team page */
+  display_order: number;
+}
+
+// ── Sheet 5: Settings ───────────────────────────────────────────────────────
+
+export interface SiteSetting extends AuditFields {
+  /** Setting category: "social", "contact", "footer", "branding", "seo" */
+  category: string;
+  /** Setting key, e.g. "instagram_url", "phone_primary", "footer_tagline_ar" */
+  key: string;
+  /** Setting value */
+  value: string;
+}
+
+// ── Sheet 6: Pathfinder ──────────────────────────────────────────────────────
+
+/** A single answer option within a Pathfinder question */
+export interface PathfinderAnswer {
+  id: string;
+  text_ar: string;
+  text_en: string;
+}
+
+/** Pathfinder question tree node — for the guided recommendation flow */
+export interface PathfinderQuestion {
+  /** Unique question identifier, e.g. "q1", "q2" */
+  question_id: string;
+  /** Parent answer that leads to this question (empty = root question) */
+  parent_answer_id: string;
+  question_ar: string;
+  question_en: string;
+  /** JSON-encoded answer options */
+  answers: PathfinderAnswer[];
+  /** Optional video URL for leaf/recommendation nodes */
+  video_url?: string;
+  /** Program/service slug recommended at this leaf */
+  recommendation_slug?: string;
+  /** Audience type */
+  type: 'individual' | 'corporate';
+  published: boolean;
+  last_edited_by?: string;
+  last_edited_at?: string;
+}
+
+// ── Provider Interface ──────────────────────────────────────────────────────
+
+/** Content fetched for a specific page — grouped by section */
+export type PageSections = Record<string, Record<string, BilingualText>>;
+
+/** Aggregated settings by category */
+export type SettingsMap = Record<string, Record<string, string>>;

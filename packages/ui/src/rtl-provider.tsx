@@ -13,7 +13,7 @@ import React, { ReactNode } from 'react';
  *     <YourContent />
  *   </RTLProvider>
  */
-interface RTLProviderProps {
+export interface RTLProviderProps {
   children: ReactNode;
   locale?: 'ar' | 'en';
 }

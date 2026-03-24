@@ -17,7 +17,9 @@
     "./faq-section": "./src/faq-section.tsx",
     "./utils": "./src/utils.ts",
     "./patterns": "./src/patterns.tsx",
-    "./rtl-provider": "./src/rtl-provider.tsx"
+    "./rtl-provider": "./src/rtl-provider.tsx",
+    "./optimized-video": "./src/optimized-video.tsx",
+    "./image-slot": "./src/image-slot.tsx"
   },
   "scripts": {
     "build": "tsc --build",

@@ -70,11 +70,11 @@
   --color-outline: #787583;
   --color-outline-variant: #C8C4D3;
 
-  /* Typography */
-  --font-arabic-heading: 'Noor', 'Tajawal', sans-serif;
-  --font-arabic-body: 'Tajawal', 'Cairo', 'Noto Naskh Arabic', sans-serif;
-  --font-english-heading: 'STIX Two Text', serif;
-  --font-english-body: 'Inter', sans-serif;
+  /* Typography — wired via next/font CSS variables (zero CLS) */
+  --font-arabic-heading: var(--font-noor), var(--font-tajawal), sans-serif;
+  --font-arabic-body: var(--font-tajawal), var(--font-cairo), var(--font-noto-naskh), sans-serif;
+  --font-english-heading: var(--font-stix), serif;
+  --font-english-body: var(--font-inter), sans-serif;
 
   --text-body: 18px;
   --text-h1: 48px;

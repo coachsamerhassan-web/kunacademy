@@ -1,0 +1,1 @@
+{"root":["./src/index.ts","./src/utils.ts","./src/button.tsx","./src/card.tsx","./src/faq-section.tsx","./src/header.tsx","./src/heading.tsx","./src/image-slot.tsx","./src/locale-text.tsx","./src/optimized-video.tsx","./src/patterns.tsx","./src/price-display.tsx","./src/rtl-provider.tsx","./src/section.tsx","./src/trust-bar.tsx"],"version":"5.9.3"}

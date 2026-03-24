@@ -1,0 +1,38 @@
+[
+  {
+    "slug": "discovery-session",
+    "name_ar": "جلسة استكشاف",
+    "name_en": "Discovery Session",
+    "description_ar": "جلسة فردية مجانية لاستكشاف ما تبحث عنه في رحلتك — ٣٠ دقيقة مع كوتش من فريق كُنْ.",
+    "description_en": "A free individual session to explore what you're looking for in your journey — 30 minutes with a Kun team coach.",
+    "category": "seeker",
+    "duration_minutes": 30,
+    "price_aed": 0,
+    "price_egp": 0,
+    "price_usd": 0,
+    "price_eur": 0,
+    "installment_enabled": false,
+    "display_order": 1,
+    "published": true,
+    "last_edited_by": "nashit",
+    "last_edited_at": "2026-03-24T10:00:00Z"
+  },
+  {
+    "slug": "individual-coaching-session",
+    "name_ar": "جلسة كوتشينج فردية",
+    "name_en": "Individual Coaching Session",
+    "description_ar": "جلسة كوتشينج فردية ٦٠ دقيقة بمنهجية التفكير الحسّي® — مع كوتش معتمد من كُنْ.",
+    "description_en": "A 60-minute individual coaching session using Somatic Thinking® methodology — with a Kun-certified coach.",
+    "category": "seeker",
+    "duration_minutes": 60,
+    "price_aed": 500,
+    "price_egp": 2000,
+    "price_usd": 135,
+    "price_eur": 125,
+    "installment_enabled": false,
+    "display_order": 2,
+    "published": true,
+    "last_edited_by": "nashit",
+    "last_edited_at": "2026-03-24T10:00:00Z"
+  }
+]

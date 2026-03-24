@@ -1,0 +1,17 @@
+[
+  { "category": "contact", "key": "phone_primary", "value": "+971-XX-XXX-XXXX", "published": true },
+  { "category": "contact", "key": "phone_secondary", "value": "+20-XX-XXXX-XXXX", "published": true },
+  { "category": "contact", "key": "email", "value": "info@kunacademy.com", "published": true },
+  { "category": "contact", "key": "whatsapp", "value": "+971XXXXXXXXX", "published": true },
+  { "category": "social", "key": "instagram_url", "value": "https://www.instagram.com/kunacademy", "published": true },
+  { "category": "social", "key": "facebook_url", "value": "https://www.facebook.com/kunacademy", "published": true },
+  { "category": "social", "key": "youtube_url", "value": "https://www.youtube.com/@kunacademy", "published": true },
+  { "category": "social", "key": "linkedin_url", "value": "https://www.linkedin.com/company/kunacademy", "published": true },
+  { "category": "footer", "key": "tagline_ar", "value": "وعى يتخطى الحدود", "published": true },
+  { "category": "footer", "key": "tagline_en", "value": "Growing Beyond Limits", "published": true },
+  { "category": "footer", "key": "copyright_ar", "value": "© 2026 كُنْ كوتشينج أكاديمي. جميع الحقوق محفوظة.", "published": true },
+  { "category": "footer", "key": "copyright_en", "value": "© 2026 Kun Coaching Academy. All rights reserved.", "published": true },
+  { "category": "branding", "key": "primary_color", "value": "#474099", "published": true },
+  { "category": "branding", "key": "accent_color", "value": "#F47E42", "published": true },
+  { "category": "seo", "key": "default_og_image", "value": "/images/og-default.jpg", "published": true }
+]

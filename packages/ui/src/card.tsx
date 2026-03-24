@@ -1,5 +1,11 @@
+'use client';
+
 import * as React from 'react';
 import { cn } from './utils';
+import { useImageComponent } from './image-slot';
+
+// Re-export for convenience
+export { ImageProvider, useImageComponent } from './image-slot';
 
 /**
  * Card — Stitch "Tonal Layering" design.
@@ -61,6 +67,7 @@ export function ProgramCard({
   titleAr, titleEn, locale, thumbnailUrl, duration,
   priceAed, instructorName, slug, className,
 }: ProgramCardProps) {
+  const Img = useImageComponent();
   const title = locale === 'ar' ? titleAr : titleEn;
   const price = priceAed ? (priceAed / 100).toLocaleString() : null;
   const currencyLabel = locale === 'ar' ? 'د.إ' : 'AED';
@@ -70,7 +77,7 @@ export function ProgramCard({
     <Card accent className={cn('overflow-hidden', className)}>
       <div className="relative aspect-[4/3] overflow-hidden rounded-b-[40%_20%]">
         {thumbnailUrl ? (
-          <img src={thumbnailUrl} alt={title} className="h-full w-full object-cover" />
+          <Img src={thumbnailUrl} alt={title} fill className="object-cover" sizes="(max-width: 640px) 100vw, 33vw" />
         ) : (
           <div className="h-full w-full bg-[var(--color-primary-100)]" />
         )}
@@ -117,13 +124,14 @@ interface TestimonialCardProps {
 export function TestimonialCard({
   authorName, content, program, rating, photoUrl, videoUrl, className,
 }: TestimonialCardProps) {
+  const Img = useImageComponent();
   return (
     <Card accent className={cn('p-6', className)}>
       <div className="flex items-start gap-4">
         <div className="relative shrink-0">
           <div className="h-16 w-16 rounded-full overflow-hidden bg-[var(--color-neutral-100)]">
             {photoUrl ? (
-              <img src={photoUrl} alt={authorName} className="h-full w-full object-cover" />
+              <Img src={photoUrl} alt={authorName} width={64} height={64} className="object-cover" />
             ) : (
               <div className="h-full w-full flex items-center justify-center text-2xl text-[var(--color-neutral-500)]">
                 {authorName.charAt(0)}
@@ -178,6 +186,7 @@ interface CoachCardProps {
 export function CoachCard({
   nameAr, nameEn, locale, photoUrl, credentials, specialties, slug, className,
 }: CoachCardProps) {
+  const Img = useImageComponent();
   const name = locale === 'ar' ? nameAr : nameEn;
   const ctaLabel = locale === 'ar' ? 'احجز' : 'Book';
 
@@ -185,7 +194,7 @@ export function CoachCard({
     <Card accent className={cn('p-6 text-center', className)}>
       <div className="mx-auto h-20 w-20 rounded-full overflow-hidden bg-[var(--color-neutral-100)]">
         {photoUrl ? (
-          <img src={photoUrl} alt={name} className="h-full w-full object-cover" />
+          <Img src={photoUrl} alt={name} width={80} height={80} className="object-cover" />
         ) : (
           <div className="h-full w-full flex items-center justify-center text-3xl text-[var(--color-neutral-500)]">
             {name.charAt(0)}

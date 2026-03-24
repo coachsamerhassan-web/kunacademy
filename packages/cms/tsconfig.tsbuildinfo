@@ -1,0 +1,1 @@
+{"root":["./src/content-provider.ts","./src/google-docs-fetcher.ts","./src/helpers.ts","./src/index.ts","./src/json-provider.ts","./src/sheets-provider.ts","./src/types.ts"],"version":"5.9.3"}

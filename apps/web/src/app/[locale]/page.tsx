@@ -4,11 +4,17 @@ import { Heading } from '@kunacademy/ui/heading';
 import { Button } from '@kunacademy/ui/button';
 import { TrustBar } from '@kunacademy/ui/trust-bar';
 import { TestimonialCard } from '@kunacademy/ui/card';
+import { cms, contentGetter } from '@kunacademy/cms';
+import { TreeNarrative, TreePhase } from '@/components/tree-narrative';
 
 export default async function HomePage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   setRequestLocale(locale);
   const isAr = locale === 'ar';
+
+  // ── CMS: fetch page content from Sheet 1 ──
+  const sections = await cms.getPageContent('home');
+  const t = contentGetter(sections, locale);
 
   return (
     <main>
@@ -21,18 +27,14 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
               {isAr ? 'أكاديمية كُن للكوتشينج' : 'Kun Coaching Academy'}
             </p>
             <Heading level={1} className="!text-[var(--color-primary)] !leading-[1.15]">
-              {isAr
-                ? 'النمو لا يبدأ من الأعلى، بل من الجذور'
-                : 'Growth doesn\'t start from the top — it starts from the roots'}
+              {t('hero', 'title')}
             </Heading>
             <p className="mt-6 text-lg text-[var(--color-neutral-700)] max-w-xl leading-relaxed">
-              {isAr
-                ? 'أكاديمية كُن — معتمدة دوليًا من ICF. نُخرّج كوتشز يجسّدون الإحسان في ممارستهم من خلال منهجية التفكير الحسّي®.'
-                : 'ICF-accredited coaching academy. We develop coaches who embody Ihsan in their practice through the Somatic Thinking® methodology.'}
+              {t('hero', 'subtitle')}
             </p>
             <div className="mt-8 flex flex-wrap justify-center md:justify-start gap-4">
               <Button variant="primary" size="lg">
-                {isAr ? 'ابدأ رحلتك' : 'Start Your Journey'}
+                {t('hero', 'cta', isAr ? 'ابدأ رحلتك' : 'Start Your Journey')}
               </Button>
               <Button variant="secondary" size="lg">
                 {isAr ? 'استكشف البرامج' : 'Explore Programs'}
@@ -67,12 +69,12 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
       <Section variant="surface-high" pattern="girih">
         <div className="text-center mb-12">
           <Heading level={2}>
-            {isAr ? 'مسار التطوّر' : 'Your Growth Pathway'}
+            {t('journey', 'title', isAr ? 'مسار التطوّر' : 'Your Growth Pathway')}
           </Heading>
           <p className="mt-4 text-[var(--color-neutral-600)] max-w-2xl mx-auto">
-            {isAr
+            {t('journey', 'subtitle', isAr
               ? 'من الاكتشاف المجاني إلى الشهادات المعتمدة — اختر المسار الذي يناسبك'
-              : 'From free discovery to accredited certifications — choose the path that fits you'}
+              : 'From free discovery to accredited certifications — choose the path that fits you')}
           </p>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
@@ -111,6 +113,71 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
           ))}
         </div>
       </Section>
+
+
+      {/* ── TREE NARRATIVE — Growing through sections ── */}
+      <TreeNarrative imageSrc="/images/tree/olive-tree.jpg">
+        <TreePhase phase="roots" align="start">
+          <p className="text-sm font-semibold text-white/70 mb-2 tracking-wider uppercase">
+            {isAr ? 'الجذور — الحضور' : 'Roots — Presence'}
+          </p>
+          <Heading level={2} className="!text-white">
+            {isAr ? 'الحضور يبدأ من الداخل' : 'Presence begins within'}
+          </Heading>
+          <p className="mt-4 text-white/80 leading-relaxed">
+            {isAr
+              ? 'كل رحلة مؤثرة تبدأ من تربة وعيك، من جذور نيّتك، من رسالة تنتظر أن تنمو بصوتك أنت.'
+              : 'Every impactful journey begins from the soil of your awareness, from the roots of your intention.'}
+          </p>
+        </TreePhase>
+
+        <TreePhase phase="trunk" align="end">
+          <p className="text-sm font-semibold text-white/70 mb-2 tracking-wider uppercase">
+            {isAr ? 'النمو — الثبات' : 'Growth — Steadiness'}
+          </p>
+          <Heading level={2} className="!text-white">
+            {isAr ? 'بالثبات تنمو الشجرة' : 'With steadiness, the tree grows'}
+          </Heading>
+          <p className="mt-4 text-white/80 leading-relaxed">
+            {isAr
+              ? 'في كُنْ، لا نقدّم لك مجرد محتوى، بل منهجية متكاملة تنبع من تراثنا وتلامس عمق تجربتك.'
+              : 'At Kun, we offer not just content, but an integrated methodology rooted in our heritage.'}
+          </p>
+        </TreePhase>
+
+        <TreePhase phase="branches" align="start">
+          <p className="text-sm font-semibold text-white/70 mb-2 tracking-wider uppercase">
+            {isAr ? 'الصلة — الامتداد' : 'Connection — Reach'}
+          </p>
+          <Heading level={2} className="!text-white">
+            {isAr ? 'يمتد أثرك ليلامس من حولك' : 'Your impact extends to those around you'}
+          </Heading>
+          <p className="mt-4 text-white/80 leading-relaxed">
+            {isAr
+              ? 'أكثر من 500 كوتش تخرّجوا من كُنْ عبر 4 قارات — كل واحد منهم يحمل منهجية أصيلة.'
+              : 'Over 500 coaches graduated from Kun across 4 continents — each with an authentic methodology.'}
+          </p>
+        </TreePhase>
+
+        <TreePhase phase="canopy" align="end">
+          <p className="text-sm font-semibold text-white/70 mb-2 tracking-wider uppercase">
+            {isAr ? 'الأثر — الإرث' : 'Impact — Legacy'}
+          </p>
+          <Heading level={2} className="!text-white">
+            {isAr ? 'إزرع جذورك... لتنمو بلا حدود' : 'Plant your roots... to grow without limits'}
+          </Heading>
+          <p className="mt-4 text-white/80 leading-relaxed">
+            {isAr
+              ? 'كُنْ ليست مجرد أكاديمية، بل حركة تربوية معاصرة تعيد تعريف التربية من الداخل.'
+              : 'Kun is not just an academy, but a contemporary movement redefining growth from within.'}
+          </p>
+          <div className="mt-6">
+            <Button variant="primary" size="lg">
+              {isAr ? 'ابدأ رحلتك' : 'Start Your Journey'}
+            </Button>
+          </div>
+        </TreePhase>
+      </TreeNarrative>
 
       {/* ── FOUNDER — Editorial layout ── */}
       <Section variant="surface-low">

@@ -5,6 +5,58 @@ const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
 
 const nextConfig: NextConfig = {
   transpilePackages: ['@kunacademy/ui', '@kunacademy/brand', '@kunacademy/db', '@kunacademy/auth', '@kunacademy/payments', '@kunacademy/i18n', '@kunacademy/seo', '@kunacademy/email'],
+
+  async redirects() {
+    return [
+      // Portal → Dashboard/Coach (v2 restructure)
+      { source: '/:locale/portal', destination: '/:locale/dashboard', permanent: true },
+      { source: '/:locale/portal/courses', destination: '/:locale/dashboard/courses', permanent: true },
+      { source: '/:locale/portal/bookings', destination: '/:locale/dashboard/bookings', permanent: true },
+      { source: '/:locale/portal/certificates', destination: '/:locale/dashboard/certificates', permanent: true },
+      { source: '/:locale/portal/profile', destination: '/:locale/dashboard/profile', permanent: true },
+      { source: '/:locale/portal/coach', destination: '/:locale/coach', permanent: true },
+      { source: '/:locale/portal/coach/:path*', destination: '/:locale/coach/:path*', permanent: true },
+      // Programs → Coaching/Academy split
+      { source: '/:locale/programs/coaching', destination: '/:locale/coaching', permanent: true },
+      { source: '/:locale/programs/coaching/:path*', destination: '/:locale/coaching/:path*', permanent: true },
+      { source: '/:locale/programs/certifications', destination: '/:locale/academy/certifications', permanent: true },
+      { source: '/:locale/programs/certifications/:path*', destination: '/:locale/academy/certifications/:path*', permanent: true },
+      { source: '/:locale/programs/courses', destination: '/:locale/academy/courses', permanent: true },
+      { source: '/:locale/programs/courses/:path*', destination: '/:locale/academy/courses/:path*', permanent: true },
+      { source: '/:locale/programs/free', destination: '/:locale/academy/free', permanent: true },
+      { source: '/:locale/programs/free/:path*', destination: '/:locale/academy/free/:path*', permanent: true },
+      { source: '/:locale/programs/corporate', destination: '/:locale/coaching/corporate', permanent: true },
+      { source: '/:locale/programs/corporate/:path*', destination: '/:locale/coaching/corporate', permanent: true },
+      // Methodology → About
+      { source: '/:locale/methodology', destination: '/:locale/about/methodology', permanent: true },
+      { source: '/:locale/methodology/:path*', destination: '/:locale/about/methodology', permanent: true },
+      // About subpages
+      { source: '/:locale/about/founder', destination: '/:locale/about/samer', permanent: true },
+      { source: '/:locale/about/coaches', destination: '/:locale/coaches', permanent: true },
+      // Legal consolidation
+      { source: '/:locale/privacy', destination: '/:locale/legal/privacy', permanent: true },
+      { source: '/:locale/terms', destination: '/:locale/legal/terms', permanent: true },
+      { source: '/:locale/refund', destination: '/:locale/legal/refund', permanent: true },
+    ];
+  },
+
+  images: {
+    formats: ['image/avif', 'image/webp'],
+    deviceSizes: [390, 640, 750, 828, 1080, 1200, 1920],
+    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
+    remotePatterns: [
+      // Google Drive (CMS content images)
+      { protocol: 'https', hostname: 'drive.google.com' },
+      { protocol: 'https', hostname: 'lh3.googleusercontent.com' },
+      // Google Sheets image cells
+      { protocol: 'https', hostname: '*.googleusercontent.com' },
+      // Supabase Storage
+      { protocol: 'https', hostname: '*.supabase.co' },
+      // WordPress legacy (migration period)
+      { protocol: 'https', hostname: 'kunacademy.com' },
+      { protocol: 'https', hostname: 'old.kunacademy.com' },
+    ],
+  },
 };
 
 export default withNextIntl(nextConfig);

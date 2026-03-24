@@ -4,6 +4,8 @@ import { getMessages, setRequestLocale } from 'next-intl/server';
 import { routing } from '@/i18n/routing';
 import { notFound } from 'next/navigation';
 import { Header } from '@kunacademy/ui/header';
+import { fontVariables } from '@/lib/fonts';
+import { NextImageProvider } from '@/components/image-provider';
 import "../globals.css";
 
 export function generateStaticParams() {
@@ -31,11 +33,13 @@ export default async function LocaleLayout({
   const dir = locale === 'ar' ? 'rtl' : 'ltr';
 
   return (
-    <html lang={locale} dir={dir}>
+    <html lang={locale} dir={dir} className={fontVariables}>
       <body>
         <NextIntlClientProvider messages={messages}>
-          <Header locale={locale} />
-          {children}
+          <NextImageProvider>
+            <Header locale={locale} />
+            {children}
+          </NextImageProvider>
         </NextIntlClientProvider>
       </body>
     </html>

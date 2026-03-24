@@ -1,0 +1,123 @@
+[
+  {
+    "slug": "home",
+    "section": "hero",
+    "key": "title",
+    "value_ar": "النمو لا يبدأ من الأعلى، بل من الجذور.",
+    "value_en": "Growth doesn't start from the top — it starts from the roots.",
+    "type": "page",
+    "meta_title_ar": "كُنْ كوتشينج أكاديمي | وعى يتخطى الحدود",
+    "meta_title_en": "Kun Coaching Academy | Growing Beyond Limits",
+    "meta_description_ar": "أكاديمية كُنْ للكوتشينج — منهجية التفكير الحسّي® لتدريب الكوتشز وتطوير الذات. أول عربي MCC من الاتحاد الدولي للكوتشينج.",
+    "meta_description_en": "Kun Coaching Academy — Somatic Thinking® methodology for coach training and personal development. Founded by the first Arab MCC.",
+    "og_image_url": "/images/og-home.jpg",
+    "published": true,
+    "last_edited_by": "samer",
+    "last_edited_at": "2026-03-24T10:00:00Z"
+  },
+  {
+    "slug": "home",
+    "section": "hero",
+    "key": "subtitle",
+    "value_ar": "نمنحك تجربة تربوية أصيلة، تُعيدك إلى ذاتك، وتُنبت حضورك من أرضك، لا من قوالب مستوردة.",
+    "value_en": "An authentic educational experience that brings you back to yourself, growing your presence from your own soil — not imported templates.",
+    "type": "page",
+    "published": true,
+    "last_edited_by": "samer",
+    "last_edited_at": "2026-03-24T10:00:00Z"
+  },
+  {
+    "slug": "home",
+    "section": "hero",
+    "key": "cta",
+    "value_ar": "ابدأ رحلتك الآن",
+    "value_en": "Start Your Journey",
+    "type": "page",
+    "published": true,
+    "last_edited_by": "samer",
+    "last_edited_at": "2026-03-24T10:00:00Z"
+  },
+  {
+    "slug": "home",
+    "section": "intro",
+    "key": "title",
+    "value_ar": "إزرع جذورك، لتنمو كشجرة ثابتة",
+    "value_en": "Plant your roots, to grow like a steadfast tree",
+    "type": "page",
+    "published": true,
+    "last_edited_by": "samer",
+    "last_edited_at": "2026-03-24T10:00:00Z"
+  },
+  {
+    "slug": "home",
+    "section": "intro",
+    "key": "description",
+    "value_ar": "في كُنْ، نؤمن أن كل رحلة مؤثرة تبدأ من الداخل: من تربة وعيك، من جذور نيّتك، من رسالة تنتظر أن تنمو بصوتك أنت.",
+    "value_en": "At Kun, we believe every impactful journey begins from within: from the soil of your awareness, from the roots of your intention, from a message waiting to grow in your own voice.",
+    "type": "page",
+    "published": true,
+    "last_edited_by": "samer",
+    "last_edited_at": "2026-03-24T10:00:00Z"
+  },
+  {
+    "slug": "home",
+    "section": "why",
+    "key": "title",
+    "value_ar": "لماذا كُنْ؟",
+    "value_en": "Why Kun?",
+    "type": "page",
+    "published": true,
+    "last_edited_by": "samer",
+    "last_edited_at": "2026-03-24T10:00:00Z"
+  },
+  {
+    "slug": "home",
+    "section": "why",
+    "key": "description",
+    "value_ar": "لأن الجذور وحدها تمنحك الثبات والنماء. في كُنْ، لا نقدّم لك مجرد محتوى, بل منهجية متكاملة تنبع من تراثنا وتلامس عمق تجربتك.",
+    "value_en": "Because only roots give you stability and growth. At Kun, we don't just offer content — we offer an integrated methodology rooted in our heritage that touches the depth of your experience.",
+    "type": "page",
+    "published": true,
+    "last_edited_by": "samer",
+    "last_edited_at": "2026-03-24T10:00:00Z"
+  },
+  {
+    "slug": "home",
+    "section": "journey",
+    "key": "title",
+    "value_ar": "رحلتك خطوة، بخطوة",
+    "value_en": "Your journey, step by step",
+    "type": "page",
+    "published": true,
+    "last_edited_by": "samer",
+    "last_edited_at": "2026-03-24T10:00:00Z"
+  },
+  {
+    "slug": "about",
+    "section": "hero",
+    "key": "title",
+    "value_ar": "عن كُنْ",
+    "value_en": "About Kun",
+    "type": "page",
+    "meta_title_ar": "عن كُنْ كوتشينج أكاديمي",
+    "meta_title_en": "About Kun Coaching Academy",
+    "meta_description_ar": "تعرّف على أكاديمية كُنْ — منهجية التفكير الحسّي® وقصة أول عربي حاصل على MCC.",
+    "meta_description_en": "Learn about Kun Coaching Academy — the Somatic Thinking® methodology and the story of the first Arab MCC.",
+    "published": true,
+    "last_edited_by": "samer",
+    "last_edited_at": "2026-03-24T10:00:00Z"
+  },
+  {
+    "slug": "contact",
+    "section": "hero",
+    "key": "title",
+    "value_ar": "تواصل معنا",
+    "value_en": "Contact Us",
+    "type": "page",
+    "meta_title_ar": "تواصل مع كُنْ كوتشينج أكاديمي",
+    "meta_title_en": "Contact Kun Coaching Academy",
+    "published": true,
+    "last_edited_by": "samer",
+    "last_edited_at": "2026-03-24T10:00:00Z"
+  }
+]
