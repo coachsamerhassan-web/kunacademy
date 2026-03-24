@@ -1,2 +1,3 @@
 // @kunacademy/db — Supabase client + typed queries
-export {};
+export { createBrowserClient, createServerClient, createAdminClient } from './client';
+export type { Database } from './types';

@@ -1,2 +1,2 @@
 // @kunacademy/email — Resend templates
-export {};
+export { sendEmail, sendWelcomeEmail, sendBookingConfirmation, sendEnrollmentConfirmation } from './sender';

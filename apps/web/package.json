@@ -9,10 +9,15 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@kunacademy/ui": "workspace:*",
+    "@kunacademy/auth": "workspace:*",
     "@kunacademy/brand": "workspace:*",
+    "@kunacademy/db": "workspace:*",
+    "@kunacademy/email": "workspace:*",
+    "@kunacademy/payments": "workspace:*",
+    "@kunacademy/ui": "workspace:*",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "jspdf": "^4.2.1",
     "lucide-react": "^0.468.0",
     "next": "16.2.1",
     "next-intl": "^4.8.3",

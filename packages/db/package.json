@@ -11,7 +11,7 @@
     "clean": "rm -rf dist .turbo"
   },
   "dependencies": {
-    "@supabase/supabase-js": "*"
+    "@supabase/supabase-js": "^2"
   },
   "devDependencies": {
     "typescript": "*"

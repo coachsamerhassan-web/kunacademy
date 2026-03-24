@@ -11,7 +11,7 @@
     "clean": "rm -rf dist .turbo"
   },
   "dependencies": {
-    "stripe": "*"
+    "stripe": "^17.7.0"
   },
   "devDependencies": {
     "typescript": "*"
