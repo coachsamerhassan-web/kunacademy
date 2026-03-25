@@ -1,22 +1,27 @@
 #!/usr/bin/env npx tsx
 /**
- * Migrate testimonials from CSV → Supabase testimonials table.
+ * Migrate testimonials from CSV → Google Sheets CMS (Testimonials tab).
  * Source: /Users/samer/Claude Code/Workspace/CTO/output/testimonials-cms-data.csv
- * Target: Supabase `testimonials` table
- *
- * Also updates Google Sheets CMS if GOOGLE_SHEETS_API_KEY is set.
+ * Target: Google Sheet "Testimonials" tab
  *
  * Usage: npx tsx scripts/migrate-testimonials.ts
- * Requires: NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
+ * Requires: GOOGLE_SERVICE_ACCOUNT_PATH env var (or credentials/google-service-account.json)
  */
-import { createClient } from '@supabase/supabase-js';
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
+import { google } from 'googleapis';
 
 const CSV_PATH = resolve('/Users/samer/Claude Code/Workspace/CTO/output/testimonials-cms-data.csv');
+const SPREADSHEET_ID = '1CLChiKTXGvUDmPFHcjCpa3TmmC6F0KG5RnFCsCiBLIg';
+const SHEET_NAME = 'Testimonials';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+// CMS column order must match what sheets-provider.ts reads
+const CMS_HEADERS = [
+  'id', 'name_ar', 'name_en', 'content_ar', 'content_en',
+  'program', 'role_ar', 'role_en', 'location_ar', 'location_en',
+  'country_code', 'photo_url', 'video_url', 'is_featured',
+  'display_order', 'published',
+];
 
 function parseCSV(content: string): Record<string, string>[] {
   const lines = content.split('\n').filter(l => l.trim());
@@ -53,7 +58,7 @@ function parseCSV(content: string): Record<string, string>[] {
 }
 
 async function main() {
-  console.log('=== Testimonial Migration ===\n');
+  console.log('=== Testimonial Migration → Google Sheets CMS ===\n');
 
   // 1. Read CSV
   const csvContent = readFileSync(CSV_PATH, 'utf-8');
@@ -81,66 +86,80 @@ async function main() {
   console.log(`  Featured: ${stats.featured}`);
   console.log(`  By program:`, stats.byProgram);
 
-  // 3. Migrate to Supabase
-  if (!supabaseUrl || !supabaseKey) {
-    console.log('\n⚠️  Supabase not configured. Skipping DB migration.');
-    console.log('   Set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY to migrate.');
-    console.log('\n✅ CSV parsed and classified successfully. Data ready for migration.');
-    return;
-  }
+  // 3. Auth with service account
+  const saKeyPath = process.env.GOOGLE_SERVICE_ACCOUNT_PATH
+    || resolve(__dirname, '../credentials/google-service-account.json');
 
-  const supabase = createClient(supabaseUrl, supabaseKey);
+  const auth = new google.auth.GoogleAuth({
+    keyFile: saKeyPath,
+    scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+  });
 
-  // Check existing testimonials
-  const { count: existingCount } = await supabase
-    .from('testimonials')
-    .select('id', { count: 'exact', head: true });
+  const sheets = google.sheets({ version: 'v4', auth });
 
-  console.log(`\nExisting testimonials in Supabase: ${existingCount || 0}`);
-
-  if (existingCount && existingCount > 0) {
-    console.log('Testimonials already exist. Running upsert (update existing, add new)...');
-  }
-
-  // Prepare records
-  const records = rows.map((row, i) => ({
-    slug: row.id || `testimonial-${i + 1}`,
-    name_ar: row.name_ar || '',
-    name_en: row.name_en || '',
-    content_ar: row.content_ar || '',
-    content_en: row.content_en || '',
-    program: row.program || null,
-    role_ar: row.role_ar || null,
-    role_en: row.role_en || null,
-    location_ar: row.location_ar || null,
-    location_en: row.location_en || null,
-    country_code: row.country_code || null,
-    photo_url: row.photo_url || null,
-    video_url: row.video_url || null,
-    is_featured: row.is_featured?.toUpperCase() === 'TRUE',
-    display_order: parseInt(row.display_order) || i + 1,
-    is_published: row.published?.toUpperCase() !== 'FALSE',
-  }));
-
-  // Upsert in batches of 20
-  let inserted = 0;
-  let errors = 0;
-
-  for (let i = 0; i < records.length; i += 20) {
-    const batch = records.slice(i, i + 20);
-    const { error } = await supabase
-      .from('testimonials')
-      .upsert(batch as any, { onConflict: 'slug' });
-
-    if (error) {
-      console.error(`Batch ${Math.floor(i / 20) + 1} error:`, error.message);
-      errors += batch.length;
+  // 4. Check existing data in Testimonials tab
+  let existingRows = 0;
+  try {
+    const existing = await sheets.spreadsheets.values.get({
+      spreadsheetId: SPREADSHEET_ID,
+      range: `${SHEET_NAME}!A:A`,
+    });
+    existingRows = (existing.data.values?.length ?? 1) - 1; // minus header
+    console.log(`\nExisting testimonials in sheet: ${existingRows}`);
+  } catch (err: any) {
+    if (err.code === 400 || err.message?.includes('Unable to parse range')) {
+      console.log('\nTestimonials tab not found — will create it.');
+      // Create the sheet tab
+      await sheets.spreadsheets.batchUpdate({
+        spreadsheetId: SPREADSHEET_ID,
+        requestBody: {
+          requests: [{
+            addSheet: {
+              properties: { title: SHEET_NAME },
+            },
+          }],
+        },
+      });
+      console.log(`Created "${SHEET_NAME}" tab.`);
     } else {
-      inserted += batch.length;
+      throw err;
     }
   }
 
-  console.log(`\n✅ Migration complete: ${inserted} upserted, ${errors} errors`);
+  // 5. Prepare data rows (header + all testimonials)
+  const dataRows = rows.map((row) => {
+    return CMS_HEADERS.map(h => {
+      if (h === 'published') return row[h] || 'TRUE';
+      if (h === 'is_featured') return row[h] || 'FALSE';
+      if (h === 'display_order') return row[h] || '';
+      return row[h] || '';
+    });
+  });
+
+  // 6. Write to sheet (clear + write header + data)
+  const allValues = [CMS_HEADERS, ...dataRows];
+  const range = `${SHEET_NAME}!A1`;
+
+  // Clear existing data first
+  await sheets.spreadsheets.values.clear({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `${SHEET_NAME}!A:P`,
+  });
+
+  // Write all data
+  const result = await sheets.spreadsheets.values.update({
+    spreadsheetId: SPREADSHEET_ID,
+    range,
+    valueInputOption: 'RAW',
+    requestBody: {
+      values: allValues,
+    },
+  });
+
+  console.log(`\n✅ Migration complete!`);
+  console.log(`   Wrote ${result.data.updatedRows} rows (1 header + ${rows.length} testimonials)`);
+  console.log(`   Sheet: ${SHEET_NAME}`);
+  console.log(`   Spreadsheet: https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}`);
 }
 
 main().catch(console.error);

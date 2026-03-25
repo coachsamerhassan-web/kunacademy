@@ -1,0 +1,328 @@
+<html lang="en" vid="0"><head vid="1">
+    <meta charset="UTF-8" vid="2">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" vid="3">
+    <title vid="4">The Ciore Standard - Book Cover Design</title>
+    <style vid="5">
+        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,400&family=Inter:wght@300;400;500&display=swap');
+
+        :root {
+            
+            --paper-base: #1a2634;      
+            --paper-surface: #243447;   
+            --paper-highlight: #2c3e50; 
+            --ink-primary: #e0e6ed;     
+            --ink-secondary: #8da2b5;   
+            --accent-gold: #cfa875;     
+            
+            
+            --border-radius-sm: 2px;
+            --border-width-hairline: 0.5px;
+            --border-width-standard: 1px;
+            
+            
+            --shadow-elevation-low: 0 4px 20px rgba(0, 0, 0, 0.2);
+            --shadow-elevation-high: 0 30px 60px rgba(0, 0, 0, 0.4);
+            --shadow-inner: inset 0 0 80px rgba(0,0,0,0.1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        body {
+            background-color: var(--paper-base);
+            
+            background-image: radial-gradient(circle at 20% 20%, #2a3b4f 0%, var(--paper-base) 60%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Manrope', sans-serif;
+            overflow: hidden;
+            padding: 2rem;
+        }
+
+        
+        .book-container {
+            position: relative;
+            width: 100%;
+            max-width: 500px; 
+            aspect-ratio: 1 / 1.45;
+            perspective: 1500px;
+        }
+
+        .book-cover {
+            position: absolute;
+            inset: 0;
+            background-color: var(--paper-surface);
+            box-shadow: var(--shadow-elevation-high), 
+                        inset 1px 1px 2px rgba(255,255,255,0.05); 
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            overflow: hidden;
+            transform: rotateY(-2deg) rotateX(1deg); 
+            transition: transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+            
+            
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/200 .svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.03'/%3E%3C/svg%3E");
+        }
+
+        .book-container:hover .book-cover {
+            transform: rotateY(0deg) rotateX(0deg) scale(1.02);
+            box-shadow: 0 40px 80px rgba(0, 0, 0, 0.5);
+        }
+
+        
+        .layout-grid {
+            height: 100%;
+            width: 100%;
+            display: grid;
+            grid-template-rows: 1fr auto 1fr;
+            padding: 8%; 
+            position: relative;
+            z-index: 2;
+        }
+
+        
+        .frame-border {
+            position: absolute;
+            top: 24px;
+            left: 24px;
+            right: 24px;
+            bottom: 24px;
+            border: var(--border-width-standard) solid rgba(141, 162, 181, 0.3);
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        
+        .header-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            padding-top: 1rem;
+            text-align: center;
+        }
+
+        .meta-label {
+            font-family: 'Inter', sans-serif;
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 0.3em;
+            color: var(--accent-gold);
+            margin-bottom: 2.5rem;
+            opacity: 0.9;
+            font-weight: 300;
+        }
+
+        .title-block {
+            position: relative;
+        }
+
+        .main-title {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 3.2rem;
+            font-weight: 300; 
+            line-height: 0.95;
+            color: var(--ink-primary);
+            text-transform: uppercase;
+            letter-spacing: -0.02em; 
+            margin-bottom: 1rem;
+        }
+
+        .main-title span {
+            display: block;
+            font-size: 0.5em;
+            letter-spacing: 0.5em;
+            margin-bottom: 0.3em;
+            font-weight: 300;
+            color: var(--ink-primary);
+            opacity: 1;
+        }
+
+        
+        .visual-center {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .abstract-graphic {
+            width: 160px;
+            height: 220px;
+            background-color: var(--paper-highlight);
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        
+        .interference-circle {
+            position: absolute;
+            width: 200%;
+            height: 200%;
+            background: repeating-radial-gradient(
+                circle at 50% 50%,
+                transparent 0,
+                transparent 1px,
+                rgba(255,255,255,0.03) 2px,
+                rgba(255,255,255,0.03) 3px
+            );
+            animation: rotateSlow 60s linear infinite;
+        }
+        
+        .solid-circle {
+            width: 72px;
+            height: 72px;
+            background: linear-gradient(135deg, var(--accent-gold), #8a6e4b);
+            border-radius: 50%;
+            opacity: 0.8;
+            mix-blend-mode: overlay;
+            position: relative;
+        }
+        
+        .solid-circle::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 50%;
+            background: repeating-radial-gradient(
+                circle at 50% 50%,
+                transparent 0,
+                transparent 8px,
+                rgba(100, 140, 170, 0.6) 8px,
+                rgba(100, 140, 170, 0.6) 9px
+            );
+        }
+
+        
+        .footer-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-end;
+            text-align: center;
+            padding-bottom: 1rem;
+        }
+
+        .subtitle {
+            font-family: 'Inter', sans-serif;
+            font-size: 0.75rem;
+            line-height: 1.6;
+            color: var(--ink-secondary);
+            max-width: 80%;
+            margin-bottom: 2rem;
+            letter-spacing: 0.05em;
+        }
+
+        .author-name {
+            font-family: 'Cormorant Garamond', serif;
+            font-style: normal;
+            font-size: 1.4rem;
+            color: var(--accent-gold);
+            letter-spacing: 0.05em;
+            position: relative;
+        }
+        
+        .author-name::before {
+            content: '';
+            position: absolute;
+            top: -12px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 20px;
+            height: 1px;
+            background-color: var(--accent-gold);
+        }
+
+        
+        .spine-crease {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            width: 12px;
+            background: linear-gradient(to right, 
+                rgba(255,255,255,0.05) 0%, 
+                rgba(0,0,0,0.2) 40%, 
+                transparent 100%);
+            z-index: 10;
+        }
+
+        
+        @keyframes rotateSlow {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        
+        @media (max-width: 600px) {
+            .book-container {
+                width: 85vw;
+            }
+            .main-title {
+                font-size: 2.5rem;
+            }
+        }
+
+    </style>
+</head>
+<body vid="6">
+
+    <div class="book-container" vid="7">
+        <div class="book-cover" vid="8">
+            
+            <div class="spine-crease" vid="9"></div>
+            
+            
+            <div class="frame-border" vid="10"></div>
+
+            <div class="layout-grid" vid="11">
+                
+                
+                <div class="header-section" vid="12">
+                    <div class="meta-label" vid="13">Founding Volume</div>
+                    <div class="title-block" vid="14">
+                        <h1 class="main-title" vid="15">
+                            <span vid="16">The</span>
+                            Cioré<br vid="17">Standard
+                        </h1>
+                    </div>
+                </div>
+
+                
+                <div class="visual-center" vid="18">
+                    <div class="solid-circle" vid="19" style="position: relative;"></div>
+                </div>
+
+                
+                <div class="footer-section" vid="20">
+                    <p class="subtitle" vid="21">
+                        TRANSFORMING HUMAN INTELLIGENCE<br vid="22">UNDER PRESSURE
+                    </p>
+                    <p class="subtitle" vid="23" style="margin-top: 1rem; margin-bottom: 2rem; font-size: 0.65rem; opacity: 0.7;">
+                        THE HUMAN COMMUNICATION GPS:<br vid="24">A HUMAN INTELLIGENCE HEALTH TECHNOLOGY
+                    </p>
+                    <div class="author-name" vid="25">
+                        Cioré Taylor
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+
+</body></html>
