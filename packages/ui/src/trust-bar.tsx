@@ -41,7 +41,7 @@ export function TrustBar({ locale, className }: TrustBarProps) {
       }}
     >
       <div className="mx-auto max-w-[var(--max-content-width)] px-4">
-        <div className="flex flex-wrap items-center justify-center gap-8 md:gap-16">
+        <div className="grid grid-cols-2 md:flex md:flex-wrap items-center justify-center gap-6 md:gap-16">
           {items.map((item) => (
             <div key={item.label} className="flex flex-col items-center text-white">
               <span className="text-2xl md:text-3xl font-bold tracking-tight">

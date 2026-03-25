@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@kunacademy/db": "workspace:*",
+    "@supabase/ssr": "^0.9.0",
     "@supabase/supabase-js": "*"
   },
   "devDependencies": {

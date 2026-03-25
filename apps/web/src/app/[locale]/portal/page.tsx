@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import { setRequestLocale } from 'next-intl/server';
 import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
@@ -12,7 +13,9 @@ export default async function PortalDashboard({ params }: { params: Promise<{ lo
     <main>
       <Section variant="white">
         <Heading level={1}>{isAr ? 'لوحة التحكم' : 'Dashboard'}</Heading>
-        <DashboardContent locale={locale} />
+        <Suspense fallback={<div className="py-12 text-center text-[var(--color-neutral-500)]">{isAr ? 'جاري التحميل...' : 'Loading...'}</div>}>
+          <DashboardContent locale={locale} />
+        </Suspense>
       </Section>
     </main>
   );

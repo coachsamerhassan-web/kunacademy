@@ -2,12 +2,12 @@ import * as React from 'react';
 import { cn } from './utils';
 
 const sizeMap = {
-  1: 'text-[var(--text-h1)]',
-  2: 'text-[var(--text-h2)]',
-  3: 'text-[var(--text-h3)]',
-  4: 'text-[var(--text-h4)]',
-  5: 'text-[var(--text-h5)]',
-  6: 'text-[var(--text-h6)]',
+  1: 'text-[var(--text-page-title)]',
+  2: 'text-[var(--text-section)]',
+  3: 'text-[var(--text-card-title)]',
+  4: 'text-[var(--text-lead)]',
+  5: 'text-[var(--text-body)]',
+  6: 'text-[var(--text-small)]',
 } as const;
 
 interface HeadingProps extends React.HTMLAttributes<HTMLHeadingElement> {
@@ -20,7 +20,7 @@ export function Heading({ level = 2, className, children, ...props }: HeadingPro
     <Tag
       className={cn(
         sizeMap[level],
-        'font-bold leading-tight tracking-tight text-[var(--color-text)]',
+        'font-bold leading-tight text-[var(--text-primary)]',
         className
       )}
       {...props}

@@ -19,7 +19,10 @@
     "./patterns": "./src/patterns.tsx",
     "./rtl-provider": "./src/rtl-provider.tsx",
     "./optimized-video": "./src/optimized-video.tsx",
-    "./image-slot": "./src/image-slot.tsx"
+    "./image-slot": "./src/image-slot.tsx",
+    "./footer": "./src/footer.tsx",
+    "./scroll-observer": "./src/scroll-observer.tsx",
+    "./faq-jsonld": "./src/faq-jsonld.ts"
   },
   "scripts": {
     "build": "tsc --build",

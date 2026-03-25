@@ -2,8 +2,10 @@ import { setRequestLocale } from 'next-intl/server';
 import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
 import { Button } from '@kunacademy/ui/button';
-import { FAQSection, faqJsonLd } from '@kunacademy/ui/faq-section';
+import { FAQSection } from '@kunacademy/ui/faq-section';
+import { faqJsonLd } from '@kunacademy/ui/faq-jsonld';
 import { methodologyFaqs } from '@/data/faqs';
+import { GeometricPattern } from '@kunacademy/ui/patterns';
 
 export default async function MethodologyPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
@@ -12,22 +14,38 @@ export default async function MethodologyPage({ params }: { params: Promise<{ lo
 
   return (
     <main>
-      {/* Hero with Flower of Life pattern — sacred geometry for methodology */}
-      <Section variant="surface" pattern="flower-of-life" hero>
-        <div className="text-center max-w-3xl mx-auto">
-          <p className="text-sm font-medium tracking-widest uppercase text-[var(--color-accent)] mb-4">
-            {isAr ? 'المنهجية' : 'The Methodology'}
-          </p>
-          <Heading level={1}>
-            {isAr ? 'التفكير الحسّي®' : 'Somatic Thinking®'}
-          </Heading>
-          <p className="mt-6 text-lg text-[var(--color-neutral-700)] leading-relaxed">
-            {isAr
-              ? 'منهجية كوتشينج أصيلة تبدأ من الجسد — لأن التحوّل الحقيقي يُعاش، لا يُفكَّر فيه فقط'
-              : 'An original coaching methodology that starts from the body — because real transformation is experienced, not just thought about'}
-          </p>
+      {/* Hero with ink portrait */}
+      <section className="relative overflow-hidden py-20 md:py-28 bg-[var(--color-background)]">
+        <GeometricPattern pattern="flower-of-life" opacity={0.3} fade="both" />
+        <div className="relative z-10 mx-auto max-w-[var(--max-content-width)] px-4 md:px-6">
+          <div className="flex flex-col md:flex-row items-center gap-10 md:gap-16">
+            <div className="flex-1 text-center md:text-start animate-fade-up">
+              <p className="text-sm font-medium tracking-[0.15em] uppercase text-[var(--color-accent)] mb-4">
+                {isAr ? 'المنهجية' : 'The Methodology'}
+              </p>
+              <h1 className="text-[2.25rem] md:text-[3.5rem] font-bold text-[var(--text-accent)] leading-tight" style={{ fontFamily: isAr ? 'var(--font-arabic-heading)' : 'var(--font-english-heading)' }}>
+                {isAr ? 'التفكير الحسّي®' : 'Somatic Thinking®'}
+              </h1>
+              <p className="mt-6 text-[var(--color-neutral-700)] text-lg md:text-xl leading-relaxed max-w-lg">
+                {isAr
+                  ? 'منهجية كوتشينج أصيلة تبدأ من الجسد — لأن التحوّل الحقيقي يُعاش، لا يُفكَّر فيه فقط'
+                  : 'An original coaching methodology that starts from the body — because real transformation is experienced, not just thought about'}
+              </p>
+            </div>
+            {/* Ink portrait */}
+            <div className="shrink-0 animate-scale">
+              <div className="w-56 h-72 md:w-64 md:h-80 rounded-2xl overflow-hidden shadow-[0_12px_40px_rgba(71,64,153,0.12)]">
+                <img
+                  src="/images/methodology/ink-portrait-meditation.png"
+                  alt={isAr ? 'التفكير الحسّي — الوعي الداخلي' : 'Somatic Thinking — Inner Awareness'}
+                  className="w-full h-full object-cover"
+                  loading="eager"
+                />
+              </div>
+            </div>
+          </div>
         </div>
-      </Section>
+      </section>
 
       {/* Tonal layer shift: surface → surface-high */}
       <Section variant="surface-high">

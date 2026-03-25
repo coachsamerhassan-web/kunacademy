@@ -1,0 +1,177 @@
+{
+  "108": {
+    "name": "كوتش",
+    "slug": "coach",
+    "taxonomy": "coach_level"
+  },
+  "109": {
+    "name": "كوتش أساسي",
+    "slug": "associated-coach",
+    "taxonomy": "coach_level"
+  },
+  "111": {
+    "name": "كوتش خبير",
+    "slug": "expert-coach",
+    "taxonomy": "coach_level"
+  },
+  "110": {
+    "name": "كوتش محترف",
+    "slug": "pro-coach",
+    "taxonomy": "coach_level"
+  },
+  "124": {
+    "name": "ماستر كوتش",
+    "slug": "master-coach",
+    "taxonomy": "coach_level"
+  },
+  "112": {
+    "name": "منتور",
+    "slug": "mentor",
+    "taxonomy": "coach_level"
+  },
+  "113": {
+    "name": "منتور كوتش",
+    "slug": "mentor-coach",
+    "taxonomy": "coach_level"
+  },
+  "114": {
+    "name": "منتور كوتش متقدم",
+    "slug": "advanced-mentor",
+    "taxonomy": "coach_level"
+  },
+  "127": {
+    "name": "كوتش حسّي",
+    "slug": "somatic-coach",
+    "taxonomy": "coach_style"
+  },
+  "128": {
+    "name": "كوتش داعم",
+    "slug": "supportive-coach",
+    "taxonomy": "coach_style"
+  },
+  "126": {
+    "name": "كوتش عملي",
+    "slug": "action-coach",
+    "taxonomy": "coach_style"
+  },
+  "125": {
+    "name": "كوتش عميق",
+    "slug": "deep-coach",
+    "taxonomy": "coach_style"
+  },
+  "129": {
+    "name": "كوتش مواجه",
+    "slug": "challenging-coach",
+    "taxonomy": "coach_style"
+  },
+  "130": {
+    "name": "ACC",
+    "slug": "acc",
+    "taxonomy": "coach_cert"
+  },
+  "132": {
+    "name": "MCC",
+    "slug": "mcc",
+    "taxonomy": "coach_cert"
+  },
+  "131": {
+    "name": "PCC",
+    "slug": "pcc",
+    "taxonomy": "coach_cert"
+  },
+  "136": {
+    "name": "STAIC",
+    "slug": "staic",
+    "taxonomy": "coach_cert"
+  },
+  "134": {
+    "name": "STGC",
+    "slug": "stgc",
+    "taxonomy": "coach_cert"
+  },
+  "133": {
+    "name": "STIC",
+    "slug": "stic",
+    "taxonomy": "coach_cert"
+  },
+  "135": {
+    "name": "STOC",
+    "slug": "stoc",
+    "taxonomy": "coach_cert"
+  },
+  "119": {
+    "name": "استكشاف طريقك المناسب",
+    "slug": "explore-your-next-step",
+    "taxonomy": "coach_tag"
+  },
+  "116": {
+    "name": "تنمية ذاتية",
+    "slug": "personal-development",
+    "taxonomy": "coach_tag"
+  },
+  "120": {
+    "name": "تنمية عائلية وتربوية",
+    "slug": "family-development",
+    "taxonomy": "coach_tag"
+  },
+  "117": {
+    "name": "تنمية علاقات",
+    "slug": "relationship-development",
+    "taxonomy": "coach_tag"
+  },
+  "118": {
+    "name": "تنمية مهنية",
+    "slug": "professional-development",
+    "taxonomy": "coach_tag"
+  },
+  "92": {
+    "name": "أونلاين (حضوراً)",
+    "slug": "%d8%a3%d9%88%d9%86%d9%84%d8%a7%d9%8a%d9%86-%d8%ad%d8%b6%d9%88%d8%b1%d8%a7%d9%8b",
+    "taxonomy": "course-category"
+  },
+  "98": {
+    "name": "حضوراً",
+    "slug": "%d8%ad%d8%b6%d9%88%d8%b1%d8%a7%d9%8b",
+    "taxonomy": "course-category"
+  },
+  "87": {
+    "name": "دورة",
+    "slug": "%d8%af%d9%88%d8%b1%d8%a9",
+    "taxonomy": "course-category"
+  },
+  "81": {
+    "name": "صوتيات",
+    "slug": "audio",
+    "taxonomy": "course-category"
+  },
+  "106": {
+    "name": "فريق الكوتشينج",
+    "slug": "%d9%81%d8%b1%d9%8a%d9%82-%d8%a7%d9%84%d9%83%d9%88%d8%aa%d8%b4%d9%8a%d9%86%d8%ac",
+    "taxonomy": "course-category"
+  },
+  "79": {
+    "name": "كتب",
+    "slug": "books",
+    "taxonomy": "course-category"
+  },
+  "80": {
+    "name": "مرئيات",
+    "slug": "video",
+    "taxonomy": "course-category"
+  },
+  "88": {
+    "name": "مسجلة",
+    "slug": "%d9%85%d8%b3%d8%ac%d9%84%d8%a9",
+    "taxonomy": "course-category"
+  },
+  "107": {
+    "name": "منتور كوتش متقدم",
+    "slug": "%d9%85%d9%86%d8%aa%d9%88%d8%b1-%d9%83%d9%88%d8%aa%d8%b4-%d9%85%d8%aa%d9%82%d8%af%d9%85",
+    "taxonomy": "course-category"
+  },
+  "82": {
+    "name": "هدية",
+    "slug": "free",
+    "taxonomy": "course-category"
+  }
+}

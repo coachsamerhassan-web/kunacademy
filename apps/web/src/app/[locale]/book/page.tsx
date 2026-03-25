@@ -1,7 +1,10 @@
 import { setRequestLocale } from 'next-intl/server';
+import { PageHero } from '@/components/page-hero';
+
 import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
-import { FAQSection, faqJsonLd } from '@kunacademy/ui/faq-section';
+import { FAQSection } from '@kunacademy/ui/faq-section';
+import { faqJsonLd } from '@kunacademy/ui/faq-jsonld';
 import { bookingFaqs } from '@/data/faqs';
 import { BookingWizard } from './booking-wizard';
 
@@ -12,6 +15,17 @@ export default async function BookingPage({ params }: { params: Promise<{ locale
 
   return (
     <main>
+
+      <PageHero
+        locale={locale}
+        titleAr="جلسات كوتشينج فردية"
+        titleEn="Individual Coaching Sessions"
+        subtitleAr="اختر الكوتش المناسب واحجز جلستك"
+        subtitleEn="Choose your coach and book your session"
+        eyebrowAr="احجز جلستك"
+        eyebrowEn="Book a Session"
+        pattern="girih"
+      />
       <Section variant="default">
         <div className="text-center max-w-2xl mx-auto">
           <Heading level={1}>{isAr ? 'احجز جلسة كوتشينج' : 'Book a Coaching Session'}</Heading>

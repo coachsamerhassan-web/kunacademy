@@ -1,4 +1,5 @@
 import { setRequestLocale } from 'next-intl/server';
+import { GeometricPattern } from '@kunacademy/ui/patterns';
 import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
 import { Button } from '@kunacademy/ui/button';
@@ -10,21 +11,17 @@ export default async function FacilitationPage({ params }: { params: Promise<{ l
 
   return (
     <main>
-      <Section variant="default" className="min-h-[50vh] flex items-center">
-        <div className="text-center max-w-3xl mx-auto">
-          <p className="text-[var(--color-accent)] font-medium mb-2">
+      <section className="relative overflow-hidden py-16 md:py-24" style={{ background: 'linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-600) 100%)' }}>
+        <GeometricPattern pattern="flower-of-life" opacity={0.08} fade="both" />
+        <div className="relative z-10 mx-auto max-w-[var(--max-content-width)] px-4 md:px-6 text-center">
+          <h1 className="text-[2.25rem] md:text-[3.5rem] font-bold text-[#FFF5E9] leading-[1.1]" style={{ fontFamily: isAr ? 'var(--font-arabic-heading)' : 'var(--font-english-heading)' }}>
+            {isAr ? 'خدمة مؤسسية' : 'Corporate Service'}
+          </h1>
+          <p className="mt-4 text-white/65 max-w-2xl mx-auto text-lg md:text-xl">
             {isAr ? 'خدمة مؤسسية' : 'Corporate Service'}
           </p>
-          <Heading level={1}>
-            {isAr ? 'يوم التيسير المؤسسي' : 'Corporate Facilitation Day'}
-          </Heading>
-          <p className="mt-4 text-lg text-[var(--color-neutral-700)]">
-            {isAr
-              ? 'ورش عمل مكثّفة ليوم واحد بقيادة سامر حسن (MCC)'
-              : 'Intensive one-day workshops led by Samer Hassan (MCC)'}
-          </p>
         </div>
-      </Section>
+      </section>
 
       <Section variant="white">
         <div className="max-w-3xl mx-auto">

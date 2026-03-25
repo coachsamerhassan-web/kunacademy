@@ -91,7 +91,7 @@ export function TreeNarrative({
             className="w-full h-full object-cover"
             style={{
               filter: 'saturate(0.6) contrast(1.05) brightness(1.1)',
-              opacity: 0.2,
+              opacity: 0.35,
             }}
             loading="lazy"
           />
@@ -101,7 +101,7 @@ export function TreeNarrative({
         <div
           className="absolute inset-0"
           style={{
-            background: 'linear-gradient(180deg, rgba(255,245,233,0.3) 0%, rgba(71,64,153,0.06) 50%, rgba(255,245,233,0.5) 100%)',
+            background: 'linear-gradient(180deg, rgba(255,245,233,0.4) 0%, rgba(71,64,153,0.10) 50%, rgba(255,245,233,0.6) 100%)',
           }}
         />
 

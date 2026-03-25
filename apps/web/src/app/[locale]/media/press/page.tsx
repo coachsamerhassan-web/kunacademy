@@ -1,4 +1,6 @@
 import { setRequestLocale } from 'next-intl/server';
+import { PageHero } from '@/components/page-hero';
+
 import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
 
@@ -9,14 +11,16 @@ export default async function PressPage({ params }: { params: Promise<{ locale: 
 
   return (
     <main>
-      <Section>
-        <Heading level={1}>{isAr ? 'الصحافة والإعلام' : 'Press & Media'}</Heading>
-        <p className="mt-4 text-[var(--color-neutral-700)]">
-          {isAr
-            ? 'تغطيات إعلامية ومقابلات وبيانات صحفية عن أكاديمية كُن وسامر حسن.'
-            : 'Media coverage, interviews, and press releases about Kun Academy and Samer Hassan.'}
-        </p>
-      </Section>
+      <PageHero
+        locale={locale}
+        titleAr="التغطية الإعلامية"
+        titleEn="Press Coverage"
+        subtitleAr="كُن في الإعلام"
+        subtitleEn="Kun in the media"
+        eyebrowAr="الوسائط"
+        eyebrowEn="Media"
+        pattern="flower-of-life"
+      />
 
       <Section>
         <div className="space-y-6">

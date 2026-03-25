@@ -1,1 +1,2739 @@
-[]
+[
+  {
+    "id": 8332,
+    "date": "2026-02-25T14:59:32",
+    "date_gmt": "2026-02-25T12:59:32",
+    "guid": {
+      "rendered": "https://kunacademy.com/instructors/anhar-abdelaziz/"
+    },
+    "modified": "2026-02-25T14:59:32",
+    "modified_gmt": "2026-02-25T12:59:32",
+    "slug": "anhar-abdelaziz",
+    "status": "publish",
+    "type": "kun_instructor",
+    "link": "https://kunacademy.com/instructors/anhar-abdelaziz/",
+    "title": {
+      "rendered": "Anhar Abdelaziz"
+    },
+    "content": {
+      "rendered": "",
+      "protected": false
+    },
+    "excerpt": {
+      "rendered": "",
+      "protected": false
+    },
+    "featured_media": 0,
+    "template": "",
+    "meta": [],
+    "coach_level": [],
+    "coach_tag": [],
+    "coach_cert": [],
+    "coach_style": [],
+    "class_list": [
+      "post-8332",
+      "kun_instructor",
+      "type-kun_instructor",
+      "status-publish",
+      "hentry"
+    ],
+    "_links": {
+      "self": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/kun_instructor/8332",
+          "targetHints": {
+            "allow": [
+              "GET"
+            ]
+          }
+        }
+      ],
+      "collection": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/kun_instructor"
+        }
+      ],
+      "about": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/types/kun_instructor"
+        }
+      ],
+      "version-history": [
+        {
+          "count": 0,
+          "href": "https://kunacademy.com/wp-json/wp/v2/kun_instructor/8332/revisions"
+        }
+      ],
+      "wp:attachment": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/media?parent=8332"
+        }
+      ],
+      "wp:term": [
+        {
+          "taxonomy": "coach_level",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/coach_level?post=8332"
+        },
+        {
+          "taxonomy": "coach_tag",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/coach_tag?post=8332"
+        },
+        {
+          "taxonomy": "coach_cert",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/coach_cert?post=8332"
+        },
+        {
+          "taxonomy": "coach_style",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/coach_style?post=8332"
+        }
+      ],
+      "curies": [
+        {
+          "name": "wp",
+          "href": "https://api.w.org/{rel}",
+          "templated": true
+        }
+      ]
+    }
+  },
+  {
+    "id": 8331,
+    "date": "2026-02-25T11:50:44",
+    "date_gmt": "2026-02-25T09:50:44",
+    "guid": {
+      "rendered": "https://kunacademy.com/instructors/bechichi-aicha/"
+    },
+    "modified": "2026-02-25T11:50:44",
+    "modified_gmt": "2026-02-25T09:50:44",
+    "slug": "bechichi-aicha",
+    "status": "publish",
+    "type": "kun_instructor",
+    "link": "https://kunacademy.com/instructors/bechichi-aicha/",
+    "title": {
+      "rendered": "bechichi aicha"
+    },
+    "content": {
+      "rendered": "",
+      "protected": false
+    },
+    "excerpt": {
+      "rendered": "",
+      "protected": false
+    },
+    "featured_media": 0,
+    "template": "",
+    "meta": [],
+    "coach_level": [],
+    "coach_tag": [],
+    "coach_cert": [],
+    "coach_style": [],
+    "class_list": [
+      "post-8331",
+      "kun_instructor",
+      "type-kun_instructor",
+      "status-publish",
+      "hentry"
+    ],
+    "_links": {
+      "self": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/kun_instructor/8331",
+          "targetHints": {
+            "allow": [
+              "GET"
+            ]
+          }
+        }
+      ],
+      "collection": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/kun_instructor"
+        }
+      ],
+      "about": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/types/kun_instructor"
+        }
+      ],
+      "version-history": [
+        {
+          "count": 0,
+          "href": "https://kunacademy.com/wp-json/wp/v2/kun_instructor/8331/revisions"
+        }
+      ],
+      "wp:attachment": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/media?parent=8331"
+        }
+      ],
+      "wp:term": [
+        {
+          "taxonomy": "coach_level",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/coach_level?post=8331"
+        },
+        {
+          "taxonomy": "coach_tag",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/coach_tag?post=8331"
+        },
+        {
+          "taxonomy": "coach_cert",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/coach_cert?post=8331"
+        },
+        {
+          "taxonomy": "coach_style",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/coach_style?post=8331"
+        }
+      ],
+      "curies": [
+        {
+          "name": "wp",
+          "href": "https://api.w.org/{rel}",
+          "templated": true
+        }
+      ]
+    }
+  },
+  {
+    "id": 8323,
+    "date": "2026-02-14T18:39:40",
+    "date_gmt": "2026-02-14T16:39:40",
+    "guid": {
+      "rendered": "https://kunacademy.com/instructors/dorine-schoenberg/"
+    },
+    "modified": "2026-02-14T18:39:40",
+    "modified_gmt": "2026-02-14T16:39:40",
+    "slug": "dorine-schoenberg",
+    "status": "publish",
+    "type": "kun_instructor",
+    "link": "https://kunacademy.com/instructors/dorine-schoenberg/",
+    "title": {
+      "rendered": "Dorine Schoenberg"
+    },
+    "content": {
+      "rendered": "",
+      "protected": false
+    },
+    "excerpt": {
+      "rendered": "",
+      "protected": false
+    },
+    "featured_media": 0,
+    "template": "",
+    "meta": [],
+    "coach_level": [],
+    "coach_tag": [],
+    "coach_cert": [],
+    "coach_style": [],
+    "class_list": [
+      "post-8323",
+      "kun_instructor",
+      "type-kun_instructor",
+      "status-publish",
+      "hentry"
+    ],
+    "_links": {
+      "self": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/kun_instructor/8323",
+          "targetHints": {
+            "allow": [
+              "GET"
+            ]
+          }
+        }
+      ],
+      "collection": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/kun_instructor"
+        }
+      ],
+      "about": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/types/kun_instructor"
+        }
+      ],
+      "version-history": [
+        {
+          "count": 0,
+          "href": "https://kunacademy.com/wp-json/wp/v2/kun_instructor/8323/revisions"
+        }
+      ],
+      "wp:attachment": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/media?parent=8323"
+        }
+      ],
+      "wp:term": [
+        {
+          "taxonomy": "coach_level",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/coach_level?post=8323"
+        },
+        {
+          "taxonomy": "coach_tag",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/coach_tag?post=8323"
+        },
+        {
+          "taxonomy": "coach_cert",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/coach_cert?post=8323"
+        },
+        {
+          "taxonomy": "coach_style",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/coach_style?post=8323"
+        }
+      ],
+      "curies": [
+        {
+          "name": "wp",
+          "href": "https://api.w.org/{rel}",
+          "templated": true
+        }
+      ]
+    }
+  },
+  {
+    "id": 8321,
+    "date": "2026-02-12T20:26:03",
+    "date_gmt": "2026-02-12T18:26:03",
+    "guid": {
+      "rendered": "https://kunacademy.com/instructors/kathrin-korff/"
+    },
+    "modified": "2026-02-12T20:26:03",
+    "modified_gmt": "2026-02-12T18:26:03",
+    "slug": "kathrin-korff",
+    "status": "publish",
+    "type": "kun_instructor",
+    "link": "https://kunacademy.com/instructors/kathrin-korff/",
+    "title": {
+      "rendered": "Kathrin Korff"
+    },
+    "content": {
+      "rendered": "",
+      "protected": false
+    },
+    "excerpt": {
+      "rendered": "",
+      "protected": false
+    },
+    "featured_media": 0,
+    "template": "",
+    "meta": [],
+    "coach_level": [],
+    "coach_tag": [],
+    "coach_cert": [],
+    "coach_style": [],
+    "class_list": [
+      "post-8321",
+      "kun_instructor",
+      "type-kun_instructor",
+      "status-publish",
+      "hentry"
+    ],
+    "_links": {
+      "self": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/kun_instructor/8321",
+          "targetHints": {
+            "allow": [
+              "GET"
+            ]
+          }
+        }
+      ],
+      "collection": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/kun_instructor"
+        }
+      ],
+      "about": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/types/kun_instructor"
+        }
+      ],
+      "version-history": [
+        {
+          "count": 0,
+          "href": "https://kunacademy.com/wp-json/wp/v2/kun_instructor/8321/revisions"
+        }
+      ],
+      "wp:attachment": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/media?parent=8321"
+        }
+      ],
+      "wp:term": [
+        {
+          "taxonomy": "coach_level",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/coach_level?post=8321"
+        },
+        {
+          "taxonomy": "coach_tag",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/coach_tag?post=8321"
+        },
+        {
+          "taxonomy": "coach_cert",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/coach_cert?post=8321"
+        },
+        {
+          "taxonomy": "coach_style",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/coach_style?post=8321"
+        }
+      ],
+      "curies": [
+        {
+          "name": "wp",
+          "href": "https://api.w.org/{rel}",
+          "templated": true
+        }
+      ]
+    }
+  },
+  {
+    "id": 8269,
+    "date": "2026-02-05T22:36:01",
+    "date_gmt": "2026-02-05T20:36:01",
+    "guid": {
+      "rendered": "https://kunacademy.com/instructors/nadin/"
+    },
+    "modified": "2026-02-05T22:36:01",
+    "modified_gmt": "2026-02-05T20:36:01",
+    "slug": "nadin",
+    "status": "publish",
+    "type": "kun_instructor",
+    "link": "https://kunacademy.com/instructors/nadin/",
+    "title": {
+      "rendered": "Nadin"
+    },
+    "content": {
+      "rendered": "",
+      "protected": false
+    },
+    "excerpt": {
+      "rendered": "",
+      "protected": false
+    },
+    "featured_media": 0,
+    "template": "",
+    "meta": [],
+    "coach_level": [],
+    "coach_tag": [],
+    "coach_cert": [],
+    "coach_style": [],
+    "class_list": [
+      "post-8269",
+      "kun_instructor",
+      "type-kun_instructor",
+      "status-publish",
+      "hentry"
+    ],
+    "_links": {
+      "self": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/kun_instructor/8269",
+          "targetHints": {
+            "allow": [
+              "GET"
+            ]
+          }
+        }
+      ],
+      "collection": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/kun_instructor"
+        }
+      ],
+      "about": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/types/kun_instructor"
+        }
+      ],
+      "version-history": [
+        {
+          "count": 0,
+          "href": "https://kunacademy.com/wp-json/wp/v2/kun_instructor/8269/revisions"
+        }
+      ],
+      "wp:attachment": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/media?parent=8269"
+        }
+      ],
+      "wp:term": [
+        {
+          "taxonomy": "coach_level",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/coach_level?post=8269"
+        },
+        {
+          "taxonomy": "coach_tag",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/coach_tag?post=8269"
+        },
+        {
+          "taxonomy": "coach_cert",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/coach_cert?post=8269"
+        },
+        {
+          "taxonomy": "coach_style",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/coach_style?post=8269"
+        }
+      ],
+      "curies": [
+        {
+          "name": "wp",
+          "href": "https://api.w.org/{rel}",
+          "templated": true
+        }
+      ]
+    }
+  },
+  {
+    "id": 7235,
+    "date": "2025-12-28T16:11:47",
+    "date_gmt": "2025-12-28T16:11:47",
+    "guid": {
+      "rendered": "https://kunacademy.com/instructors/%d9%8a%d8%b3%d8%b1%d8%a7-%d8%b3%d9%84%d9%8a%d9%85%d8%a7%d9%86/"
+    },
+    "modified": "2026-01-25T15:51:06",
+    "modified_gmt": "2026-01-25T13:51:06",
+    "slug": "%d9%8a%d8%b3%d8%b1%d8%a7-%d8%b3%d9%84%d9%8a%d9%85%d8%a7%d9%86",
+    "status": "publish",
+    "type": "kun_instructor",
+    "link": "https://kunacademy.com/instructors/%d9%8a%d8%b3%d8%b1%d8%a7-%d8%b3%d9%84%d9%8a%d9%85%d8%a7%d9%86/",
+    "title": {
+      "rendered": "يسرا سليمان"
+    },
+    "content": {
+      "rendered": "",
+      "protected": false
+    },
+    "excerpt": {
+      "rendered": "",
+      "protected": false
+    },
+    "featured_media": 7540,
+    "template": "",
+    "meta": [],
+    "coach_level": [
+      109
+    ],
+    "coach_tag": [
+      119,
+      120,
+      117
+    ],
+    "coach_cert": [
+      136,
+      134,
+      133
+    ],
+    "coach_style": [
+      127,
+      128
+    ],
+    "class_list": [
+      "post-7235",
+      "kun_instructor",
+      "type-kun_instructor",
+      "status-publish",
+      "has-post-thumbnail",
+      "hentry",
+      "coach_level-associated-coach",
+      "coach_tag-explore-your-next-step",
+      "coach_tag-family-development",
+      "coach_tag-relationship-development",
+      "coach_cert-staic",
+      "coach_cert-stgc",
+      "coach_cert-stic",
+      "coach_style-somatic-coach",
+      "coach_style-supportive-coach"
+    ],
+    "_links": {
+      "self": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/kun_instructor/7235",
+          "targetHints": {
+            "allow": [
+              "GET"
+            ]
+          }
+        }
+      ],
+      "collection": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/kun_instructor"
+        }
+      ],
+      "about": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/types/kun_instructor"
+        }
+      ],
+      "version-history": [
+        {
+          "count": 0,
+          "href": "https://kunacademy.com/wp-json/wp/v2/kun_instructor/7235/revisions"
+        }
+      ],
+      "wp:featuredmedia": [
+        {
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/media/7540"
+        }
+      ],
+      "wp:attachment": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/media?parent=7235"
+        }
+      ],
+      "wp:term": [
+        {
+          "taxonomy": "coach_level",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/coach_level?post=7235"
+        },
+        {
+          "taxonomy": "coach_tag",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/coach_tag?post=7235"
+        },
+        {
+          "taxonomy": "coach_cert",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/coach_cert?post=7235"
+        },
+        {
+          "taxonomy": "coach_style",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/coach_style?post=7235"
+        }
+      ],
+      "curies": [
+        {
+          "name": "wp",
+          "href": "https://api.w.org/{rel}",
+          "templated": true
+        }
+      ]
+    }
+  },
+  {
+    "id": 6835,
+    "date": "2025-12-07T14:45:09",
+    "date_gmt": "2025-12-07T14:45:09",
+    "guid": {
+      "rendered": "https://kunacademy.com/instructors/%d9%8a%d8%b3%d8%b1%d9%89-%d8%a8%d9%88%d9%82%d8%b3/"
+    },
+    "modified": "2026-01-25T15:51:06",
+    "modified_gmt": "2026-01-25T13:51:06",
+    "slug": "%d9%8a%d8%b3%d8%b1%d9%89-%d8%a8%d9%88%d9%82%d8%b3",
+    "status": "publish",
+    "type": "kun_instructor",
+    "link": "https://kunacademy.com/instructors/%d9%8a%d8%b3%d8%b1%d9%89-%d8%a8%d9%88%d9%82%d8%b3/",
+    "title": {
+      "rendered": "د.يسرى بوقس"
+    },
+    "content": {
+      "rendered": "<p>دكتوراه في تكنولوجيا التعليم وسياسات القيادة التعليمية<br />\nمدرب حياة في الإدراك الحسي المربي<br />\nمستشار في تصميم الحقائب التدريبية وتصميم وإنتاج الألعاب الخاصة بالأسرة والأصدقاء</p>\n",
+      "protected": false
+    },
+    "excerpt": {
+      "rendered": "<p>دكتوراه في تكنولوجيا التعليم وسياسات القيادة التعليمية مدرب حياة في الإدراك الحسي المربي مستشار في تصميم الحقائب التدريبية وتصميم وإنتاج الألعاب الخاصة بالأسرة والأصدقاء</p>\n",
+      "protected": false
+    },
+    "featured_media": 7229,
+    "template": "",
+    "meta": [],
+    "coach_level": [
+      109
+    ],
+    "coach_tag": [
+      119,
+      116,
+      120,
+      117
+    ],
+    "coach_cert": [
+      133
+    ],
+    "coach_style": [
+      127,
+      128
+    ],
+    "class_list": [
+      "post-6835",
+      "kun_instructor",
+      "type-kun_instructor",
+      "status-publish",
+      "has-post-thumbnail",
+      "hentry",
+      "coach_level-associated-coach",
+      "coach_tag-explore-your-next-step",
+      "coach_tag-personal-development",
+      "coach_tag-family-development",
+      "coach_tag-relationship-development",
+      "coach_cert-stic",
+      "coach_style-somatic-coach",
+      "coach_style-supportive-coach"
+    ],
+    "_links": {
+      "self": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/kun_instructor/6835",
+          "targetHints": {
+            "allow": [
+              "GET"
+            ]
+          }
+        }
+      ],
+      "collection": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/kun_instructor"
+        }
+      ],
+      "about": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/types/kun_instructor"
+        }
+      ],
+      "version-history": [
+        {
+          "count": 0,
+          "href": "https://kunacademy.com/wp-json/wp/v2/kun_instructor/6835/revisions"
+        }
+      ],
+      "wp:featuredmedia": [
+        {
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/media/7229"
+        }
+      ],
+      "wp:attachment": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/media?parent=6835"
+        }
+      ],
+      "wp:term": [
+        {
+          "taxonomy": "coach_level",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/coach_level?post=6835"
+        },
+        {
+          "taxonomy": "coach_tag",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/coach_tag?post=6835"
+        },
+        {
+          "taxonomy": "coach_cert",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/coach_cert?post=6835"
+        },
+        {
+          "taxonomy": "coach_style",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/coach_style?post=6835"
+        }
+      ],
+      "curies": [
+        {
+          "name": "wp",
+          "href": "https://api.w.org/{rel}",
+          "templated": true
+        }
+      ]
+    }
+  },
+  {
+    "id": 5542,
+    "date": "2025-10-31T11:10:58",
+    "date_gmt": "2025-10-31T11:10:58",
+    "guid": {
+      "rendered": "https://kunacademy.com/instructors/%d9%8a%d9%85%d9%86%d9%89-%d8%a7%d9%84%d8%ad%d8%b7%d8%a7%d8%a8-pcc/"
+    },
+    "modified": "2026-01-25T15:51:07",
+    "modified_gmt": "2026-01-25T13:51:07",
+    "slug": "%d9%8a%d9%85%d9%86%d9%89-%d8%a7%d9%84%d8%ad%d8%b7%d8%a7%d8%a8-pcc",
+    "status": "publish",
+    "type": "kun_instructor",
+    "link": "https://kunacademy.com/instructors/%d9%8a%d9%85%d9%86%d9%89-%d8%a7%d9%84%d8%ad%d8%b7%d8%a7%d8%a8-pcc/",
+    "title": {
+      "rendered": "يمنى الحطاب, PCC"
+    },
+    "content": {
+      "rendered": "<p>أنا إنسانة كانت تبحث عن المثالية والتميز فى كل مجال تدخل فيه ولكنى كنت افتقد الرسالة والهدف حتى درست الكوتشنج، فأكتشفت أن المثالية زيف وإنكار للذات الحقيقية والتميز يكون فى الرسالة التي نختار أن نكمل بها رحلتنا في الحياة .</p>\n",
+      "protected": false
+    },
+    "excerpt": {
+      "rendered": "<p>أنا إنسانة كانت تبحث عن المثالية والتميز فى كل مجال تدخل فيه ولكنى كنت افتقد الرسالة والهدف حتى درست الكوتشنج، فأكتشفت أن المثالية زيف وإنكار للذات الحقيقية والتميز يكون فى الرسالة التي نختار أن نكمل بها رحلتنا في الحياة .</p>\n",
+      "protected": false
+    },
+    "featured_media": 7031,
+    "template": "",
+    "meta": [],
+    "coach_level": [
+      111,
+      114
+    ],
+    "coach_tag": [
+      119,
+      116,
+      117
+    ],
+    "coach_cert": [
+      131,
+      136,
+      134,
+      133,
+      135
+    ],
+    "coach_style": [
+      127,
+      128,
+      126,
+      125,
+      129
+    ],
+    "class_list": [
+      "post-5542",
+      "kun_instructor",
+      "type-kun_instructor",
+      "status-publish",
+      "has-post-thumbnail",
+      "hentry",
+      "coach_level-expert-coach",
+      "coach_level-advanced-mentor",
+      "coach_tag-explore-your-next-step",
+      "coach_tag-personal-development",
+      "coach_tag-relationship-development",
+      "coach_cert-pcc",
+      "coach_cert-staic",
+      "coach_cert-stgc",
+      "coach_cert-stic",
+      "coach_cert-stoc",
+      "coach_style-somatic-coach",
+      "coach_style-supportive-coach",
+      "coach_style-action-coach",
+      "coach_style-deep-coach",
+      "coach_style-challenging-coach"
+    ],
+    "_links": {
+      "self": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/kun_instructor/5542",
+          "targetHints": {
+            "allow": [
+              "GET"
+            ]
+          }
+        }
+      ],
+      "collection": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/kun_instructor"
+        }
+      ],
+      "about": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/types/kun_instructor"
+        }
+      ],
+      "version-history": [
+        {
+          "count": 0,
+          "href": "https://kunacademy.com/wp-json/wp/v2/kun_instructor/5542/revisions"
+        }
+      ],
+      "wp:featuredmedia": [
+        {
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/media/7031"
+        }
+      ],
+      "wp:attachment": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/media?parent=5542"
+        }
+      ],
+      "wp:term": [
+        {
+          "taxonomy": "coach_level",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/coach_level?post=5542"
+        },
+        {
+          "taxonomy": "coach_tag",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/coach_tag?post=5542"
+        },
+        {
+          "taxonomy": "coach_cert",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/coach_cert?post=5542"
+        },
+        {
+          "taxonomy": "coach_style",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/coach_style?post=5542"
+        }
+      ],
+      "curies": [
+        {
+          "name": "wp",
+          "href": "https://api.w.org/{rel}",
+          "templated": true
+        }
+      ]
+    }
+  },
+  {
+    "id": 5540,
+    "date": "2025-10-31T11:10:58",
+    "date_gmt": "2025-10-31T11:10:58",
+    "guid": {
+      "rendered": "https://kunacademy.com/instructors/%d8%b4%d9%85%d8%b3-%d8%a7%d9%84%d8%b9%d8%a8%d8%af%d9%84%d9%8a-pcc/"
+    },
+    "modified": "2026-01-25T15:51:06",
+    "modified_gmt": "2026-01-25T13:51:06",
+    "slug": "%d8%b4%d9%85%d8%b3-%d8%a7%d9%84%d8%b9%d8%a8%d8%af%d9%84%d9%8a-pcc",
+    "status": "publish",
+    "type": "kun_instructor",
+    "link": "https://kunacademy.com/instructors/%d8%b4%d9%85%d8%b3-%d8%a7%d9%84%d8%b9%d8%a8%d8%af%d9%84%d9%8a-pcc/",
+    "title": {
+      "rendered": "شمس العبدلي, PCC"
+    },
+    "content": {
+      "rendered": "<p>كوتش محترف بمعايير الاتحاد الدولي للكوتشنج، اعمل مع الافراد والمؤسسات جلسات الكوتشنج التي اقدمها هي مساحة آمنه تفاعلية أوفرها لك لتختبر فيها حالة عميقة من الوضوح و الاتزان تمكنك من تجاوز التحديات ورؤية الامكانيات الكامنة والوصول الى ابعد من حدود اهدافك،<br />\nشغفي ومهنتي تطوير وتصميم تجارب تفاعلية خلاقة تتسق مع تفرد كل عميل وتنطلق من مناطق قوته.</p>\n",
+      "protected": false
+    },
+    "excerpt": {
+      "rendered": "<p>كوتش محترف بمعايير الاتحاد الدولي للكوتشنج، اعمل مع الافراد والمؤسسات جلسات الكوتشنج التي اقدمها هي مساحة آمنه تفاعلية أوفرها لك لتختبر فيها حالة عميقة من الوضوح و الاتزان تمكنك من تجاوز التحديات ورؤية الامكانيات الكامنة والوصول الى ابعد من حدود&hellip;</p>\n",
+      "protected": false
+    },
+    "featured_media": 6395,
+    "template": "",
+    "meta": [],
+    "coach_level": [
+      111,
+      114
+    ],
+    "coach_tag": [
+      119,
+      116,
+      118
+    ],
+    "coach_cert": [
+      131,
+      136,
+      134,
+      133,
+      135
+    ],
+    "coach_style": [
+      127,
+      128,
+      126,
+      125
+    ],
+    "class_list": [
+      "post-5540",
+      "kun_instructor",
+      "type-kun_instructor",
+      "status-publish",
+      "has-post-thumbnail",
+      "hentry",
+      "coach_level-expert-coach",
+      "coach_level-advanced-mentor",
+      "coach_tag-explore-your-next-step",
+      "coach_tag-personal-development",
+      "coach_tag-professional-development",
+      "coach_cert-pcc",
+      "coach_cert-staic",
+      "coach_cert-stgc",
+      "coach_cert-stic",
+      "coach_cert-stoc",
+      "coach_style-somatic-coach",
+      "coach_style-supportive-coach",
+      "coach_style-action-coach",
+      "coach_style-deep-coach"
+    ],
+    "_links": {
+      "self": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/kun_instructor/5540",
+          "targetHints": {
+            "allow": [
+              "GET"
+            ]
+          }
+        }
+      ],
+      "collection": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/kun_instructor"
+        }
+      ],
+      "about": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/types/kun_instructor"
+        }
+      ],
+      "version-history": [
+        {
+          "count": 0,
+          "href": "https://kunacademy.com/wp-json/wp/v2/kun_instructor/5540/revisions"
+        }
+      ],
+      "wp:featuredmedia": [
+        {
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/media/6395"
+        }
+      ],
+      "wp:attachment": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/media?parent=5540"
+        }
+      ],
+      "wp:term": [
+        {
+          "taxonomy": "coach_level",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/coach_level?post=5540"
+        },
+        {
+          "taxonomy": "coach_tag",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/coach_tag?post=5540"
+        },
+        {
+          "taxonomy": "coach_cert",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/coach_cert?post=5540"
+        },
+        {
+          "taxonomy": "coach_style",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/coach_style?post=5540"
+        }
+      ],
+      "curies": [
+        {
+          "name": "wp",
+          "href": "https://api.w.org/{rel}",
+          "templated": true
+        }
+      ]
+    }
+  },
+  {
+    "id": 5538,
+    "date": "2025-10-31T11:10:58",
+    "date_gmt": "2025-10-31T11:10:58",
+    "guid": {
+      "rendered": "https://kunacademy.com/instructors/%d8%b3%d8%a7%d8%b1%d8%a9-%d8%b3%d9%85%d9%8a%d8%b1-pcc/"
+    },
+    "modified": "2026-01-25T15:51:06",
+    "modified_gmt": "2026-01-25T13:51:06",
+    "slug": "%d8%b3%d8%a7%d8%b1%d8%a9-%d8%b3%d9%85%d9%8a%d8%b1-pcc",
+    "status": "publish",
+    "type": "kun_instructor",
+    "link": "https://kunacademy.com/instructors/%d8%b3%d8%a7%d8%b1%d8%a9-%d8%b3%d9%85%d9%8a%d8%b1-pcc/",
+    "title": {
+      "rendered": "سارة سمير, PCC"
+    },
+    "content": {
+      "rendered": "<p>إنسانة بسيطة مُحبة للتواصل، ومؤمنة أن الإنسان الحقيقي هو نور وحياه لمن حوله وقطره مؤثره في محيطه ومع كل من يتعامل معه. رسالتي في الحياة نابعة من قيمي وهي “إحياء الإنسانية” إيماناً مني بأن إنسانيتنا تكفي وإننا خُلقنا برسالة ولغرض وخُلق بداخلنا كل ما نحتاج إليه لتلبية هذا الغرض.</p>\n",
+      "protected": false
+    },
+    "excerpt": {
+      "rendered": "<p>إنسانة بسيطة مُحبة للتواصل، ومؤمنة أن الإنسان الحقيقي هو نور وحياه لمن حوله وقطره مؤثره في محيطه ومع كل من يتعامل معه. رسالتي في الحياة نابعة من قيمي وهي “إحياء الإنسانية” إيماناً مني بأن إنسانيتنا تكفي وإننا خُلقنا برسالة ولغرض&hellip;</p>\n",
+      "protected": false
+    },
+    "featured_media": 6393,
+    "template": "",
+    "meta": [],
+    "coach_level": [
+      111,
+      114
+    ],
+    "coach_tag": [
+      119,
+      116,
+      120,
+      117
+    ],
+    "coach_cert": [
+      131,
+      136,
+      134,
+      133,
+      135
+    ],
+    "coach_style": [
+      127,
+      128,
+      125
+    ],
+    "class_list": [
+      "post-5538",
+      "kun_instructor",
+      "type-kun_instructor",
+      "status-publish",
+      "has-post-thumbnail",
+      "hentry",
+      "coach_level-expert-coach",
+      "coach_level-advanced-mentor",
+      "coach_tag-explore-your-next-step",
+      "coach_tag-personal-development",
+      "coach_tag-family-development",
+      "coach_tag-relationship-development",
+      "coach_cert-pcc",
+      "coach_cert-staic",
+      "coach_cert-stgc",
+      "coach_cert-stic",
+      "coach_cert-stoc",
+      "coach_style-somatic-coach",
+      "coach_style-supportive-coach",
+      "coach_style-deep-coach"
+    ],
+    "_links": {
+      "self": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/kun_instructor/5538",
+          "targetHints": {
+            "allow": [
+              "GET"
+            ]
+          }
+        }
+      ],
+      "collection": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/kun_instructor"
+        }
+      ],
+      "about": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/types/kun_instructor"
+        }
+      ],
+      "version-history": [
+        {
+          "count": 0,
+          "href": "https://kunacademy.com/wp-json/wp/v2/kun_instructor/5538/revisions"
+        }
+      ],
+      "wp:featuredmedia": [
+        {
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/media/6393"
+        }
+      ],
+      "wp:attachment": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/media?parent=5538"
+        }
+      ],
+      "wp:term": [
+        {
+          "taxonomy": "coach_level",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/coach_level?post=5538"
+        },
+        {
+          "taxonomy": "coach_tag",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/coach_tag?post=5538"
+        },
+        {
+          "taxonomy": "coach_cert",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/coach_cert?post=5538"
+        },
+        {
+          "taxonomy": "coach_style",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/coach_style?post=5538"
+        }
+      ],
+      "curies": [
+        {
+          "name": "wp",
+          "href": "https://api.w.org/{rel}",
+          "templated": true
+        }
+      ]
+    }
+  },
+  {
+    "id": 5536,
+    "date": "2025-10-31T11:10:58",
+    "date_gmt": "2025-10-31T11:10:58",
+    "guid": {
+      "rendered": "https://kunacademy.com/instructors/%d8%b3%d8%a7%d9%85%d8%b1-%d8%ad%d8%b3%d9%86-mcc/"
+    },
+    "modified": "2026-03-17T16:59:59",
+    "modified_gmt": "2026-03-17T14:59:59",
+    "slug": "%d8%b3%d8%a7%d9%85%d8%b1-%d8%ad%d8%b3%d9%86-mcc",
+    "status": "publish",
+    "type": "kun_instructor",
+    "link": "https://kunacademy.com/instructors/%d8%b3%d8%a7%d9%85%d8%b1-%d8%ad%d8%b3%d9%86-mcc/",
+    "title": {
+      "rendered": "سامر حسن"
+    },
+    "content": {
+      "rendered": "<p><strong>البداية</strong><br />\nقصتي مع الكوتشينج بدأت من لحظة ألم شخصي. بعد سنوات من التدريب والفنون القتالية والعلاجية، وبينما كنت أدرّس وأقود مركزًا ناجحًا في القاهرة، وجدت نفسي غارقًا في العمل، ساعات طويلة تبعدني عن أسرتي في وقت كانت زوجتي حاملاً بابنتي. سألت نفسي: هل أنشأت أسرة ليعيش أطفالي مع المربيات بدلًا مني؟ هذا السؤال كان نقطة التحول التي دفعتني للبحث عن معنى أعمق لحياتي.<br />\n<strong>التحدي</strong><br />\nأصعب ما واجهته كان أنني كنت أقدّم كل ما تعلمته بالطريقة التقليدية الشرقية: التكرار والانضباط. لكني أدركت أن طلابي الذين توقفوا عن الاستمرار لم ينقصهم المهارة، بل الدافع الداخلي. لم أرد أن أكون مصدر حماس مؤقت يختفي بغيابي. هذا التحدي جعلني أعيد النظر: أريد أن أكون رفيق رحلة، لا مجرد مدرّب.<br />\n<strong>الاكتشاف</strong><br />\nالاكتشاف الكبير جاء في كندا، حين قدمت لي إحدى طالباتي فكرة “الكوتشينج” كمهنة. اكتشفت أن ما أبحث عنه موجود فعلًا، لكنه يحتاج أن أدمج بين الحكمة الشرقية والنهج الغربي. ومن هنا وُلدت بذرة “التفكير الحسّي” (Somatic Thinking): فلسفة تربط الجسد بالعقل بالحضور في اللحظة.<br />\n<strong>الإنجاز</strong><br />\nمنذ تلك اللحظة، أخذت الرحلة أبعادًا عالمية. أصبحت أول عربي يحصل على اعتماد<strong>MCC</strong> من الاتحاد الدولي للكوتشينج، وكرّمتني الـICF كأحد قادتها الشباب في 2019. أسست<strong>أكاديمية كُن</strong> التي خرّجت أكثر من 500 كوتش، وانتشرت فروعها من روما إلى دبي والقاهرة وبغداد وجدة. الأثر الذي أعتز به هو رؤية مئات الكوتشز العرب يستخدمون المنهجية ليصنعوا تغييرًا في مجتمعاتهم بلغاتهم وثقافاتهم.<br />\n<strong> شهادة الآخرين</strong><br />\nأكثر ما يلمسني أن عملائي يرون الكوتشينج معي ليس مجرد مهنة، بل “طريقة حياة”. أحدهم قال:<em>“سأمرّ بتجربة غيرتني إلى الأبد. لم تساعدني فقط أن أنجز، بل أن أصبح إنسانًا أفضل.”</em> هذه الكلمات دائمًا تذكرني أن الإنجاز الحقيقي هو أن يرى الإنسان نفسه بوضوح.<br />\n<strong>اليوم والغد</strong><br />\nأسلوبي يتميز بالبساطة والعمق معًا: أدمج بين الحكمة الشرقية والتقنيات الغربية الحديثة، وأجعل “الحضور” هو المفتاح لأي مهارة أو وعي. رسالتي أن نعيد تعريف النجاح: ليس ما نحققه فقط، بل كيف نعيش في لحظتنا بوعي وارتباط حقيقي بأنفسنا وبالآخرين. رؤيتي القادمة أن أرى أكاديمية كُن تتحول إلى حركة عالمية تُعيد للتربية روحها، وتزرع في الناس القدرة على النمو بما يتجاوز الحدود.<br />\n </p>\n",
+      "protected": false
+    },
+    "excerpt": {
+      "rendered": "<p>البداية قصتي مع الكوتشينج بدأت من لحظة ألم شخصي. بعد سنوات من التدريب والفنون القتالية والعلاجية، وبينما كنت أدرّس وأقود مركزًا ناجحًا في القاهرة، وجدت نفسي غارقًا في العمل، ساعات طويلة تبعدني عن أسرتي في وقت كانت زوجتي حاملاً بابنتي.…</p>\n",
+      "protected": false
+    },
+    "featured_media": 6391,
+    "template": "",
+    "meta": [],
+    "coach_level": [
+      124,
+      114
+    ],
+    "coach_tag": [
+      119,
+      116,
+      120,
+      117,
+      118
+    ],
+    "coach_cert": [
+      132,
+      136,
+      134,
+      133,
+      135
+    ],
+    "coach_style": [
+      127,
+      128,
+      125,
+      129
+    ],
+    "class_list": [
+      "post-5536",
+      "kun_instructor",
+      "type-kun_instructor",
+      "status-publish",
+      "has-post-thumbnail",
+      "hentry",
+      "coach_level-master-coach",
+      "coach_level-advanced-mentor",
+      "coach_tag-explore-your-next-step",
+      "coach_tag-personal-development",
+      "coach_tag-family-development",
+      "coach_tag-relationship-development",
+      "coach_tag-professional-development",
+      "coach_cert-mcc",
+      "coach_cert-staic",
+      "coach_cert-stgc",
+      "coach_cert-stic",
+      "coach_cert-stoc",
+      "coach_style-somatic-coach",
+      "coach_style-supportive-coach",
+      "coach_style-deep-coach",
+      "coach_style-challenging-coach"
+    ],
+    "_links": {
+      "self": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/kun_instructor/5536",
+          "targetHints": {
+            "allow": [
+              "GET"
+            ]
+          }
+        }
+      ],
+      "collection": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/kun_instructor"
+        }
+      ],
+      "about": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/types/kun_instructor"
+        }
+      ],
+      "version-history": [
+        {
+          "count": 3,
+          "href": "https://kunacademy.com/wp-json/wp/v2/kun_instructor/5536/revisions"
+        }
+      ],
+      "predecessor-version": [
+        {
+          "id": 8347,
+          "href": "https://kunacademy.com/wp-json/wp/v2/kun_instructor/5536/revisions/8347"
+        }
+      ],
+      "wp:featuredmedia": [
+        {
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/media/6391"
+        }
+      ],
+      "wp:attachment": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/media?parent=5536"
+        }
+      ],
+      "wp:term": [
+        {
+          "taxonomy": "coach_level",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/coach_level?post=5536"
+        },
+        {
+          "taxonomy": "coach_tag",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/coach_tag?post=5536"
+        },
+        {
+          "taxonomy": "coach_cert",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/coach_cert?post=5536"
+        },
+        {
+          "taxonomy": "coach_style",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/coach_style?post=5536"
+        }
+      ],
+      "curies": [
+        {
+          "name": "wp",
+          "href": "https://api.w.org/{rel}",
+          "templated": true
+        }
+      ]
+    }
+  },
+  {
+    "id": 5534,
+    "date": "2025-10-31T11:10:58",
+    "date_gmt": "2025-10-31T11:10:58",
+    "guid": {
+      "rendered": "https://kunacademy.com/instructors/%d8%b1%d9%88%d8%a7%d9%86-%d8%a7%d9%84%d8%b5%d8%a7%d8%b9%d8%af%d9%8a-pcc/"
+    },
+    "modified": "2026-01-25T15:51:06",
+    "modified_gmt": "2026-01-25T13:51:06",
+    "slug": "%d8%b1%d9%88%d8%a7%d9%86-%d8%a7%d9%84%d8%b5%d8%a7%d8%b9%d8%af%d9%8a-pcc",
+    "status": "publish",
+    "type": "kun_instructor",
+    "link": "https://kunacademy.com/instructors/%d8%b1%d9%88%d8%a7%d9%86-%d8%a7%d9%84%d8%b5%d8%a7%d8%b9%d8%af%d9%8a-pcc/",
+    "title": {
+      "rendered": "روان الصاعدي, PCC"
+    },
+    "content": {
+      "rendered": "<p>كوتش أفراد بمنهجية التفكير الحسي. أؤمن أن أفضل ما يمكن أن يقدمه الشخص في حياته هو أن يَحيا ويُحي من حوله، فيكون أصيلاً معتزاً بإنسانيته، ويتكامل نقصه مع غيره ليعيد صياغة حياته بما يصب في النفع للجميع.</p>\n",
+      "protected": false
+    },
+    "excerpt": {
+      "rendered": "<p>كوتش أفراد بمنهجية التفكير الحسي. أؤمن أن أفضل ما يمكن أن يقدمه الشخص في حياته هو أن يَحيا ويُحي من حوله، فيكون أصيلاً معتزاً بإنسانيته، ويتكامل نقصه مع غيره ليعيد صياغة حياته بما يصب في النفع للجميع.</p>\n",
+      "protected": false
+    },
+    "featured_media": 6389,
+    "template": "",
+    "meta": [],
+    "coach_level": [
+      111,
+      113
+    ],
+    "coach_tag": [
+      116,
+      117,
+      118
+    ],
+    "coach_cert": [
+      131,
+      136,
+      134,
+      133,
+      135
+    ],
+    "coach_style": [
+      128,
+      126,
+      125
+    ],
+    "class_list": [
+      "post-5534",
+      "kun_instructor",
+      "type-kun_instructor",
+      "status-publish",
+      "has-post-thumbnail",
+      "hentry",
+      "coach_level-expert-coach",
+      "coach_level-mentor-coach",
+      "coach_tag-personal-development",
+      "coach_tag-relationship-development",
+      "coach_tag-professional-development",
+      "coach_cert-pcc",
+      "coach_cert-staic",
+      "coach_cert-stgc",
+      "coach_cert-stic",
+      "coach_cert-stoc",
+      "coach_style-supportive-coach",
+      "coach_style-action-coach",
+      "coach_style-deep-coach"
+    ],
+    "_links": {
+      "self": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/kun_instructor/5534",
+          "targetHints": {
+            "allow": [
+              "GET"
+            ]
+          }
+        }
+      ],
+      "collection": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/kun_instructor"
+        }
+      ],
+      "about": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/types/kun_instructor"
+        }
+      ],
+      "version-history": [
+        {
+          "count": 0,
+          "href": "https://kunacademy.com/wp-json/wp/v2/kun_instructor/5534/revisions"
+        }
+      ],
+      "wp:featuredmedia": [
+        {
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/media/6389"
+        }
+      ],
+      "wp:attachment": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/media?parent=5534"
+        }
+      ],
+      "wp:term": [
+        {
+          "taxonomy": "coach_level",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/coach_level?post=5534"
+        },
+        {
+          "taxonomy": "coach_tag",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/coach_tag?post=5534"
+        },
+        {
+          "taxonomy": "coach_cert",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/coach_cert?post=5534"
+        },
+        {
+          "taxonomy": "coach_style",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/coach_style?post=5534"
+        }
+      ],
+      "curies": [
+        {
+          "name": "wp",
+          "href": "https://api.w.org/{rel}",
+          "templated": true
+        }
+      ]
+    }
+  },
+  {
+    "id": 5532,
+    "date": "2025-10-31T11:10:58",
+    "date_gmt": "2025-10-31T11:10:58",
+    "guid": {
+      "rendered": "https://kunacademy.com/instructors/%d8%b1%d8%a7%d8%ac%d9%8a%d8%a9-%d8%b9%d8%b2%d8%aa-pcc/"
+    },
+    "modified": "2026-01-30T16:02:43",
+    "modified_gmt": "2026-01-30T14:02:43",
+    "slug": "%d8%b1%d8%a7%d8%ac%d9%8a%d8%a9-%d8%b9%d8%b2%d8%aa-pcc",
+    "status": "publish",
+    "type": "kun_instructor",
+    "link": "https://kunacademy.com/instructors/%d8%b1%d8%a7%d8%ac%d9%8a%d8%a9-%d8%b9%d8%b2%d8%aa-pcc/",
+    "title": {
+      "rendered": "راجية عزت, PCC"
+    },
+    "content": {
+      "rendered": "<p>كوتش محترف ومنتور أعمل في خدمة الأفراد والمجموعات والمؤسسات ” التقبل” انسانة شغوفة بالتعرف على من حولي على اختلاف أعمارهم وصفاتهم وأجناسهم. فهي فرصة ذهبية لي للتعلم. وأول ما أتعلمه هو “نفسي”، أتعلم وأكتشف نقاط قوتي وضعفي، ولم ولن يكون من السهل على القيام بذلك الا من خلال (التقبل).<br />\nشغوفة لتصحبني معك في رحلتك داخل نفسك، في تجربة إنسانية، عميقة، رحيمة لوعي يتخطى حدود هدفك، فتنمو وتتطور بالشكل الذي يساعدك على الوصول، تجربة تستحق أن تخوضها بمعني الكلمة، فأنت/ـي تستحق/ـي حياة أفضل بكل تأكيد.</p>\n",
+      "protected": false
+    },
+    "excerpt": {
+      "rendered": "<p>كوتش محترف ومنتور أعمل في خدمة الأفراد والمجموعات والمؤسسات ” التقبل” انسانة شغوفة بالتعرف على من حولي على اختلاف أعمارهم وصفاتهم وأجناسهم. فهي فرصة ذهبية لي للتعلم. وأول ما أتعلمه هو “نفسي”، أتعلم وأكتشف نقاط قوتي وضعفي، ولم ولن يكون…</p>\n",
+      "protected": false
+    },
+    "featured_media": 6888,
+    "template": "",
+    "meta": [],
+    "coach_level": [
+      111,
+      114
+    ],
+    "coach_tag": [
+      119,
+      116,
+      117,
+      118
+    ],
+    "coach_cert": [
+      131,
+      136,
+      134,
+      133,
+      135
+    ],
+    "coach_style": [
+      127,
+      128,
+      126,
+      125
+    ],
+    "class_list": [
+      "post-5532",
+      "kun_instructor",
+      "type-kun_instructor",
+      "status-publish",
+      "has-post-thumbnail",
+      "hentry",
+      "coach_level-expert-coach",
+      "coach_level-advanced-mentor",
+      "coach_tag-explore-your-next-step",
+      "coach_tag-personal-development",
+      "coach_tag-relationship-development",
+      "coach_tag-professional-development",
+      "coach_cert-pcc",
+      "coach_cert-staic",
+      "coach_cert-stgc",
+      "coach_cert-stic",
+      "coach_cert-stoc",
+      "coach_style-somatic-coach",
+      "coach_style-supportive-coach",
+      "coach_style-action-coach",
+      "coach_style-deep-coach"
+    ],
+    "_links": {
+      "self": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/kun_instructor/5532",
+          "targetHints": {
+            "allow": [
+              "GET"
+            ]
+          }
+        }
+      ],
+      "collection": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/kun_instructor"
+        }
+      ],
+      "about": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/types/kun_instructor"
+        }
+      ],
+      "version-history": [
+        {
+          "count": 0,
+          "href": "https://kunacademy.com/wp-json/wp/v2/kun_instructor/5532/revisions"
+        }
+      ],
+      "wp:featuredmedia": [
+        {
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/media/6888"
+        }
+      ],
+      "wp:attachment": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/media?parent=5532"
+        }
+      ],
+      "wp:term": [
+        {
+          "taxonomy": "coach_level",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/coach_level?post=5532"
+        },
+        {
+          "taxonomy": "coach_tag",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/coach_tag?post=5532"
+        },
+        {
+          "taxonomy": "coach_cert",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/coach_cert?post=5532"
+        },
+        {
+          "taxonomy": "coach_style",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/coach_style?post=5532"
+        }
+      ],
+      "curies": [
+        {
+          "name": "wp",
+          "href": "https://api.w.org/{rel}",
+          "templated": true
+        }
+      ]
+    }
+  },
+  {
+    "id": 5530,
+    "date": "2025-10-31T11:10:58",
+    "date_gmt": "2025-10-31T11:10:58",
+    "guid": {
+      "rendered": "https://kunacademy.com/instructors/%d9%86%d9%87%d9%84%d8%a9-%d8%a7%d9%84%d8%ba%d9%85%d8%b1%d8%a7%d9%88%d9%8a-pcc/"
+    },
+    "modified": "2026-02-13T21:53:36",
+    "modified_gmt": "2026-02-13T19:53:36",
+    "slug": "%d9%86%d9%87%d9%84%d8%a9-%d8%a7%d9%84%d8%ba%d9%85%d8%b1%d8%a7%d9%88%d9%8a-pcc",
+    "status": "publish",
+    "type": "kun_instructor",
+    "link": "https://kunacademy.com/instructors/%d9%86%d9%87%d9%84%d8%a9-%d8%a7%d9%84%d8%ba%d9%85%d8%b1%d8%a7%d9%88%d9%8a-pcc/",
+    "title": {
+      "rendered": "نهلة الغمراوي, PCC"
+    },
+    "content": {
+      "rendered": "<p>نهلة الغمراوي تعلمت أكون حقيقية عايشة بحب وتواصل في كل مجال أدخله..أحب التفاؤل، النجاح والوصول الى الاهداف . تعلّمت من الكوتشينج المواجة المتوازنة، وضوح التعبير, وإدارة مشاعر . تعلّمت حال التوازن والتواصل مع نفسي والآخرين فأصبحت حقيقية، بسيطة مرنة ومرتاحة فى علاقاتي.<br />\n6 سنوات من التطوير المستمر أثمرت في 700+ ساعة خبرة في الكوتشينج المحترف.. وأكثر من 1000+ ساعة تدريب .من خلال كل دورات أكادمية كن كوتشينج.. أفراد ، مجموعات ، مؤسسات، وختاما بالمنتورينج المتقدم ، وتطوير وتفعيل يبدأ من الداخل.. ورحلة إعتماد دولي ICF PCC &amp; Mentor Coach Assessor<br />\nأتشرف أكون منتور كوتش في أكاديمية كن كوتشينج. لتطوير مهارات الكوتش الشخصية او المهنية لطلب الإحسان وترك الأثر بطريقة محترفة. انا في إنتظارك تواصل معي .</p>\n",
+      "protected": false
+    },
+    "excerpt": {
+      "rendered": "<p>نهلة الغمراوي تعلمت أكون حقيقية عايشة بحب وتواصل في كل مجال أدخله..أحب التفاؤل، النجاح والوصول الى الاهداف . تعلّمت من الكوتشينج المواجة المتوازنة، وضوح التعبير, وإدارة مشاعر . تعلّمت حال التوازن والتواصل مع نفسي والآخرين فأصبحت حقيقية، بسيطة مرنة ومرتاحة…</p>\n",
+      "protected": false
+    },
+    "featured_media": 6833,
+    "template": "",
+    "meta": [],
+    "coach_level": [
+      111,
+      114
+    ],
+    "coach_tag": [
+      119,
+      116,
+      117
+    ],
+    "coach_cert": [
+      131,
+      136,
+      134,
+      133,
+      135
+    ],
+    "coach_style": [
+      128,
+      126,
+      125
+    ],
+    "class_list": [
+      "post-5530",
+      "kun_instructor",
+      "type-kun_instructor",
+      "status-publish",
+      "has-post-thumbnail",
+      "hentry",
+      "coach_level-expert-coach",
+      "coach_level-advanced-mentor",
+      "coach_tag-explore-your-next-step",
+      "coach_tag-personal-development",
+      "coach_tag-relationship-development",
+      "coach_cert-pcc",
+      "coach_cert-staic",
+      "coach_cert-stgc",
+      "coach_cert-stic",
+      "coach_cert-stoc",
+      "coach_style-supportive-coach",
+      "coach_style-action-coach",
+      "coach_style-deep-coach"
+    ],
+    "_links": {
+      "self": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/kun_instructor/5530",
+          "targetHints": {
+            "allow": [
+              "GET"
+            ]
+          }
+        }
+      ],
+      "collection": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/kun_instructor"
+        }
+      ],
+      "about": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/types/kun_instructor"
+        }
+      ],
+      "version-history": [
+        {
+          "count": 1,
+          "href": "https://kunacademy.com/wp-json/wp/v2/kun_instructor/5530/revisions"
+        }
+      ],
+      "predecessor-version": [
+        {
+          "id": 8322,
+          "href": "https://kunacademy.com/wp-json/wp/v2/kun_instructor/5530/revisions/8322"
+        }
+      ],
+      "wp:featuredmedia": [
+        {
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/media/6833"
+        }
+      ],
+      "wp:attachment": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/media?parent=5530"
+        }
+      ],
+      "wp:term": [
+        {
+          "taxonomy": "coach_level",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/coach_level?post=5530"
+        },
+        {
+          "taxonomy": "coach_tag",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/coach_tag?post=5530"
+        },
+        {
+          "taxonomy": "coach_cert",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/coach_cert?post=5530"
+        },
+        {
+          "taxonomy": "coach_style",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/coach_style?post=5530"
+        }
+      ],
+      "curies": [
+        {
+          "name": "wp",
+          "href": "https://api.w.org/{rel}",
+          "templated": true
+        }
+      ]
+    }
+  },
+  {
+    "id": 5528,
+    "date": "2025-10-31T11:10:58",
+    "date_gmt": "2025-10-31T11:10:58",
+    "guid": {
+      "rendered": "https://kunacademy.com/instructors/%d9%85%d8%ad%d9%85%d8%af-%d8%b9%d9%8a%d8%b3%d9%89-pcc/"
+    },
+    "modified": "2026-01-25T15:51:06",
+    "modified_gmt": "2026-01-25T13:51:06",
+    "slug": "%d9%85%d8%ad%d9%85%d8%af-%d8%b9%d9%8a%d8%b3%d9%89-pcc",
+    "status": "publish",
+    "type": "kun_instructor",
+    "link": "https://kunacademy.com/instructors/%d9%85%d8%ad%d9%85%d8%af-%d8%b9%d9%8a%d8%b3%d9%89-pcc/",
+    "title": {
+      "rendered": "محمد عيسى, PCC"
+    },
+    "content": {
+      "rendered": "<p>بدأتُ رحلة الوعي منذ زمن، خلال هذه الرحلة تجرعت الفشل بمرارته، ودقت النجاح بحلواته، فاكتشفت قدراتي التي وضعها الله بداخلي ولمست الطاقات الموجودة بداخل كل إنسان. أنا محمد عيسى كوتش الأفراد والمجموعات والمؤسسات. درست الكوتشينج بمنجهية “سوماتيك ثينكينج”، تعلمت من خلاله حكمة الإنصات والحضور وخطيئة الحكم المسبق. رسالتي رفع وعي الإنسان ليتخطى حدود أهدافه.</p>\n",
+      "protected": false
+    },
+    "excerpt": {
+      "rendered": "<p>بدأتُ رحلة الوعي منذ زمن، خلال هذه الرحلة تجرعت الفشل بمرارته، ودقت النجاح بحلواته، فاكتشفت قدراتي التي وضعها الله بداخلي ولمست الطاقات الموجودة بداخل كل إنسان. أنا محمد عيسى كوتش الأفراد والمجموعات والمؤسسات. درست الكوتشينج بمنجهية “سوماتيك ثينكينج”، تعلمت من&hellip;</p>\n",
+      "protected": false
+    },
+    "featured_media": 6383,
+    "template": "",
+    "meta": [],
+    "coach_level": [
+      111,
+      114
+    ],
+    "coach_tag": [
+      119,
+      116,
+      120,
+      117
+    ],
+    "coach_cert": [
+      131,
+      136,
+      134,
+      133,
+      135
+    ],
+    "coach_style": [
+      127,
+      128,
+      125
+    ],
+    "class_list": [
+      "post-5528",
+      "kun_instructor",
+      "type-kun_instructor",
+      "status-publish",
+      "has-post-thumbnail",
+      "hentry",
+      "coach_level-expert-coach",
+      "coach_level-advanced-mentor",
+      "coach_tag-explore-your-next-step",
+      "coach_tag-personal-development",
+      "coach_tag-family-development",
+      "coach_tag-relationship-development",
+      "coach_cert-pcc",
+      "coach_cert-staic",
+      "coach_cert-stgc",
+      "coach_cert-stic",
+      "coach_cert-stoc",
+      "coach_style-somatic-coach",
+      "coach_style-supportive-coach",
+      "coach_style-deep-coach"
+    ],
+    "_links": {
+      "self": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/kun_instructor/5528",
+          "targetHints": {
+            "allow": [
+              "GET"
+            ]
+          }
+        }
+      ],
+      "collection": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/kun_instructor"
+        }
+      ],
+      "about": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/types/kun_instructor"
+        }
+      ],
+      "version-history": [
+        {
+          "count": 0,
+          "href": "https://kunacademy.com/wp-json/wp/v2/kun_instructor/5528/revisions"
+        }
+      ],
+      "wp:featuredmedia": [
+        {
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/media/6383"
+        }
+      ],
+      "wp:attachment": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/media?parent=5528"
+        }
+      ],
+      "wp:term": [
+        {
+          "taxonomy": "coach_level",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/coach_level?post=5528"
+        },
+        {
+          "taxonomy": "coach_tag",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/coach_tag?post=5528"
+        },
+        {
+          "taxonomy": "coach_cert",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/coach_cert?post=5528"
+        },
+        {
+          "taxonomy": "coach_style",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/coach_style?post=5528"
+        }
+      ],
+      "curies": [
+        {
+          "name": "wp",
+          "href": "https://api.w.org/{rel}",
+          "templated": true
+        }
+      ]
+    }
+  },
+  {
+    "id": 5526,
+    "date": "2025-10-31T11:10:58",
+    "date_gmt": "2025-10-31T11:10:58",
+    "guid": {
+      "rendered": "https://kunacademy.com/instructors/%d9%85%d8%b1%d9%88%d9%89-%d8%b4%d8%b1%d9%8a%d9%81-pcc/"
+    },
+    "modified": "2026-01-25T15:51:06",
+    "modified_gmt": "2026-01-25T13:51:06",
+    "slug": "%d9%85%d8%b1%d9%88%d9%89-%d8%b4%d8%b1%d9%8a%d9%81-pcc",
+    "status": "publish",
+    "type": "kun_instructor",
+    "link": "https://kunacademy.com/instructors/%d9%85%d8%b1%d9%88%d9%89-%d8%b4%d8%b1%d9%8a%d9%81-pcc/",
+    "title": {
+      "rendered": "مروى شريف, PCC"
+    },
+    "content": {
+      "rendered": "<p>A PCC coach that stands as a beacon of transformation and empowerment in the realm of professional leadership coaching. Marwa brings her extensive experience and exceptional communication skills to bear, playing an integral role in the development and success of the Kun companionship network. Her multifaceted role encompasses being a business partner, quality manager, and special projects manager, each position underscoring her dedication to excellence and growth within the organization.</p>\n",
+      "protected": false
+    },
+    "excerpt": {
+      "rendered": "<p>A PCC coach that stands as a beacon of transformation and empowerment in the realm of professional leadership coaching. Marwa brings her extensive experience and exceptional communication skills to bear, playing an integral role in the development and success of&hellip;</p>\n",
+      "protected": false
+    },
+    "featured_media": 6381,
+    "template": "",
+    "meta": [],
+    "coach_level": [
+      111,
+      114
+    ],
+    "coach_tag": [
+      119,
+      116,
+      120,
+      117
+    ],
+    "coach_cert": [
+      131,
+      136,
+      134,
+      133,
+      135
+    ],
+    "coach_style": [
+      127,
+      128,
+      125
+    ],
+    "class_list": [
+      "post-5526",
+      "kun_instructor",
+      "type-kun_instructor",
+      "status-publish",
+      "has-post-thumbnail",
+      "hentry",
+      "coach_level-expert-coach",
+      "coach_level-advanced-mentor",
+      "coach_tag-explore-your-next-step",
+      "coach_tag-personal-development",
+      "coach_tag-family-development",
+      "coach_tag-relationship-development",
+      "coach_cert-pcc",
+      "coach_cert-staic",
+      "coach_cert-stgc",
+      "coach_cert-stic",
+      "coach_cert-stoc",
+      "coach_style-somatic-coach",
+      "coach_style-supportive-coach",
+      "coach_style-deep-coach"
+    ],
+    "_links": {
+      "self": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/kun_instructor/5526",
+          "targetHints": {
+            "allow": [
+              "GET"
+            ]
+          }
+        }
+      ],
+      "collection": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/kun_instructor"
+        }
+      ],
+      "about": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/types/kun_instructor"
+        }
+      ],
+      "version-history": [
+        {
+          "count": 0,
+          "href": "https://kunacademy.com/wp-json/wp/v2/kun_instructor/5526/revisions"
+        }
+      ],
+      "wp:featuredmedia": [
+        {
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/media/6381"
+        }
+      ],
+      "wp:attachment": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/media?parent=5526"
+        }
+      ],
+      "wp:term": [
+        {
+          "taxonomy": "coach_level",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/coach_level?post=5526"
+        },
+        {
+          "taxonomy": "coach_tag",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/coach_tag?post=5526"
+        },
+        {
+          "taxonomy": "coach_cert",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/coach_cert?post=5526"
+        },
+        {
+          "taxonomy": "coach_style",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/coach_style?post=5526"
+        }
+      ],
+      "curies": [
+        {
+          "name": "wp",
+          "href": "https://api.w.org/{rel}",
+          "templated": true
+        }
+      ]
+    }
+  },
+  {
+    "id": 5524,
+    "date": "2025-10-31T11:10:58",
+    "date_gmt": "2025-10-31T11:10:58",
+    "guid": {
+      "rendered": "https://kunacademy.com/instructors/%d9%85%d8%b1%d9%88%d8%a9-%d8%a3%d8%a8%d9%88-%d8%b1%d9%8a%d8%b4%d8%a9-pcc/"
+    },
+    "modified": "2026-01-25T15:51:06",
+    "modified_gmt": "2026-01-25T13:51:06",
+    "slug": "%d9%85%d8%b1%d9%88%d8%a9-%d8%a3%d8%a8%d9%88-%d8%b1%d9%8a%d8%b4%d8%a9-pcc",
+    "status": "publish",
+    "type": "kun_instructor",
+    "link": "https://kunacademy.com/instructors/%d9%85%d8%b1%d9%88%d8%a9-%d8%a3%d8%a8%d9%88-%d8%b1%d9%8a%d8%b4%d8%a9-pcc/",
+    "title": {
+      "rendered": "مروة أبو ريشة, PCC"
+    },
+    "content": {
+      "rendered": "<p>مروة أبو ريشة كوتش الصحة النفسية والعلاقات ،مديرة إدارة جلسات المنتورينج والكوتشينج ب(كن أكاديمي) ،منتور دولى ومُقَيّم جلسات الكوتشينج فى الإتحاد الدولى للكوتشينج ICF كوتش محترف PCC داعم للأفراد والمؤسسات ،خبرة 14 عامًا فى مجال التواصل والتطوير الإنسانى .دكتوراه فى الصحة النفسية واستراتيجيات علم النفس الايجابي</p>\n",
+      "protected": false
+    },
+    "excerpt": {
+      "rendered": "<p>مروة أبو ريشة كوتش الصحة النفسية والعلاقات ،مديرة إدارة جلسات المنتورينج والكوتشينج ب(كن أكاديمي) ،منتور دولى ومُقَيّم جلسات الكوتشينج فى الإتحاد الدولى للكوتشينج ICF كوتش محترف PCC داعم للأفراد والمؤسسات ،خبرة 14 عامًا فى مجال التواصل والتطوير الإنسانى .دكتوراه فى&hellip;</p>\n",
+      "protected": false
+    },
+    "featured_media": 6379,
+    "template": "",
+    "meta": [],
+    "coach_level": [
+      111,
+      114
+    ],
+    "coach_tag": [
+      119,
+      116,
+      117,
+      118
+    ],
+    "coach_cert": [
+      131,
+      136,
+      134,
+      133,
+      135
+    ],
+    "coach_style": [
+      127,
+      128,
+      125,
+      129
+    ],
+    "class_list": [
+      "post-5524",
+      "kun_instructor",
+      "type-kun_instructor",
+      "status-publish",
+      "has-post-thumbnail",
+      "hentry",
+      "coach_level-expert-coach",
+      "coach_level-advanced-mentor",
+      "coach_tag-explore-your-next-step",
+      "coach_tag-personal-development",
+      "coach_tag-relationship-development",
+      "coach_tag-professional-development",
+      "coach_cert-pcc",
+      "coach_cert-staic",
+      "coach_cert-stgc",
+      "coach_cert-stic",
+      "coach_cert-stoc",
+      "coach_style-somatic-coach",
+      "coach_style-supportive-coach",
+      "coach_style-deep-coach",
+      "coach_style-challenging-coach"
+    ],
+    "_links": {
+      "self": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/kun_instructor/5524",
+          "targetHints": {
+            "allow": [
+              "GET"
+            ]
+          }
+        }
+      ],
+      "collection": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/kun_instructor"
+        }
+      ],
+      "about": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/types/kun_instructor"
+        }
+      ],
+      "version-history": [
+        {
+          "count": 0,
+          "href": "https://kunacademy.com/wp-json/wp/v2/kun_instructor/5524/revisions"
+        }
+      ],
+      "wp:featuredmedia": [
+        {
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/media/6379"
+        }
+      ],
+      "wp:attachment": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/media?parent=5524"
+        }
+      ],
+      "wp:term": [
+        {
+          "taxonomy": "coach_level",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/coach_level?post=5524"
+        },
+        {
+          "taxonomy": "coach_tag",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/coach_tag?post=5524"
+        },
+        {
+          "taxonomy": "coach_cert",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/coach_cert?post=5524"
+        },
+        {
+          "taxonomy": "coach_style",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/coach_style?post=5524"
+        }
+      ],
+      "curies": [
+        {
+          "name": "wp",
+          "href": "https://api.w.org/{rel}",
+          "templated": true
+        }
+      ]
+    }
+  },
+  {
+    "id": 5522,
+    "date": "2025-10-31T11:10:58",
+    "date_gmt": "2025-10-31T11:10:58",
+    "guid": {
+      "rendered": "https://kunacademy.com/instructors/%d8%ae%d8%a7%d9%84%d8%af-%d8%a7%d9%84%d8%ad%d8%af%d8%a7%d8%af-pcc/"
+    },
+    "modified": "2026-01-25T15:51:06",
+    "modified_gmt": "2026-01-25T13:51:06",
+    "slug": "%d8%ae%d8%a7%d9%84%d8%af-%d8%a7%d9%84%d8%ad%d8%af%d8%a7%d8%af-pcc",
+    "status": "publish",
+    "type": "kun_instructor",
+    "link": "https://kunacademy.com/instructors/%d8%ae%d8%a7%d9%84%d8%af-%d8%a7%d9%84%d8%ad%d8%af%d8%a7%d8%af-pcc/",
+    "title": {
+      "rendered": "خالد الحداد, PCC"
+    },
+    "content": {
+      "rendered": "<p>كوتش معتمد من طرف الاتحاد الدولي للكوتشينج ICF. – أعمل مع الأفراد والمجموعات والمؤسسات الحكومية وغير الحكومية، والجمعيات والمؤسسات غير الربحية في مجال رفع الوعي بذواتهم وبمشاريعهم. أقدم جلسات الكوتشينج لجميع الناطقين باللغة العربية من مختلف الجنسيات. – أعمل كمنتور لدى كن كوتشينغ أكاديمي لأجل تقديم الدعم والتوجيه للدارسين في هذه الأكاديمية بمنهجية سوماتيك ثينكينج. درست الكوتشينج بشغف إلى أن أصبح أسلوب حياة بالنسبة لي، فقد اكتشفت نسختي الأصلية من خلاله بإيجابياتها وسلبياتها، تمكنت أيضاً من إقامة علاقة صحية مع ذاتي، الأمر الذي انعكس على علاقتي مع الاخرين ورؤيتي للحياة التي أصبحت أكثر اتزانا وتناغم مع ما أومن به من قيم ومعتقدات.</p>\n",
+      "protected": false
+    },
+    "excerpt": {
+      "rendered": "<p>كوتش معتمد من طرف الاتحاد الدولي للكوتشينج ICF. – أعمل مع الأفراد والمجموعات والمؤسسات الحكومية وغير الحكومية، والجمعيات والمؤسسات غير الربحية في مجال رفع الوعي بذواتهم وبمشاريعهم. أقدم جلسات الكوتشينج لجميع الناطقين باللغة العربية من مختلف الجنسيات. – أعمل كمنتور&hellip;</p>\n",
+      "protected": false
+    },
+    "featured_media": 6377,
+    "template": "",
+    "meta": [],
+    "coach_level": [
+      111,
+      114
+    ],
+    "coach_tag": [
+      119,
+      116,
+      120,
+      117
+    ],
+    "coach_cert": [
+      131,
+      136,
+      134,
+      133,
+      135
+    ],
+    "coach_style": [
+      127,
+      128,
+      129
+    ],
+    "class_list": [
+      "post-5522",
+      "kun_instructor",
+      "type-kun_instructor",
+      "status-publish",
+      "has-post-thumbnail",
+      "hentry",
+      "coach_level-expert-coach",
+      "coach_level-advanced-mentor",
+      "coach_tag-explore-your-next-step",
+      "coach_tag-personal-development",
+      "coach_tag-family-development",
+      "coach_tag-relationship-development",
+      "coach_cert-pcc",
+      "coach_cert-staic",
+      "coach_cert-stgc",
+      "coach_cert-stic",
+      "coach_cert-stoc",
+      "coach_style-somatic-coach",
+      "coach_style-supportive-coach",
+      "coach_style-challenging-coach"
+    ],
+    "_links": {
+      "self": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/kun_instructor/5522",
+          "targetHints": {
+            "allow": [
+              "GET"
+            ]
+          }
+        }
+      ],
+      "collection": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/kun_instructor"
+        }
+      ],
+      "about": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/types/kun_instructor"
+        }
+      ],
+      "version-history": [
+        {
+          "count": 0,
+          "href": "https://kunacademy.com/wp-json/wp/v2/kun_instructor/5522/revisions"
+        }
+      ],
+      "wp:featuredmedia": [
+        {
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/media/6377"
+        }
+      ],
+      "wp:attachment": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/media?parent=5522"
+        }
+      ],
+      "wp:term": [
+        {
+          "taxonomy": "coach_level",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/coach_level?post=5522"
+        },
+        {
+          "taxonomy": "coach_tag",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/coach_tag?post=5522"
+        },
+        {
+          "taxonomy": "coach_cert",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/coach_cert?post=5522"
+        },
+        {
+          "taxonomy": "coach_style",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/coach_style?post=5522"
+        }
+      ],
+      "curies": [
+        {
+          "name": "wp",
+          "href": "https://api.w.org/{rel}",
+          "templated": true
+        }
+      ]
+    }
+  },
+  {
+    "id": 5520,
+    "date": "2025-10-31T11:10:57",
+    "date_gmt": "2025-10-31T11:10:57",
+    "guid": {
+      "rendered": "https://kunacademy.com/instructors/%d8%ad%d8%b3%d9%8a%d9%86-%d8%b9%d9%84%d9%8a-pcc/"
+    },
+    "modified": "2026-03-03T17:36:17",
+    "modified_gmt": "2026-03-03T15:36:17",
+    "slug": "%d8%ad%d8%b3%d9%8a%d9%86-%d8%b9%d9%84%d9%8a-pcc",
+    "status": "publish",
+    "type": "kun_instructor",
+    "link": "https://kunacademy.com/instructors/%d8%ad%d8%b3%d9%8a%d9%86-%d8%b9%d9%84%d9%8a-pcc/",
+    "title": {
+      "rendered": "حسين علي, PCC"
+    },
+    "content": {
+      "rendered": "<p>– كوتش محترف حاصل على مستوى PCC الفخرى من الاتحاد الدولى للكوتشنج ICF.<br />\n– قمت بإتمام أكثر من 150 ساعة دراسية فى الكوتشنج الاحترافى للافراد والمجموعات والمؤسسات.<br />\n– قمت بعمل أكثر من 500 ساعة كوتشنج فردية وجماعية خلال خمس سنوات.<br />\n– منتور كوتش لمساعدة الكوتشز الدارسين على رفع أدائهم.<br />\nباستخدام منهجية Somatic Thinking، أشارك عملائي فى إعادة اكتشاف معنى جديد لحياتهم، وأشاركهم أيضا فى تطوير المهارات والأدوات الملهمة للعثور على إجاباتهم الخاصة.<br />\nلمن يشعر بعدم التحكم فى حياته، ويعاني من إجهاد عقلي مستمر، وارتباك، وانعدام الثقة بالنفس، فيرجى العلم أنك لست وحدك. أنا هنا لأستمع إليك وأدعمك.<br />\nدعونا نجرى محادثة إستكشافية!<br />\nأنتم تستحقون أن تعيشوا حياة مليئة بالسلام، وأنا هنا من أجلكم.</p>\n",
+      "protected": false
+    },
+    "excerpt": {
+      "rendered": "<p>– كوتش محترف حاصل على مستوى PCC الفخرى من الاتحاد الدولى للكوتشنج ICF. – قمت بإتمام أكثر من 150 ساعة دراسية فى الكوتشنج الاحترافى للافراد والمجموعات والمؤسسات. – قمت بعمل أكثر من 500 ساعة كوتشنج فردية وجماعية خلال خمس سنوات.&hellip;</p>\n",
+      "protected": false
+    },
+    "featured_media": 6375,
+    "template": "",
+    "meta": [],
+    "coach_level": [
+      111,
+      114
+    ],
+    "coach_tag": [
+      119,
+      116,
+      120,
+      117
+    ],
+    "coach_cert": [
+      131,
+      136,
+      134,
+      133,
+      135
+    ],
+    "coach_style": [
+      127,
+      128,
+      125
+    ],
+    "class_list": [
+      "post-5520",
+      "kun_instructor",
+      "type-kun_instructor",
+      "status-publish",
+      "has-post-thumbnail",
+      "hentry",
+      "coach_level-expert-coach",
+      "coach_level-advanced-mentor",
+      "coach_tag-explore-your-next-step",
+      "coach_tag-personal-development",
+      "coach_tag-family-development",
+      "coach_tag-relationship-development",
+      "coach_cert-pcc",
+      "coach_cert-staic",
+      "coach_cert-stgc",
+      "coach_cert-stic",
+      "coach_cert-stoc",
+      "coach_style-somatic-coach",
+      "coach_style-supportive-coach",
+      "coach_style-deep-coach"
+    ],
+    "_links": {
+      "self": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/kun_instructor/5520",
+          "targetHints": {
+            "allow": [
+              "GET"
+            ]
+          }
+        }
+      ],
+      "collection": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/kun_instructor"
+        }
+      ],
+      "about": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/types/kun_instructor"
+        }
+      ],
+      "version-history": [
+        {
+          "count": 2,
+          "href": "https://kunacademy.com/wp-json/wp/v2/kun_instructor/5520/revisions"
+        }
+      ],
+      "predecessor-version": [
+        {
+          "id": 8340,
+          "href": "https://kunacademy.com/wp-json/wp/v2/kun_instructor/5520/revisions/8340"
+        }
+      ],
+      "wp:featuredmedia": [
+        {
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/media/6375"
+        }
+      ],
+      "wp:attachment": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/media?parent=5520"
+        }
+      ],
+      "wp:term": [
+        {
+          "taxonomy": "coach_level",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/coach_level?post=5520"
+        },
+        {
+          "taxonomy": "coach_tag",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/coach_tag?post=5520"
+        },
+        {
+          "taxonomy": "coach_cert",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/coach_cert?post=5520"
+        },
+        {
+          "taxonomy": "coach_style",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/coach_style?post=5520"
+        }
+      ],
+      "curies": [
+        {
+          "name": "wp",
+          "href": "https://api.w.org/{rel}",
+          "templated": true
+        }
+      ]
+    }
+  },
+  {
+    "id": 5518,
+    "date": "2025-10-31T11:10:57",
+    "date_gmt": "2025-10-31T11:10:57",
+    "guid": {
+      "rendered": "https://kunacademy.com/instructors/%d8%ba%d8%a7%d9%86%d9%8a%d8%a9-%d8%ae%d9%88%d9%82%d9%8a%d8%b1%d8%8c-pcc/"
+    },
+    "modified": "2026-01-25T15:51:06",
+    "modified_gmt": "2026-01-25T13:51:06",
+    "slug": "%d8%ba%d8%a7%d9%86%d9%8a%d8%a9-%d8%ae%d9%88%d9%82%d9%8a%d8%b1%d8%8c-pcc",
+    "status": "publish",
+    "type": "kun_instructor",
+    "link": "https://kunacademy.com/instructors/%d8%ba%d8%a7%d9%86%d9%8a%d8%a9-%d8%ae%d9%88%d9%82%d9%8a%d8%b1%d8%8c-pcc/",
+    "title": {
+      "rendered": "غانية خوقير، PCC"
+    },
+    "content": {
+      "rendered": "<p> أساعدك في التغلب على تحديات العلاقات و التعبير من خلال التواصل مع الجسد ، فقد عانيت و لمدة سنوات طويلة من عدم القدرة على التعبير عن حقيقتي ، لذلك فأنا أعرف جيدا كيف يكون الإنسان سجين ذهنه و مخاوفه حفاظا على راحة الآخرين و راحته الوهمية التي كثيرا ما تتمثل في السكوت و العزلة ، و قد شهدت أيضا الأثر السلبي لضعف التعبير على الصعيدين الشخصي و المهني ، و الآن بعد أن لمست أثر الكوتشينج بمنهجية التفكير الحسي يسعدني أن أكون شريكتك في رحلة التغيير المتجهة نحو صوتك .. نحو تلك الرؤية التي قد تشعر أنها ضربٌ من المستحيل !</p>\n",
+      "protected": false
+    },
+    "excerpt": {
+      "rendered": "<p> أساعدك في التغلب على تحديات العلاقات و التعبير من خلال التواصل مع الجسد ، فقد عانيت و لمدة سنوات طويلة من عدم القدرة على التعبير عن حقيقتي ، لذلك فأنا أعرف جيدا كيف يكون الإنسان سجين ذهنه و مخاوفه حفاظا&hellip;</p>\n",
+      "protected": false
+    },
+    "featured_media": 6373,
+    "template": "",
+    "meta": [],
+    "coach_level": [
+      111
+    ],
+    "coach_tag": [
+      119,
+      116,
+      120,
+      117
+    ],
+    "coach_cert": [
+      131,
+      133
+    ],
+    "coach_style": [
+      127,
+      128,
+      125
+    ],
+    "class_list": [
+      "post-5518",
+      "kun_instructor",
+      "type-kun_instructor",
+      "status-publish",
+      "has-post-thumbnail",
+      "hentry",
+      "coach_level-expert-coach",
+      "coach_tag-explore-your-next-step",
+      "coach_tag-personal-development",
+      "coach_tag-family-development",
+      "coach_tag-relationship-development",
+      "coach_cert-pcc",
+      "coach_cert-stic",
+      "coach_style-somatic-coach",
+      "coach_style-supportive-coach",
+      "coach_style-deep-coach"
+    ],
+    "_links": {
+      "self": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/kun_instructor/5518",
+          "targetHints": {
+            "allow": [
+              "GET"
+            ]
+          }
+        }
+      ],
+      "collection": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/kun_instructor"
+        }
+      ],
+      "about": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/types/kun_instructor"
+        }
+      ],
+      "version-history": [
+        {
+          "count": 0,
+          "href": "https://kunacademy.com/wp-json/wp/v2/kun_instructor/5518/revisions"
+        }
+      ],
+      "wp:featuredmedia": [
+        {
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/media/6373"
+        }
+      ],
+      "wp:attachment": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/media?parent=5518"
+        }
+      ],
+      "wp:term": [
+        {
+          "taxonomy": "coach_level",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/coach_level?post=5518"
+        },
+        {
+          "taxonomy": "coach_tag",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/coach_tag?post=5518"
+        },
+        {
+          "taxonomy": "coach_cert",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/coach_cert?post=5518"
+        },
+        {
+          "taxonomy": "coach_style",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/coach_style?post=5518"
+        }
+      ],
+      "curies": [
+        {
+          "name": "wp",
+          "href": "https://api.w.org/{rel}",
+          "templated": true
+        }
+      ]
+    }
+  },
+  {
+    "id": 5516,
+    "date": "2025-10-31T11:10:57",
+    "date_gmt": "2025-10-31T11:10:57",
+    "guid": {
+      "rendered": "https://kunacademy.com/instructors/%d8%ae%d8%a7%d9%84%d8%af-%d8%a7%d9%84%d8%a8%d8%b5%d9%8a%d8%b5%d9%8a-pcc/"
+    },
+    "modified": "2026-01-25T15:51:05",
+    "modified_gmt": "2026-01-25T13:51:05",
+    "slug": "%d8%ae%d8%a7%d9%84%d8%af-%d8%a7%d9%84%d8%a8%d8%b5%d9%8a%d8%b5%d9%8a-pcc",
+    "status": "publish",
+    "type": "kun_instructor",
+    "link": "https://kunacademy.com/instructors/%d8%ae%d8%a7%d9%84%d8%af-%d8%a7%d9%84%d8%a8%d8%b5%d9%8a%d8%b5%d9%8a-pcc/",
+    "title": {
+      "rendered": "خالد البصيصي, PCC"
+    },
+    "content": {
+      "rendered": "<p>خالد البصيصي لايف كوتش دكتور في الصحة النفسية و احد اعضاء الفريق الدولي الحوار الأديان لكنيسة مارجرجيس الرومانيه واحد اعضاء سفراء العرب للسلام ورئيس فريق سأصنع ذاتي لتأهيل وتطوير الإنسان نفسيا وفكريا وتنمويا</p>\n",
+      "protected": false
+    },
+    "excerpt": {
+      "rendered": "<p>خالد البصيصي لايف كوتش دكتور في الصحة النفسية و احد اعضاء الفريق الدولي الحوار الأديان لكنيسة مارجرجيس الرومانيه واحد اعضاء سفراء العرب للسلام ورئيس فريق سأصنع ذاتي لتأهيل وتطوير الإنسان نفسيا وفكريا وتنمويا</p>\n",
+      "protected": false
+    },
+    "featured_media": 6371,
+    "template": "",
+    "meta": [],
+    "coach_level": [
+      111,
+      114
+    ],
+    "coach_tag": [
+      119,
+      116,
+      120
+    ],
+    "coach_cert": [
+      136,
+      134,
+      133,
+      135
+    ],
+    "coach_style": [
+      127,
+      128,
+      125,
+      129
+    ],
+    "class_list": [
+      "post-5516",
+      "kun_instructor",
+      "type-kun_instructor",
+      "status-publish",
+      "has-post-thumbnail",
+      "hentry",
+      "coach_level-expert-coach",
+      "coach_level-advanced-mentor",
+      "coach_tag-explore-your-next-step",
+      "coach_tag-personal-development",
+      "coach_tag-family-development",
+      "coach_cert-staic",
+      "coach_cert-stgc",
+      "coach_cert-stic",
+      "coach_cert-stoc",
+      "coach_style-somatic-coach",
+      "coach_style-supportive-coach",
+      "coach_style-deep-coach",
+      "coach_style-challenging-coach"
+    ],
+    "_links": {
+      "self": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/kun_instructor/5516",
+          "targetHints": {
+            "allow": [
+              "GET"
+            ]
+          }
+        }
+      ],
+      "collection": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/kun_instructor"
+        }
+      ],
+      "about": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/types/kun_instructor"
+        }
+      ],
+      "version-history": [
+        {
+          "count": 0,
+          "href": "https://kunacademy.com/wp-json/wp/v2/kun_instructor/5516/revisions"
+        }
+      ],
+      "wp:featuredmedia": [
+        {
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/media/6371"
+        }
+      ],
+      "wp:attachment": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/media?parent=5516"
+        }
+      ],
+      "wp:term": [
+        {
+          "taxonomy": "coach_level",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/coach_level?post=5516"
+        },
+        {
+          "taxonomy": "coach_tag",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/coach_tag?post=5516"
+        },
+        {
+          "taxonomy": "coach_cert",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/coach_cert?post=5516"
+        },
+        {
+          "taxonomy": "coach_style",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/coach_style?post=5516"
+        }
+      ],
+      "curies": [
+        {
+          "name": "wp",
+          "href": "https://api.w.org/{rel}",
+          "templated": true
+        }
+      ]
+    }
+  }
+]

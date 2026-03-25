@@ -36,6 +36,7 @@ export type {
   SettingsMap,
   PathfinderQuestion,
   PathfinderAnswer,
+  Testimonial,
 } from './types';
 
 export { JsonFileProvider } from './json-provider';
@@ -61,6 +62,7 @@ function createProvider(): ContentProvider {
         team: process.env.CMS_SHEET_TEAM ?? 'Team',
         settings: process.env.CMS_SHEET_SETTINGS ?? 'Settings',
         pathfinder: process.env.CMS_SHEET_PATHFINDER ?? 'Pathfinder',
+        testimonials: process.env.CMS_SHEET_TESTIMONIALS ?? 'Testimonials',
       },
     });
   }

@@ -1,4 +1,6 @@
 import { setRequestLocale } from 'next-intl/server';
+import { PageHero } from '@/components/page-hero';
+
 import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
 
@@ -9,14 +11,16 @@ export default async function VideosPage({ params }: { params: Promise<{ locale:
 
   return (
     <main>
-      <Section>
-        <Heading level={1}>{isAr ? 'مكتبة الفيديو' : 'Video Library'}</Heading>
-        <p className="mt-4 text-[var(--color-neutral-700)]">
-          {isAr
-            ? 'محاضرات ولقاءات ومقاطع تعليمية في التفكير الحسّي والكوتشنغ.'
-            : 'Lectures, interviews, and educational clips on Somatic Thinking® and coaching.'}
-        </p>
-      </Section>
+      <PageHero
+        locale={locale}
+        titleAr="مكتبة الفيديو"
+        titleEn="Video Library"
+        subtitleAr="محتوى مرئي من أكاديمية كُن"
+        subtitleEn="Video content from Kun Academy"
+        eyebrowAr="الوسائط"
+        eyebrowEn="Media"
+        pattern="flower-of-life"
+      />
 
       <Section>
         <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">

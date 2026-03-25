@@ -1,7 +1,10 @@
 import { setRequestLocale } from 'next-intl/server';
+import { PageHero } from '@/components/page-hero';
+
 import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
-import { FAQSection, faqJsonLd } from '@kunacademy/ui/faq-section';
+import { FAQSection } from '@kunacademy/ui/faq-section';
+import { faqJsonLd } from '@kunacademy/ui/faq-jsonld';
 import { shopFaqs } from '@/data/faqs';
 
 export default async function ShopPage({ params }: { params: Promise<{ locale: string }> }) {
@@ -11,14 +14,16 @@ export default async function ShopPage({ params }: { params: Promise<{ locale: s
 
   return (
     <main>
-      <Section>
-        <Heading level={1}>{isAr ? 'المتجر' : 'Shop'}</Heading>
-        <p className="mt-4 text-[var(--color-neutral-700)]">
-          {isAr
-            ? 'كتب ومواد تعليمية وأدوات كوتشنغ من أكاديمية كُن.'
-            : 'Books, educational materials, and coaching tools from Kun Academy.'}
-        </p>
-      </Section>
+      <PageHero
+        locale={locale}
+        titleAr="منتجات كُن"
+        titleEn="Kun Products"
+        subtitleAr="كتب وأدوات ومواد تعليمية من أكاديمية كُن"
+        subtitleEn="Books, tools, and learning materials from Kun Academy"
+        eyebrowAr="المتجر"
+        eyebrowEn="Shop"
+        pattern="flower-of-life"
+      />
 
       
       <Section variant="white">

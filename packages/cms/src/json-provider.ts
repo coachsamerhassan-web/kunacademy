@@ -16,6 +16,7 @@ import type {
   NavGroup,
   ServiceCategory,
   PathfinderQuestion,
+  Testimonial,
 } from './types';
 
 /** Parse comma-separated string into string[] (for specialties, languages, etc.) */
@@ -208,6 +209,15 @@ export class JsonFileProvider implements ContentProvider {
   }
 
   // ── Cache ─────────────────────────────────────────────────────────────
+
+
+  async getAllTestimonials(): Promise<Testimonial[]> {
+    return [];
+  }
+
+  async getFeaturedTestimonials(): Promise<Testimonial[]> {
+    return [];
+  }
 
   async invalidateCache(): Promise<void> {
     this.cache.clear();

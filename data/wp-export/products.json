@@ -1,1 +1,561 @@
-[]
+[
+  {
+    "id": 8335,
+    "date": "2026-03-02T20:05:31",
+    "date_gmt": "2026-03-02T18:05:31",
+    "guid": {
+      "rendered": "https://kunacademy.com/product/appointment-2/"
+    },
+    "modified": "2026-03-02T20:05:31",
+    "modified_gmt": "2026-03-02T18:05:31",
+    "slug": "appointment-2",
+    "status": "publish",
+    "type": "product",
+    "link": "https://kunacademy.com/product/appointment-2/",
+    "title": {
+      "rendered": "Appointment"
+    },
+    "content": {
+      "rendered": "",
+      "protected": false
+    },
+    "excerpt": {
+      "rendered": "",
+      "protected": false
+    },
+    "featured_media": 0,
+    "template": "",
+    "meta": [],
+    "product_brand": [],
+    "product_cat": [],
+    "product_tag": [],
+    "class_list": {
+      "0": "post-8335",
+      "1": "product",
+      "2": "type-product",
+      "3": "status-publish",
+      "6": "first",
+      "7": "instock",
+      "8": "virtual",
+      "9": "sold-individually",
+      "10": "taxable",
+      "11": "purchasable",
+      "12": "product-type-simple"
+    },
+    "_links": {
+      "self": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/product/8335",
+          "targetHints": {
+            "allow": [
+              "GET"
+            ]
+          }
+        }
+      ],
+      "collection": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/product"
+        }
+      ],
+      "about": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/types/product"
+        }
+      ],
+      "version-history": [
+        {
+          "count": 0,
+          "href": "https://kunacademy.com/wp-json/wp/v2/product/8335/revisions"
+        }
+      ],
+      "wp:attachment": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/media?parent=8335"
+        }
+      ],
+      "wp:term": [
+        {
+          "taxonomy": "product_brand",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/product_brand?post=8335"
+        },
+        {
+          "taxonomy": "product_cat",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/product_cat?post=8335"
+        },
+        {
+          "taxonomy": "product_tag",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/product_tag?post=8335"
+        }
+      ],
+      "curies": [
+        {
+          "name": "wp",
+          "href": "https://api.w.org/{rel}",
+          "templated": true
+        }
+      ]
+    }
+  },
+  {
+    "id": 7121,
+    "date": "2025-12-26T14:32:34",
+    "date_gmt": "2025-12-26T14:32:34",
+    "guid": {
+      "rendered": "https://kunacademy.com/?post_type=product&#038;p=7121"
+    },
+    "modified": "2026-02-10T18:53:02",
+    "modified_gmt": "2026-02-10T16:53:02",
+    "slug": "printed-from-balance-to-barakah",
+    "status": "publish",
+    "type": "product",
+    "link": "https://kunacademy.com/product/printed-from-balance-to-barakah/",
+    "title": {
+      "rendered": "كتاب من التوازن إلى البركة – نسخة ‏مطبوعة"
+    },
+    "content": {
+      "rendered": "<div class=\"tutor-course-details-content\">\n<div class=\"tutor-fs-6 tutor-color-secondary\">\n<p><strong>هذا ليس كتابا عن الطاقة</strong><strong>…</strong></p>\n<p>بل عنك. وعن الطريق.</p>\n<p>في زمنٍ اختلطت فيه الرياضة بالفلسفة، والحركة بالعقيدة، والهدوء بالذوبان في المجهول،<br />\nصار على المسلم أن يسأل نفسه:<br />\nهل هذا الذي أمارسه… مجرد تمرين؟<br />\nأم فلسفة خفية تُعيد تشكيل إيماني دون أن أشعر؟</p>\n<p>هذا الكتاب موجّه <strong>لمن يخشى الانزلاق خلف المجهول، ولمن تعب من الخطاب الوافد، ولمن يتمنى أن يعيش صلاته خارج المسجد كما يعيشها داخله</strong><strong>.</strong> فإن وجدت فيه نفعًا جسديًا فاشكر الله، وإن وجدت فيه سكينة فاعلم أنها من عنده، وإن لم تجد شيئًا فربما يكون رزقك في باب آخر.</p>\n<p><strong>«ليس كل توازن بركة… لكن كل بركة تبدأ من التوحيد»</strong></p>\n</div>\n</div>\n<div class=\"tutor-mt-40\"></div>\n",
+      "protected": false
+    },
+    "excerpt": {
+      "rendered": "<p>هذا ليس كتابا عن الطاقة… بل عنك. وعن الطريق. في زمنٍ اختلطت فيه الرياضة بالفلسفة، والحركة بالعقيدة، والهدوء بالذوبان في المجهول، صار على المسلم أن يسأل نفسه: هل هذا الذي أمارسه… مجرد تمرين؟ أم فلسفة خفية تُعيد تشكيل إيماني دون أن أشعر؟ هذا الكتاب موجّه لمن يخشى الانزلاق خلف المجهول، ولمن تعب من الخطاب الوافد، ولمن [&hellip;]</p>\n",
+      "protected": false
+    },
+    "featured_media": 7122,
+    "template": "",
+    "meta": [],
+    "product_brand": [],
+    "product_cat": [
+      100,
+      138
+    ],
+    "product_tag": [
+      137
+    ],
+    "class_list": {
+      "0": "post-7121",
+      "1": "product",
+      "2": "type-product",
+      "3": "status-publish",
+      "4": "has-post-thumbnail",
+      "6": "product_cat-books",
+      "7": "product_cat-printed",
+      "8": "product_tag-137",
+      "10": "",
+      "11": "instock",
+      "12": "sale",
+      "13": "taxable",
+      "14": "shipping-taxable",
+      "15": "purchasable",
+      "16": "product-type-simple"
+    },
+    "_links": {
+      "self": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/product/7121",
+          "targetHints": {
+            "allow": [
+              "GET"
+            ]
+          }
+        }
+      ],
+      "collection": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/product"
+        }
+      ],
+      "about": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/types/product"
+        }
+      ],
+      "version-history": [
+        {
+          "count": 0,
+          "href": "https://kunacademy.com/wp-json/wp/v2/product/7121/revisions"
+        }
+      ],
+      "wp:featuredmedia": [
+        {
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/media/7122"
+        }
+      ],
+      "wp:attachment": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/media?parent=7121"
+        }
+      ],
+      "wp:term": [
+        {
+          "taxonomy": "product_brand",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/product_brand?post=7121"
+        },
+        {
+          "taxonomy": "product_cat",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/product_cat?post=7121"
+        },
+        {
+          "taxonomy": "product_tag",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/product_tag?post=7121"
+        }
+      ],
+      "curies": [
+        {
+          "name": "wp",
+          "href": "https://api.w.org/{rel}",
+          "templated": true
+        }
+      ]
+    }
+  },
+  {
+    "id": 7100,
+    "date": "2025-12-25T18:20:18",
+    "date_gmt": "2025-12-25T16:20:18",
+    "guid": {
+      "rendered": "https://kunacademy.com/product/%d9%83%d8%aa%d8%a7%d8%a8-%d9%85%d9%86-%d8%a7%d9%84%d8%aa%d9%88%d8%a7%d8%b2%d9%86-%d8%a5%d9%84%d9%89-%d8%a7%d9%84%d8%a8%d8%b1%d9%83%d8%a9/"
+    },
+    "modified": "2026-01-27T11:18:12",
+    "modified_gmt": "2026-01-27T09:18:12",
+    "slug": "fullbook-from-balance-to-barakah",
+    "status": "publish",
+    "type": "product",
+    "link": "https://kunacademy.com/product/fullbook-from-balance-to-barakah/",
+    "title": {
+      "rendered": "كتاب من التوازن إلى البركة – نسخة إلكترونية"
+    },
+    "content": {
+      "rendered": "<div class=\"tutor-course-details-content\">\n<div class=\"tutor-fs-6 tutor-color-secondary\">\n<p><strong>هذا ليس كتابا عن الطاقة</strong><strong>…</strong></p>\n<p>بل عنك. وعن الطريق.</p>\n<p>في زمنٍ اختلطت فيه الرياضة بالفلسفة، والحركة بالعقيدة، والهدوء بالذوبان في المجهول،<br />\nصار على المسلم أن يسأل نفسه:<br />\nهل هذا الذي أمارسه… مجرد تمرين؟<br />\nأم فلسفة خفية تُعيد تشكيل إيماني دون أن أشعر؟</p>\n<p>هذا الكتاب موجّه <strong>لمن يخشى الانزلاق خلف المجهول، ولمن تعب من الخطاب الوافد، ولمن يتمنى أن يعيش صلاته خارج المسجد كما يعيشها داخله</strong><strong>.</strong> فإن وجدت فيه نفعًا جسديًا فاشكر الله، وإن وجدت فيه سكينة فاعلم أنها من عنده، وإن لم تجد شيئًا فربما يكون رزقك في باب آخر.</p>\n<p><strong>«ليس كل توازن بركة… لكن كل بركة تبدأ من التوحيد»</strong></p>\n<p>&nbsp;</p>\n</div>\n</div>\n<div class=\"tutor-mt-40\"></div>\n",
+      "protected": false
+    },
+    "excerpt": {
+      "rendered": "<p>هذا ليس كتابا عن الطاقة… بل عنك. وعن الطريق. في زمنٍ اختلطت فيه الرياضة بالفلسفة، والحركة بالعقيدة، والهدوء بالذوبان في المجهول، صار على المسلم أن يسأل نفسه: هل هذا الذي أمارسه… مجرد تمرين؟ أم فلسفة خفية تُعيد تشكيل إيماني دون أن أشعر؟ هذا الكتاب موجّه لمن يخشى الانزلاق خلف المجهول، ولمن تعب من الخطاب الوافد، ولمن [&hellip;]</p>\n",
+      "protected": false
+    },
+    "featured_media": 7095,
+    "template": "",
+    "meta": [],
+    "product_brand": [],
+    "product_cat": [
+      100,
+      139
+    ],
+    "product_tag": [
+      137
+    ],
+    "class_list": {
+      "0": "post-7100",
+      "1": "product",
+      "2": "type-product",
+      "3": "status-publish",
+      "4": "has-post-thumbnail",
+      "6": "product_cat-books",
+      "7": "product_cat-e-book",
+      "8": "product_tag-137",
+      "10": "",
+      "11": "instock",
+      "12": "sale",
+      "13": "virtual",
+      "14": "sold-individually",
+      "15": "taxable",
+      "16": "purchasable",
+      "17": "product-type-simple"
+    },
+    "_links": {
+      "self": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/product/7100",
+          "targetHints": {
+            "allow": [
+              "GET"
+            ]
+          }
+        }
+      ],
+      "collection": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/product"
+        }
+      ],
+      "about": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/types/product"
+        }
+      ],
+      "version-history": [
+        {
+          "count": 0,
+          "href": "https://kunacademy.com/wp-json/wp/v2/product/7100/revisions"
+        }
+      ],
+      "wp:featuredmedia": [
+        {
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/media/7095"
+        }
+      ],
+      "wp:attachment": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/media?parent=7100"
+        }
+      ],
+      "wp:term": [
+        {
+          "taxonomy": "product_brand",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/product_brand?post=7100"
+        },
+        {
+          "taxonomy": "product_cat",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/product_cat?post=7100"
+        },
+        {
+          "taxonomy": "product_tag",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/product_tag?post=7100"
+        }
+      ],
+      "curies": [
+        {
+          "name": "wp",
+          "href": "https://api.w.org/{rel}",
+          "templated": true
+        }
+      ]
+    }
+  },
+  {
+    "id": 6285,
+    "date": "2025-11-16T09:19:53",
+    "date_gmt": "2025-11-16T09:19:53",
+    "guid": {
+      "rendered": "https://kunacademy.com/product/appointment/"
+    },
+    "modified": "2026-01-13T10:40:26",
+    "modified_gmt": "2026-01-13T10:40:26",
+    "slug": "appointment",
+    "status": "publish",
+    "type": "product",
+    "link": "https://kunacademy.com/product/appointment/",
+    "title": {
+      "rendered": "حجز"
+    },
+    "content": {
+      "rendered": "",
+      "protected": false
+    },
+    "excerpt": {
+      "rendered": "",
+      "protected": false
+    },
+    "featured_media": 4067,
+    "template": "",
+    "meta": [],
+    "product_brand": [],
+    "product_cat": [
+      17
+    ],
+    "product_tag": [],
+    "class_list": {
+      "0": "post-6285",
+      "1": "product",
+      "2": "type-product",
+      "3": "status-publish",
+      "4": "has-post-thumbnail",
+      "6": "product_cat-uncategorized",
+      "8": "last",
+      "9": "instock",
+      "10": "virtual",
+      "11": "sold-individually",
+      "12": "taxable",
+      "13": "purchasable",
+      "14": "product-type-simple"
+    },
+    "_links": {
+      "self": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/product/6285",
+          "targetHints": {
+            "allow": [
+              "GET"
+            ]
+          }
+        }
+      ],
+      "collection": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/product"
+        }
+      ],
+      "about": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/types/product"
+        }
+      ],
+      "version-history": [
+        {
+          "count": 0,
+          "href": "https://kunacademy.com/wp-json/wp/v2/product/6285/revisions"
+        }
+      ],
+      "wp:featuredmedia": [
+        {
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/media/4067"
+        }
+      ],
+      "wp:attachment": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/media?parent=6285"
+        }
+      ],
+      "wp:term": [
+        {
+          "taxonomy": "product_brand",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/product_brand?post=6285"
+        },
+        {
+          "taxonomy": "product_cat",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/product_cat?post=6285"
+        },
+        {
+          "taxonomy": "product_tag",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/product_tag?post=6285"
+        }
+      ],
+      "curies": [
+        {
+          "name": "wp",
+          "href": "https://api.w.org/{rel}",
+          "templated": true
+        }
+      ]
+    }
+  },
+  {
+    "id": 5203,
+    "date": "2025-10-22T05:14:26",
+    "date_gmt": "2025-10-22T05:14:26",
+    "guid": {
+      "rendered": "https://kunacademy.com/?post_type=product&#038;p=5203"
+    },
+    "modified": "2025-11-13T06:55:27",
+    "modified_gmt": "2025-11-13T06:55:27",
+    "slug": "revive",
+    "status": "publish",
+    "type": "product",
+    "link": "https://kunacademy.com/product/revive/",
+    "title": {
+      "rendered": "إحياء الجسد [٢٠٢٥/١١]"
+    },
+    "content": {
+      "rendered": "<p style=\"text-align: right;\"><strong>تجربة وعيٍ حسّي، مصممة لتذكرك بأنك كائن يحيا.</strong></p>\n<p style=\"text-align: right;\"><strong>نستخدم الحركة، التنفس، والحضور كأدوات لإعادة اتصالك .</strong></p>\n<p style=\"text-align: right;\"><strong>لإعادة اتصالك بنفسك تتضمن رحلتك أربعة محاور أساسية.</strong></p>\n<p>&nbsp;</p>\n<p>على مدى أربعة أيام من الهدوء والمرافقة الدقيقة،<br />\nتعيش تجربة تعيدك إلى الجسد الذي يعرف طريقه نحو التوازن.<br />\nلتتعلم الإصغاء لما يقوله الجسد دون أن تضطر إلى إصلاحه… فقط أن تسمعه.</p>\n<p>اخترنا لكم “<strong>Remal Wellness Resort</strong>”</p>\n<p>ليكون الوجهة المثالية لرحلة “إحياء الجسد.<br />\nالمنتجع هو “ملاذ علاجي” هادئ في وادي النطرون، مصمم خصيصاً ليساعدكم على الانفصال عن الضغوط والاتصال بالطبيعة.<br />\nفلسفة “رمال” تدعم هدفنا؛ فهو يقدم طعاماً صحياً وعضوياً (من المزرعة للمائدة)، وبيئته مصممة للراحة والاستشفاء، وتضم مرافق فريدة مثل “كهف الملح” الذي يعزز تجربة التجديد.</p>\n",
+      "protected": false
+    },
+    "excerpt": {
+      "rendered": "<p>تجربة وعيٍ حسّي، مصممة لتذكرك بأنك كائن يحيا. نستخدم الحركة، التنفس، والحضور كأدوات لإعادة اتصالك . لإعادة اتصالك بنفسك تتضمن رحلتك أربعة محاور أساسية. &nbsp; على مدى أربعة أيام من الهدوء والمرافقة الدقيقة، تعيش تجربة تعيدك إلى الجسد الذي يعرف طريقه نحو التوازن. لتتعلم الإصغاء لما يقوله الجسد دون أن تضطر إلى إصلاحه… فقط أن تسمعه. اخترنا لكم “Remal [&hellip;]</p>\n",
+      "protected": false
+    },
+    "featured_media": 5210,
+    "template": "",
+    "meta": [],
+    "product_brand": [],
+    "product_cat": [
+      103
+    ],
+    "product_tag": [
+      104,
+      105
+    ],
+    "class_list": {
+      "0": "post-5203",
+      "1": "product",
+      "2": "type-product",
+      "3": "status-publish",
+      "4": "has-post-thumbnail",
+      "6": "product_cat-103",
+      "7": "product_tag-104",
+      "8": "product_tag-105",
+      "10": "first",
+      "11": "instock",
+      "12": "sale",
+      "13": "purchasable",
+      "14": "product-type-variable"
+    },
+    "_links": {
+      "self": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/product/5203",
+          "targetHints": {
+            "allow": [
+              "GET"
+            ]
+          }
+        }
+      ],
+      "collection": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/product"
+        }
+      ],
+      "about": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/types/product"
+        }
+      ],
+      "version-history": [
+        {
+          "count": 0,
+          "href": "https://kunacademy.com/wp-json/wp/v2/product/5203/revisions"
+        }
+      ],
+      "wp:featuredmedia": [
+        {
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/media/5210"
+        }
+      ],
+      "wp:attachment": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/media?parent=5203"
+        }
+      ],
+      "wp:term": [
+        {
+          "taxonomy": "product_brand",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/product_brand?post=5203"
+        },
+        {
+          "taxonomy": "product_cat",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/product_cat?post=5203"
+        },
+        {
+          "taxonomy": "product_tag",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/product_tag?post=5203"
+        }
+      ],
+      "curies": [
+        {
+          "name": "wp",
+          "href": "https://api.w.org/{rel}",
+          "templated": true
+        }
+      ]
+    }
+  }
+]

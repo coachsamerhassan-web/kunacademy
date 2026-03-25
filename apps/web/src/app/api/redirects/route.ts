@@ -1,70 +1,49 @@
 // @ts-nocheck
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse, type NextRequest } from 'next/server';
 
-/**
- * 301 Redirect Map: WordPress URLs → Next.js equivalents
- * Used by middleware to redirect old WP URLs seamlessly.
- */
-export const REDIRECTS: Record<string, string> = {
-  // Programs
-  '/stce-coaching-certification/': '/ar/programs/certifications/stce',
-  '/stce-level-1/': '/ar/programs/certifications/stce/level-1',
-  '/stce-level-2/': '/ar/programs/certifications/stce/level-2',
-  '/stce-level-3/': '/ar/programs/certifications/stce/level-3',
-  '/stce-level-4/': '/ar/programs/certifications/stce/level-4',
-  '/islamic-coaching/': '/ar/programs/certifications/islamic-coaching',
-  '/menhajak/': '/ar/programs/certifications/menhajak',
-  '/mcc-mentoring/': '/ar/programs/certifications/mcc-mentoring',
-
-  // Static pages
-  '/about/': '/ar/about',
-  '/about-us/': '/ar/about',
-  '/contact/': '/ar/contact',
-  '/contact-us/': '/ar/contact',
-  '/faq/': '/ar/faq',
-  '/privacy-policy/': '/ar/privacy',
-  '/terms-and-conditions/': '/ar/terms',
-  '/refund-policy/': '/ar/refund',
-
-  // Blog
-  '/blog/': '/ar/blog',
-  '/category/somatic-thinking/': '/ar/blog/category/somatic-thinking',
-  '/category/parenting/': '/ar/blog/category/parenting',
-  '/category/leadership/': '/ar/blog/category/leadership',
-
-  // Shop
-  '/shop/': '/ar/shop',
-  '/cart/': '/ar/shop/cart',
-  '/checkout/': '/ar/shop/checkout',
-
-  // Events & Media
-  '/events/': '/ar/events',
-  '/podcast/': '/ar/media/podcast',
-  '/videos/': '/ar/media/videos',
-
-  // Methodology
-  '/somatic-thinking/': '/ar/methodology',
-
-  // Coaching
-  '/book-a-session/': '/ar/book',
-  '/coach-directory/': '/ar/programs/coaching',
-
-  // Corporate & Family
-  '/corporate/': '/ar/programs/corporate',
-  '/corporate-coaching/': '/ar/programs/corporate',
-  '/family-coaching/': '/ar/programs/family',
-  '/youth-programs/': '/ar/programs/family',
-
-  // Account
+// Old WordPress URL → New Next.js URL mapping
+const REDIRECTS: Record<string, string> = {
+  // Arabic pages
+  '/خدمات-الكوتشينج/': '/ar/coaching',
+  '/الأكاديمية/': '/ar/academy',
+  '/من-نحن/': '/ar/about',
+  '/تواصل-معنا/': '/ar/contact',
+  '/فريق-العمل/': '/ar/about/team',
+  '/المدونة/': '/ar/blog',
+  '/الأسئلة-الشائعة/': '/ar/faq',
+  '/سياسة-الخصوصية/': '/ar/privacy',
+  '/الشروط-والأحكام/': '/ar/terms',
+  // English equivalents
+  '/coaching-services/': '/en/coaching',
+  '/academy/': '/en/academy',
+  '/about/': '/en/about',
+  '/contact/': '/en/contact',
+  '/team/': '/en/about/team',
+  '/blog/': '/en/blog',
+  '/faq/': '/en/faq',
+  '/privacy-policy/': '/en/privacy',
+  '/terms-and-conditions/': '/en/terms',
+  // WooCommerce/Tutor LMS
+  '/shop/': '/ar/academy',
+  '/courses/': '/ar/academy',
   '/my-account/': '/ar/portal',
-  '/login/': '/ar/auth/login',
+  '/checkout/': '/ar/checkout',
+  '/cart/': '/ar/checkout',
+  // Coaching
+  '/book-a-session/': '/ar/coaching/book',
+  '/coaching/': '/ar/coaching',
 };
 
 export async function GET(request: NextRequest) {
-  const { pathname } = new URL(request.url);
-  const target = REDIRECTS[pathname] || REDIRECTS[pathname + '/'];
+  const path = request.nextUrl.searchParams.get('path');
+  if (!path) {
+    return NextResponse.json({ redirects: REDIRECTS });
+  }
+
+  const target = REDIRECTS[path] || REDIRECTS[path + '/'];
   if (target) {
     return NextResponse.redirect(new URL(target, request.url), 301);
   }
-  return NextResponse.json({ redirects: Object.keys(REDIRECTS).length, message: 'No redirect for this path' }, { status: 404 });
+
+  return NextResponse.json({ error: 'No redirect found' }, { status: 404 });
 }

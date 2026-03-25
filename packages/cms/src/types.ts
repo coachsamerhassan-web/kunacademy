@@ -227,6 +227,38 @@ export interface SiteSetting extends AuditFields {
   value: string;
 }
 
+
+// ── Sheet 7: Testimonials ───────────────────────────────────────────────────
+
+export interface Testimonial extends AuditFields {
+  /** Unique ID */
+  id: string;
+  /** Author name in Arabic */
+  name_ar: string;
+  /** Author name in English */
+  name_en: string;
+  /** Testimonial text in Arabic */
+  content_ar: string;
+  /** Testimonial text in English */
+  content_en: string;
+  /** Program they completed */
+  program: string;
+  /** Professional role/title */
+  role_ar?: string;
+  role_en?: string;
+  /** Location (city, country) */
+  location_ar?: string;
+  location_en?: string;
+  /** Photo URL (optional — falls back to initial) */
+  photo_url?: string;
+  /** YouTube video URL (optional — makes it a video testimonial) */
+  video_url?: string;
+  /** Display on homepage carousel */
+  is_featured: boolean;
+  /** Sort order */
+  display_order: number;
+}
+
 // ── Sheet 6: Pathfinder ──────────────────────────────────────────────────────
 
 /** A single answer option within a Pathfinder question */

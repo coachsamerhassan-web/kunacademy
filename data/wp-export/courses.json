@@ -1,1 +1,684 @@
-[]
+[
+  {
+    "id": 8297,
+    "date": "2026-02-11T11:39:55",
+    "date_gmt": "2026-02-11T09:39:55",
+    "guid": {
+      "rendered": "https://kunacademy.com/?post_type=courses&#038;p=8297"
+    },
+    "modified": "2026-02-11T11:39:56",
+    "modified_gmt": "2026-02-11T09:39:56",
+    "slug": "authentic-methodology",
+    "status": "publish",
+    "type": "courses",
+    "link": "https://kunacademy.com/courses/authentic-methodology/",
+    "title": {
+      "rendered": "الطريق إلى المنهج الأصيل. كيف تنتقل من الأدوات إلى بناء أثرٍ مستدام؟"
+    },
+    "content": {
+      "rendered": "<p data-start=\"566\" data-end=\"661\">كثير من المهنيين يملكون أدوات قوية، وشهادات متعددة، وخبرة ممتدة…<br data-start=\"630\" data-end=\"633\" />ومع ذلك يظل أثرهم غير مستقر.</p>\n<p data-start=\"663\" data-end=\"709\">السبب ليس في نقص المعرفة،<br data-start=\"688\" data-end=\"691\" />بل في غياب المنهج.</p>\n<p data-start=\"711\" data-end=\"819\">“الطريق إلى المنهج الأصيل” هو مدخل فكري عميق يساعدك على إعادة النظر في المصدر الذي تتشكل منه طريقتك المهنية.</p>\n<p data-start=\"821\" data-end=\"842\">في هذا الكورس ستتعلم:</p>\n<ul data-start=\"844\" data-end=\"1049\">\n<li data-start=\"844\" data-end=\"884\">\n<p data-start=\"846\" data-end=\"884\">الفرق بين الأداة، والبرنامج، والمنهج</p>\n</li>\n<li data-start=\"885\" data-end=\"933\">\n<p data-start=\"887\" data-end=\"933\">لماذا لا يصنع استيراد النماذج أثرًا مستدامًا</p>\n</li>\n<li data-start=\"934\" data-end=\"968\">\n<p data-start=\"936\" data-end=\"968\">كيف تتحول خبرتك إلى تصميم واضح</p>\n</li>\n<li data-start=\"969\" data-end=\"1002\">\n<p data-start=\"971\" data-end=\"1002\">أين يتسرّب الأثر رغم الاجتهاد</p>\n</li>\n<li data-start=\"1003\" data-end=\"1049\">\n<p data-start=\"1005\" data-end=\"1049\">من أين يبدأ البناء الحقيقي لمنهج مهني أصيل</p>\n</li>\n</ul>\n<p data-start=\"1051\" data-end=\"1125\">هذا الكورس ليس إضافة أدوات جديدة،<br data-start=\"1084\" data-end=\"1087\" />بل إعادة ترتيب علاقتك بما لديك بالفعل.</p>\n<p data-start=\"1127\" data-end=\"1214\">وهو يُعد مرحلة تأسيسية قبل الدخول في مسارات بناء المنهج التدريبي أو القيادي أو المؤسسي.</p>\n",
+      "protected": false
+    },
+    "excerpt": {
+      "rendered": "<p>كثير من المهنيين يملكون أدوات قوية، وشهادات متعددة، وخبرة ممتدة…ومع ذلك يظل أثرهم غير مستقر. السبب ليس في نقص المعرفة،بل في غياب المنهج. “الطريق إلى المنهج الأصيل” هو مدخل فكري عميق يساعدك على إعادة النظر في المصدر الذي تتشكل منه طريقتك المهنية. في هذا الكورس ستتعلم: الفرق بين الأداة، والبرنامج، والمنهج لماذا لا يصنع استيراد [&hellip;]</p>\n",
+      "protected": false
+    },
+    "author": 1,
+    "featured_media": 8290,
+    "template": "",
+    "course-category": [
+      88,
+      82
+    ],
+    "course-tag": [
+      94,
+      95,
+      90
+    ],
+    "class_list": [
+      "post-8297",
+      "courses",
+      "type-courses",
+      "status-publish",
+      "has-post-thumbnail",
+      "hentry",
+      "course-category-88",
+      "course-category-free",
+      "course-tag-94",
+      "course-tag-95",
+      "course-tag-90"
+    ],
+    "_links": {
+      "self": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/courses/8297",
+          "targetHints": {
+            "allow": [
+              "GET"
+            ]
+          }
+        }
+      ],
+      "collection": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/courses"
+        }
+      ],
+      "about": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/types/courses"
+        }
+      ],
+      "author": [
+        {
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/users/1"
+        }
+      ],
+      "version-history": [
+        {
+          "count": 1,
+          "href": "https://kunacademy.com/wp-json/wp/v2/courses/8297/revisions"
+        }
+      ],
+      "predecessor-version": [
+        {
+          "id": 8298,
+          "href": "https://kunacademy.com/wp-json/wp/v2/courses/8297/revisions/8298"
+        }
+      ],
+      "wp:featuredmedia": [
+        {
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/media/8290"
+        }
+      ],
+      "wp:attachment": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/media?parent=8297"
+        }
+      ],
+      "wp:term": [
+        {
+          "taxonomy": "course-category",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/course-category?post=8297"
+        },
+        {
+          "taxonomy": "course-tag",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/course-tag?post=8297"
+        }
+      ],
+      "curies": [
+        {
+          "name": "wp",
+          "href": "https://api.w.org/{rel}",
+          "templated": true
+        }
+      ]
+    }
+  },
+  {
+    "id": 2819,
+    "date": "2026-01-27T11:21:05",
+    "date_gmt": "2026-01-27T09:21:05",
+    "guid": {
+      "rendered": "https://kunacademy.com/?post_type=courses&#038;p=2819"
+    },
+    "modified": "2026-01-27T11:21:06",
+    "modified_gmt": "2026-01-27T09:21:06",
+    "slug": "from-balance-to-barakah",
+    "status": "publish",
+    "type": "courses",
+    "link": "https://kunacademy.com/courses/from-balance-to-barakah/",
+    "title": {
+      "rendered": "كتاب من التوازن إلى البركة – عينة مجانية"
+    },
+    "content": {
+      "rendered": "<p><strong>هذا ليس كتابا عن الطاقة</strong><strong>&#8230;</strong></p>\n<p>بل عنك. وعن الطريق.</p>\n<p>في زمنٍ اختلطت فيه الرياضة بالفلسفة، والحركة بالعقيدة، والهدوء بالذوبان في المجهول،<br />صار على المسلم أن يسأل نفسه:<br />هل هذا الذي أمارسه&#8230; مجرد تمرين؟<br />أم فلسفة خفية تُعيد تشكيل إيماني دون أن أشعر؟</p>\n<p>هذا الكتاب موجّه <strong>لمن يخشى الانزلاق خلف المجهول، ولمن تعب من الخطاب الوافد، ولمن يتمنى أن يعيش صلاته خارج المسجد كما يعيشها داخله</strong><strong>.</strong> فإن وجدت فيه نفعًا جسديًا فاشكر الله، وإن وجدت فيه سكينة فاعلم أنها من عنده، وإن لم تجد شيئًا فربما يكون رزقك في باب آخر.</p>\n<p><strong>«ليس كل توازن بركة… لكن كل بركة تبدأ من التوحيد»</strong></p>\n",
+      "protected": false
+    },
+    "excerpt": {
+      "rendered": "<p>هذا ليس كتابا عن الطاقة&#8230; بل عنك. وعن الطريق. في زمنٍ اختلطت فيه الرياضة بالفلسفة، والحركة بالعقيدة، والهدوء بالذوبان في المجهول،صار على المسلم أن يسأل نفسه:هل هذا الذي أمارسه&#8230; مجرد تمرين؟أم فلسفة خفية تُعيد تشكيل إيماني دون أن أشعر؟ هذا الكتاب موجّه لمن يخشى الانزلاق خلف المجهول، ولمن تعب من الخطاب الوافد، ولمن يتمنى أن [&hellip;]</p>\n",
+      "protected": false
+    },
+    "author": 1,
+    "featured_media": 7090,
+    "template": "",
+    "course-category": [
+      79,
+      82
+    ],
+    "course-tag": [
+      189
+    ],
+    "class_list": [
+      "post-2819",
+      "courses",
+      "type-courses",
+      "status-publish",
+      "has-post-thumbnail",
+      "hentry",
+      "course-category-books",
+      "course-category-free",
+      "course-tag-kun-books"
+    ],
+    "_links": {
+      "self": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/courses/2819",
+          "targetHints": {
+            "allow": [
+              "GET"
+            ]
+          }
+        }
+      ],
+      "collection": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/courses"
+        }
+      ],
+      "about": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/types/courses"
+        }
+      ],
+      "author": [
+        {
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/users/1"
+        }
+      ],
+      "version-history": [
+        {
+          "count": 0,
+          "href": "https://kunacademy.com/wp-json/wp/v2/courses/2819/revisions"
+        }
+      ],
+      "wp:featuredmedia": [
+        {
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/media/7090"
+        }
+      ],
+      "wp:attachment": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/media?parent=2819"
+        }
+      ],
+      "wp:term": [
+        {
+          "taxonomy": "course-category",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/course-category?post=2819"
+        },
+        {
+          "taxonomy": "course-tag",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/course-tag?post=2819"
+        }
+      ],
+      "curies": [
+        {
+          "name": "wp",
+          "href": "https://api.w.org/{rel}",
+          "templated": true
+        }
+      ]
+    }
+  },
+  {
+    "id": 7098,
+    "date": "2026-01-27T11:18:10",
+    "date_gmt": "2026-01-27T09:18:10",
+    "guid": {
+      "rendered": "https://kunacademy.com/?post_type=courses&#038;p=7098"
+    },
+    "modified": "2026-01-27T11:18:12",
+    "modified_gmt": "2026-01-27T09:18:12",
+    "slug": "fullbook-from-balance-to-barakah",
+    "status": "publish",
+    "type": "courses",
+    "link": "https://kunacademy.com/courses/fullbook-from-balance-to-barakah/",
+    "title": {
+      "rendered": "كتاب من التوازن إلى البركة – نسخة إلكترونية"
+    },
+    "content": {
+      "rendered": "<div class=\"tutor-course-details-content\">\n<div class=\"tutor-fs-6 tutor-color-secondary\">\n<p><strong>هذا ليس كتابا عن الطاقة</strong><strong>…</strong></p>\n<p>بل عنك. وعن الطريق.</p>\n<p>في زمنٍ اختلطت فيه الرياضة بالفلسفة، والحركة بالعقيدة، والهدوء بالذوبان في المجهول،<br />صار على المسلم أن يسأل نفسه:<br />هل هذا الذي أمارسه… مجرد تمرين؟<br />أم فلسفة خفية تُعيد تشكيل إيماني دون أن أشعر؟</p>\n<p>هذا الكتاب موجّه <strong>لمن يخشى الانزلاق خلف المجهول، ولمن تعب من الخطاب الوافد، ولمن يتمنى أن يعيش صلاته خارج المسجد كما يعيشها داخله</strong><strong>.</strong> فإن وجدت فيه نفعًا جسديًا فاشكر الله، وإن وجدت فيه سكينة فاعلم أنها من عنده، وإن لم تجد شيئًا فربما يكون رزقك في باب آخر.</p>\n<p><strong>«ليس كل توازن بركة… لكن كل بركة تبدأ من التوحيد»</strong></p>\n</div>\n</div>\n<div class=\"tutor-mt-40\"> </div>\n",
+      "protected": false
+    },
+    "excerpt": {
+      "rendered": "<p>هذا ليس كتابا عن الطاقة… بل عنك. وعن الطريق. في زمنٍ اختلطت فيه الرياضة بالفلسفة، والحركة بالعقيدة، والهدوء بالذوبان في المجهول،صار على المسلم أن يسأل نفسه:هل هذا الذي أمارسه… مجرد تمرين؟أم فلسفة خفية تُعيد تشكيل إيماني دون أن أشعر؟ هذا الكتاب موجّه لمن يخشى الانزلاق خلف المجهول، ولمن تعب من الخطاب الوافد، ولمن يتمنى أن يعيش [&hellip;]</p>\n",
+      "protected": false
+    },
+    "author": 1,
+    "featured_media": 7095,
+    "template": "",
+    "course-category": [
+      79
+    ],
+    "course-tag": [
+      189
+    ],
+    "class_list": [
+      "post-7098",
+      "courses",
+      "type-courses",
+      "status-publish",
+      "has-post-thumbnail",
+      "hentry",
+      "course-category-books",
+      "course-tag-kun-books"
+    ],
+    "_links": {
+      "self": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/courses/7098",
+          "targetHints": {
+            "allow": [
+              "GET"
+            ]
+          }
+        }
+      ],
+      "collection": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/courses"
+        }
+      ],
+      "about": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/types/courses"
+        }
+      ],
+      "author": [
+        {
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/users/1"
+        }
+      ],
+      "version-history": [
+        {
+          "count": 0,
+          "href": "https://kunacademy.com/wp-json/wp/v2/courses/7098/revisions"
+        }
+      ],
+      "wp:featuredmedia": [
+        {
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/media/7095"
+        }
+      ],
+      "wp:attachment": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/media?parent=7098"
+        }
+      ],
+      "wp:term": [
+        {
+          "taxonomy": "course-category",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/course-category?post=7098"
+        },
+        {
+          "taxonomy": "course-tag",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/course-tag?post=7098"
+        }
+      ],
+      "curies": [
+        {
+          "name": "wp",
+          "href": "https://api.w.org/{rel}",
+          "templated": true
+        }
+      ]
+    }
+  },
+  {
+    "id": 4208,
+    "date": "2025-06-27T09:53:26",
+    "date_gmt": "2025-06-27T06:53:26",
+    "guid": {
+      "rendered": "https://kunacademy.com/?post_type=courses&#038;p=4208"
+    },
+    "modified": "2025-09-28T07:38:20",
+    "modified_gmt": "2025-09-28T07:38:20",
+    "slug": "ypi",
+    "status": "publish",
+    "type": "courses",
+    "link": "https://kunacademy.com/courses/ypi/",
+    "title": {
+      "rendered": "براند يمتد من هويتك الأصيلة"
+    },
+    "content": {
+      "rendered": "\n<div class=\"tutor-wrap tutor-wrap-parent tutor-courses-wrap tutor-container course-archive-page\" data-tutor_courses_meta=\"{&quot;course_filter&quot;:false,&quot;supported_filters&quot;:{&quot;search&quot;:&quot;search&quot;,&quot;tag&quot;:&quot;tag&quot;,&quot;price_type&quot;:&quot;price_type&quot;},&quot;loop_content_only&quot;:false,&quot;column_per_row&quot;:&quot;1&quot;,&quot;course_per_page&quot;:3,&quot;show_pagination&quot;:false}\">\n\t\n\t<div class=\"tutor-row tutor-gx-xl-5\">\n\t\t\t\t\t<div class=\"tutor-col-12\">\n\t\t\t\t<div class=\"\">\n\t\t\t\t\t\n<!--\n\tNote: Do not remove tutor-course-filter attr. It required by _archive.js for filter function.\n!-->\n<div style=\"text-align: right;\" class=\"tutor-course-filter\" tutor-course-filter>\n\t<form style=\"display: inline-block;\">\n\t\t<select class=\"tutor-form-control tutor-form-select\" name=\"course_order\">\n\t\t\t<option value=\"newest_first\"  >\n\t\t\t\tتاريخ الإصدار (الأحدث أولا)\t\t\t</option>\n\t\t\t<option value=\"oldest_first\" >\n\t\t\t\tتاريخ الإصدار (الأقدم أولا)\t\t\t</option>\n\t\t\t<option value=\"course_title_az\" >\n\t\t\t\tعنوان الدورة (أ-ي)\t\t\t</option>\n\t\t\t<option value=\"course_title_za\" >\n\t\t\t\tعنوان الدورة (ي-أ)\t\t\t</option>\n\t\t</select>\n\t</form>\n</div>\n<br/>\n\t\t\t\t</div>\n\t\t\t\t<div class=\"tutor-pagination-wrapper-replaceable\" tutor-course-list-container>\n\t\t\t\t\t<div class=\"tutor-course-list tutor-grid tutor-grid-1\">\n<div class=\"tutor-card tutor-course-card\">\n<div class=\"tutor-course-thumbnail\">\n\t<a href=\"https://kunacademy.com/courses/authentic-methodology/\" class=\"tutor-d-block\">\n\t\t<div class=\"tutor-ratio tutor-ratio-16x9\">\n\t\t\t<img decoding=\"async\" class=\"tutor-card-image-top\" src=\"https://kunacademy.com/wp-content/uploads/2026/02/‏من-أين-يأتي-المنهج.png\" alt=\"الطريق إلى المنهج الأصيل. كيف تنتقل من الأدوات إلى بناء أثرٍ مستدام؟\" loading=\"lazy\">\n\t\t</div>\n\t</a>\n\t</div>\n<div class=\"tutor-course-bookmark\">\n\t<a href=\"javascript:;\"  class=\"tutor-open-login-modal save-bookmark-btn tutor-iconic-btn tutor-iconic-btn-secondary\" data-course-id=\"8297\">\n\t\t<i class=\"tutor-icon-bookmark-line\"></i>\n\t</a></div>\n\n<div class=\"tutor-card-body\">\n\n<h3 class=\"tutor-course-name tutor-fs-5 tutor-fw-medium\" title=\"الطريق إلى المنهج الأصيل. كيف تنتقل من الأدوات إلى بناء أثرٍ مستدام؟\">\n\t<a href=\"https://kunacademy.com/courses/authentic-methodology/\">الطريق إلى المنهج الأصيل. كيف تنتقل من الأدوات إلى بناء أثرٍ مستدام؟</a>\n</h3>\n\n<div class=\"tutor-meta tutor-mt-12 tutor-mb-20\">\n\t\t\t<div>\n\t\t\t<span class=\"tutor-meta-icon tutor-icon-user-line\" area-hidden=\"true\"></span>\n\t\t\t<span class=\"tutor-meta-value\">0</span>\n\t\t</div>\n\t\n\t</div>\n\n<div class=\"tutor-meta tutor-mt-auto\">\n\t<div>\n\t\t<a href=\"https://kunacademy.com/profile/samerkuncoaching-com?view=instructor\" class=\"tutor-d-flex\">\n\t\t\t<div class=\"tutor-avatar\"><div class=\"tutor-ratio tutor-ratio-1x1\"><img decoding=\"async\" src=\"https://kunacademy.com/wp-content/uploads/2025/08/Samer-Hassan-MCC-150x150.jpg\" alt=\"سامر حسن\" /> </div></div>\t\t</a>\n\t</div>\n\n\t<div>\n\t\tبواسطة\t\t<a href=\"https://kunacademy.com/profile/samerkuncoaching-com?view=instructor\">سامر حسن</a>\n\n\t\t\t\t\tفي\t\t\t<a href=\"https://kunacademy.com/course-category/%d9%85%d8%b3%d8%ac%d9%84%d8%a9/?tutor-course-filter-category=88\">مسجلة</a>, <a href=\"https://kunacademy.com/course-category/free/?tutor-course-filter-category=82\">هدية</a>\t\t\t</div>\n</div>\n\n</div>\n\n<div class=\"tutor-card-footer\">\n\t\t\n<div class=\"list-item-button\">\n\t<a \thref=\"https://kunacademy.com/courses/authentic-methodology/lessons/%d8%a7%d8%a8%d8%af%d8%a3-%d8%a7%d9%84%d9%85%d8%b4%d8%a7%d9%87%d8%af%d8%a9/\" \n\t\tclass=\"tutor-btn tutor-btn-outline-primary tutor-btn-md tutor-btn-block \" \n\t\tdata-course_id=\"8297\">\n\t\tابدا بالتعلم\t</a>\n\t</div>\n\t</div>\n</div>\n<div class=\"tutor-card tutor-course-card\">\n<div class=\"tutor-course-thumbnail\">\n\t<a href=\"https://kunacademy.com/courses/fullbook-from-balance-to-barakah/\" class=\"tutor-d-block\">\n\t\t<div class=\"tutor-ratio tutor-ratio-16x9\">\n\t\t\t<img decoding=\"async\" class=\"tutor-card-image-top\" src=\"https://kunacademy.com/wp-content/uploads/2025/12/e-book-image.jpg\" alt=\"كتاب من التوازن إلى البركة – نسخة إلكترونية\" loading=\"lazy\">\n\t\t</div>\n\t</a>\n\t</div>\n<div class=\"tutor-course-bookmark\">\n\t<a href=\"javascript:;\"  class=\"tutor-open-login-modal save-bookmark-btn tutor-iconic-btn tutor-iconic-btn-secondary\" data-course-id=\"7098\">\n\t\t<i class=\"tutor-icon-bookmark-line\"></i>\n\t</a></div>\n\n<div class=\"tutor-card-body\">\n\n<h3 class=\"tutor-course-name tutor-fs-5 tutor-fw-medium\" title=\"كتاب من التوازن إلى البركة – نسخة إلكترونية\">\n\t<a href=\"https://kunacademy.com/courses/fullbook-from-balance-to-barakah/\">كتاب من التوازن إلى البركة – نسخة إلكترونية</a>\n</h3>\n\n<div class=\"tutor-meta tutor-mt-12 tutor-mb-20\">\n\t\t\t<div>\n\t\t\t<span class=\"tutor-meta-icon tutor-icon-user-line\" area-hidden=\"true\"></span>\n\t\t\t<span class=\"tutor-meta-value\">2</span>\n\t\t</div>\n\t\n\t</div>\n\n<div class=\"tutor-meta tutor-mt-auto\">\n\t<div>\n\t\t<a href=\"https://kunacademy.com/profile/samerkuncoaching-com?view=instructor\" class=\"tutor-d-flex\">\n\t\t\t<div class=\"tutor-avatar\"><div class=\"tutor-ratio tutor-ratio-1x1\"><img decoding=\"async\" src=\"https://kunacademy.com/wp-content/uploads/2025/08/Samer-Hassan-MCC-150x150.jpg\" alt=\"سامر حسن\" /> </div></div>\t\t</a>\n\t</div>\n\n\t<div>\n\t\tبواسطة\t\t<a href=\"https://kunacademy.com/profile/samerkuncoaching-com?view=instructor\">سامر حسن</a>\n\n\t\t\t\t\tفي\t\t\t<a href=\"https://kunacademy.com/course-category/books/?tutor-course-filter-category=79\">كتب</a>\t\t\t</div>\n</div>\n\n</div>\n\n<div class=\"tutor-card-footer\">\n\t<div class=\" tutor-d-flex tutor-align-center tutor-justify-between \"><div class=\"list-item-price tutor-d-flex tutor-align-center\"> <span class=\"price tutor-fs-6 tutor-fw-bold tutor-color-black\"><del aria-hidden=\"true\"><span class=\"woocommerce-Price-amount amount\"><bdi>500,00&nbsp;<span class=\"woocommerce-Price-currencySymbol\">EGP</span></bdi></span></del> <span class=\"screen-reader-text\">السعر الأصلي هو: 500,00&nbsp;EGP.</span><ins aria-hidden=\"true\"><span class=\"woocommerce-Price-amount amount\"><bdi>450,00&nbsp;<span class=\"woocommerce-Price-currencySymbol\">EGP</span></bdi></span></ins><span class=\"screen-reader-text\">السعر الحالي هو: 450,00&nbsp;EGP.</span> </span></div><div class=\"list-item-button\"> \n\t<form action=\"/wp-json/wp/v2/courses?per_page=100&#038;page=1&#038;add-to-cart=7100\" class=\"cart brx-loop-product-form\" method=\"post\" enctype=\"multipart/form-data\"><div class=\"quantity\">\n\t\t<label class=\"screen-reader-text\" for=\"quantity_69c2fb532ef88\">كمية كتاب من التوازن إلى البركة - نسخة إلكترونية</label>\n\t<input\n\t\ttype=\"hidden\"\n\t\t\t\tid=\"quantity_69c2fb532ef88\"\n\t\tclass=\"input-text qty text\"\n\t\tname=\"quantity\"\n\t\tvalue=\"1\"\n\t\taria-label=\"كمية المنتج\"\n\t\t\t\tmin=\"1\"\n\t\t\t\t\tmax=\"1\"\n\t\t\t\t\t\t\tstep=\"1\"\n\t\t\tplaceholder=\"\"\n\t\t\tinputmode=\"numeric\"\n\t\t\tautocomplete=\"off\"\n\t\t\t/>\n\t<span class=\"action minus\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><line x1=\"6\" y1=\"12\" x2=\"18\" y2=\"12\"></line></svg></span><span class=\"action plus\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><line x1=\"12\" y1=\"6\" x2=\"12\" y2=\"18\"></line><line x1=\"6\" y1=\"12\" x2=\"18\" y2=\"12\"></line></svg></span></div>\n<a href=\"/wp-json/wp/v2/courses?per_page=100&#038;page=1&#038;add-to-cart=7100\" data-quantity=\"1\" class=\"tutor-btn tutor-btn-outline-primary tutor-btn-md tutor-btn-block  product_type_simple add_to_cart_button  tutor-open-login-modal brx_ajax_add_to_cart\" data-product_id=\"7100\" data-product_sku=\"\" aria-label=\"إضافة إلى عربة التسوق: &quot;كتاب من التوازن إلى البركة - نسخة إلكترونية&quot;\" rel=\"nofollow\" data-product_type=\"simple\"><span class=\"tutor-icon-cart-line tutor-mr-8\"></span><span class=\"cart-text\">إضافة إلى السلة</span></a></form> </div></div>\t</div>\n</div>\n<div class=\"tutor-card tutor-course-card\">\n<div class=\"tutor-course-thumbnail\">\n\t<a href=\"https://kunacademy.com/courses/ypi/\" class=\"tutor-d-block\">\n\t\t<div class=\"tutor-ratio tutor-ratio-16x9\">\n\t\t\t<img decoding=\"async\" class=\"tutor-card-image-top\" src=\"https://kunacademy.com/wp-content/uploads/2025/05/blue-windo-islamic-scaled.webp\" alt=\"براند يمتد من هويتك الأصيلة\" loading=\"lazy\">\n\t\t</div>\n\t</a>\n\t</div>\n<div class=\"tutor-course-bookmark\">\n\t<a href=\"javascript:;\"  class=\"tutor-open-login-modal save-bookmark-btn tutor-iconic-btn tutor-iconic-btn-secondary\" data-course-id=\"4208\">\n\t\t<i class=\"tutor-icon-bookmark-line\"></i>\n\t</a></div>\n\n<div class=\"tutor-card-body\">\n\n<h3 class=\"tutor-course-name tutor-fs-5 tutor-fw-medium\" title=\"براند يمتد من هويتك الأصيلة\">\n\t<a href=\"https://kunacademy.com/courses/ypi/\">براند يمتد من هويتك الأصيلة</a>\n</h3>\n\n<div class=\"tutor-meta tutor-mt-12 tutor-mb-20\">\n\t\t\t<div>\n\t\t\t<span class=\"tutor-meta-icon tutor-icon-user-line\" area-hidden=\"true\"></span>\n\t\t\t<span class=\"tutor-meta-value\">0</span>\n\t\t</div>\n\t\n\t\t\t<div>\n\t\t\t<span class=\"tutor-icon-clock-line tutor-meta-icon\" area-hidden=\"true\"></span>\n\t\t\t<span class=\"tutor-meta-value\">\n\t\t\t\t 6س\t\t\t</span>\n\t\t</div>\n\t</div>\n\n<div class=\"tutor-meta tutor-mt-auto\">\n\t<div>\n\t\t<a href=\"https://kunacademy.com/profile/samerkuncoaching-com?view=instructor\" class=\"tutor-d-flex\">\n\t\t\t<div class=\"tutor-avatar\"><div class=\"tutor-ratio tutor-ratio-1x1\"><img decoding=\"async\" src=\"https://kunacademy.com/wp-content/uploads/2025/08/Samer-Hassan-MCC-150x150.jpg\" alt=\"سامر حسن\" /> </div></div>\t\t</a>\n\t</div>\n\n\t<div>\n\t\tبواسطة\t\t<a href=\"https://kunacademy.com/profile/samerkuncoaching-com?view=instructor\">سامر حسن</a>\n\n\t\t\t\t\tفي\t\t\t<a href=\"https://kunacademy.com/course-category/%d8%a3%d9%88%d9%86%d9%84%d8%a7%d9%8a%d9%86-%d8%ad%d8%b6%d9%88%d8%b1%d8%a7%d9%8b/?tutor-course-filter-category=92\">أونلاين (حضوراً)</a>, <a href=\"https://kunacademy.com/course-category/%d8%ad%d8%b6%d9%88%d8%b1%d8%a7%d9%8b/?tutor-course-filter-category=98\">حضوراً</a>\t\t\t</div>\n</div>\n\n</div>\n\n<div class=\"tutor-card-footer\">\n\t\t\n<div class=\"list-item-button\">\n\t<a \thref=\"https://kunacademy.com/courses/ypi/lessons/%d9%85%d9%86-%d8%a3%d9%86%d8%aa/\" \n\t\tclass=\"tutor-btn tutor-btn-outline-primary tutor-btn-md tutor-btn-block \" \n\t\tdata-course_id=\"4208\">\n\t\tابدا بالتعلم\t</a>\n\t</div>\n\t</div>\n</div>\n</div>\n\t\t\t\t</div>\n\t\t\t</div>\n\t\t\t</div>\n</div>\n\n\n\n<div class=\"tutor-modal tutor-login-modal\">\n\t<div class=\"tutor-modal-overlay\"></div>\n\t<div class=\"tutor-modal-window tutor-modal-window-sm\">\n\t\t<div class=\"tutor-modal-content tutor-modal-content-white\">\n\t\t\t<button class=\"tutor-iconic-btn tutor-modal-close-o\" data-tutor-modal-close>\n\t\t\t\t<span class=\"tutor-icon-times\" area-hidden=\"true\"></span>\n\t\t\t</button>\n\n\t\t\t<div class=\"tutor-modal-body\">\n\t\t\t\t<div class=\"tutor-py-48\">\n\t\t\t\t\t\t\t\t\t\t<div class=\"tutor-fs-4 tutor-fw-medium tutor-color-black tutor-mb-32\">أهلاً بك مرة أخرى!</div>\n\t\t\t\t\t<form id=\"tutor-login-form\" method=\"post\">\n\t\t<input type=\"hidden\" id=\"_tutor_nonce\" name=\"_tutor_nonce\" value=\"9b238bd147\" /><input type=\"hidden\" name=\"_wp_http_referer\" value=\"/wp-json/wp/v2/courses?per_page=100&#038;page=1\" />\t<input type=\"hidden\" name=\"tutor_action\" value=\"tutor_user_login\" />\n\t<input type=\"hidden\" name=\"redirect_to\" value=\"https://kunacademy.com/wp-json/wp/v2/courses?per_page=100&#038;page=1\" />\n\n\t<div class=\"tutor-mb-20\">\n\t\t<input type=\"text\" class=\"tutor-form-control\" placeholder=\"البريد الالكتروني أو اسم المستخدم\" name=\"log\" value=\"\" size=\"20\" required/>\n\t</div>\n\n\t<div class=\"tutor-mb-32\">\n\t\t<input type=\"password\" class=\"tutor-form-control\" placeholder=\"كلمة المرور\" name=\"pwd\" value=\"\" size=\"20\" required/>\n\t</div>\n\n\t<div class=\"tutor-login-error\"></div>\n\t\t\t<input type=\"hidden\" name=\"timezone\" value=\"Africa/Cairo\" />\n\t\t<script>\n\t\t\tdocument.addEventListener('DOMContentLoaded', function() {\n\t\t\t\tconst timezone = document.querySelector('input[name=\"timezone\"]');\n\t\t\t\tif ( timezone) {\n\t\t\t\t\tconst tz = Intl.DateTimeFormat().resolvedOptions().timeZone;\n\t\t\t\t\ttimezone.value = tz\n\t\t\t\t}\n\t\t\t});\n\t\t</script>\n\t\t\t<div class=\"tutor-d-flex tutor-justify-between tutor-align-center tutor-mb-40\">\n\t\t<div class=\"tutor-form-check\">\n\t\t\t<input id=\"tutor-login-agmnt-1\" type=\"checkbox\" class=\"tutor-form-check-input tutor-bg-black-40\" name=\"rememberme\" value=\"forever\" />\n\t\t\t<label for=\"tutor-login-agmnt-1\" class=\"tutor-fs-7 tutor-color-muted\">\n\t\t\t\tالبقاء متصلا\t\t\t</label>\n\t\t</div>\n\t\t<a href=\"https://kunacademy.com/dashboard/retrieve-password\" class=\"tutor-btn tutor-btn-ghost\">\n\t\t\tنسيت كلمة السر؟\t\t</a>\n\t</div>\n\n\t\t<button type=\"submit\" class=\"tutor-btn tutor-btn-primary tutor-btn-block\">\n\t\tتسجيل الدخول\t</button>\n\t\n\t\t\t\t\t<div class=\"tutor-text-center tutor-fs-6 tutor-color-secondary tutor-mt-20\">\n\t\t\tليس لديك حساب؟&nbsp;\n\t\t\t<a href=\"https://kunacademy.com/student-registration-page/?redirect_to=https://kunacademy.com/wp-json/wp/v2/courses?per_page=100&#038;page=1\" class=\"tutor-btn tutor-btn-link\">\n\t\t\t\tسجّل الآن\t\t\t</a>\n\t\t</div>\n\t\t</form>\n<script>\n\tdocument.addEventListener('DOMContentLoaded', function() {\n\t\tvar { __ } = wp.i18n;\n\t\tvar loginModal = document.querySelector('.tutor-modal.tutor-login-modal');\n\t\tvar errors = [];\n\t\tif (loginModal && errors.length) {\n\t\t\tloginModal.classList.add('tutor-is-active');\n\t\t}\n\t});\n</script>\n\n\t\t\t\t\t\t\t\t\t</div>\n\t\t\t\t\t\t<style>\n\t\t\t#tutor-pro-twitter-login {\n\t\t\t\twidth: 400px; background-color: #00acee; border-color: #00acee; font-weight: bold;\n\t\t\t}\n\t\t</style>\n\t\t<div id=\"tutor-pro-social-authentication\" class=\"tutor-pt-24 tutor-d-flex tutor-flex-column tutor-align-center tutor-border-top-light\" style=\"gap: 10px;\">\n\t\t\t\t\t\t\t\t<div class=\"tutor-d-flex tutor-justify-center\" id=\"tutor-pro-google-authentication\">\n\t\t\t\t\t\t\n\t\t\t\t\t\t\t\t\t\t\t</div>\n\t\t\t\t\t\t\t</div>\n\t\t\t\t\t</div>\n\t\t</div>\n\t</div>\n</div>\n\n",
+      "protected": false
+    },
+    "excerpt": {
+      "rendered": "",
+      "protected": false
+    },
+    "author": 1,
+    "featured_media": 2343,
+    "template": "",
+    "course-category": [
+      92,
+      98
+    ],
+    "course-tag": [
+      94,
+      95,
+      90
+    ],
+    "class_list": [
+      "post-4208",
+      "courses",
+      "type-courses",
+      "status-publish",
+      "has-post-thumbnail",
+      "hentry",
+      "course-category-92",
+      "course-category-98",
+      "course-tag-94",
+      "course-tag-95",
+      "course-tag-90"
+    ],
+    "_links": {
+      "self": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/courses/4208",
+          "targetHints": {
+            "allow": [
+              "GET"
+            ]
+          }
+        }
+      ],
+      "collection": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/courses"
+        }
+      ],
+      "about": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/types/courses"
+        }
+      ],
+      "author": [
+        {
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/users/1"
+        }
+      ],
+      "version-history": [
+        {
+          "count": 0,
+          "href": "https://kunacademy.com/wp-json/wp/v2/courses/4208/revisions"
+        }
+      ],
+      "wp:featuredmedia": [
+        {
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/media/2343"
+        }
+      ],
+      "wp:attachment": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/media?parent=4208"
+        }
+      ],
+      "wp:term": [
+        {
+          "taxonomy": "course-category",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/course-category?post=4208"
+        },
+        {
+          "taxonomy": "course-tag",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/course-tag?post=4208"
+        }
+      ],
+      "curies": [
+        {
+          "name": "wp",
+          "href": "https://api.w.org/{rel}",
+          "templated": true
+        }
+      ]
+    }
+  },
+  {
+    "id": 4149,
+    "date": "2025-06-27T09:52:09",
+    "date_gmt": "2025-06-27T06:52:09",
+    "guid": {
+      "rendered": "https://kunacademy.com/?post_type=courses&#038;p=4149"
+    },
+    "modified": "2025-06-27T06:52:10",
+    "modified_gmt": "2025-06-27T06:52:10",
+    "slug": "stf",
+    "status": "publish",
+    "type": "courses",
+    "link": "https://kunacademy.com/courses/stf/",
+    "title": {
+      "rendered": "رحلة كوتش ‏التفكير الحسي المربي – المستوى التأسيسي"
+    },
+    "content": {
+      "rendered": "",
+      "protected": false
+    },
+    "excerpt": {
+      "rendered": "",
+      "protected": false
+    },
+    "author": 1,
+    "featured_media": 4035,
+    "template": "",
+    "course-category": [
+      92
+    ],
+    "course-tag": [
+      89,
+      93,
+      94,
+      97,
+      96,
+      95,
+      90
+    ],
+    "class_list": [
+      "post-4149",
+      "courses",
+      "type-courses",
+      "status-publish",
+      "has-post-thumbnail",
+      "hentry",
+      "course-category-92",
+      "course-tag-89",
+      "course-tag-93",
+      "course-tag-94",
+      "course-tag-97",
+      "course-tag-96",
+      "course-tag-95",
+      "course-tag-90"
+    ],
+    "_links": {
+      "self": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/courses/4149",
+          "targetHints": {
+            "allow": [
+              "GET"
+            ]
+          }
+        }
+      ],
+      "collection": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/courses"
+        }
+      ],
+      "about": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/types/courses"
+        }
+      ],
+      "author": [
+        {
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/users/1"
+        }
+      ],
+      "version-history": [
+        {
+          "count": 0,
+          "href": "https://kunacademy.com/wp-json/wp/v2/courses/4149/revisions"
+        }
+      ],
+      "wp:featuredmedia": [
+        {
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/media/4035"
+        }
+      ],
+      "wp:attachment": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/media?parent=4149"
+        }
+      ],
+      "wp:term": [
+        {
+          "taxonomy": "course-category",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/course-category?post=4149"
+        },
+        {
+          "taxonomy": "course-tag",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/course-tag?post=4149"
+        }
+      ],
+      "curies": [
+        {
+          "name": "wp",
+          "href": "https://api.w.org/{rel}",
+          "templated": true
+        }
+      ]
+    }
+  },
+  {
+    "id": 4101,
+    "date": "2025-06-27T09:06:02",
+    "date_gmt": "2025-06-27T06:06:02",
+    "guid": {
+      "rendered": "https://kunacademy.com/?post_type=courses&#038;p=4101"
+    },
+    "modified": "2025-06-27T06:06:03",
+    "modified_gmt": "2025-06-27T06:06:03",
+    "slug": "st-intro",
+    "status": "publish",
+    "type": "courses",
+    "link": "https://kunacademy.com/courses/st-intro/",
+    "title": {
+      "rendered": "( مقدمة) رحلة كوتش التفكير الحسي"
+    },
+    "content": {
+      "rendered": "<p>منهجية تعيدك إلى لحظة الآن، وتحرّر وعيك الذهني والجسدي.</p>\n",
+      "protected": false
+    },
+    "excerpt": {
+      "rendered": "<p>منهجية تعيدك إلى لحظة الآن، وتحرّر وعيك الذهني والجسدي.</p>\n",
+      "protected": false
+    },
+    "author": 1,
+    "featured_media": 4035,
+    "template": "",
+    "course-category": [
+      88
+    ],
+    "course-tag": [
+      89,
+      90
+    ],
+    "class_list": [
+      "post-4101",
+      "courses",
+      "type-courses",
+      "status-publish",
+      "has-post-thumbnail",
+      "hentry",
+      "course-category-88",
+      "course-tag-89",
+      "course-tag-90"
+    ],
+    "_links": {
+      "self": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/courses/4101",
+          "targetHints": {
+            "allow": [
+              "GET"
+            ]
+          }
+        }
+      ],
+      "collection": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/courses"
+        }
+      ],
+      "about": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/types/courses"
+        }
+      ],
+      "author": [
+        {
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/users/1"
+        }
+      ],
+      "version-history": [
+        {
+          "count": 0,
+          "href": "https://kunacademy.com/wp-json/wp/v2/courses/4101/revisions"
+        }
+      ],
+      "wp:featuredmedia": [
+        {
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/media/4035"
+        }
+      ],
+      "wp:attachment": [
+        {
+          "href": "https://kunacademy.com/wp-json/wp/v2/media?parent=4101"
+        }
+      ],
+      "wp:term": [
+        {
+          "taxonomy": "course-category",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/course-category?post=4101"
+        },
+        {
+          "taxonomy": "course-tag",
+          "embeddable": true,
+          "href": "https://kunacademy.com/wp-json/wp/v2/course-tag?post=4101"
+        }
+      ],
+      "curies": [
+        {
+          "name": "wp",
+          "href": "https://api.w.org/{rel}",
+          "templated": true
+        }
+      ]
+    }
+  }
+]

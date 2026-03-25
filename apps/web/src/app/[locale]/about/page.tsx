@@ -3,8 +3,10 @@ import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
 import { Button } from '@kunacademy/ui/button';
 import { Card } from '@kunacademy/ui/card';
-import { FAQSection, faqJsonLd } from '@kunacademy/ui/faq-section';
+import { FAQSection } from '@kunacademy/ui/faq-section';
+import { faqJsonLd } from '@kunacademy/ui/faq-jsonld';
 import { aboutFaqs } from '@/data/faqs';
+import { GeometricPattern } from '@kunacademy/ui/patterns';
 
 export default async function AboutPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
@@ -14,21 +16,22 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
   return (
     <main>
       {/* ── HERO ── */}
-      <Section variant="surface" pattern="flower-of-life" hero>
-        <div className="max-w-3xl mx-auto text-center">
-          <p className="text-sm font-medium tracking-widest uppercase text-[var(--color-accent)] mb-4">
+      <section className="relative overflow-hidden py-20 md:py-28" style={{ background: 'linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-600) 100%)' }}>
+        <GeometricPattern pattern="flower-of-life" opacity={0.08} fade="both" />
+        <div className="relative z-10 mx-auto max-w-[var(--max-content-width)] px-4 md:px-6 text-center animate-fade-up">
+          <p className="text-sm font-medium tracking-[0.15em] uppercase text-[var(--color-accent-200)] mb-4">
             {isAr ? 'عن كُنْ' : 'About Kun'}
           </p>
-          <Heading level={1} className="!text-[var(--color-primary)] !leading-[1.15]">
+          <h1 className="text-[2.25rem] md:text-[3.5rem] font-bold text-[#FFF5E9] leading-[1.1]" style={{ fontFamily: isAr ? 'var(--font-arabic-heading)' : 'var(--font-english-heading)' }}>
             {isAr ? 'نبني الحضور، ونترك الأثر.' : 'We build presence, and leave a lasting impact.'}
-          </Heading>
-          <p className="mt-6 text-lg text-[var(--color-neutral-700)] leading-relaxed">
+          </h1>
+          <p className="mt-6 text-white/65 text-lg md:text-xl leading-relaxed max-w-2xl mx-auto">
             {isAr
               ? 'كُنْ، هي مساحة تربوية مأصّلة تُرافقك بخطى واعية، لا وصفات جاهزة.'
               : 'Kun is a rooted educational space that walks with you mindfully — no ready-made formulas.'}
           </p>
         </div>
-      </Section>
+      </section>
 
       {/* ── WHO WE ARE ── */}
       <Section variant="white">
@@ -43,7 +46,7 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
 
       {/* ── WHY KUN — Vision & Mission Cards ── */}
       <Section variant="surface-high" pattern="girih">
-        <div className="text-center mb-10">
+        <div className="text-center mb-10 animate-fade-up">
           <Heading level={2}>
             {isAr ? 'لماذا كُنْ؟' : 'Why Kun?'}
           </Heading>
@@ -53,7 +56,7 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
               : 'Because only roots give you stability and growth.'}
           </p>
         </div>
-        <div className="grid md:grid-cols-2 gap-8">
+        <div className="grid md:grid-cols-2 gap-8 stagger-children">
           <Card accent className="p-8">
             <div className="flex items-center gap-3 mb-4">
               <div className="h-10 w-10 rounded-full bg-[var(--color-primary)] flex items-center justify-center shrink-0">
@@ -89,7 +92,7 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
 
       {/* ── STATS — Primary gradient ── */}
       <Section variant="primary" pattern="eight-star">
-        <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
+        <div className="grid grid-cols-2 gap-8 md:grid-cols-4 stagger-children">
           {[
             { num: '+٥٠٠', numEn: '500+', ar: 'كوتش متخرّج', en: 'Coaches graduated' },
             { num: '٤', numEn: '4', ar: 'قارات', en: 'Continents' },

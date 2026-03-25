@@ -1,7 +1,10 @@
 import { setRequestLocale } from 'next-intl/server';
+import { PageHero } from '@/components/page-hero';
+
 import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
-import { FAQSection, faqJsonLd } from '@kunacademy/ui/faq-section';
+import { FAQSection } from '@kunacademy/ui/faq-section';
+import { faqJsonLd } from '@kunacademy/ui/faq-jsonld';
 import {
   programsFaqs,
   stceFaqs,
@@ -32,14 +35,16 @@ export default async function FAQPage({ params }: { params: Promise<{ locale: st
 
   return (
     <main>
-      <Section>
-        <Heading level={1}>{isAr ? 'الأسئلة الشائعة' : 'Frequently Asked Questions'}</Heading>
-        <p className="mt-4 text-[var(--color-neutral-700)]">
-          {isAr
-            ? 'إجابات على الأسئلة الأكثر شيوعًا حول أكاديمية كُن وبرامجها.'
-            : 'Answers to the most common questions about Kun Academy and its programs.'}
-        </p>
-      </Section>
+      <PageHero
+        locale={locale}
+        titleAr="الأسئلة الشائعة"
+        titleEn="Frequently Asked Questions"
+        subtitleAr="إجابات على الأسئلة الأكثر شيوعًا حول أكاديمية كُن وبرامجنا"
+        subtitleEn="Answers to the most common questions about Kun Academy and our programs"
+        eyebrowAr="الدعم"
+        eyebrowEn="Support"
+        pattern="flower-of-life"
+      />
 
       <Section variant="white">
         <FAQSection items={allFaqs} locale={locale} />

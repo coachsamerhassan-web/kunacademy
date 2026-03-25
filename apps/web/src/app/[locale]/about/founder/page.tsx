@@ -1,4 +1,5 @@
 import { setRequestLocale } from 'next-intl/server';
+import { GeometricPattern } from '@kunacademy/ui/patterns';
 import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
 import { Button } from '@kunacademy/ui/button';
@@ -12,28 +13,17 @@ export default async function FounderPage({ params }: { params: Promise<{ locale
   return (
     <main>
       {/* ── HERO ── */}
-      <Section variant="surface" pattern="eight-star" hero>
-        <div className="flex flex-col md:flex-row items-center gap-8 md:gap-14">
-          <div className="relative shrink-0">
-            <div className="relative w-48 h-48 rounded-2xl overflow-hidden bg-gradient-to-br from-[var(--color-primary-100)] to-[var(--color-primary-200)]">
-              <div className="w-full h-full flex items-center justify-center text-6xl text-[var(--color-primary-300)] font-bold">
-                SH
-              </div>
-            </div>
-          </div>
-          <div className="flex-1 text-center md:text-start">
-            <p className="text-sm font-medium tracking-widest uppercase text-[var(--color-accent)] mb-4">
-              {isAr ? 'المؤسس' : 'Founder'}
-            </p>
-            <Heading level={1} className="!text-[var(--color-primary)] !leading-[1.15]">
-              {isAr ? 'سامر حسن' : 'Samer Hassan'}
-            </Heading>
-            <p className="mt-2 text-lg font-medium text-[var(--color-accent)]">
-              {isAr ? 'مؤسس أكاديمية كُن ومنهجية التفكير الحسّي®' : 'Founder of Kun Academy & Somatic Thinking®'}
-            </p>
-          </div>
+      <section className="relative overflow-hidden py-16 md:py-24" style={{ background: 'linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-600) 100%)' }}>
+        <GeometricPattern pattern="flower-of-life" opacity={0.08} fade="both" />
+        <div className="relative z-10 mx-auto max-w-[var(--max-content-width)] px-4 md:px-6 text-center">
+          <h1 className="text-[2.25rem] md:text-[3.5rem] font-bold text-[#FFF5E9] leading-[1.1]" style={{ fontFamily: isAr ? 'var(--font-arabic-heading)' : 'var(--font-english-heading)' }}>
+            {isAr ? 'المؤسس' : 'Founder'}
+          </h1>
+          <p className="mt-4 text-white/65 max-w-2xl mx-auto text-lg md:text-xl">
+            {isAr ? 'المؤسس' : 'Founder'}
+          </p>
         </div>
-      </Section>
+      </section>
 
       {/* ── CREDENTIALS — Cards on white ── */}
       <Section variant="white">

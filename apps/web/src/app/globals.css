@@ -76,13 +76,36 @@
   --font-english-heading: var(--font-stix), serif;
   --font-english-body: var(--font-inter), sans-serif;
 
-  --text-body: 18px;
-  --text-h1: 48px;
-  --text-h2: 40px;
-  --text-h3: 36px;
-  --text-h4: 30px;
-  --text-h5: 24px;
-  --text-h6: 20px;
+  /* Typography — Shahira's 10-level scale (Mobile-first, Major Third ~1.25) */
+  --text-hero: 2.5rem;
+  --text-hero-ar: 2.75rem;
+  --text-page-title: 1.875rem;
+  --text-page-title-ar: 2rem;
+  --text-section: 1.5rem;
+  --text-section-ar: 1.625rem;
+  --text-card-title: 1.125rem;
+  --text-card-title-ar: 1.25rem;
+  --text-lead: 1.125rem;
+  --text-body: 1rem;
+  --text-small: 0.8125rem;
+  --text-button: 0.9375rem;
+  --text-nav: 0.875rem;
+  --text-footer-size: 0.8125rem;
+
+  /* Color tokens for typography */
+  --text-primary: #2C2C2D;
+  --text-on-dark: #FFF5E9;
+  --text-accent: #474099;
+  --text-muted: #6B6B6C;
+  --text-cta: #FFFFFF;
+
+  /* Legacy aliases */
+  --text-h1: 1.875rem;
+  --text-h2: 1.5rem;
+  --text-h3: 1.125rem;
+  --text-h4: 1rem;
+  --text-h5: 0.875rem;
+  --text-h6: 0.8125rem;
 
   /* Spacing */
   --section-padding: 80px;
@@ -188,4 +211,368 @@ html {
 ::selection {
   background: var(--color-primary-100);
   color: var(--color-primary-800);
+}
+
+
+/* ============================================
+   Responsive Typography Scale (Desktop)
+   ============================================ */
+@media (min-width: 768px) {
+  :root {
+    --text-hero: 4rem;
+    --text-hero-ar: 4.5rem;
+    --text-page-title: 2.75rem;
+    --text-page-title-ar: 3rem;
+    --text-section: 2rem;
+    --text-section-ar: 2.25rem;
+    --text-card-title: 1.375rem;
+    --text-card-title-ar: 1.5rem;
+    --text-lead: 1.25rem;
+    --text-body: 1rem;
+    --text-small: 0.875rem;
+    --text-footer-size: 0.875rem;
+  }
+}
+
+/* Arabic typography overrides */
+html[lang="ar"] {
+  --text-hero: var(--text-hero-ar);
+  --text-page-title: var(--text-page-title-ar);
+  --text-section: var(--text-section-ar);
+  --text-card-title: var(--text-card-title-ar);
+}
+
+html[lang="ar"] body {
+  line-height: 1.7;
+}
+
+html[lang="ar"] .text-lead {
+  font-size: 1.125rem;
+}
+
+@media (min-width: 768px) {
+  html[lang="ar"] .text-lead {
+    font-size: 1.375rem;
+  }
+}
+
+/* ============================================
+   Animation Utilities
+   ============================================ */
+
+/* Scroll-triggered animations — progressive enhancement
+   Content is visible by default. JS adds .scroll-animated to <html>
+   which enables the hidden-until-observed states. */
+
+/* Only hide elements when ScrollObserver is active */
+html.scroll-animated .animate-fade-up {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.7s ease-out, transform 0.7s ease-out;
+}
+html.scroll-animated .animate-fade-up.is-visible,
+.animate-fade-up.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Staggered children */
+html.scroll-animated .stagger-children > * {
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity 0.5s ease-out, transform 0.5s ease-out;
+}
+html.scroll-animated .stagger-children.is-visible > *:nth-child(1) { transition-delay: 0ms; opacity: 1; transform: translateY(0); }
+html.scroll-animated .stagger-children.is-visible > *:nth-child(2) { transition-delay: 100ms; opacity: 1; transform: translateY(0); }
+html.scroll-animated .stagger-children.is-visible > *:nth-child(3) { transition-delay: 200ms; opacity: 1; transform: translateY(0); }
+html.scroll-animated .stagger-children.is-visible > *:nth-child(4) { transition-delay: 300ms; opacity: 1; transform: translateY(0); }
+html.scroll-animated .stagger-children.is-visible > *:nth-child(5) { transition-delay: 400ms; opacity: 1; transform: translateY(0); }
+html.scroll-animated .stagger-children.is-visible > *:nth-child(6) { transition-delay: 500ms; opacity: 1; transform: translateY(0); }
+
+/* Slide in from sides */
+html.scroll-animated .animate-slide-start {
+  opacity: 0;
+  transform: translateX(-40px);
+  transition: opacity 0.7s ease-out, transform 0.7s ease-out;
+}
+html.scroll-animated [dir="rtl"] .animate-slide-start,
+html[dir="rtl"].scroll-animated .animate-slide-start {
+  transform: translateX(40px);
+}
+html.scroll-animated .animate-slide-start.is-visible,
+.animate-slide-start.is-visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+html.scroll-animated .animate-slide-end {
+  opacity: 0;
+  transform: translateX(40px);
+  transition: opacity 0.7s ease-out, transform 0.7s ease-out;
+}
+html.scroll-animated [dir="rtl"] .animate-slide-end,
+html[dir="rtl"].scroll-animated .animate-slide-end {
+  transform: translateX(-40px);
+}
+html.scroll-animated .animate-slide-end.is-visible,
+.animate-slide-end.is-visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* Scale reveal */
+html.scroll-animated .animate-scale {
+  opacity: 0;
+  transform: scale(0.92);
+  transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+}
+html.scroll-animated .animate-scale.is-visible,
+.animate-scale.is-visible {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* Smooth counter animation */
+@keyframes count-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Subtle float animation for decorative elements */
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+/* Pulse glow for CTAs */
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 4px 16px rgba(244, 126, 66, 0.25); }
+  50% { box-shadow: 0 8px 32px rgba(244, 126, 66, 0.45); }
+}
+.animate-pulse-glow {
+  animation: pulse-glow 3s ease-in-out 2;
+}
+
+/* Mobile menu drawer animation */
+.mobile-menu-enter {
+  animation: slide-down 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+@keyframes slide-down {
+  from { opacity: 0; transform: translateY(-12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.mobile-menu-item {
+  opacity: 0;
+  transform: translateY(8px);
+  animation: fade-in-item 0.3s ease-out forwards;
+}
+@keyframes fade-in-item {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+
+/* ============================================
+   Hero Cinematic Entrance
+   ============================================ */
+
+@keyframes hero-veil-left {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-101%); }
+}
+@keyframes hero-veil-right {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(101%); }
+}
+
+@keyframes hero-bg-zoom {
+  0% { transform: scale(1.12); }
+  100% { transform: scale(1.0); }
+}
+
+@keyframes hero-word-rise {
+  0% { transform: translateY(110%); opacity: 0; }
+  60% { opacity: 1; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes hero-tagline-in {
+  0% { opacity: 0; transform: scale(0.92); filter: blur(4px); }
+  100% { opacity: 1; transform: scale(1); filter: blur(0); }
+}
+
+@keyframes hero-deblur {
+  0% { opacity: 0; filter: blur(12px); transform: translateY(4px); }
+  40% { opacity: 0.6; }
+  100% { opacity: 1; filter: blur(0); transform: translateY(0); }
+}
+
+@keyframes hero-cta-spring {
+  0% { opacity: 0; transform: translateY(24px) scale(0.9); }
+  60% { opacity: 1; transform: translateY(-4px) scale(1.02); }
+  80% { transform: translateY(1px) scale(0.995); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes hero-photo-enter {
+  0% { opacity: 0; transform: translateX(60px) scale(0.95); }
+  100% { opacity: 1; transform: translateX(0) scale(1); }
+}
+@keyframes hero-photo-enter-rtl {
+  0% { opacity: 0; transform: translateX(-60px) scale(0.95); }
+  100% { opacity: 1; transform: translateX(0) scale(1); }
+}
+
+@keyframes hero-badge-pop {
+  0% { opacity: 0; transform: translateX(-50%) scale(0) translateY(10px); }
+  70% { opacity: 1; transform: translateX(-50%) scale(1.1) translateY(-2px); }
+  100% { opacity: 1; transform: translateX(-50%) scale(1) translateY(0); }
+}
+
+@keyframes hero-stroke-draw {
+  0% { stroke-dashoffset: 2000; opacity: 0; }
+  10% { opacity: 0.25; }
+  100% { stroke-dashoffset: 0; opacity: 0.25; }
+}
+@keyframes hero-stroke-draw-inner {
+  0% { stroke-dashoffset: 1400; opacity: 0; }
+  10% { opacity: 0.12; }
+  100% { stroke-dashoffset: 0; opacity: 0.12; }
+}
+@keyframes hero-stroke-draw-circle {
+  0% { stroke-dashoffset: 975; opacity: 0; }
+  10% { opacity: 0.1; }
+  100% { stroke-dashoffset: 0; opacity: 0.1; }
+}
+
+@keyframes hero-line-sweep {
+  0% { transform: scaleX(0); opacity: 0; }
+  30% { opacity: 1; }
+  100% { transform: scaleX(1); opacity: 1; }
+}
+
+@keyframes hero-light-seam {
+  0% { opacity: 0; }
+  50% { opacity: 0.6; }
+  100% { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-veil-panel,
+  .hero-bg-cinematic,
+  .hero-word-mask span,
+  .hero-tagline,
+  .hero-subtitle,
+  .hero-cta,
+  .hero-photo-frame,
+  .hero-badge,
+  .hero-scroll-indicator {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+    filter: none !important;
+  }
+  .hero-veil-panel {
+    display: none !important;
+  }
+}
+
+/* Gradient text utility */
+.text-gradient-primary {
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-400) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Hero shimmer effect */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.animate-shimmer {
+  background: linear-gradient(90deg, transparent 0%, rgba(255,245,233,0.08) 50%, transparent 100%);
+  background-size: 200% 100%;
+  animation: shimmer 8s linear infinite;
+}
+
+/* ============================================
+   Page Load Transitions
+   ============================================ */
+
+/* Smooth page entrance */
+main {
+  animation: page-enter 0.5s ease-out;
+}
+@keyframes page-enter {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Focus ring improvement */
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+/* Smooth anchor scrolling offset for sticky header */
+html {
+  scroll-padding-top: 80px;
+}
+
+/* Image loading skeleton */
+img[loading="lazy"] {
+  background: linear-gradient(90deg, var(--color-neutral-100) 25%, var(--color-neutral-50) 50%, var(--color-neutral-100) 75%);
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s ease-in-out infinite;
+}
+@keyframes skeleton-loading {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+img[loading="lazy"][src] {
+  background: none;
+  animation: none;
+}
+
+/* Link hover underline animation */
+a.link-hover-slide {
+  position: relative;
+}
+a.link-hover-slide::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background: var(--color-primary);
+  transition: width 0.3s ease-out;
+}
+a.link-hover-slide:hover::after {
+  width: 100%;
+}
+
+/* Card hover lift — unified */
+.card-lift {
+  transition: transform 0.5s ease-out, box-shadow 0.5s ease-out;
+}
+.card-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 40px rgba(71, 64, 153, 0.1);
+}
+
+/* Text balance for headings */
+h1, h2, h3 {
+  text-wrap: balance;
+}
+
+/* Better RTL letter-spacing (Arabic doesn't use letter-spacing) */
+[dir="rtl"] h1, [dir="rtl"] h2, [dir="rtl"] h3,
+[dir="rtl"] h4, [dir="rtl"] h5, [dir="rtl"] h6 {
+  letter-spacing: 0 !important;
 }

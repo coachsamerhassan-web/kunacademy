@@ -14,6 +14,7 @@ import type {
   NavGroup,
   ServiceCategory,
   PathfinderQuestion,
+  Testimonial,
 } from './types';
 
 /**
@@ -104,6 +105,15 @@ export interface ContentProvider {
 
   /** Get child questions for a given parent answer ID */
   getPathfinderChildren(parentAnswerId: string): Promise<PathfinderQuestion[]>;
+
+
+  // ── Sheet 7: Testimonials ────────────────────────────────────────────
+
+  /** Get all published testimonials */
+  getAllTestimonials(): Promise<Testimonial[]>;
+
+  /** Get featured testimonials (for homepage carousel) */
+  getFeaturedTestimonials(): Promise<Testimonial[]>;
 
   // ── Cache Control ─────────────────────────────────────────────────────
 

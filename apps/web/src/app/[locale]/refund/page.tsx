@@ -1,4 +1,6 @@
 import { setRequestLocale } from 'next-intl/server';
+import { PageHero } from '@/components/page-hero';
+
 import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
 
@@ -9,6 +11,17 @@ export default async function RefundPage({ params }: { params: Promise<{ locale:
 
   return (
     <main>
+
+      <PageHero
+        locale={locale}
+        titleAr="سياسة الاسترداد"
+        titleEn="Refund Policy"
+        subtitleAr="سياستنا في الإلغاء والاسترداد"
+        subtitleEn="Our cancellation and refund policy"
+        
+        
+        pattern="flower-of-life"
+      />
       <Section>
         <div className="mx-auto max-w-3xl">
           <Heading level={1}>{isAr ? 'سياسة الاسترداد' : 'Refund Policy'}</Heading>

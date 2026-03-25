@@ -1,4 +1,6 @@
 import { setRequestLocale } from 'next-intl/server';
+import { PageHero } from '@/components/page-hero';
+
 import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
 
@@ -9,6 +11,17 @@ export default async function PrivacyPage({ params }: { params: Promise<{ locale
 
   return (
     <main>
+
+      <PageHero
+        locale={locale}
+        titleAr="سياسة الخصوصية"
+        titleEn="Privacy Policy"
+        subtitleAr="كيف نحمي بياناتك ونحترم خصوصيتك"
+        subtitleEn="How we protect your data and respect your privacy"
+        
+        
+        pattern="flower-of-life"
+      />
       <Section>
         <div className="mx-auto max-w-3xl">
           <Heading level={1}>{isAr ? 'سياسة الخصوصية' : 'Privacy Policy'}</Heading>

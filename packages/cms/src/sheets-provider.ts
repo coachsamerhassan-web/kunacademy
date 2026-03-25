@@ -17,6 +17,7 @@ import type {
   ServiceCategory,
   PathfinderQuestion,
   PathfinderAnswer,
+  Testimonial,
 } from './types';
 
 // ── Config ──────────────────────────────────────────────────────────────────
@@ -34,6 +35,7 @@ interface SheetConfig {
     team: string;
     settings: string;
     pathfinder: string;
+    testimonials: string;
   };
   /** Cache TTL in milliseconds (default: 5 minutes for ISR alignment) */
   cacheTtlMs?: number;
@@ -300,6 +302,19 @@ export class GoogleSheetsProvider implements ContentProvider {
   async getPathfinderChildren(parentAnswerId: string): Promise<PathfinderQuestion[]> {
     const all = await this.loadPathfinder();
     return all.filter((q) => q.parent_answer_id === parentAnswerId);
+  }
+
+
+  // ── Sheet 7: Testimonials ─────────────────────────────────────────────
+
+  async getAllTestimonials(): Promise<Testimonial[]> {
+    const rows = await this.loadSheet<Testimonial>('testimonials');
+    return this.published(rows).sort((a, b) => a.display_order - b.display_order);
+  }
+
+  async getFeaturedTestimonials(): Promise<Testimonial[]> {
+    const all = await this.getAllTestimonials();
+    return all.filter((t) => t.is_featured);
   }
 
   // ── Cache ─────────────────────────────────────────────────────────────

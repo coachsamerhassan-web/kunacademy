@@ -1,4 +1,6 @@
 import { setRequestLocale } from 'next-intl/server';
+import { PageHero } from '@/components/page-hero';
+
 import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
 import { QuizWidget } from './quiz-widget';
@@ -10,6 +12,17 @@ export default async function QuizPage({ params }: { params: Promise<{ locale: s
 
   return (
     <main>
+
+      <PageHero
+        locale={locale}
+        titleAr="اختبار تحديد المسار"
+        titleEn="Path Assessment Quiz"
+        subtitleAr="أجب على بضعة أسئلة لنرشدك للبرنامج المناسب"
+        subtitleEn="Answer a few questions and we'll guide you to the right program"
+        
+        
+        pattern="girih"
+      />
       <Section variant="default">
         <div className="text-center max-w-2xl mx-auto">
           <Heading level={1}>{isAr ? 'اكتشف برنامجك المناسب' : 'Find Your Perfect Program'}</Heading>

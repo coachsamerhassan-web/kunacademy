@@ -33,3 +33,7 @@ coverage/
 playwright-report/
 test-results/
 credentials/
+.vercel
+
+# Root-level public/ is unused in monorepo — Next.js serves from apps/web/public/
+/public/

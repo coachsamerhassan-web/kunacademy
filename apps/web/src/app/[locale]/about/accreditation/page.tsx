@@ -1,4 +1,5 @@
 import { setRequestLocale } from 'next-intl/server';
+import { GeometricPattern } from '@kunacademy/ui/patterns';
 import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
 import { Button } from '@kunacademy/ui/button';
@@ -12,21 +13,17 @@ export default async function AccreditationPage({ params }: { params: Promise<{ 
   return (
     <main>
       {/* ── HERO ── */}
-      <Section variant="surface" pattern="girih" hero>
-        <div className="max-w-3xl mx-auto text-center">
-          <p className="text-sm font-medium tracking-widest uppercase text-[var(--color-accent)] mb-4">
+      <section className="relative overflow-hidden py-16 md:py-24" style={{ background: 'linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-600) 100%)' }}>
+        <GeometricPattern pattern="flower-of-life" opacity={0.08} fade="both" />
+        <div className="relative z-10 mx-auto max-w-[var(--max-content-width)] px-4 md:px-6 text-center">
+          <h1 className="text-[2.25rem] md:text-[3.5rem] font-bold text-[#FFF5E9] leading-[1.1]" style={{ fontFamily: isAr ? 'var(--font-arabic-heading)' : 'var(--font-english-heading)' }}>
+            {isAr ? 'معايير عالمية' : 'Global Standards'}
+          </h1>
+          <p className="mt-4 text-white/65 max-w-2xl mx-auto text-lg md:text-xl">
             {isAr ? 'معايير عالمية' : 'Global Standards'}
           </p>
-          <Heading level={1} className="!text-[var(--color-primary)] !leading-[1.15]">
-            {isAr ? 'الاعتماد الدولي' : 'ICF Accreditation'}
-          </Heading>
-          <p className="mt-6 text-lg text-[var(--color-neutral-700)] leading-relaxed">
-            {isAr
-              ? 'برامج أكاديمية كُن معتمدة من الاتحاد الدولي للكوتشنغ (ICF) — المعيار العالمي الأعلى في مهنة الكوتشنغ.'
-              : 'Kun Academy programs are accredited by the International Coaching Federation (ICF) — the highest global standard in the coaching profession.'}
-          </p>
         </div>
-      </Section>
+      </section>
 
       {/* ── LEVELS — Cards on white ── */}
       <Section variant="white">

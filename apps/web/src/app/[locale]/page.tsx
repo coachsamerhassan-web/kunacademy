@@ -1,119 +1,58 @@
 import { setRequestLocale } from 'next-intl/server';
+import { GeometricPattern } from '@kunacademy/ui/patterns';
 import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
 import { Button } from '@kunacademy/ui/button';
 import { TrustBar } from '@kunacademy/ui/trust-bar';
-import { TestimonialCard } from '@kunacademy/ui/card';
 import { cms, contentGetter } from '@kunacademy/cms';
 import { TreeNarrative, TreePhase } from '@/components/tree-narrative';
+import { HeroSection } from '@/components/hero-section';
+import { StatsSection } from '@/components/stats-section';
+import { ProgramPathway } from '@/components/program-pathway';
+import { FounderSection } from '@/components/founder-section';
+import { CTASection } from '@/components/cta-section';
+import { TestimonialsShowcase } from '@/components/testimonials-showcase';
 
 export default async function HomePage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   setRequestLocale(locale);
   const isAr = locale === 'ar';
 
-  // ── CMS: fetch page content from Sheet 1 ──
+  // CMS: fetch page content from Sheet
   const sections = await cms.getPageContent('home');
   const t = contentGetter(sections, locale);
 
+  // Fetch testimonials from CMS (Sheet 7: Testimonials)
+  let cmsTestimonials: { id: string; authorName: string; content: string; program: string; role?: string; location?: string; photoUrl?: string; videoUrl?: string }[] = [];
+  try {
+    const rawTestimonials = await cms.getFeaturedTestimonials();
+    cmsTestimonials = rawTestimonials.map((t) => ({
+      id: t.id,
+      authorName: isAr ? t.name_ar : t.name_en,
+      content: isAr ? t.content_ar : t.content_en,
+      program: t.program,
+      role: isAr ? t.role_ar : t.role_en,
+      location: isAr ? t.location_ar : t.location_en,
+      photoUrl: t.photo_url || undefined,
+      videoUrl: t.video_url || undefined,
+    }));
+  } catch {
+    // CMS not configured yet — fallback data in component handles this
+  }
+
   return (
-    <main>
-      {/* ── HERO — Editorial asymmetric layout per Stitch ── */}
-      <Section variant="surface" pattern="flower-of-life" hero>
-        <div className="flex flex-col md:flex-row items-center gap-8 md:gap-16">
-          {/* Text side — asymmetric, editorial */}
-          <div className="flex-1 text-center md:text-start">
-            <p className="text-sm font-medium tracking-widest uppercase text-[var(--color-accent)] mb-4">
-              {isAr ? 'أكاديمية كُن للكوتشينج' : 'Kun Coaching Academy'}
-            </p>
-            <Heading level={1} className="!text-[var(--color-primary)] !leading-[1.15]">
-              {t('hero', 'title')}
-            </Heading>
-            <p className="mt-6 text-lg text-[var(--color-neutral-700)] max-w-xl leading-relaxed">
-              {t('hero', 'subtitle')}
-            </p>
-            <div className="mt-8 flex flex-wrap justify-center md:justify-start gap-4">
-              <Button variant="primary" size="lg">
-                {t('hero', 'cta', isAr ? 'ابدأ رحلتك' : 'Start Your Journey')}
-              </Button>
-              <Button variant="secondary" size="lg">
-                {isAr ? 'استكشف البرامج' : 'Explore Programs'}
-              </Button>
-            </div>
-          </div>
-          {/* Visual side — geometric accent */}
-          <div className="hidden md:flex shrink-0 w-[360px] h-[360px] items-center justify-center relative">
-            {/* Decorative eight-pointed star */}
-            <div
-              className="absolute inset-0 opacity-10"
-              style={{
-                backgroundImage: `url("data:image/svg+xml,${encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg' width='360' height='360' viewBox='0 0 360 360'><path d='M180 0l50.3 129.7L360 180l-129.7 50.3L180 360l-50.3-129.7L0 180l129.7-50.3z' fill='#474099'/></svg>")}")`,
-                backgroundRepeat: 'no-repeat',
-                backgroundPosition: 'center',
-                backgroundSize: '100%',
-              }}
-              aria-hidden="true"
-            />
-            {/* Founder photo placeholder — to be replaced with actual photo */}
-            <div className="relative z-10 w-64 h-64 rounded-2xl overflow-hidden bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-primary-600)] flex items-center justify-center">
-              <span className="text-7xl font-bold text-white/20">SH</span>
-            </div>
-          </div>
-        </div>
-      </Section>
+    <>
+      {/* ── HERO — Full-viewport with dark gradient overlay ── */}
+      <HeroSection locale={locale} />
 
       {/* ── TRUST BAR ── */}
       <TrustBar locale={locale} />
 
-      {/* ── PROGRAM PATHWAY — Tonal stacking ── */}
-      <Section variant="surface-high" pattern="girih">
-        <div className="text-center mb-12">
-          <Heading level={2}>
-            {t('journey', 'title', isAr ? 'مسار التطوّر' : 'Your Growth Pathway')}
-          </Heading>
-          <p className="mt-4 text-[var(--color-neutral-600)] max-w-2xl mx-auto">
-            {t('journey', 'subtitle', isAr
-              ? 'من الاكتشاف المجاني إلى الشهادات المعتمدة — اختر المسار الذي يناسبك'
-              : 'From free discovery to accredited certifications — choose the path that fits you')}
-          </p>
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-          {(isAr
-            ? [
-                { label: 'مجاني', desc: 'اكتشف المنهجية', color: 'var(--color-secondary)' },
-                { label: 'دورات', desc: 'تعلّم المهارات', color: 'var(--color-accent)' },
-                { label: 'شهادات', desc: 'اعتماد دولي ICF', color: 'var(--color-primary)' },
-                { label: 'المنصة', desc: 'مارس الكوتشينج', color: 'var(--color-primary-700)' },
-              ]
-            : [
-                { label: 'Free', desc: 'Discover the methodology', color: 'var(--color-secondary)' },
-                { label: 'Courses', desc: 'Learn the skills', color: 'var(--color-accent)' },
-                { label: 'Certifications', desc: 'ICF accredited', color: 'var(--color-primary)' },
-                { label: 'Platform', desc: 'Practice coaching', color: 'var(--color-primary-700)' },
-              ]
-          ).map((step, i) => (
-            <div
-              key={i}
-              className="relative rounded-2xl bg-white p-6 text-center shadow-[0_4px_24px_rgba(71,64,153,0.06)] hover:shadow-[0_8px_32px_rgba(71,64,153,0.1)] hover:-translate-y-0.5 transition-all duration-500"
-            >
-              <div
-                className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full text-white font-bold text-lg"
-                style={{ backgroundColor: step.color }}
-              >
-                {i + 1}
-              </div>
-              <h3 className="font-bold text-lg">{step.label}</h3>
-              <p className="text-sm text-[var(--color-neutral-600)] mt-1">{step.desc}</p>
-              {i < 3 && (
-                <div className="hidden md:block absolute top-1/2 -end-3 text-[var(--color-neutral-300)] text-lg">
-                  ›
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      </Section>
+      {/* ── PROGRAM PATHWAY — Tonal stacking with scroll animations ── */}
+      <ProgramPathway locale={locale} />
 
+      {/* ── STATS — Social proof numbers ── */}
+      <StatsSection locale={locale} />
 
       {/* ── TREE NARRATIVE — Growing through sections ── */}
       <TreeNarrative imageSrc="/images/tree/olive-tree.jpg">
@@ -121,9 +60,9 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
           <p className="text-sm font-semibold text-white/70 mb-2 tracking-wider uppercase">
             {isAr ? 'الجذور — الحضور' : 'Roots — Presence'}
           </p>
-          <Heading level={2} className="!text-white">
+          <h2 className="text-[1.75rem] md:text-[2.5rem] font-bold text-white leading-tight">
             {isAr ? 'الحضور يبدأ من الداخل' : 'Presence begins within'}
-          </Heading>
+          </h2>
           <p className="mt-4 text-white/80 leading-relaxed">
             {isAr
               ? 'كل رحلة مؤثرة تبدأ من تربة وعيك، من جذور نيّتك، من رسالة تنتظر أن تنمو بصوتك أنت.'
@@ -135,9 +74,9 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
           <p className="text-sm font-semibold text-white/70 mb-2 tracking-wider uppercase">
             {isAr ? 'النمو — الثبات' : 'Growth — Steadiness'}
           </p>
-          <Heading level={2} className="!text-white">
+          <h2 className="text-[1.75rem] md:text-[2.5rem] font-bold text-white leading-tight">
             {isAr ? 'بالثبات تنمو الشجرة' : 'With steadiness, the tree grows'}
-          </Heading>
+          </h2>
           <p className="mt-4 text-white/80 leading-relaxed">
             {isAr
               ? 'في كُنْ، لا نقدّم لك مجرد محتوى، بل منهجية متكاملة تنبع من تراثنا وتلامس عمق تجربتك.'
@@ -149,9 +88,9 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
           <p className="text-sm font-semibold text-white/70 mb-2 tracking-wider uppercase">
             {isAr ? 'الصلة — الامتداد' : 'Connection — Reach'}
           </p>
-          <Heading level={2} className="!text-white">
+          <h2 className="text-[1.75rem] md:text-[2.5rem] font-bold text-white leading-tight">
             {isAr ? 'يمتد أثرك ليلامس من حولك' : 'Your impact extends to those around you'}
-          </Heading>
+          </h2>
           <p className="mt-4 text-white/80 leading-relaxed">
             {isAr
               ? 'أكثر من 500 كوتش تخرّجوا من كُنْ عبر 4 قارات — كل واحد منهم يحمل منهجية أصيلة.'
@@ -163,117 +102,33 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
           <p className="text-sm font-semibold text-white/70 mb-2 tracking-wider uppercase">
             {isAr ? 'الأثر — الإرث' : 'Impact — Legacy'}
           </p>
-          <Heading level={2} className="!text-white">
+          <h2 className="text-[1.75rem] md:text-[2.5rem] font-bold text-white leading-tight">
             {isAr ? 'إزرع جذورك... لتنمو بلا حدود' : 'Plant your roots... to grow without limits'}
-          </Heading>
+          </h2>
           <p className="mt-4 text-white/80 leading-relaxed">
             {isAr
               ? 'كُنْ ليست مجرد أكاديمية، بل حركة تربوية معاصرة تعيد تعريف التربية من الداخل.'
               : 'Kun is not just an academy, but a contemporary movement redefining growth from within.'}
           </p>
           <div className="mt-6">
-            <Button variant="primary" size="lg">
+            <a
+              href={`/${locale}/pathfinder/`}
+              className="inline-flex items-center justify-center rounded-xl bg-[var(--color-accent)] px-8 py-3.5 text-base font-semibold text-white min-h-[44px] hover:bg-[var(--color-accent-500)] transition-all duration-300 hover:shadow-[0_8px_24px_rgba(244,126,66,0.35)] hover:scale-[1.02] active:scale-[0.98]"
+            >
               {isAr ? 'ابدأ رحلتك' : 'Start Your Journey'}
-            </Button>
+            </a>
           </div>
         </TreePhase>
       </TreeNarrative>
 
-      {/* ── FOUNDER — Editorial layout ── */}
-      <Section variant="surface-low">
-        <div className="flex flex-col md:flex-row items-center gap-8 md:gap-14">
-          {/* Photo with geometric backdrop */}
-          <div className="relative shrink-0">
-            <div
-              className="absolute -inset-4 opacity-[0.04] rounded-3xl"
-              style={{
-                backgroundImage: `url("data:image/svg+xml,${encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 80 80'><path d='M40 0l11.18 28.82L80 40 51.18 51.18 40 80 28.82 51.18 0 40l28.82-11.18z' fill='#474099'/></svg>")}")`,
-                backgroundSize: '40px 40px',
-              }}
-              aria-hidden="true"
-            />
-            <div className="relative w-48 h-48 rounded-2xl overflow-hidden bg-gradient-to-br from-[var(--color-primary-100)] to-[var(--color-primary-200)]">
-              {/* Replace with actual photo: <img src="/images/samer.jpg" alt="..." /> */}
-              <div className="w-full h-full flex items-center justify-center text-6xl text-[var(--color-primary-300)] font-bold">
-                SH
-              </div>
-            </div>
-          </div>
-          <div className="flex-1 text-center md:text-start">
-            <Heading level={2}>
-              {isAr ? 'سامر حسن' : 'Samer Hassan'}
-            </Heading>
-            <p className="text-[var(--color-accent)] font-medium mt-1">
-              {isAr ? 'أول عربي MCC | مؤسس التفكير الحسّي®' : 'First Arab MCC | Founder of Somatic Thinking®'}
-            </p>
-            <p className="mt-4 text-[var(--color-neutral-700)] leading-relaxed max-w-xl">
-              {isAr
-                ? 'أكثر من ١٠,٠٠٠ جلسة كوتشينج. ٥٠٠+ كوتش تخرّجوا من أكاديمية كُن. حاصل على جائزة ICF Young Leader 2019.'
-                : 'Over 10,000 coaching sessions. 500+ coaches graduated from Kun Academy. ICF Young Leader Award 2019.'}
-            </p>
-            <Button variant="ghost" className="mt-4">
-              {isAr ? 'اعرف المزيد عن سامر' : 'Learn More About Samer'} →
-            </Button>
-          </div>
-        </div>
-      </Section>
+      {/* ── FOUNDER — Editorial layout with real photo ── */}
+      <FounderSection locale={locale} />
+      {/* ── SOCIAL PROOF — Testimonials Showcase ── */}
+      <TestimonialsShowcase locale={locale} testimonials={cmsTestimonials.length > 0 ? cmsTestimonials : undefined} />
 
-      {/* ── SOCIAL PROOF — White surface layer ── */}
-      <Section variant="white">
-        <div className="text-center mb-10">
-          <Heading level={2}>
-            {isAr ? 'ماذا يقول خرّيجونا' : 'What Our Graduates Say'}
-          </Heading>
-        </div>
-        <div className="grid md:grid-cols-3 gap-6">
-          <TestimonialCard
-            authorName={isAr ? 'أحمد الشمري' : 'Ahmed Al-Shamri'}
-            content={isAr
-              ? 'التفكير الحسّي غيّر طريقة ممارستي للكوتشينج بالكامل. أصبحت أستمع لجسدي قبل عقلي.'
-              : 'Somatic Thinking completely changed how I practice coaching. I now listen to my body before my mind.'}
-            program="STCE Level 2"
-            rating={5}
-          />
-          <TestimonialCard
-            authorName={isAr ? 'نورة القحطاني' : 'Noura Al-Qahtani'}
-            content={isAr
-              ? 'شهادة معتمدة من ICF وتجربة تعليمية لا مثيل لها. أنصح بها كل كوتش طموح.'
-              : 'ICF-accredited certification with an unmatched learning experience. I recommend it to every aspiring coach.'}
-            program="STCE Level 1"
-            rating={5}
-          />
-          <TestimonialCard
-            authorName={isAr ? 'خالد المنصوري' : 'Khaled Al-Mansoori'}
-            content={isAr
-              ? 'برنامج الكوتشينج الإسلامي فتح لي آفاقًا جديدة في دمج القيم مع المنهجية العلمية.'
-              : 'The Islamic Coaching program opened new horizons in integrating values with scientific methodology.'}
-            program={isAr ? 'الكوتشينج الإسلامي' : 'Islamic Coaching'}
-            rating={5}
-          />
-        </div>
-      </Section>
 
-      {/* ── CTA FOOTER — Dark gradient with pattern ── */}
-      <Section variant="dark" pattern="eight-star">
-        <div className="text-center py-8">
-          <Heading level={2} className="!text-white">
-            {isAr ? 'مستعد لبدء رحلتك؟' : 'Ready to Start Your Journey?'}
-          </Heading>
-          <p className="mt-4 text-white/75 max-w-xl mx-auto">
-            {isAr
-              ? 'انضم إلى أكثر من ٥٠٠ كوتش تدرّبوا في أكاديمية كُن من ٤ قارات'
-              : 'Join 500+ coaches trained at Kun Academy from 4 continents'}
-          </p>
-          <div className="mt-8 flex flex-wrap justify-center gap-4">
-            <Button variant="primary" size="lg">
-              {isAr ? 'سجّل الآن' : 'Register Now'}
-            </Button>
-            <Button variant="white" size="lg">
-              {isAr ? 'تواصل عبر واتساب' : 'Chat on WhatsApp'}
-            </Button>
-          </div>
-        </div>
-      </Section>
-    </main>
+      {/* ── CTA FOOTER — Dark with community image ── */}
+      <CTASection locale={locale} />
+    </>
   );
 }

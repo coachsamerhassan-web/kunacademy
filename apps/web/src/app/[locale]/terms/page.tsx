@@ -1,4 +1,6 @@
 import { setRequestLocale } from 'next-intl/server';
+import { PageHero } from '@/components/page-hero';
+
 import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
 
@@ -9,6 +11,17 @@ export default async function TermsPage({ params }: { params: Promise<{ locale: 
 
   return (
     <main>
+
+      <PageHero
+        locale={locale}
+        titleAr="الشروط والأحكام"
+        titleEn="Terms of Service"
+        subtitleAr="شروط استخدام موقع ومنصة أكاديمية كُن"
+        subtitleEn="Terms for using Kun Academy website and platform"
+        
+        
+        pattern="flower-of-life"
+      />
       <Section>
         <div className="mx-auto max-w-3xl">
           <Heading level={1}>{isAr ? 'شروط الاستخدام' : 'Terms of Service'}</Heading>
