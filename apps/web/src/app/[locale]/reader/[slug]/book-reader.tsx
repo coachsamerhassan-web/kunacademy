@@ -3,8 +3,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
+// pdf.js loaded dynamically client-side only (avoids DOMMatrix SSR error)
+type PDFDocumentProxy = import('pdfjs-dist').PDFDocumentProxy;
+let pdfjsLib: typeof import('pdfjs-dist') | null = null;
+
 // ─── Types ──────────────────────────────────────────────
-type ReadingTheme = 'light' | 'sepia' | 'dark';
+type ReadingTheme = 'sepia' | 'dark';
 type AmbientSound = 'birds' | 'waves' | 'rain' | null;
 
 interface BookReaderProps {
@@ -17,29 +21,10 @@ interface BookReaderProps {
   hasSample: boolean;
 }
 
-// ─── Theme configs ──────────────────────────────────────
-const THEMES: Record<ReadingTheme, { bg: string; pageBg: string; toolbarBg: string; text: string; pageFilter: string }> = {
-  light: {
-    bg: '#FFFFFF',
-    pageBg: '#FFFFFF',
-    toolbarBg: 'rgba(255, 255, 255, 0.92)',
-    text: '#1F1B14',
-    pageFilter: 'none',
-  },
-  sepia: {
-    bg: '#F5E6D0',
-    pageBg: '#FDF4E7',
-    toolbarBg: 'rgba(245, 230, 208, 0.92)',
-    text: '#3D2E1C',
-    pageFilter: 'sepia(0.15)',
-  },
-  dark: {
-    bg: '#1a1a2e',
-    pageBg: '#24243e',
-    toolbarBg: 'rgba(26, 26, 46, 0.92)',
-    text: '#E0E0E0',
-    pageFilter: 'brightness(0.85)',
-  },
+// ─── Theme configs (2 themes: sand + dark blue) ─────────
+const THEMES: Record<ReadingTheme, { bg: string; pageBg: string; toolbarBg: string; text: string; pageFilter: string; label_ar: string; label_en: string }> = {
+  sepia: { bg: '#F5E6D0', pageBg: '#FDF4E7', toolbarBg: 'rgba(245,230,208,0.92)', text: '#3D2E1C', pageFilter: 'none', label_ar: 'رملي', label_en: 'Sand' },
+  dark: { bg: '#1a2634', pageBg: '#243447', toolbarBg: 'rgba(26,38,52,0.92)', text: '#E0E6ED', pageFilter: 'none', label_ar: 'ليلي', label_en: 'Night' },
 };
 
 const AMBIENT_SOUNDS: { key: AmbientSound; label_ar: string; label_en: string; src: string }[] = [
@@ -51,24 +36,34 @@ const AMBIENT_SOUNDS: { key: AmbientSound; label_ar: string; label_en: string; s
 const ZOOM_LEVELS = [1, 1.5, 2, 3] as const;
 
 // ─── Component ──────────────────────────────────────────
-export function BookReader({ slug, title, author, coverImage, locale, mode, hasSample }: BookReaderProps) {
+export function BookReader({ slug, title, author, coverImage, locale, mode }: BookReaderProps) {
   const router = useRouter();
   const isAr = locale === 'ar';
 
-  // State
-  const [currentPage, setCurrentPage] = useState(1);
+  // PDF state
+  const pdfDocRef = useRef<PDFDocumentProxy | null>(null);
   const [totalPages, setTotalPages] = useState(0);
-  const [pageImage, setPageImage] = useState<string | null>(null);
-  const [nextPageImage, setNextPageImage] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadingProgress, setLoadingProgress] = useState({ current: 0, total: 0 });
   const [error, setError] = useState<string | null>(null);
+
+  // Page images (pre-rendered data URLs)
+  const pageImagesRef = useRef<string[]>([]);
+
+  // PageFlip instance
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const pageFlipRef = useRef<any>(null);
+  const bookContainerRef = useRef<HTMLDivElement>(null);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [bookReady, setBookReady] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
   // Theme
   const [theme, setTheme] = useState<ReadingTheme>(() => {
     if (typeof window !== 'undefined') {
-      return (localStorage.getItem('kun-reader-theme') as ReadingTheme) || 'light';
+      return (localStorage.getItem('kun-reader-theme') as ReadingTheme) || 'sepia';
     }
-    return 'light';
+    return 'sepia';
   });
 
   // Zoom
@@ -76,6 +71,10 @@ export function BookReader({ slug, title, author, coverImage, locale, mode, hasS
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
   const isPanning = useRef(false);
   const panStart = useRef({ x: 0, y: 0 });
+
+  // Pinch zoom
+  const pinchStartDist = useRef(0);
+  const pinchStartZoom = useRef(1);
 
   // Audio
   const [audioPlaying, setAudioPlaying] = useState(false);
@@ -88,148 +87,251 @@ export function BookReader({ slug, title, author, coverImage, locale, mode, hasS
   const [showToolbar, setShowToolbar] = useState(true);
   const toolbarTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
-  // Page flip animation
-  const [flipping, setFlipping] = useState<'next' | 'prev' | null>(null);
+  // Fullscreen
+  const rootRef = useRef<HTMLDivElement>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
-  // Touch/swipe
-  const touchStart = useRef<{ x: number; y: number } | null>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  // Pinch zoom
-  const pinchStartDist = useRef(0);
-  const pinchStartZoom = useRef(1);
+  // Page dimensions from PDF
+  const pageDimensionsRef = useRef<{ width: number; height: number }>({ width: 595, height: 842 });
 
   const themeConfig = THEMES[theme];
 
-  // ─── Load saved preferences ─────────────────────────
+  // ─── Detect mobile ────────────────────────────────────
   useEffect(() => {
-    const savedSound = localStorage.getItem('kun-reader-sound') as AmbientSound;
-    const savedVolume = parseFloat(localStorage.getItem('kun-reader-volume') || '0.5');
-    if (savedSound) setActiveSound(savedSound);
-    if (!isNaN(savedVolume)) setVolume(savedVolume);
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
   }, []);
 
-  // ─── Save theme preference ─────────────────────────
+  // ─── Load PDF and pre-render all pages ────────────────
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadPdf() {
+      setLoading(true);
+      setError(null);
+
+      try {
+        // Dynamic import — only runs in browser
+        if (!pdfjsLib) {
+          pdfjsLib = await import('pdfjs-dist');
+          pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
+        }
+
+        const sampleParam = mode === 'sample' ? '?sample=true' : '';
+        const url = `/api/books/${slug}/pages${sampleParam}`;
+
+        const loadingTask = pdfjsLib.getDocument({
+          url,
+          cMapUrl: '/cmaps/',
+          cMapPacked: true,
+          standardFontDataUrl: '/standard_fonts/',
+        });
+        const pdf = await loadingTask.promise;
+
+        if (cancelled) return;
+
+        pdfDocRef.current = pdf;
+        const numPages = pdf.numPages;
+        setTotalPages(numPages);
+        setLoadingProgress({ current: 0, total: numPages });
+
+        // Pre-render all pages to data URLs
+        const images: string[] = [];
+        const RENDER_SCALE = 2.0; // High-res
+
+        for (let i = 1; i <= numPages; i++) {
+          if (cancelled) return;
+
+          const page = await pdf.getPage(i);
+          const viewport = page.getViewport({ scale: RENDER_SCALE });
+
+          // Save first page dimensions for PageFlip sizing
+          if (i === 1) {
+            pageDimensionsRef.current = {
+              width: viewport.width / RENDER_SCALE,
+              height: viewport.height / RENDER_SCALE,
+            };
+          }
+
+          const canvas = document.createElement('canvas');
+          canvas.width = viewport.width;
+          canvas.height = viewport.height;
+          const ctx = canvas.getContext('2d')!;
+
+          await (page.render({
+            canvasContext: ctx,
+            viewport,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          } as any)).promise;
+
+          images.push(canvas.toDataURL('image/jpeg', 0.92));
+
+          setLoadingProgress({ current: i, total: numPages });
+        }
+
+        if (cancelled) return;
+
+        // Prepend cover image as first page (closed book cover)
+        if (coverImage) {
+          try {
+            const coverDataUrl = await new Promise<string>((resolve, reject) => {
+              const img = new Image();
+              img.crossOrigin = 'anonymous';
+              img.onload = () => {
+                const canvas = document.createElement('canvas');
+                // Use same dimensions as PDF pages for consistency
+                const pDims = pageDimensionsRef.current;
+                const RENDER_SCALE = 2.0;
+                canvas.width = pDims.width * RENDER_SCALE;
+                canvas.height = pDims.height * RENDER_SCALE;
+                const ctx = canvas.getContext('2d')!;
+                // Fill background then draw cover centered/fitted
+                ctx.fillStyle = '#fff';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                const scale = Math.min(canvas.width / img.naturalWidth, canvas.height / img.naturalHeight);
+                const w = img.naturalWidth * scale;
+                const h = img.naturalHeight * scale;
+                const x = (canvas.width - w) / 2;
+                const y = (canvas.height - h) / 2;
+                ctx.drawImage(img, x, y, w, h);
+                resolve(canvas.toDataURL('image/jpeg', 0.92));
+              };
+              img.onerror = reject;
+              img.src = coverImage;
+            });
+            images.unshift(coverDataUrl);
+          } catch {
+            // If cover fails to load, proceed without it
+            console.warn('[BookReader] Cover image failed to load, skipping');
+          }
+        }
+
+        pageImagesRef.current = images;
+        setTotalPages(images.length);
+        setLoading(false);
+      } catch (err) {
+        if (cancelled) return;
+        console.error('[BookReader] PDF load error:', err);
+        setError(isAr ? 'تعذّر تحميل الكتاب' : 'Failed to load book');
+        setLoading(false);
+      }
+    }
+
+    loadPdf();
+    return () => { cancelled = true; };
+  }, [slug, mode, isAr, coverImage]);
+
+  // ─── Initialize PageFlip once pages are rendered ──────
+  useEffect(() => {
+    if (loading || error || pageImagesRef.current.length === 0) return;
+    if (!bookContainerRef.current) return;
+
+    // Small delay to let DOM settle
+    const timer = setTimeout(() => {
+      initPageFlip();
+    }, 100);
+
+    return () => {
+      clearTimeout(timer);
+      if (pageFlipRef.current) {
+        try { pageFlipRef.current.destroy(); } catch { /* ignore */ }
+        pageFlipRef.current = null;
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, error, isMobile]);
+
+  async function initPageFlip() {
+    if (!bookContainerRef.current || pageImagesRef.current.length === 0) return;
+
+    // Clean up previous instance
+    if (pageFlipRef.current) {
+      try { pageFlipRef.current.destroy(); } catch { /* ignore */ }
+      pageFlipRef.current = null;
+    }
+
+    // Dynamic import of PageFlip (avoid SSR)
+    const { PageFlip } = await import('page-flip');
+
+    if (!bookContainerRef.current) return;
+
+    const dims = pageDimensionsRef.current;
+    // Page width/height — these are per-page dimensions (one side of the spread)
+    const pageWidth = Math.round(dims.width);
+    const pageHeight = Math.round(dims.height);
+
+    const pf = new PageFlip(bookContainerRef.current, {
+      width: pageWidth,
+      height: pageHeight,
+      size: 'stretch' as never,
+      minWidth: 200,
+      maxWidth: 800,
+      minHeight: 280,
+      maxHeight: 1200,
+      showCover: true,
+      maxShadowOpacity: 0.5,
+      mobileScrollSupport: false,
+      useMouseEvents: true,
+      flippingTime: 800,
+      drawShadow: true,
+      autoSize: true,
+      startPage: 0,
+      startZIndex: 10,
+      usePortrait: true,
+      disableFlipByClick: false,
+      showPageCorners: true,
+      clickEventForward: true,
+      swipeDistance: 30,
+      rtl: isAr,
+    });
+
+    // Load from image URLs
+    pf.loadFromImages(pageImagesRef.current);
+
+    // Listen for page flips
+    pf.on('flip', (e) => {
+      setCurrentPage(e.data as number);
+    });
+
+    pageFlipRef.current = pf;
+    setBookReady(true);
+    setCurrentPage(0);
+  }
+
+  // ─── Save theme preference ───────────────────────────
   useEffect(() => {
     localStorage.setItem('kun-reader-theme', theme);
   }, [theme]);
 
-  // ─── Fetch a page image ─────────────────────────────
-  const fetchPage = useCallback(async (page: number): Promise<{ url: string; total: number } | null> => {
-    try {
-      const res = await fetch(`/api/books/${slug}/pages`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ page, sample: mode === 'sample' }),
-      });
+  // ─── Page navigation ─────────────────────────────────
+  const flipNext = useCallback(() => {
+    if (!pageFlipRef.current) return;
+    pageFlipRef.current.flipNext();
+  }, []);
 
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || `HTTP ${res.status}`);
-      }
+  const flipPrev = useCallback(() => {
+    if (!pageFlipRef.current) return;
+    pageFlipRef.current.flipPrev();
+  }, []);
 
-      const total = parseInt(res.headers.get('X-Total-Pages') || '0', 10);
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      return { url, total };
-    } catch (err: any) {
-      console.error('[BookReader] fetchPage error:', err);
-      return null;
-    }
-  }, [slug, mode]);
-
-  // ─── Load current page ──────────────────────────────
-  useEffect(() => {
-    let cancelled = false;
-
-    async function load() {
-      setLoading(true);
-      setError(null);
-
-      const result = await fetchPage(currentPage);
-      if (cancelled) return;
-
-      if (!result) {
-        setError(isAr ? 'تعذّر تحميل الصفحة' : 'Failed to load page');
-        setLoading(false);
-        return;
-      }
-
-      // Revoke previous URL
-      if (pageImage) URL.revokeObjectURL(pageImage);
-
-      setPageImage(result.url);
-      if (result.total > 0) setTotalPages(result.total);
-      setLoading(false);
-
-      // Pre-fetch next page
-      if (currentPage < (result.total || totalPages)) {
-        const next = await fetchPage(currentPage + 1);
-        if (!cancelled && next) {
-          if (nextPageImage) URL.revokeObjectURL(nextPageImage);
-          setNextPageImage(next.url);
-        }
-      }
-    }
-
-    load();
-
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentPage, fetchPage, isAr]);
-
-  // ─── Page navigation ────────────────────────────────
-  const goToPage = useCallback((page: number) => {
-    if (page < 1 || (totalPages > 0 && page > totalPages)) return;
-    if (page === currentPage) return;
-    setPanOffset({ x: 0, y: 0 });
-    setZoom(1);
-    setCurrentPage(page);
-  }, [currentPage, totalPages]);
-
-  const nextPage = useCallback(() => {
-    if (totalPages > 0 && currentPage >= totalPages) return;
-    setFlipping('next');
-    setTimeout(() => {
-      goToPage(currentPage + 1);
-      setFlipping(null);
-    }, 400);
-  }, [currentPage, totalPages, goToPage]);
-
-  const prevPage = useCallback(() => {
-    if (currentPage <= 1) return;
-    setFlipping('prev');
-    setTimeout(() => {
-      goToPage(currentPage - 1);
-      setFlipping(null);
-    }, 400);
-  }, [currentPage, goToPage]);
-
-  // ─── Keyboard controls ──────────────────────────────
+  // ─── Keyboard controls ───────────────────────────────
   useEffect(() => {
     function handleKey(e: KeyboardEvent) {
-      if (e.key === 'ArrowRight') {
-        isAr ? prevPage() : nextPage();
-      } else if (e.key === 'ArrowLeft') {
-        isAr ? nextPage() : prevPage();
-      } else if (e.key === 'Escape') {
-        router.back();
-      } else if (e.key === '+' || e.key === '=') {
-        handleZoomIn();
-      } else if (e.key === '-') {
-        handleZoomOut();
-      }
+      if (e.key === 'ArrowRight') isAr ? flipPrev() : flipNext();
+      else if (e.key === 'ArrowLeft') isAr ? flipNext() : flipPrev();
+      else if (e.key === 'Escape') router.back();
+      else if (e.key === '+' || e.key === '=') handleZoomIn();
+      else if (e.key === '-') handleZoomOut();
     }
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
-  }, [isAr, nextPage, prevPage, router]);
+  }, [isAr, flipNext, flipPrev, router]);
 
-  // ─── Touch handlers (swipe + pinch) ─────────────────
+  // ─── Touch handlers for zoom (pinch) ─────────────────
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     if (e.touches.length === 2) {
-      // Pinch start
       const dx = e.touches[0]!.clientX - e.touches[1]!.clientX;
       const dy = e.touches[0]!.clientY - e.touches[1]!.clientY;
       pinchStartDist.current = Math.hypot(dx, dy);
@@ -238,10 +340,11 @@ export function BookReader({ slug, title, author, coverImage, locale, mode, hasS
     }
     if (zoom > 1) {
       isPanning.current = true;
-      panStart.current = { x: e.touches[0]!.clientX - panOffset.x, y: e.touches[0]!.clientY - panOffset.y };
-      return;
+      panStart.current = {
+        x: e.touches[0]!.clientX - panOffset.x,
+        y: e.touches[0]!.clientY - panOffset.y,
+      };
     }
-    touchStart.current = { x: e.touches[0]!.clientX, y: e.touches[0]!.clientY };
   }, [zoom, panOffset]);
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
@@ -250,9 +353,7 @@ export function BookReader({ slug, title, author, coverImage, locale, mode, hasS
       const dy = e.touches[0]!.clientY - e.touches[1]!.clientY;
       const dist = Math.hypot(dx, dy);
       const scale = (dist / pinchStartDist.current) * pinchStartZoom.current;
-      const clamped = Math.max(1, Math.min(3, scale));
-      setZoom(clamped);
-      if (clamped === 1) setPanOffset({ x: 0, y: 0 });
+      setZoom(Math.max(1, Math.min(3, scale)));
       return;
     }
     if (isPanning.current && zoom > 1) {
@@ -263,49 +364,11 @@ export function BookReader({ slug, title, author, coverImage, locale, mode, hasS
     }
   }, [zoom]);
 
-  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
-    if (isPanning.current) {
-      isPanning.current = false;
-      return;
-    }
-    if (!touchStart.current) return;
-    const touch = e.changedTouches[0]!;
-    const dx = touch.clientX - touchStart.current.x;
-    const dy = touch.clientY - touchStart.current.y;
-    touchStart.current = null;
+  const handleTouchEnd = useCallback(() => {
+    if (isPanning.current) { isPanning.current = false; }
+  }, []);
 
-    // Require minimum swipe distance
-    if (Math.abs(dx) < 50 || Math.abs(dy) > Math.abs(dx)) {
-      // Tap — show/hide toolbar
-      resetToolbarTimer();
-      return;
-    }
-
-    if (isAr) {
-      dx > 0 ? nextPage() : prevPage();
-    } else {
-      dx < 0 ? nextPage() : prevPage();
-    }
-  }, [isAr, nextPage, prevPage]);
-
-  // ─── Click to navigate pages ────────────────────────
-  const handlePageClick = useCallback((e: React.MouseEvent) => {
-    if (zoom > 1) return; // Don't navigate when zoomed
-    const rect = containerRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    const x = e.clientX - rect.left;
-    const half = rect.width / 2;
-
-    if (isAr) {
-      x < half ? nextPage() : prevPage();
-    } else {
-      x > half ? nextPage() : prevPage();
-    }
-
-    resetToolbarTimer();
-  }, [isAr, nextPage, prevPage, zoom]);
-
-  // ─── Mouse drag for panning when zoomed ─────────────
+  // ─── Mouse drag for panning when zoomed ──────────────
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (zoom <= 1) return;
     isPanning.current = true;
@@ -321,22 +384,19 @@ export function BookReader({ slug, title, author, coverImage, locale, mode, hasS
     });
   }, [zoom]);
 
-  const handleMouseUp = useCallback(() => {
-    isPanning.current = false;
-  }, []);
+  const handleMouseUp = useCallback(() => { isPanning.current = false; }, []);
 
-  // ─── Zoom controls ─────────────────────────────────
+  // ─── Zoom controls ──────────────────────────────────
   const handleZoomIn = useCallback(() => {
     setZoom(prev => {
-      const idx = ZOOM_LEVELS.indexOf(prev as any);
-      if (idx < ZOOM_LEVELS.length - 1) return ZOOM_LEVELS[idx + 1]!;
-      return prev;
+      const idx = ZOOM_LEVELS.indexOf(prev as typeof ZOOM_LEVELS[number]);
+      return idx < ZOOM_LEVELS.length - 1 ? ZOOM_LEVELS[idx + 1]! : prev;
     });
   }, []);
 
   const handleZoomOut = useCallback(() => {
     setZoom(prev => {
-      const idx = ZOOM_LEVELS.indexOf(prev as any);
+      const idx = ZOOM_LEVELS.indexOf(prev as typeof ZOOM_LEVELS[number]);
       if (idx > 0) {
         const next = ZOOM_LEVELS[idx - 1]!;
         if (next === 1) setPanOffset({ x: 0, y: 0 });
@@ -344,11 +404,6 @@ export function BookReader({ slug, title, author, coverImage, locale, mode, hasS
       }
       return prev;
     });
-  }, []);
-
-  const setZoomLevel = useCallback((level: number) => {
-    setZoom(level);
-    if (level === 1) setPanOffset({ x: 0, y: 0 });
   }, []);
 
   // ─── Toolbar auto-hide ──────────────────────────────
@@ -360,18 +415,13 @@ export function BookReader({ slug, title, author, coverImage, locale, mode, hasS
 
   useEffect(() => {
     resetToolbarTimer();
-    return () => {
-      if (toolbarTimer.current) clearTimeout(toolbarTimer.current);
-    };
+    return () => { if (toolbarTimer.current) clearTimeout(toolbarTimer.current); };
   }, [resetToolbarTimer]);
 
   // ─── Audio controls ─────────────────────────────────
   const playSound = useCallback((sound: AmbientSound) => {
     if (!sound) {
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current = null;
-      }
+      if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
       setAudioPlaying(false);
       setActiveSound(null);
       localStorage.removeItem('kun-reader-sound');
@@ -381,34 +431,23 @@ export function BookReader({ slug, title, author, coverImage, locale, mode, hasS
     const soundConfig = AMBIENT_SOUNDS.find(s => s.key === sound);
     if (!soundConfig) return;
 
-    // Fade out current
     if (audioRef.current) {
       const old = audioRef.current;
       const fadeOut = setInterval(() => {
-        if (old.volume > 0.05) {
-          old.volume = Math.max(0, old.volume - 0.05);
-        } else {
-          clearInterval(fadeOut);
-          old.pause();
-        }
+        if (old.volume > 0.05) old.volume = Math.max(0, old.volume - 0.05);
+        else { clearInterval(fadeOut); old.pause(); }
       }, 50);
     }
 
-    // Create new audio
     const audio = new Audio(soundConfig.src);
     audio.loop = true;
     audio.volume = 0;
     audioRef.current = audio;
 
     audio.play().then(() => {
-      // Fade in
       const fadeIn = setInterval(() => {
-        if (audio.volume < volume - 0.05) {
-          audio.volume = Math.min(1, audio.volume + 0.05);
-        } else {
-          audio.volume = volume;
-          clearInterval(fadeIn);
-        }
+        if (audio.volume < volume - 0.05) audio.volume = Math.min(1, audio.volume + 0.05);
+        else { audio.volume = volume; clearInterval(fadeIn); }
       }, 50);
     }).catch(console.error);
 
@@ -417,163 +456,350 @@ export function BookReader({ slug, title, author, coverImage, locale, mode, hasS
     localStorage.setItem('kun-reader-sound', sound);
   }, [volume]);
 
-  const toggleAudio = useCallback(() => {
-    if (audioPlaying) {
-      playSound(null);
-    } else {
-      playSound(activeSound || 'birds');
-    }
-  }, [audioPlaying, activeSound, playSound]);
-
-  // Update volume on existing audio
   useEffect(() => {
-    if (audioRef.current && audioPlaying) {
-      audioRef.current.volume = volume;
-    }
+    if (audioRef.current && audioPlaying) audioRef.current.volume = volume;
     localStorage.setItem('kun-reader-volume', String(volume));
   }, [volume, audioPlaying]);
 
-  // Cleanup audio on unmount
   useEffect(() => {
-    return () => {
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current = null;
-      }
-    };
+    return () => { if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; } };
   }, []);
 
-  // ─── Progress percentage ────────────────────────────
-  const progress = totalPages > 0 ? (currentPage / totalPages) * 100 : 0;
+  // ─── Fullscreen ─────────────────────────────────────
+  const toggleFullscreen = useCallback(() => {
+    if (!rootRef.current) return;
+    if (!document.fullscreenElement) {
+      rootRef.current.requestFullscreen().then(() => setIsFullscreen(true)).catch(() => {});
+    } else {
+      document.exitFullscreen().then(() => setIsFullscreen(false)).catch(() => {});
+    }
+  }, []);
 
-  // ─── Page flip animation class ──────────────────────
-  const getFlipStyle = (): React.CSSProperties => {
-    if (!flipping) return {};
-    const isNext = flipping === 'next';
-    const dir = isAr ? (isNext ? 1 : -1) : (isNext ? -1 : 1);
-    return {
-      animation: `pageFlip-${dir > 0 ? 'right' : 'left'} 0.4s ease-in-out`,
+  useEffect(() => {
+    const handler = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener('fullscreenchange', handler);
+    return () => document.removeEventListener('fullscreenchange', handler);
+  }, []);
+
+  // ─── Resize handler for PageFlip ─────────────────────
+  useEffect(() => {
+    if (!pageFlipRef.current || !bookReady) return;
+    const handler = () => {
+      try { pageFlipRef.current?.update(); } catch { /* ignore */ }
     };
-  };
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
+  }, [bookReady]);
+
+  // ─── Progress ───────────────────────────────────────
+  const progress = totalPages > 0 ? ((currentPage + 1) / totalPages) * 100 : 0;
+
+  // Current display page number (1-based, human readable)
+  const displayPage = currentPage + 1;
 
   return (
     <div
+      ref={rootRef}
       className="fixed inset-0 flex flex-col select-none"
-      style={{ backgroundColor: themeConfig.bg, color: themeConfig.text }}
+      style={{ backgroundColor: themeConfig.bg, color: themeConfig.text, zIndex: 9999 }}
+      onContextMenu={(e) => e.preventDefault()}
       onMouseMove={resetToolbarTimer}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
     >
-      {/* Keyframes for page flip */}
-      <style>{`
-        @keyframes pageFlip-left {
-          0% { transform: perspective(1200px) rotateY(0deg); }
-          50% { transform: perspective(1200px) rotateY(-15deg); opacity: 0.7; }
-          100% { transform: perspective(1200px) rotateY(0deg); }
-        }
-        @keyframes pageFlip-right {
-          0% { transform: perspective(1200px) rotateY(0deg); }
-          50% { transform: perspective(1200px) rotateY(15deg); opacity: 0.7; }
-          100% { transform: perspective(1200px) rotateY(0deg); }
-        }
-      `}</style>
-
-      {/* ─── Toolbar ─────────────────────────────────── */}
+      {/* ─── Page display area ─────────────────── */}
       <div
-        className="absolute top-0 left-0 right-0 z-50 transition-all duration-300"
+        className="flex-1 flex items-center justify-center overflow-hidden relative"
+        style={{ cursor: zoom > 1 ? 'grab' : 'default' }}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
+      >
+        {loading ? (
+          <div className="flex flex-col items-center gap-4">
+            <div className="w-10 h-10 border-2 border-current/20 border-t-current rounded-full animate-spin" />
+            <p className="text-sm opacity-60" style={{ fontFamily: isAr ? 'var(--font-arabic-body)' : 'var(--font-english-body)' }}>
+              {loadingProgress.total > 0
+                ? (isAr
+                    ? `جارٍ تحميل الصفحة ${toArabicNum(loadingProgress.current)} من ${toArabicNum(loadingProgress.total)}...`
+                    : `Loading page ${loadingProgress.current} of ${loadingProgress.total}...`)
+                : (isAr ? 'جارٍ التحميل...' : 'Loading...')}
+            </p>
+            {loadingProgress.total > 0 && (
+              <div className="w-48 h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: `${themeConfig.text}20` }}>
+                <div
+                  className="h-full rounded-full transition-all duration-300"
+                  style={{
+                    width: `${(loadingProgress.current / loadingProgress.total) * 100}%`,
+                    backgroundColor: 'var(--color-primary)',
+                  }}
+                />
+              </div>
+            )}
+          </div>
+        ) : error ? (
+          <div className="flex flex-col items-center gap-4 px-8 text-center">
+            <p className="text-sm opacity-60">{error}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 rounded-lg text-sm min-h-[44px]"
+              style={{ backgroundColor: 'var(--color-primary)', color: '#fff' }}
+            >
+              {isAr ? 'إعادة المحاولة' : 'Retry'}
+            </button>
+          </div>
+        ) : isMobile ? (
+          /* ─── Mobile: vertical single-page scroll ─── */
+          <div
+            className="w-full h-full overflow-y-auto overflow-x-hidden snap-y snap-mandatory scroll-smooth px-2 pt-16 pb-4"
+            style={{ WebkitOverflowScrolling: 'touch' }}
+            onScroll={(e) => {
+              const el = e.currentTarget;
+              const pageHeight = el.clientHeight;
+              const idx = Math.round(el.scrollTop / pageHeight);
+              if (idx !== currentPage) setCurrentPage(idx);
+            }}
+          >
+            {pageImagesRef.current.map((src, i) => (
+              <div
+                key={i}
+                className="snap-start flex items-center justify-center"
+                style={{
+                  minHeight: '100%',
+                  padding: '8px 0',
+                }}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={src}
+                  alt={isAr ? `صفحة ${i}` : `Page ${i}`}
+                  className="max-h-[85vh] w-auto max-w-full rounded shadow-lg"
+                  style={{
+                    filter: themeConfig.pageFilter,
+                    userSelect: 'none',
+                    WebkitUserSelect: 'none',
+                    pointerEvents: 'none',
+                  }}
+                  draggable={false}
+                />
+              </div>
+            ))}
+          </div>
+        ) : (
+          /* ─── Desktop: PageFlip double-spread ─── */
+          <div
+            className="relative transition-transform duration-200 ease-out"
+            style={{
+              transform: zoom > 1
+                ? `scale(${zoom}) translate(${panOffset.x / zoom}px, ${panOffset.y / zoom}px)`
+                : undefined,
+              transformOrigin: 'center center',
+              width: '80vw',
+              maxWidth: '1200px',
+              height: '80vh',
+              maxHeight: '900px',
+            }}
+          >
+            {/* Book container — PageFlip mounts here */}
+            <div
+              ref={bookContainerRef}
+              className="w-full h-full"
+              style={{
+                filter: themeConfig.pageFilter,
+                userSelect: 'none',
+                WebkitUserSelect: 'none',
+              }}
+            />
+
+            {/* Binding crease shadow (desktop double-spread only) */}
+            {bookReady && (
+              <div
+                className="absolute top-0 bottom-0 pointer-events-none"
+                style={{
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  width: '30px',
+                  background: `linear-gradient(to right,
+                    transparent 0%,
+                    rgba(0,0,0,0.12) 35%,
+                    rgba(0,0,0,0.25) 50%,
+                    rgba(0,0,0,0.12) 65%,
+                    transparent 100%
+                  )`,
+                  zIndex: 20,
+                }}
+              />
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* ─── Nav arrows (desktop) ─────────────── */}
+      {bookReady && (
+        <>
+          <button
+            onClick={isAr ? flipNext : flipPrev}
+            disabled={currentPage <= 0}
+            className="hidden md:flex fixed top-1/2 -translate-y-1/2 w-12 h-24 items-center justify-center rounded-lg transition-colors z-40 disabled:opacity-20"
+            style={{
+              [isAr ? 'right' : 'left']: '1rem',
+              backgroundColor: `${themeConfig.text}08`,
+            }}
+            onMouseEnter={resetToolbarTimer}
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <path d="M15 18l-6-6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+
+          <button
+            onClick={isAr ? flipPrev : flipNext}
+            disabled={totalPages > 0 && currentPage >= totalPages - 1}
+            className="hidden md:flex fixed top-1/2 -translate-y-1/2 w-12 h-24 items-center justify-center rounded-lg transition-colors z-40 disabled:opacity-20"
+            style={{
+              [isAr ? 'left' : 'right']: '1rem',
+              backgroundColor: `${themeConfig.text}08`,
+            }}
+            onMouseEnter={resetToolbarTimer}
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <path d="M9 18l6-6-6-6" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+        </>
+      )}
+
+      {/* ─── Sample CTA ──────────────────────── */}
+      {mode === 'sample' && totalPages > 0 && currentPage >= totalPages - 1 && (
+        <div
+          className="fixed bottom-24 left-4 right-4 mx-auto max-w-md rounded-2xl p-6 text-center shadow-lg z-40"
+          style={{ backgroundColor: themeConfig.toolbarBg, backdropFilter: 'blur(12px)' }}
+        >
+          <p className="text-sm mb-4" style={{ fontFamily: isAr ? 'var(--font-arabic-body)' : 'var(--font-english-body)' }}>
+            {isAr ? 'انتهت العيّنة — احصل على النسخة الكاملة' : 'End of sample — get the full book'}
+          </p>
+          <button
+            onClick={() => router.push(`/${locale}/shop`)}
+            className="px-6 py-3 rounded-xl text-sm font-medium min-h-[44px] transition-transform hover:scale-105"
+            style={{ backgroundColor: 'var(--color-primary)', color: '#fff' }}
+          >
+            {isAr ? 'اشترِ الآن' : 'Buy Now'}
+          </button>
+        </div>
+      )}
+
+      {/* ─── Top toolbar (DFlip style) ─────── */}
+      <div
+        className="fixed top-0 left-0 right-0 z-50 transition-all duration-300"
         style={{
           backgroundColor: themeConfig.toolbarBg,
           backdropFilter: 'blur(12px)',
           transform: showToolbar ? 'translateY(0)' : 'translateY(-100%)',
           opacity: showToolbar ? 1 : 0,
         }}
+        onMouseEnter={resetToolbarTimer}
       >
-        <div className="flex items-center justify-between px-4 py-3 max-w-5xl mx-auto gap-3">
-          {/* Back button */}
-          <button
-            onClick={() => router.back()}
-            className="flex items-center gap-2 min-w-[44px] min-h-[44px] justify-center rounded-lg hover:bg-black/5 transition-colors"
-            aria-label={isAr ? 'رجوع' : 'Back'}
-          >
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" className={isAr ? '' : 'rotate-180'}>
-              <path d="M12.5 15L7.5 10L12.5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </button>
+        {/* Progress bar at top of toolbar */}
+        <div className="h-0.5 w-full" style={{ backgroundColor: `${themeConfig.text}10` }}>
+          <div
+            className="h-full transition-all duration-300 ease-out"
+            style={{
+              width: `${progress}%`,
+              backgroundColor: 'var(--color-primary)',
+              float: isAr ? 'right' : 'left',
+            }}
+          />
+        </div>
 
-          {/* Title */}
-          <div className="flex-1 min-w-0 text-center">
-            <p
-              className="text-sm font-medium truncate"
-              style={{ fontFamily: isAr ? 'var(--font-arabic-body)' : 'var(--font-english-body)' }}
+        <div className="flex items-center justify-between px-3 py-2 max-w-5xl mx-auto gap-2">
+          {/* Left: Back + page counter */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => router.back()}
+              className="flex items-center justify-center min-w-[44px] min-h-[44px] rounded-lg hover:bg-black/5 transition-colors"
+              aria-label={isAr ? 'رجوع' : 'Back'}
             >
-              {title}
-            </p>
-            <p className="text-xs opacity-60">{author}</p>
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" className={isAr ? '' : 'rotate-180'}>
+                <path d="M12.5 15L7.5 10L12.5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+
+            {totalPages > 0 && (
+              <span className="text-xs opacity-70 tabular-nums whitespace-nowrap" style={{ fontFamily: isAr ? 'var(--font-arabic-body)' : 'var(--font-english-body)' }}>
+                {isAr
+                  ? `صفحة ${toArabicNum(displayPage)} من ${toArabicNum(totalPages)}`
+                  : `${displayPage} / ${totalPages}`}
+              </span>
+            )}
+
+            {mode === 'sample' && (
+              <span className="px-1.5 py-0.5 rounded text-[10px]" style={{ backgroundColor: 'var(--color-primary)', color: '#fff' }}>
+                {isAr ? 'عيّنة' : 'Sample'}
+              </span>
+            )}
           </div>
 
-          {/* Controls row */}
-          <div className="flex items-center gap-1">
-            {/* Theme toggle */}
-            <div className="flex items-center gap-1 px-1">
-              {(['light', 'sepia', 'dark'] as ReadingTheme[]).map((t) => (
-                <button
-                  key={t}
-                  onClick={() => setTheme(t)}
-                  className="w-6 h-6 rounded-full border-2 transition-all min-w-[24px]"
-                  style={{
-                    backgroundColor: THEMES[t].bg,
-                    borderColor: theme === t ? 'var(--color-primary)' : 'transparent',
-                    boxShadow: theme === t ? '0 0 0 1px var(--color-primary)' : '0 0 0 1px rgba(0,0,0,0.15)',
-                  }}
-                  aria-label={t}
-                />
-              ))}
+          {/* Center: theme dots + zoom */}
+          <div className="flex items-center gap-2">
+            {/* Theme dots */}
+            <div className="flex flex-col items-center">
+              <span className="text-[10px] opacity-50 mb-1">
+                {isAr ? 'لون الخلفية' : 'Background'}
+              </span>
+              <div className="flex items-center gap-1">
+                {(['sepia', 'dark'] as ReadingTheme[]).map((t) => (
+                  <button
+                    key={t}
+                    onClick={() => setTheme(t)}
+                    className="w-6 h-6 rounded-full border-2 transition-all"
+                    style={{
+                      backgroundColor: THEMES[t].bg,
+                      borderColor: theme === t ? 'var(--color-primary)' : 'transparent',
+                      boxShadow: theme === t ? '0 0 0 1px var(--color-primary)' : '0 0 0 1px rgba(0,0,0,0.15)',
+                    }}
+                    aria-label={t}
+                  />
+                ))}
+              </div>
             </div>
 
-            {/* Zoom controls */}
-            <div className="flex items-center gap-0.5 px-1 border-x border-current/10 mx-1">
-              <button
-                onClick={handleZoomOut}
-                disabled={zoom <= 1}
-                className="min-w-[32px] min-h-[32px] flex items-center justify-center rounded text-sm font-medium disabled:opacity-30 hover:bg-black/5 transition-colors"
-                aria-label={isAr ? 'تصغير' : 'Zoom out'}
-              >
-                -
-              </button>
-              <span className="text-xs tabular-nums w-10 text-center">{zoom}x</span>
-              <button
-                onClick={handleZoomIn}
-                disabled={zoom >= 3}
-                className="min-w-[32px] min-h-[32px] flex items-center justify-center rounded text-sm font-medium disabled:opacity-30 hover:bg-black/5 transition-colors"
-                aria-label={isAr ? 'تكبير' : 'Zoom in'}
-              >
-                +
-              </button>
-            </div>
-
-            {/* Zoom level quick buttons (desktop only) */}
-            <div className="hidden md:flex items-center gap-0.5 px-1">
-              {ZOOM_LEVELS.map((level) => (
+            {/* Zoom */}
+            <div className="flex flex-col items-center px-2 border-x border-current/10">
+              <span className="text-[10px] opacity-50">
+                {isAr ? 'تكبير' : 'Zoom'}
+              </span>
+              <div className="flex items-center gap-0.5">
                 <button
-                  key={level}
-                  onClick={() => setZoomLevel(level)}
-                  className="min-w-[32px] min-h-[32px] flex items-center justify-center rounded text-xs transition-colors"
-                  style={{
-                    backgroundColor: zoom === level ? 'var(--color-primary)' : 'transparent',
-                    color: zoom === level ? '#fff' : 'inherit',
-                  }}
+                  onClick={handleZoomOut}
+                  disabled={zoom <= 1}
+                  className="min-w-[32px] min-h-[32px] flex items-center justify-center rounded text-sm disabled:opacity-30 hover:bg-black/5"
                 >
-                  {level}x
+                  −
                 </button>
-              ))}
+                <span className="text-xs tabular-nums w-8 text-center">{zoom}x</span>
+                <button
+                  onClick={handleZoomIn}
+                  disabled={zoom >= 3}
+                  className="min-w-[32px] min-h-[32px] flex items-center justify-center rounded text-sm disabled:opacity-30 hover:bg-black/5"
+                >
+                  +
+                </button>
+              </div>
             </div>
+          </div>
 
+          {/* Right: audio + fullscreen */}
+          <div className="flex items-center gap-1">
             {/* Audio toggle */}
             <div className="relative">
               <button
                 onClick={() => setShowAudioPanel(!showAudioPanel)}
-                className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg hover:bg-black/5 transition-colors"
+                className="min-w-[44px] min-h-[44px] flex items-center gap-1.5 justify-center rounded-lg hover:bg-black/5 transition-colors px-2"
                 aria-label={isAr ? 'صوت محيط' : 'Ambient sound'}
               >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                   {audioPlaying ? (
                     <>
                       <path d="M11 5L6 9H2v6h4l5 4V5z" strokeLinecap="round" strokeLinejoin="round" />
@@ -588,19 +814,25 @@ export function BookReader({ slug, title, author, coverImage, locale, mode, hasS
                     </>
                   )}
                 </svg>
+                {audioPlaying && activeSound ? (
+                  <span className="text-[10px] opacity-50 hidden sm:inline">
+                    {isAr
+                      ? AMBIENT_SOUNDS.find(s => s.key === activeSound)?.label_ar
+                      : AMBIENT_SOUNDS.find(s => s.key === activeSound)?.label_en}
+                  </span>
+                ) : (
+                  <span className="text-[10px] opacity-50 hidden sm:inline">
+                    {isAr ? 'صوت مريح أثناء القراءة؟' : 'Relaxing sound?'}
+                  </span>
+                )}
               </button>
 
-              {/* Audio panel dropdown */}
               {showAudioPanel && (
                 <div
                   className="absolute top-full mt-2 rounded-xl shadow-lg p-4 w-56 z-50"
-                  style={{
-                    backgroundColor: themeConfig.toolbarBg,
-                    backdropFilter: 'blur(12px)',
-                    [isAr ? 'left' : 'right']: 0,
-                  }}
+                  style={{ backgroundColor: themeConfig.toolbarBg, backdropFilter: 'blur(12px)', [isAr ? 'left' : 'right']: 0 }}
                 >
-                  <div className="space-y-3">
+                  <div className="space-y-2">
                     {AMBIENT_SOUNDS.map((s) => (
                       <button
                         key={s.key}
@@ -616,17 +848,10 @@ export function BookReader({ slug, title, author, coverImage, locale, mode, hasS
                         </span>
                       </button>
                     ))}
-
-                    {/* Volume slider */}
                     <div className="pt-2 border-t border-current/10">
                       <label className="flex items-center gap-3">
-                        <span className="text-xs opacity-60">{isAr ? 'مستوى الصوت' : 'Volume'}</span>
-                        <input
-                          type="range"
-                          min="0"
-                          max="1"
-                          step="0.1"
-                          value={volume}
+                        <span className="text-xs opacity-60">{isAr ? 'الصوت' : 'Vol'}</span>
+                        <input type="range" min="0" max="1" step="0.1" value={volume}
                           onChange={(e) => setVolume(parseFloat(e.target.value))}
                           className="flex-1 h-1 rounded-full appearance-none cursor-pointer"
                           style={{ accentColor: 'var(--color-primary)' }}
@@ -637,174 +862,39 @@ export function BookReader({ slug, title, author, coverImage, locale, mode, hasS
                 </div>
               )}
             </div>
-          </div>
-        </div>
 
-        {/* Page indicator */}
-        <div className="text-center pb-2 text-xs opacity-60">
-          {totalPages > 0 && (
-            <span style={{ fontFamily: isAr ? 'var(--font-arabic-body)' : 'var(--font-english-body)' }}>
-              {isAr
-                ? `صفحة ${toArabicNum(currentPage)} من ${toArabicNum(totalPages)}`
-                : `Page ${currentPage} of ${totalPages}`}
-            </span>
-          )}
-          {mode === 'sample' && (
-            <span className="inline-block mx-2 px-2 py-0.5 rounded text-xs" style={{ backgroundColor: 'var(--color-accent)', color: '#fff' }}>
-              {isAr ? 'عيّنة مجانية' : 'Free Sample'}
-            </span>
-          )}
-        </div>
-      </div>
-
-      {/* ─── Page display area ─────────────────────── */}
-      <div
-        ref={containerRef}
-        className="flex-1 flex items-center justify-center overflow-hidden"
-        style={{ cursor: zoom > 1 ? 'grab' : 'pointer' }}
-        onClick={zoom <= 1 ? handlePageClick : undefined}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-      >
-        {loading && !pageImage ? (
-          <div className="flex flex-col items-center gap-4">
-            <div className="w-10 h-10 border-2 border-current/20 border-t-current rounded-full animate-spin" />
-            <p className="text-sm opacity-60" style={{ fontFamily: isAr ? 'var(--font-arabic-body)' : 'var(--font-english-body)' }}>
-              {isAr ? 'جارٍ التحميل...' : 'Loading...'}
-            </p>
-          </div>
-        ) : error ? (
-          <div className="flex flex-col items-center gap-4 px-8 text-center">
-            <p className="text-sm opacity-60" style={{ fontFamily: isAr ? 'var(--font-arabic-body)' : 'var(--font-english-body)' }}>
-              {error}
-            </p>
+            {/* Fullscreen toggle */}
             <button
-              onClick={() => setCurrentPage(currentPage)}
-              className="px-4 py-2 rounded-lg text-sm min-h-[44px]"
-              style={{ backgroundColor: 'var(--color-primary)', color: '#fff' }}
+              onClick={toggleFullscreen}
+              className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg hover:bg-black/5 transition-colors"
+              aria-label={isAr ? 'ملء الشاشة' : 'Fullscreen'}
             >
-              {isAr ? 'إعادة المحاولة' : 'Retry'}
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                {isFullscreen ? (
+                  <>
+                    <path d="M8 3v3a2 2 0 01-2 2H3" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M21 8h-3a2 2 0 01-2-2V3" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M3 16h3a2 2 0 012 2v3" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M16 21v-3a2 2 0 012-2h3" strokeLinecap="round" strokeLinejoin="round" />
+                  </>
+                ) : (
+                  <>
+                    <path d="M8 3H5a2 2 0 00-2 2v3" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M21 8V5a2 2 0 00-2-2h-3" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M3 16v3a2 2 0 002 2h3" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M16 21h3a2 2 0 002-2v-3" strokeLinecap="round" strokeLinejoin="round" />
+                  </>
+                )}
+              </svg>
             </button>
           </div>
-        ) : pageImage ? (
-          <div
-            className="relative max-h-full transition-transform duration-200 ease-out"
-            style={{
-              transform: `scale(${zoom}) translate(${panOffset.x / zoom}px, ${panOffset.y / zoom}px)`,
-              transformOrigin: 'center center',
-              ...getFlipStyle(),
-            }}
-          >
-            {/* Page shadow */}
-            <div
-              className="absolute inset-0 pointer-events-none rounded"
-              style={{
-                boxShadow: '0 4px 20px rgba(0,0,0,0.15), 0 0 40px rgba(0,0,0,0.05)',
-              }}
-            />
-
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={pageImage}
-              alt={isAr ? `صفحة ${currentPage}` : `Page ${currentPage}`}
-              className="max-h-[calc(100vh-120px)] w-auto mx-auto rounded"
-              style={{
-                filter: themeConfig.pageFilter,
-                backgroundColor: themeConfig.pageBg,
-                userSelect: 'none',
-                WebkitUserSelect: 'none',
-                pointerEvents: 'none',
-              }}
-              draggable={false}
-            />
-
-            {/* Spine crease on page */}
-            <div
-              className="absolute top-0 bottom-0 w-2 pointer-events-none"
-              style={{
-                [isAr ? 'right' : 'left']: 0,
-                background: isAr
-                  ? 'linear-gradient(to left, rgba(0,0,0,0.08), transparent)'
-                  : 'linear-gradient(to right, rgba(0,0,0,0.08), transparent)',
-              }}
-            />
-          </div>
-        ) : null}
-      </div>
-
-      {/* ─── Navigation arrows (desktop) ───────────── */}
-      <button
-        onClick={isAr ? nextPage : prevPage}
-        disabled={currentPage <= 1 && !isAr}
-        className="hidden md:flex fixed top-1/2 -translate-y-1/2 w-12 h-24 items-center justify-center rounded-lg hover:bg-black/5 transition-colors z-40 disabled:opacity-20"
-        style={{ [isAr ? 'right' : 'left']: '1rem' }}
-        aria-label={isAr ? 'الصفحة التالية' : 'Previous page'}
-      >
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-          <path d="M15 18l-6-6 6-6" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      </button>
-
-      <button
-        onClick={isAr ? prevPage : nextPage}
-        disabled={totalPages > 0 && currentPage >= totalPages && !isAr}
-        className="hidden md:flex fixed top-1/2 -translate-y-1/2 w-12 h-24 items-center justify-center rounded-lg hover:bg-black/5 transition-colors z-40 disabled:opacity-20"
-        style={{ [isAr ? 'left' : 'right']: '1rem' }}
-        aria-label={isAr ? 'الصفحة السابقة' : 'Next page'}
-      >
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-          <path d="M9 18l6-6-6-6" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      </button>
-
-      {/* ─── Sample mode CTA ───────────────────────── */}
-      {mode === 'sample' && totalPages > 0 && currentPage >= totalPages && (
-        <div
-          className="fixed bottom-20 left-4 right-4 mx-auto max-w-md rounded-2xl p-6 text-center shadow-lg z-40"
-          style={{
-            backgroundColor: themeConfig.toolbarBg,
-            backdropFilter: 'blur(12px)',
-          }}
-        >
-          <p
-            className="text-sm mb-4"
-            style={{ fontFamily: isAr ? 'var(--font-arabic-body)' : 'var(--font-english-body)' }}
-          >
-            {isAr ? 'انتهت العيّنة المجانية — احصل على النسخة الكاملة' : 'End of free sample — get the full book'}
-          </p>
-          <button
-            onClick={() => router.push(`/${locale}/shop`)}
-            className="px-6 py-3 rounded-xl text-sm font-medium min-h-[44px] transition-transform hover:scale-105"
-            style={{ backgroundColor: 'var(--color-primary)', color: '#fff', fontFamily: isAr ? 'var(--font-arabic-body)' : 'var(--font-english-body)' }}
-          >
-            {isAr ? 'اشترِ الآن' : 'Buy Now'}
-          </button>
         </div>
-      )}
-
-      {/* ─── Progress bar ──────────────────────────── */}
-      <div className="fixed bottom-0 left-0 right-0 h-1 z-50" style={{ backgroundColor: `${themeConfig.text}10` }}>
-        <div
-          className="h-full transition-all duration-300 ease-out"
-          style={{
-            width: `${progress}%`,
-            backgroundColor: 'var(--color-primary)',
-            [isAr ? 'right' : 'left']: 0,
-            position: 'absolute',
-          }}
-        />
       </div>
     </div>
   );
 }
 
-// ─── Helpers ────────────────────────────────────────────
 function toArabicNum(n: number): string {
-  const arabicDigits = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
-  return String(n).replace(/\d/g, (d) => arabicDigits[parseInt(d)]!);
+  const d = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+  return String(n).replace(/\d/g, (c) => d[parseInt(c)]!);
 }
