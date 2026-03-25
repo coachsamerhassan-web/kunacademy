@@ -60,9 +60,9 @@ export default async function CommunityPage({ params }: { params: Promise<{ loca
       <Section variant="primary" pattern="flower-of-life">
         <div className="grid grid-cols-3 gap-8 text-center">
           {[
-            { num: '+٥٠٠', numEn: '500+', ar: 'خرّيج', en: 'Graduates' },
-            { num: '٤', numEn: '4', ar: 'قارات', en: 'Continents' },
-            { num: '٢٠+', numEn: '20+', ar: 'بلد', en: 'Countries' },
+            { num: '٥٠٠+', numEn: '500+', ar: 'خرّيج', en: 'Graduates' },
+            { num: '١٣', numEn: '13', ar: 'دولة', en: 'Countries' },
+            { num: '~مليون', numEn: '~1M', ar: 'حياة تأثّرت', en: 'Lives touched' },
           ].map((stat) => (
             <div key={stat.en}>
               <p className="text-4xl md:text-5xl font-bold text-white">

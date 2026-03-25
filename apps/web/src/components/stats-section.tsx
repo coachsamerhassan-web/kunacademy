@@ -8,10 +8,10 @@ interface StatsSectionProps {
 }
 
 const stats = [
-  { valueAr: '١٠,٠٠٠+', valueEn: '10,000+', labelAr: 'جلسة كوتشينج', labelEn: 'Coaching Sessions' },
+  { valueAr: '٥٠٠ ألف+', valueEn: '500K+', labelAr: 'جلسة كوتشينج قُدّمت', labelEn: 'Coaching Sessions Delivered' },
   { valueAr: '٥٠٠+', valueEn: '500+', labelAr: 'كوتش تخرّجوا', labelEn: 'Coaches Graduated' },
-  { valueAr: '٤', valueEn: '4', labelAr: 'قارات', labelEn: 'Continents' },
-  { valueAr: '١٥+', valueEn: '15+', labelAr: 'سنة خبرة', labelEn: 'Years of Experience' },
+  { valueAr: '١٣', valueEn: '13', labelAr: 'دولة', labelEn: 'Countries' },
+  { valueAr: '٢٠+', valueEn: '20+', labelAr: 'سنة خبرة', labelEn: 'Years of Experience' },
 ];
 
 function AnimatedNumber({ value, visible }: { value: string; visible: boolean }) {

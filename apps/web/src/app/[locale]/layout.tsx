@@ -8,6 +8,7 @@ import { Footer } from '@kunacademy/ui/footer';
 import { ScrollObserver } from '@kunacademy/ui/scroll-observer';
 import { fontVariables } from '@/lib/fonts';
 import { NextImageProvider } from '@/components/image-provider';
+import { ScrollRestore } from '@/components/scroll-restore';
 import "../globals.css";
 
 export function generateStaticParams() {
@@ -16,7 +17,7 @@ export function generateStaticParams() {
 
 export const metadata: Metadata = {
   title: "Kun Coaching Academy | أكاديمية كُن للكوتشينج",
-  description: "أول أكاديمية عربية للتفكير الحسّي® والكوتشينج المعتمد من ICF. أكثر من ٥٠٠ كوتش عبر ٤ قارات.",
+  description: "أول أكاديمية عربية للتفكير الحسّي® والكوتشينج المعتمد من ICF. أكثر من ٥٠٠ كوتش في ١٣ دولة.",
   icons: {
     icon: [
       { url: '/favicon-32x32.png', sizes: '32x32', type: 'image/png' },
@@ -58,6 +59,7 @@ export default async function LocaleLayout({
             </main>
             <Footer locale={locale} />
             <ScrollObserver />
+            <ScrollRestore />
           </NextImageProvider>
         </NextIntlClientProvider>
       </body>

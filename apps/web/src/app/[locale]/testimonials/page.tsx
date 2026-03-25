@@ -1,37 +1,53 @@
 import { setRequestLocale } from 'next-intl/server';
-import { Section } from '@kunacademy/ui/section';
-import { TestimonialCard } from '@kunacademy/ui/card';
 import { GeometricPattern } from '@kunacademy/ui/patterns';
+import { cms } from '@kunacademy/cms';
+import { TestimonialsGrid } from './testimonials-grid';
 
 export default async function TestimonialsPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   setRequestLocale(locale);
   const isAr = locale === 'ar';
 
-  // Placeholder testimonials — will be replaced with DB data in Phase 3
-  const testimonials = isAr ? [
-    { name: 'أحمد الشمري', content: 'التفكير الحسّي غيّر طريقة ممارستي للكوتشينج بالكامل. أصبحت أستمع لجسدي قبل عقلي.', program: 'STCE Level 2' },
-    { name: 'نورة القحطاني', content: 'شهادة معتمدة من ICF وتجربة تعليمية لا مثيل لها. أنصح بها كل كوتش طموح.', program: 'STCE Level 1' },
-    { name: 'خالد المنصوري', content: 'برنامج الكوتشينج الإسلامي فتح لي آفاقًا جديدة في دمج القيم مع المنهجية العلمية.', program: 'الكوتشينج الإسلامي' },
-    { name: 'فاطمة الحربي', content: 'خلوة إحياء كانت نقطة تحوّل حقيقية. لم أتخيّل أن 5 أيام ستغيّر نظرتي لكل شيء.', program: 'خلوة إحياء' },
-    { name: 'عبدالله الزهراني', content: 'المنهجية مختلفة تمامًا عن أي شيء درسته. الجسد يعرف قبل العقل — وهذا ما تعلّمته هنا.', program: 'STCE Level 3' },
-    { name: 'سارة العتيبي', content: 'سامر حسن كوتش استثنائي. جلسة واحدة معه تساوي عشر جلسات عادية.', program: 'كوتشينج فردي' },
-  ] : [
-    { name: 'Ahmed Al-Shamri', content: 'Somatic Thinking completely changed how I practice coaching. I now listen to my body before my mind.', program: 'STCE Level 2' },
-    { name: 'Noura Al-Qahtani', content: 'ICF-accredited certification with an unmatched learning experience. I recommend it to every aspiring coach.', program: 'STCE Level 1' },
-    { name: 'Khaled Al-Mansoori', content: 'The Islamic Coaching program opened new horizons in integrating values with scientific methodology.', program: 'Islamic Coaching' },
-    { name: 'Fatima Al-Harbi', content: 'The Ihya retreat was a real turning point. I never imagined 5 days could change my perspective on everything.', program: 'Ihya Retreat' },
-    { name: 'Abdullah Al-Zahrani', content: 'The methodology is completely different from anything I\'ve studied. The body knows before the mind.', program: 'STCE Level 3' },
-    { name: 'Sarah Al-Otaibi', content: 'Samer Hassan is an exceptional coach. One session with him equals ten regular sessions.', program: 'Individual Coaching' },
-  ];
+  // Fetch all testimonials from CMS, filtered by language
+  let testimonials: {
+    id: string;
+    authorName: string;
+    content: string;
+    program: string;
+    role?: string;
+    videoUrl?: string;
+    countryCode?: string;
+  }[] = [];
+
+  try {
+    const raw = await cms.getAllTestimonials();
+    testimonials = raw
+      .filter((t) => isAr ? !!t.content_ar : !!t.content_en)
+      .map((t) => ({
+        id: t.id,
+        authorName: isAr ? t.name_ar : t.name_en,
+        content: isAr ? t.content_ar : t.content_en,
+        program: t.program,
+        role: isAr ? t.role_ar : t.role_en,
+        videoUrl: t.video_url || undefined,
+        countryCode: t.country_code || undefined,
+      }));
+  } catch {
+    // CMS not available — empty state handled in component
+  }
 
   return (
     <main>
-      {/* Hero with decorative quote mark */}
-      <section className="relative overflow-hidden py-16 md:py-24" style={{ background: 'linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-600) 100%)' }}>
+      {/* Hero */}
+      <section
+        className="relative overflow-hidden py-16 md:py-24"
+        style={{ background: 'linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-600) 100%)' }}
+      >
         <GeometricPattern pattern="girih" opacity={0.08} fade="both" />
-        {/* Large decorative quote */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[20rem] leading-none text-white/[0.04] font-serif pointer-events-none select-none" aria-hidden="true">
+        <div
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[20rem] leading-none text-white/[0.04] font-serif pointer-events-none select-none"
+          aria-hidden="true"
+        >
           &ldquo;
         </div>
         <div className="relative z-10 mx-auto max-w-[var(--max-content-width)] px-4 md:px-6 text-center animate-fade-up">
@@ -39,28 +55,40 @@ export default async function TestimonialsPage({ params }: { params: Promise<{ l
             className="text-[2.25rem] md:text-[3.5rem] font-bold text-[#FFF5E9] leading-[1.1]"
             style={{ fontFamily: isAr ? 'var(--font-arabic-heading)' : 'var(--font-english-heading)' }}
           >
-            {isAr ? 'قالوا عن كُن' : 'What They Say About Kun'}
+            {isAr ? 'الأثر لا يُقال... يُعاش' : "Impact isn't told. It's lived."}
           </h1>
           <p className="mt-4 text-white/65 max-w-lg mx-auto text-lg md:text-xl">
             {isAr ? 'تجارب حقيقية من خرّيجي أكاديمية كُن' : 'Real experiences from Kun Academy graduates'}
           </p>
+          {/* Authority stats */}
+          <div className="flex flex-wrap items-center justify-center gap-4 md:gap-6 mt-6 text-sm">
+            <span>
+              <strong className="text-[#FFF5E9]">{isAr ? '٥٠٠+' : '500+'}</strong>{' '}
+              <span className="text-white/60">{isAr ? 'كوتش' : 'coaches'}</span>
+            </span>
+            <span className="w-px h-4 bg-white/20" aria-hidden="true" />
+            <span>
+              <strong className="text-[#FFF5E9]">{isAr ? '١٣' : '13'}</strong>{' '}
+              <span className="text-white/60">{isAr ? 'دولة' : 'countries'}</span>
+            </span>
+            <span className="w-px h-4 bg-white/20" aria-hidden="true" />
+            <span>
+              <strong className="text-[#FFF5E9]">ICF</strong>{' '}
+              <span className="text-white/60">{isAr ? 'اعتماد دولي' : 'accredited'}</span>
+            </span>
+          </div>
         </div>
       </section>
 
-      {/* Testimonials grid */}
-      <Section variant="surface">
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 stagger-children">
-          {testimonials.map((t, i) => (
-            <TestimonialCard
-              key={i}
-              authorName={t.name}
-              content={t.content}
-              program={t.program}
-              rating={5}
-            />
-          ))}
+      {/* Testimonials grid with Load More */}
+      <section
+        className="py-[var(--section-padding-mobile)] md:py-[var(--section-padding)]"
+        style={{ background: 'var(--color-surface-high, #f0e7db)' }}
+      >
+        <div className="mx-auto max-w-[var(--max-content-width)] px-4 md:px-6">
+          <TestimonialsGrid testimonials={testimonials} locale={locale} />
         </div>
-      </Section>
+      </section>
     </main>
   );
 }

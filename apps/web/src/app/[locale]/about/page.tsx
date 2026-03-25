@@ -94,10 +94,10 @@ export default async function AboutPage({ params }: { params: Promise<{ locale: 
       <Section variant="primary" pattern="eight-star">
         <div className="grid grid-cols-2 gap-8 md:grid-cols-4 stagger-children">
           {[
-            { num: '+٥٠٠', numEn: '500+', ar: 'كوتش متخرّج', en: 'Coaches graduated' },
-            { num: '٤', numEn: '4', ar: 'قارات', en: 'Continents' },
-            { num: '٣', numEn: '3', ar: 'لغات', en: 'Languages' },
-            { num: '+١٠,٠٠٠', numEn: '10,000+', ar: 'جلسة كوتشنغ', en: 'Coaching sessions' },
+            { num: '٥٠٠+', numEn: '500+', ar: 'كوتش متخرّج', en: 'Coaches graduated' },
+            { num: '١٣', numEn: '13', ar: 'دولة', en: 'Countries' },
+            { num: '٥٠٠ ألف+', numEn: '500K+', ar: 'جلسة كوتشينج قُدّمت', en: 'Sessions delivered' },
+            { num: '~مليون', numEn: '~1M', ar: 'حياة تأثّرت', en: 'Lives touched' },
           ].map((stat) => (
             <div key={stat.en} className="text-center">
               <p className="text-4xl md:text-5xl font-bold text-white">

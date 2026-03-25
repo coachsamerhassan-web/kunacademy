@@ -186,13 +186,24 @@ export function Header({ locale }: HeaderProps) {
 
         {/* Right actions */}
         <div className="flex items-center gap-2">
-          {/* Language toggle */}
-          <a
-            href={`/${locale === 'ar' ? 'en' : 'ar'}/`}
+          {/* Language toggle — preserves current page path and scroll position */}
+          <button
+            onClick={() => {
+              const otherLocale = locale === 'ar' ? 'en' : 'ar';
+              const path = window.location.pathname;
+              // Replace current locale prefix with the other one
+              const newPath = path.replace(new RegExp(`^/${locale}(/|$)`), `/${otherLocale}$1`);
+              // Store scroll position keyed by the target path
+              sessionStorage.setItem('kun-scroll-restore', JSON.stringify({
+                path: newPath,
+                scrollY: window.scrollY,
+              }));
+              window.location.href = newPath + window.location.search + window.location.hash;
+            }}
             className="flex items-center justify-center w-9 h-9 rounded-full text-xs font-semibold text-[var(--color-neutral-600)] hover:text-[var(--color-primary)] hover:bg-[var(--color-primary-50)] transition-all duration-300"
           >
             {t('EN', 'ع')}
-          </a>
+          </button>
           {/* Login */}
           <a
             href={`/${locale}/dashboard/`}

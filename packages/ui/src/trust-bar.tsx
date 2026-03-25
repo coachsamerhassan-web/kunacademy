@@ -15,13 +15,15 @@ interface TrustBarProps {
 const stats = {
   ar: [
     { value: '٥٠٠+', label: 'كوتش تخرّجوا' },
-    { value: '٤', label: 'قارات' },
+    { value: '١٣', label: 'دولة' },
+    { value: '~مليون', label: 'حياة تأثّرت' },
     { value: 'MCC', label: 'أول عربي' },
     { value: 'ICF', label: 'اعتماد دولي' },
   ],
   en: [
     { value: '500+', label: 'Coaches Graduated' },
-    { value: '4', label: 'Continents' },
+    { value: '13', label: 'Countries' },
+    { value: '~1M', label: 'Lives Touched' },
     { value: 'MCC', label: 'First Arab' },
     { value: 'ICF', label: 'Accredited' },
   ],

@@ -523,7 +523,7 @@ export function TestimonialsShowcase({ locale, testimonials: propTestimonials }:
           <div className="flex flex-wrap items-center justify-center gap-4 md:gap-6 mt-5 text-sm">
             <span><strong className="text-[var(--color-primary)]">{isAr ? '٥٠٠+' : '500+'}</strong> <span className="text-[var(--color-neutral-500)]">{isAr ? 'كوتش' : 'coaches'}</span></span>
             <span className="w-px h-4 bg-[var(--color-neutral-300)]" aria-hidden="true" />
-            <span><strong className="text-[var(--color-primary)]">{isAr ? '٤' : '4'}</strong> <span className="text-[var(--color-neutral-500)]">{isAr ? 'قارات' : 'continents'}</span></span>
+            <span><strong className="text-[var(--color-primary)]">{isAr ? '١٣' : '13'}</strong> <span className="text-[var(--color-neutral-500)]">{isAr ? 'دولة' : 'countries'}</span></span>
             <span className="w-px h-4 bg-[var(--color-neutral-300)]" aria-hidden="true" />
             <span><strong className="text-[var(--color-primary)]">ICF</strong> <span className="text-[var(--color-neutral-500)]">{isAr ? 'اعتماد دولي' : 'accredited'}</span></span>
           </div>

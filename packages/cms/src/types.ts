@@ -249,6 +249,8 @@ export interface Testimonial extends AuditFields {
   /** Location (city, country) */
   location_ar?: string;
   location_en?: string;
+  /** ISO country code (e.g. "EG", "SA", "US") */
+  country_code?: string;
   /** Photo URL (optional — falls back to initial) */
   photo_url?: string;
   /** YouTube video URL (optional — makes it a video testimonial) */

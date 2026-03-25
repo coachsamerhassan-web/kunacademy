@@ -39,8 +39,8 @@ export function CTASection({ locale }: CTASectionProps) {
         </h2>
         <p className="mt-4 text-white/65 max-w-xl mx-auto text-lg md:text-xl">
           {isAr
-            ? 'انضم إلى أكثر من ٥٠٠ كوتش تدرّبوا في أكاديمية كُن من ٤ قارات'
-            : 'Join 500+ coaches trained at Kun Academy from 4 continents'}
+            ? 'انضم إلى أكثر من ٥٠٠ كوتش تدرّبوا في أكاديمية كُن عبر ١٣ دولة'
+            : 'Join 500+ coaches trained at Kun Academy across 13 countries'}
         </p>
         <div className="mt-8 flex flex-wrap justify-center gap-4">
           <a

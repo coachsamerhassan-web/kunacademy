@@ -52,8 +52,8 @@ export function FounderSection({ locale }: FounderSectionProps) {
             </p>
             <p className="mt-5 text-[var(--color-neutral-700)] leading-relaxed max-w-xl">
               {isAr
-                ? 'أكثر من ١٠,٠٠٠ جلسة كوتشينج شخصية. ٥٠٠+ كوتش تخرّجوا من أكاديمية كُن عبر ٤ قارات. حائز على جائزة ICF Young Leader 2019. يقود حركة تربوية معاصرة تربط الوعي الذاتي بالتراث العربي الإسلامي.'
-                : 'Over 10,000 personal coaching sessions. 500+ coaches graduated from Kun Academy across 4 continents. ICF Young Leader Award 2019. Leading a contemporary educational movement connecting self-awareness with Arab-Islamic heritage.'}
+                ? 'أكثر من ١٠,٠٠٠ جلسة كوتشينج شخصية. ٥٠٠+ كوتش تخرّجوا من أكاديمية كُن في ١٣ دولة. حائز على جائزة ICF Young Leader 2019. يقود حركة تربوية معاصرة تربط الوعي الذاتي بالتراث العربي الإسلامي.'
+                : 'Over 10,000 personal coaching sessions. 500+ coaches graduated from Kun Academy across 13 countries. ICF Young Leader Award 2019. Leading a contemporary educational movement connecting self-awareness with Arab-Islamic heritage.'}
             </p>
             <div className="mt-6 flex flex-wrap gap-3 justify-center md:justify-start">
               <a

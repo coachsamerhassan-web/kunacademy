@@ -60,7 +60,7 @@ export default async function FounderPage({ params }: { params: Promise<{ locale
               { topAr: '٢٠١٩', topEn: '2019', bottomAr: 'ICF Young Leader', bottomEn: 'ICF Young Leader' },
               { topAr: '٥٠٠+', topEn: '500+', bottomAr: 'كوتش تخرّجوا', bottomEn: 'Coaches Graduated' },
               { topAr: '١٠,٠٠٠+', topEn: '10,000+', bottomAr: 'جلسة كوتشينج', bottomEn: 'Coaching Sessions' },
-              { topAr: '٤', topEn: '4', bottomAr: 'قارات', bottomEn: 'Continents' },
+              { topAr: '١٣', topEn: '13', bottomAr: 'دولة', bottomEn: 'Countries' },
             ].map((stat) => (
               <div key={stat.bottomEn} className="text-center">
                 <p className="text-2xl md:text-3xl font-bold">{isAr ? stat.topAr : stat.topEn}</p>
@@ -84,8 +84,8 @@ export default async function FounderPage({ params }: { params: Promise<{ locale
           </p>
           <p className="text-[var(--color-neutral-700)] leading-relaxed">
             {isAr
-              ? 'أسست أكاديمية كُن عام 2014 لأنشر هذه المنهجية. اليوم، تخرّج أكثر من 500 كوتش من الأكاديمية عبر 4 قارات و3 لغات. حصلت على لقب Master Certified Coach (MCC) من ICF — أول عربي يحمل هذا اللقب.'
-              : 'I founded Kun Academy in 2014 to spread this methodology. Today, over 500 coaches have graduated from the academy across 4 continents in 3 languages. I earned the Master Certified Coach (MCC) credential from ICF — the first Arab to hold this title.'}
+              ? 'أسست أكاديمية كُن عام 2014 لأنشر هذه المنهجية. اليوم، تخرّج أكثر من 500 كوتش من الأكاديمية في 13 دولة و3 لغات. حصلت على لقب Master Certified Coach (MCC) من ICF — أول عربي يحمل هذا اللقب.'
+              : 'I founded Kun Academy in 2014 to spread this methodology. Today, over 500 coaches have graduated from the academy across 13 countries in 3 languages. I earned the Master Certified Coach (MCC) credential from ICF — the first Arab to hold this title.'}
           </p>
         </div>
       </Section>

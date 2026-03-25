@@ -115,58 +115,125 @@ interface TestimonialCardProps {
   authorName: string;
   content: string;
   program?: string;
+  role?: string;
   rating?: number;
   photoUrl?: string;
   videoUrl?: string;
+  countryCode?: string;
+  locale?: string;
   className?: string;
 }
 
+/** Country flag emoji from ISO code */
+function countryFlag(code: string): string {
+  const upper = code.toUpperCase();
+  return String.fromCodePoint(...[...upper].map(c => 0x1F1E6 + c.charCodeAt(0) - 65));
+}
+
+const countryNamesMap: Record<string, { ar: string; en: string }> = {
+  AE: { ar: 'الإمارات', en: 'UAE' }, SA: { ar: 'السعودية', en: 'Saudi Arabia' },
+  QA: { ar: 'قطر', en: 'Qatar' }, EG: { ar: 'مصر', en: 'Egypt' },
+  MA: { ar: 'المغرب', en: 'Morocco' }, DZ: { ar: 'الجزائر', en: 'Algeria' },
+  US: { ar: 'أمريكا', en: 'USA' }, CA: { ar: 'كندا', en: 'Canada' },
+  DE: { ar: 'ألمانيا', en: 'Germany' }, JP: { ar: 'اليابان', en: 'Japan' },
+  TW: { ar: 'تايوان', en: 'Taiwan' }, BE: { ar: 'بلجيكا', en: 'Belgium' },
+  ZA: { ar: 'جنوب أفريقيا', en: 'South Africa' },
+};
+
+function extractYouTubeId(url: string): string | null {
+  const m = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/);
+  return m ? m[1] : null;
+}
+
 export function TestimonialCard({
-  authorName, content, program, rating, photoUrl, videoUrl, className,
+  authorName, content, program, role, rating, photoUrl, videoUrl, countryCode, locale, className,
 }: TestimonialCardProps) {
-  const Img = useImageComponent();
+  const isAr = locale === 'ar';
+  const videoId = videoUrl ? extractYouTubeId(videoUrl) : null;
+  const [isPlaying, setIsPlaying] = React.useState(false);
+
   return (
-    <Card accent className={cn('p-6', className)}>
-      <div className="flex items-start gap-4">
-        <div className="relative shrink-0">
-          <div className="h-16 w-16 rounded-full overflow-hidden bg-[var(--color-neutral-100)]">
-            {photoUrl ? (
-              <Img src={photoUrl} alt={authorName} width={64} height={64} className="object-cover" />
-            ) : (
-              <div className="h-full w-full flex items-center justify-center text-2xl text-[var(--color-neutral-500)]">
-                {authorName.charAt(0)}
+    <Card accent className={cn('p-0 overflow-hidden', className)}>
+      {/* Video thumbnail / play area */}
+      {videoId && (
+        <div className="relative w-full aspect-video bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-primary-700)]">
+          {isPlaying ? (
+            <iframe
+              src={`https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1`}
+              className="w-full h-full"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+              title={`${authorName} testimonial`}
+            />
+          ) : (
+            <button
+              onClick={() => setIsPlaying(true)}
+              className="absolute inset-0 flex flex-col items-center justify-center gap-2 cursor-pointer group"
+              aria-label={isAr ? 'شاهد التجربة' : 'Watch Story'}
+            >
+              {/* YouTube thumbnail */}
+              <img
+                src={`https://img.youtube.com/vi/${videoId}/mqdefault.jpg`}
+                alt=""
+                className="absolute inset-0 w-full h-full object-cover opacity-60"
+                loading="lazy"
+              />
+              <div className="relative">
+                <div className="absolute inset-0 rounded-full bg-[var(--color-accent)] animate-ping opacity-20" />
+                <div className="relative h-12 w-12 rounded-full bg-[var(--color-accent)] flex items-center justify-center shadow-[0_4px_20px_rgba(244,126,66,0.4)] group-hover:scale-110 transition-transform duration-300">
+                  <svg className="w-5 h-5 text-white ms-0.5" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M6.5 4.5v11l9-5.5-9-5.5z" />
+                  </svg>
+                </div>
               </div>
+              <span className="relative text-xs font-medium text-white/90">
+                {isAr ? 'شاهد التجربة' : 'Watch Story'}
+              </span>
+            </button>
+          )}
+        </div>
+      )}
+
+      <div className="p-5">
+        {/* Quote */}
+        <p
+          className="text-[var(--color-neutral-700)] leading-relaxed line-clamp-4 text-sm"
+          style={{ fontFamily: isAr ? 'var(--font-arabic-body)' : 'inherit' }}
+        >
+          &ldquo;{content}&rdquo;
+        </p>
+
+        {/* Author info */}
+        <div className="mt-4 flex items-start gap-3">
+          {/* Avatar */}
+          <div className="shrink-0 h-10 w-10 rounded-full overflow-hidden bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-primary-600)] flex items-center justify-center">
+            {photoUrl ? (
+              <img src={photoUrl} alt={authorName} className="h-full w-full object-cover" loading="lazy" />
+            ) : (
+              <span className="text-lg font-bold text-white/90">{authorName.charAt(0)}</span>
             )}
           </div>
-          {videoUrl && (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="h-8 w-8 rounded-full bg-[var(--color-accent)] flex items-center justify-center shadow-[0_2px_8px_rgba(244,126,66,0.3)]">
-                <span className="text-white text-xs ms-0.5">▶</span>
-              </div>
-            </div>
-          )}
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="font-bold">{authorName}</p>
-          {program && (
-            <span className="inline-block text-xs bg-[var(--color-primary-50)] text-[var(--color-primary)] px-2.5 py-0.5 rounded-full mt-1 font-medium">
-              {program}
-            </span>
-          )}
-          {rating && (
-            <div className="flex gap-0.5 mt-1">
-              {Array.from({ length: 5 }, (_, i) => (
-                <span key={i} className={i < rating ? 'text-[var(--color-accent)]' : 'text-[var(--color-neutral-300)]'}>
-                  ★
+          <div className="flex-1 min-w-0">
+            <p className="font-bold text-sm text-[var(--color-primary)]">{authorName}</p>
+            {role && <p className="text-xs text-[var(--color-neutral-600)] mt-0.5">{role}</p>}
+            <div className="flex items-center gap-2 mt-1 flex-wrap">
+              {program && (
+                <span className="inline-block text-xs bg-[var(--color-primary-50)] text-[var(--color-primary)] px-2 py-0.5 rounded-full font-medium">
+                  {program}
                 </span>
-              ))}
+              )}
+              {countryCode && (
+                <span className="inline-flex items-center gap-1 text-xs text-[var(--color-neutral-500)]">
+                  <span className="text-sm leading-none">{countryFlag(countryCode)}</span>
+                  {countryNamesMap[countryCode.toUpperCase()]
+                    ? (isAr ? countryNamesMap[countryCode.toUpperCase()].ar : countryNamesMap[countryCode.toUpperCase()].en)
+                    : countryCode}
+                </span>
+              )}
             </div>
-          )}
+          </div>
         </div>
       </div>
-      <p className="mt-4 text-[var(--color-neutral-700)] leading-relaxed line-clamp-4">
-        &ldquo;{content}&rdquo;
-      </p>
     </Card>
   );
 }

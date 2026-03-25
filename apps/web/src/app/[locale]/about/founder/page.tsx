@@ -36,14 +36,14 @@ export default async function FounderPage({ params }: { params: Promise<{ locale
                 { icon: '🏅', text: 'أول عربي يحصل على شهادة Master Certified Coach (MCC) من ICF' },
                 { icon: '🏆', text: 'حائز على جائزة القائد الشاب من ICF لعام 2019' },
                 { icon: '💬', text: 'أكثر من 10,000 جلسة كوتشنغ فردية' },
-                { icon: '🎓', text: 'تخريج أكثر من 500 كوتش عبر 4 قارات' },
+                { icon: '🎓', text: 'تخريج أكثر من 500 كوتش في 13 دولة' },
                 { icon: '🧠', text: 'مؤسس منهجية التفكير الحسّي® — إطار كوتشنغ يربط الفكر بالإشارات الحسّية الجسدية' },
               ]
             : [
                 { icon: '🏅', text: 'ICF Master Certified Coach (MCC) — first Arab to hold this credential' },
                 { icon: '🏆', text: 'ICF Young Leader Award 2019' },
                 { icon: '💬', text: '10,000+ individual coaching sessions' },
-                { icon: '🎓', text: '500+ coaches graduated across 4 continents' },
+                { icon: '🎓', text: '500+ coaches graduated across 13 countries' },
                 { icon: '🧠', text: 'Creator of Somatic Thinking® — connecting thought to somatic bodily signals' },
               ]
           ).map((item, i) => (

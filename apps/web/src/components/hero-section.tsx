@@ -152,8 +152,8 @@ export function HeroSection({ locale }: HeroSectionProps) {
               }}
             >
               {isAr
-                ? 'رحلة تعلّم تبدأ من الجسد وتمتدّ إلى كل بُعد في حياتك المهنية. أكثر من ٥٠٠ كوتش تخرّجوا عبر ٤ قارات.'
-                : 'A learning journey that begins in the body and extends into every dimension of your professional life. Over 500 coaches graduated across 4 continents.'}
+                ? 'رحلة تعلّم تبدأ من الجسد وتمتدّ إلى كل بُعد في حياتك المهنية. أكثر من ٥٠٠ كوتش تخرّجوا في ١٣ دولة. مليون حياة تأثّرت.'
+                : 'A learning journey that begins in the body and extends into every dimension of your professional life. 500+ coaches across 13 countries. A million lives touched.'}
             </p>
 
             {/* CTAs — spring entrance */}

@@ -26,16 +26,19 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
   let cmsTestimonials: { id: string; authorName: string; content: string; program: string; role?: string; location?: string; photoUrl?: string; videoUrl?: string }[] = [];
   try {
     const rawTestimonials = await cms.getFeaturedTestimonials();
-    cmsTestimonials = rawTestimonials.map((t) => ({
-      id: t.id,
-      authorName: isAr ? t.name_ar : t.name_en,
-      content: isAr ? t.content_ar : t.content_en,
-      program: t.program,
-      role: isAr ? t.role_ar : t.role_en,
-      location: isAr ? t.location_ar : t.location_en,
-      photoUrl: t.photo_url || undefined,
-      videoUrl: t.video_url || undefined,
-    }));
+    cmsTestimonials = rawTestimonials
+      .filter((t) => isAr ? !!t.content_ar : !!t.content_en)
+      .map((t) => ({
+        id: t.id,
+        authorName: isAr ? t.name_ar : t.name_en,
+        content: isAr ? t.content_ar : t.content_en,
+        program: t.program,
+        role: isAr ? t.role_ar : t.role_en,
+        location: isAr ? t.location_ar : t.location_en,
+        photoUrl: t.photo_url || undefined,
+        videoUrl: t.video_url || undefined,
+        countryCode: t.country_code || undefined,
+      }));
   } catch {
     // CMS not configured yet — fallback data in component handles this
   }
@@ -93,8 +96,8 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
           </h2>
           <p className="mt-4 text-white/80 leading-relaxed">
             {isAr
-              ? 'أكثر من 500 كوتش تخرّجوا من كُنْ عبر 4 قارات — كل واحد منهم يحمل منهجية أصيلة.'
-              : 'Over 500 coaches graduated from Kun across 4 continents — each with an authentic methodology.'}
+              ? 'أكثر من 500 كوتش تخرّجوا من كُنْ في 13 دولة — كل واحد منهم يحمل منهجية أصيلة.'
+              : 'Over 500 coaches graduated from Kun across 13 countries — each with an authentic methodology.'}
           </p>
         </TreePhase>
 
