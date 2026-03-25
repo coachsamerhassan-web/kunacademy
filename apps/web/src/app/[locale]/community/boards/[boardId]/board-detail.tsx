@@ -126,8 +126,8 @@ export function BoardDetail({ locale, boardId }: { locale: string; boardId: stri
     await supabase.from('community_reactions').upsert({
       post_id: postId,
       user_id: user.id,
-      emoji,
-    }, { onConflict: 'post_id,user_id' });
+      reaction: emoji,
+    }, { onConflict: 'post_id,user_id,reaction' });
   }
 
   if (loading) return <div className="py-8 text-center text-[var(--color-neutral-500)]">{isAr ? 'جاري التحميل...' : 'Loading...'}</div>;

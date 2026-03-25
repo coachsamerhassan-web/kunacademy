@@ -1,12 +1,17 @@
 import { setRequestLocale } from 'next-intl/server';
 import { Section } from '@kunacademy/ui/section';
 import { GeometricPattern } from '@kunacademy/ui/patterns';
+import { cms, contentGetter } from '@kunacademy/cms';
 import { CommunityMembers } from './community-members';
 
 export default async function CommunityPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   setRequestLocale(locale);
   const isAr = locale === 'ar';
+
+  // CMS: fetch page content
+  const sections = await cms.getPageContent('community');
+  const t = contentGetter(sections, locale);
 
   return (
     <main>
@@ -28,12 +33,12 @@ export default async function CommunityPage({ params }: { params: Promise<{ loca
             className="text-[2.25rem] md:text-[3.5rem] font-bold text-[#FFF5E9] leading-[1.1]"
             style={{ fontFamily: isAr ? 'var(--font-arabic-heading)' : 'var(--font-english-heading)' }}
           >
-            {isAr ? 'مجتمع كُن' : 'Kun Community'}
+            {t('hero', 'title', isAr ? 'مجتمع كُن' : 'Kun Community')}
           </h1>
           <p className="mt-4 text-white/65 max-w-lg mx-auto text-lg md:text-xl">
-            {isAr
+            {t('hero', 'subtitle', isAr
               ? 'تواصل مع الكوتشز والمتدربين وعشاق التطوير من حول العالم'
-              : 'Connect with coaches, students, and growth enthusiasts from around the world'}
+              : 'Connect with coaches, students, and growth enthusiasts from around the world')}
           </p>
         </div>
       </section>

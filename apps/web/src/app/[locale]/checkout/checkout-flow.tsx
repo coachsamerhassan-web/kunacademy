@@ -102,6 +102,10 @@ export function CheckoutFlow({ locale }: { locale: string }) {
   const [processing, setProcessing] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'stripe' | 'tabby' | 'instapay'>('stripe');
   const [instapayInstructions, setInstapayInstructions] = useState<any>(null);
+  const [creditBalance, setCreditBalance] = useState(0);
+  const [applyCredits, setApplyCredits] = useState(false);
+  const [paymentPlan, setPaymentPlan] = useState<'full' | 'deposit' | 'installment'>('full');
+  const [installmentCount, setInstallmentCount] = useState(3);
   const isAr = locale === 'ar';
 
   const itemType = searchParams.get('type');
@@ -120,6 +124,21 @@ export function CheckoutFlow({ locale }: { locale: string }) {
         setGeo({ country: 'XX', is_egypt: false, is_gulf: false });
       });
   }, []);
+
+  // Fetch credit balance
+  useEffect(() => {
+    if (!user) return;
+    const supabase = createBrowserClient();
+    if (!supabase) return;
+    supabase.auth.getSession().then(({ data: session }) => {
+      const token = session?.session?.access_token;
+      if (!token) return;
+      fetch('/api/referrals', { headers: { Authorization: `Bearer ${token}` } })
+        .then(r => r.json())
+        .then(d => { if (d.balance > 0) setCreditBalance(d.balance); })
+        .catch(() => {});
+    });
+  }, [user]);
 
   // Fetch item data
   useEffect(() => {
@@ -169,6 +188,10 @@ export function CheckoutFlow({ locale }: { locale: string }) {
   const originalPrice = item ? (item[`price_${currency.toLowerCase()}` as keyof CartItem] as number) : 0;
   const hasDiscount = price < originalPrice;
 
+  // Derived: credits applied (only AED credits, capped at price)
+  const creditsApplied = applyCredits ? Math.min(creditBalance, price) : 0;
+  const effectivePrice = price - creditsApplied;
+
   // Derived: can show Tabby?
   const tabbyAvailable =
     TABBY_CURRENCIES.includes(currency) &&
@@ -192,6 +215,26 @@ export function CheckoutFlow({ locale }: { locale: string }) {
     setProcessing(true);
 
     try {
+      // Apply credits first if toggled
+      if (creditsApplied > 0) {
+        const supabase = createBrowserClient();
+        const { data: session } = await supabase.auth.getSession();
+        const token = session?.session?.access_token;
+        if (token) {
+          const creditRes = await fetch('/api/referrals/apply', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ amount: creditsApplied, payment_id: `${item.type}-${item.id}` }),
+          });
+          if (!creditRes.ok) {
+            const err = await creditRes.json();
+            alert(err.error || 'Failed to apply credits');
+            setProcessing(false);
+            return;
+          }
+        }
+      }
+
       const res = await fetch('/api/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -202,7 +245,8 @@ export function CheckoutFlow({ locale }: { locale: string }) {
           user_id: user.id,
           user_email: user.email,
           currency,
-          amount: price,
+          amount: effectivePrice,
+          applied_credits: creditsApplied,
           gateway: paymentMethod,
           locale,
           country: geo?.country || 'XX',
@@ -237,6 +281,103 @@ export function CheckoutFlow({ locale }: { locale: string }) {
           <span className="text-xl font-bold text-[var(--color-primary)]">{formatPrice(price, currency)}</span>
         </div>
       </div>
+
+      {/* Apply Credits */}
+      {creditBalance > 0 && currency === 'AED' && (
+        <div className="rounded-lg border border-[var(--color-neutral-200)] p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-medium text-sm">
+                {isAr ? 'استخدام رصيد الإحالات' : 'Apply Referral Credits'}
+              </p>
+              <p className="text-xs text-[var(--color-neutral-500)] mt-0.5">
+                {isAr ? `رصيدك: ${formatPrice(creditBalance, 'AED')}` : `Balance: ${formatPrice(creditBalance, 'AED')}`}
+              </p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={applyCredits}
+              onClick={() => setApplyCredits(!applyCredits)}
+              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full transition-colors min-h-[44px] min-w-[44px] items-center ${
+                applyCredits ? 'bg-[var(--color-primary)]' : 'bg-[var(--color-neutral-300)]'
+              }`}
+            >
+              <span className={`inline-block h-5 w-5 rounded-full bg-white shadow transition-transform ${
+                applyCredits ? 'translate-x-5' : 'translate-x-0.5'
+              }`} />
+            </button>
+          </div>
+          {applyCredits && (
+            <div className="mt-3 pt-3 border-t border-[var(--color-neutral-100)] space-y-1 text-sm">
+              <div className="flex justify-between text-[var(--color-neutral-600)]">
+                <span>{isAr ? 'السعر الأصلي' : 'Original price'}</span>
+                <span>{formatPrice(price, currency)}</span>
+              </div>
+              <div className="flex justify-between text-green-600">
+                <span>{isAr ? 'خصم الرصيد' : 'Credit discount'}</span>
+                <span>-{formatPrice(creditsApplied, 'AED')}</span>
+              </div>
+              <div className="flex justify-between font-bold text-[var(--color-primary)]">
+                <span>{isAr ? 'المطلوب دفعه' : 'Amount due'}</span>
+                <span>{formatPrice(effectivePrice, currency)}</span>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Payment Plan — deposit/installment option (only for eligible programs) */}
+      {item?.installment_enabled && (
+        <div className="rounded-lg border border-[var(--color-neutral-200)] p-4">
+          <p className="font-medium text-sm mb-3">
+            {isAr ? 'خطة الدفع' : 'Payment Plan'}
+          </p>
+          <div className="space-y-2">
+            <label className={`flex items-center gap-3 rounded-lg border p-3 cursor-pointer min-h-[44px] ${paymentPlan === 'full' ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/5' : 'border-[var(--color-neutral-200)]'}`}>
+              <input type="radio" name="plan" value="full" checked={paymentPlan === 'full'} onChange={() => setPaymentPlan('full')} className="accent-[var(--color-primary)]" />
+              <div>
+                <span className="font-medium text-sm">{isAr ? 'دفع كامل' : 'Pay in Full'}</span>
+                <span className="text-xs text-[var(--color-neutral-500)] block">{formatPrice(effectivePrice, currency)}</span>
+              </div>
+            </label>
+
+            <label className={`flex items-center gap-3 rounded-lg border p-3 cursor-pointer min-h-[44px] ${paymentPlan === 'deposit' ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/5' : 'border-[var(--color-neutral-200)]'}`}>
+              <input type="radio" name="plan" value="deposit" checked={paymentPlan === 'deposit'} onChange={() => setPaymentPlan('deposit')} className="accent-[var(--color-primary)]" />
+              <div>
+                <span className="font-medium text-sm">{isAr ? 'إيداع 30%' : 'Pay 30% Deposit'}</span>
+                <span className="text-xs text-[var(--color-neutral-500)] block">
+                  {isAr ? `ادفع ${formatPrice(Math.round(effectivePrice * 0.3), currency)} الآن` : `Pay ${formatPrice(Math.round(effectivePrice * 0.3), currency)} now`}
+                  {' — '}
+                  {isAr ? `الباقي ${formatPrice(Math.round(effectivePrice * 0.7), currency)} خلال 30 يوم` : `${formatPrice(Math.round(effectivePrice * 0.7), currency)} due in 30 days`}
+                </span>
+              </div>
+            </label>
+
+            <label className={`flex items-center gap-3 rounded-lg border p-3 cursor-pointer min-h-[44px] ${paymentPlan === 'installment' ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/5' : 'border-[var(--color-neutral-200)]'}`}>
+              <input type="radio" name="plan" value="installment" checked={paymentPlan === 'installment'} onChange={() => setPaymentPlan('installment')} className="accent-[var(--color-primary)]" />
+              <div className="flex-1">
+                <span className="font-medium text-sm">{isAr ? 'أقساط شهرية' : 'Monthly Installments'}</span>
+                <div className="flex items-center gap-2 mt-1">
+                  <select
+                    value={installmentCount}
+                    onChange={(e) => setInstallmentCount(parseInt(e.target.value))}
+                    className="text-xs rounded border border-[var(--color-neutral-300)] px-2 py-1 min-h-[32px]"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {[2, 3, 4, 5, 6].map(n => (
+                      <option key={n} value={n}>{n} {isAr ? 'أقساط' : 'payments'}</option>
+                    ))}
+                  </select>
+                  <span className="text-xs text-[var(--color-neutral-500)]">
+                    {formatPrice(Math.ceil(effectivePrice / installmentCount), currency)} / {isAr ? 'شهر' : 'mo'}
+                  </span>
+                </div>
+              </div>
+            </label>
+          </div>
+        </div>
+      )}
 
       {/* Currency selector — geo-aware */}
       <div>
@@ -371,7 +512,13 @@ export function CheckoutFlow({ locale }: { locale: string }) {
         <Button variant="primary" size="lg" className="w-full" onClick={handlePayment} disabled={processing}>
           {processing
             ? (isAr ? 'جاري المعالجة...' : 'Processing...')
-            : (isAr ? `ادفع ${formatPrice(price, currency)}` : `Pay ${formatPrice(price, currency)}`)}
+            : effectivePrice <= 0
+            ? (isAr ? 'تأكيد (مدفوع بالرصيد)' : 'Confirm (paid with credits)')
+            : paymentPlan === 'deposit'
+            ? (isAr ? `ادفع إيداع ${formatPrice(Math.round(effectivePrice * 0.3), currency)}` : `Pay Deposit ${formatPrice(Math.round(effectivePrice * 0.3), currency)}`)
+            : paymentPlan === 'installment'
+            ? (isAr ? `ادفع القسط الأول ${formatPrice(Math.ceil(effectivePrice / installmentCount), currency)}` : `Pay First Installment ${formatPrice(Math.ceil(effectivePrice / installmentCount), currency)}`)
+            : (isAr ? `ادفع ${formatPrice(effectivePrice, currency)}` : `Pay ${formatPrice(effectivePrice, currency)}`)}
         </Button>
       )}
     </div>
