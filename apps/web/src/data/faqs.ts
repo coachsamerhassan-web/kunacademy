@@ -23,12 +23,12 @@ export const programsFaqs: FAQItem[] = [
 /** STCE Certification */
 export const stceFaqs: FAQItem[] = [
   {
-    ar: { q: 'ما الفرق بين مستويات STCE الأربعة؟', a: 'المستوى 1 (ACC): أساسيات الكوتشينج والتفكير الحسّي. المستوى 2 (PCC): تعميق المهارات والإشراف. المستوى 3: التخصص (أسري، مؤسسي، إسلامي). المستوى 4: تدريب المدرّبين.' },
-    en: { q: 'What is the difference between the four STCE levels?', a: 'Level 1 (ACC): Coaching fundamentals and Somatic Thinking. Level 2 (PCC): Deepening skills with supervision. Level 3: Specialization (Family, Corporate, Islamic). Level 4: Train the Trainer.' },
+    ar: { q: 'ما الفرق بين مستويات STCE الخمسة؟', a: 'المستوى ١: أساسيات الكوتشينج والتفكير الحسّي (٦٩ ساعة، مسار ACC). المستوى ٢: تعميق المهارات مع كوتشينج حقيقي للعملاء (٧٥ ساعة، مسار PCC). المستوى ٣: كوتشينج المجموعات (٤٠ ساعة). المستوى ٤: كوتشينج المؤسسات (٣٦ ساعة). المستوى ٥: كوتشينج العائلات والأزواج (٢٠ ساعة).' },
+    en: { q: 'What is the difference between the five STCE levels?', a: 'Level 1: Coaching foundations through Somatic Thinking (69 hours, ACC pathway). Level 2: Advanced skills with real client coaching (75 hours, PCC pathway). Level 3: Group Coaching (40 hours). Level 4: Organizational Coaching (36 hours). Level 5: Family & Couples Coaching (20 hours).' },
   },
   {
-    ar: { q: 'كم ساعة تدريب معتمدة أحصل عليها؟', a: 'المستوى 1 يمنحك 60+ ساعة تدريب معتمدة من ICF. المستوى 2 يمنحك 125+ ساعة إضافية. المجموع كافٍ للتقدّم لشهادة PCC.' },
-    en: { q: 'How many accredited training hours do I get?', a: 'Level 1 gives you 60+ ICF-accredited training hours. Level 2 adds 125+ hours. The total is sufficient to apply for a PCC credential.' },
+    ar: { q: 'كم ساعة تدريب معتمدة أحصل عليها؟', a: 'المستوى ١ يمنحك ٦٩ ساعة تدريب معتمدة من ICF (مسار ACC). المستوى ٢ يضيف ٧٥ ساعة (مسار PCC). المستويات ٣-٥ تضيف ٩٦ ساعة إضافية. المجموع ٢٤٠ ساعة.' },
+    en: { q: 'How many accredited training hours do I get?', a: 'Level 1 gives you 69 ICF-accredited hours (ACC pathway). Level 2 adds 75 hours (PCC pathway). Levels 3-5 add 96 more hours. Total: 240 hours across all five levels.' },
   },
   {
     ar: { q: 'هل يمكنني التسجيل مباشرة في المستوى 2؟', a: 'المستوى 2 يتطلب إتمام المستوى 1 أولاً. إذا كنت تحمل شهادة كوتشينج معتمدة من مؤسسة أخرى، تواصل معنا لتقييم إمكانية الانتقال المباشر.' },

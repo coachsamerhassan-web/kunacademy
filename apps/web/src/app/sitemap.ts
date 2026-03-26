@@ -12,7 +12,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
     '/programs/certifications/stce/level-3/',
     '/programs/certifications/stce/level-4/',
     '/programs/certifications/stce/packages/',
-    '/programs/certifications/islamic-coaching/',
     '/programs/certifications/menhajak/',
     '/programs/certifications/mcc-mentoring/',
     '/programs/courses/',

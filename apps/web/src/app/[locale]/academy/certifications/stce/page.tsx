@@ -1,24 +1,25 @@
 import { setRequestLocale } from 'next-intl/server';
 import { Section } from '@kunacademy/ui/section';
-import { Button } from '@kunacademy/ui/button';
 import { FAQSection } from '@kunacademy/ui/faq-section';
 import { faqJsonLd } from '@kunacademy/ui/faq-jsonld';
 import { stceFaqs } from '@/data/faqs';
 import { GeometricPattern } from '@kunacademy/ui/patterns';
+import { cms } from '@kunacademy/cms';
 
-const levels = {
-  ar: [
-    { num: 1, name: 'STIC', title: 'مقدمة في التفكير الحسّي', hours: 79, href: '/programs/certifications/stce/level-1', desc: 'الأساسيات والمهارات الجوهرية للكوتشينج الحسّي', icfLevel: 'ICF Level 1' },
-    { num: 2, name: 'STAIC', title: 'التفكير الحسّي المتقدم', hours: 106, href: '/programs/certifications/stce/level-2', desc: 'التعمّق في منهجية التفكير الحسّي وأدواته المتقدمة', icfLevel: 'ICF Level 2' },
-    { num: 3, name: 'STGC', title: 'كوتشينج المجموعات', hours: 34, href: '/programs/certifications/stce/level-3', desc: 'تيسير جلسات الكوتشينج الجماعي بمنهجية التفكير الحسّي', icfLevel: 'CCE' },
-    { num: 4, name: 'STOC', title: 'الإشراف على الكوتشينج', hours: 37, href: '/programs/certifications/stce/level-4', desc: 'الإشراف والمنتورينج للكوتشز المتدربين', icfLevel: 'CCE' },
-  ],
-  en: [
-    { num: 1, name: 'STIC', title: 'Somatic Thinking Introduction to Coaching', hours: 79, href: '/programs/certifications/stce/level-1', desc: 'Foundational skills in somatic coaching methodology', icfLevel: 'ICF Level 1' },
-    { num: 2, name: 'STAIC', title: 'Somatic Thinking Advanced Integrated Coaching', hours: 106, href: '/programs/certifications/stce/level-2', desc: 'Deep dive into advanced Somatic Thinking tools and techniques', icfLevel: 'ICF Level 2' },
-    { num: 3, name: 'STGC', title: 'Somatic Thinking Group Coaching', hours: 34, href: '/programs/certifications/stce/level-3', desc: 'Facilitating group coaching sessions using Somatic Thinking', icfLevel: 'CCE' },
-    { num: 4, name: 'STOC', title: 'Somatic Thinking Oversight of Coaching', hours: 37, href: '/programs/certifications/stce/level-4', desc: 'Supervising and mentoring trainee coaches', icfLevel: 'CCE' },
-  ],
+const STCE_SLUGS = [
+  'stce-level-1-stic',
+  'stce-level-2-staic',
+  'stce-level-3-stgc',
+  'stce-level-4-stoc',
+  'stce-level-5-stfc',
+];
+
+const LEVEL_HREFS: Record<string, string> = {
+  'stce-level-1-stic': '/academy/certifications/stce/level-1',
+  'stce-level-2-staic': '/academy/certifications/stce/level-2',
+  'stce-level-3-stgc': '/academy/certifications/stce/level-3',
+  'stce-level-4-stoc': '/academy/certifications/stce/level-4',
+  'stce-level-5-stfc': '/academy/certifications/stce/level-5',
 };
 
 const levelColors = [
@@ -26,18 +27,31 @@ const levelColors = [
   'var(--color-accent)',
   'var(--color-primary)',
   'var(--color-primary-700)',
+  'var(--color-primary-800)',
 ];
+
+function parseHours(duration: string | undefined): number {
+  if (!duration) return 0;
+  const match = duration.match(/(\d+)/);
+  return match ? parseInt(match[1], 10) : 0;
+}
 
 export default async function STCEPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   setRequestLocale(locale);
   const isAr = locale === 'ar';
-  const items = isAr ? levels.ar : levels.en;
-  const totalHours = items.reduce((sum, l) => sum + l.hours, 0);
+
+  const allPrograms = await cms.getAllPrograms();
+  const levels = STCE_SLUGS
+    .map((slug) => allPrograms.find((p) => p.slug === slug))
+    .filter(Boolean);
+
+  const totalHours = levels.reduce((sum, l) => sum + parseHours(l!.duration), 0);
+  const levelCount = levels.length;
 
   return (
     <main>
-      {/* Hero with gradient + pattern */}
+      {/* Hero */}
       <section className="relative overflow-hidden py-20 md:py-28" style={{ background: 'linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-700) 100%)' }}>
         <GeometricPattern pattern="girih" opacity={0.1} fade="both" />
         <div className="relative z-10 mx-auto max-w-[var(--max-content-width)] px-4 md:px-6 text-center animate-fade-up">
@@ -58,7 +72,7 @@ export default async function STCEPage({ params }: { params: Promise<{ locale: s
             </span>
             <span className="flex items-center gap-1.5">
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-              {isAr ? '٤ مستويات' : '4 Levels'}
+              {isAr ? `${levelCount} مستويات` : `${levelCount} Levels`}
             </span>
             <span className="flex items-center gap-1.5">
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg>
@@ -68,50 +82,58 @@ export default async function STCEPage({ params }: { params: Promise<{ locale: s
         </div>
       </section>
 
-      {/* Levels grid with visual progression */}
+      {/* Levels grid */}
       <Section variant="surface">
         <div className="text-center mb-12 animate-fade-up">
           <h2 className="text-[1.75rem] md:text-[2.5rem] font-bold text-[var(--text-accent)]">
-            {isAr ? 'المستويات الأربعة' : 'The Four Levels'}
+            {isAr ? `المستويات الخمسة` : `The Five Levels`}
           </h2>
           <p className="mt-3 text-[var(--text-muted)] max-w-lg mx-auto">
             {isAr ? 'كل مستوى يبني على سابقه — من الأساسيات إلى الإتقان' : 'Each level builds upon the previous — from foundations to mastery'}
           </p>
         </div>
         <div className="grid md:grid-cols-2 gap-6 stagger-children">
-          {items.map((level, i) => (
-            <a
-              key={level.num}
-              href={`/${locale}${level.href}`}
-              className="group rounded-2xl bg-white p-6 shadow-[0_4px_24px_rgba(71,64,153,0.06)] hover:shadow-[0_12px_40px_rgba(71,64,153,0.12)] hover:-translate-y-1 transition-all duration-500 block"
-            >
-              <div className="flex items-start gap-4">
-                {/* Level number with color accent */}
-                <div
-                  className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl text-white font-bold text-xl transition-transform duration-500 group-hover:scale-110"
-                  style={{ backgroundColor: levelColors[i] }}
-                >
-                  {level.num}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <h3 className="text-lg md:text-xl font-bold">{level.name}</h3>
-                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[var(--color-primary-50)] text-[var(--color-primary)]">
-                      {level.icfLevel}
-                    </span>
+          {levels.map((level, i) => {
+            const hours = parseHours(level!.duration);
+            const href = LEVEL_HREFS[level!.slug] || '#';
+            return (
+              <a
+                key={level!.slug}
+                href={`/${locale}${href}`}
+                className="group rounded-2xl bg-white p-6 shadow-[0_4px_24px_rgba(71,64,153,0.06)] hover:shadow-[0_12px_40px_rgba(71,64,153,0.12)] hover:-translate-y-1 transition-all duration-500 block"
+              >
+                <div className="flex items-start gap-4">
+                  <div
+                    className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl text-white font-bold text-xl transition-transform duration-500 group-hover:scale-110"
+                    style={{ backgroundColor: levelColors[i] || levelColors[0] }}
+                  >
+                    {i + 1}
                   </div>
-                  <h4 className="text-sm font-medium text-[var(--color-neutral-700)] mb-2">{level.title}</h4>
-                  <p className="text-sm text-[var(--text-muted)] leading-relaxed">{level.desc}</p>
-                  <div className="mt-3 flex items-center gap-4 text-xs text-[var(--color-neutral-500)]">
-                    <span>{level.hours} {isAr ? 'ساعة' : 'hours'}</span>
-                    <span className="text-[var(--color-primary)] font-medium group-hover:underline">
-                      {isAr ? 'التفاصيل' : 'Details'} →
-                    </span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="text-lg md:text-xl font-bold">
+                        {isAr ? level!.title_ar : level!.title_en}
+                      </h3>
+                      {level!.icf_details && (
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[var(--color-primary-50)] text-[var(--color-primary)]">
+                          {level!.icf_details}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-sm text-[var(--text-muted)] leading-relaxed">
+                      {isAr ? level!.description_ar : level!.description_en}
+                    </p>
+                    <div className="mt-3 flex items-center gap-4 text-xs text-[var(--color-neutral-500)]">
+                      <span>{hours} {isAr ? 'ساعة' : 'hours'}</span>
+                      <span className="text-[var(--color-primary)] font-medium group-hover:underline">
+                        {isAr ? 'التفاصيل' : 'Details'} →
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </a>
-          ))}
+              </a>
+            );
+          })}
         </div>
       </Section>
 
@@ -127,7 +149,7 @@ export default async function STCEPage({ params }: { params: Promise<{ locale: s
               : 'Save more with our bundled packages — Professional or Mastery'}
           </p>
           <a
-            href={`/${locale}/programs/certifications/stce/packages/`}
+            href={`/${locale}/academy/certifications/stce/packages/`}
             className="inline-flex items-center justify-center mt-6 rounded-xl bg-[var(--color-accent)] px-8 py-3.5 text-base font-semibold text-white min-h-[44px] hover:bg-[var(--color-accent-500)] transition-all duration-300 shadow-[0_4px_16px_rgba(244,126,66,0.25)]"
           >
             {isAr ? 'استعرض الباقات' : 'View Packages'}
