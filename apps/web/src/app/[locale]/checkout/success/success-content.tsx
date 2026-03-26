@@ -1,11 +1,29 @@
 'use client';
 
 import { useSearchParams } from 'next/navigation';
+import { useEffect } from 'react';
+import { trackEvent, trackMetaEvent } from '@/components/analytics';
 
 export function SuccessContent({ locale }: { locale: string }) {
   const searchParams = useSearchParams();
   const paymentId = searchParams.get('payment_id');
+  const amount = searchParams.get('amount');
+  const program = searchParams.get('program');
   const isAr = locale === 'ar';
+
+  useEffect(() => {
+    trackEvent('purchase', {
+      transaction_id: paymentId,
+      value: amount ? parseFloat(amount) : undefined,
+      currency: 'AED',
+      items: program ? [{ item_name: program }] : undefined,
+    });
+    trackMetaEvent('Purchase', {
+      value: amount ? parseFloat(amount) : undefined,
+      currency: 'AED',
+      content_name: program,
+    });
+  }, [paymentId, amount, program]);
 
   return (
     <div className="mt-6 space-y-3">

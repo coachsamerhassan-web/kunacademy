@@ -9,6 +9,7 @@ import { ScrollObserver } from '@kunacademy/ui/scroll-observer';
 import { fontVariables } from '@/lib/fonts';
 import { NextImageProvider } from '@/components/image-provider';
 import { ScrollRestore } from '@/components/scroll-restore';
+import { Analytics } from '@/components/analytics';
 import "../globals.css";
 
 export function generateStaticParams() {
@@ -16,6 +17,7 @@ export function generateStaticParams() {
 }
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://kunacademy.com'),
   title: "Kun Coaching Academy | أكاديمية كُن للكوتشينج",
   description: "أول أكاديمية عربية للتفكير الحسّي® والكوتشينج المعتمد من ICF. أكثر من ٥٠٠ كوتش في ١٣ دولة.",
   icons: {
@@ -60,6 +62,7 @@ export default async function LocaleLayout({
             <Footer locale={locale} />
             <ScrollObserver />
             <ScrollRestore />
+            <Analytics />
           </NextImageProvider>
         </NextIntlClientProvider>
       </body>
