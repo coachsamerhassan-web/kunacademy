@@ -21,8 +21,25 @@ export async function POST(request: NextRequest) {
     let tabbyPaymentIdForCapture: string | null = null;
 
     if (gateway === 'stripe') {
-      // TODO: Verify Stripe webhook signature
-      const event = JSON.parse(body);
+      // Verify Stripe webhook signature
+      const stripeSignature = request.headers.get('stripe-signature');
+      const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+      let event: any;
+
+      if (webhookSecret && stripeSignature) {
+        const stripe = (await import('stripe')).default;
+        const stripeClient = new stripe(process.env.STRIPE_SECRET_KEY!);
+        try {
+          event = stripeClient.webhooks.constructEvent(body, stripeSignature, webhookSecret);
+        } catch (err: any) {
+          console.error('[stripe-webhook] Signature verification failed:', err.message);
+          return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
+        }
+      } else {
+        // Fallback for dev/testing — log warning
+        console.warn('[stripe-webhook] No webhook secret configured — skipping signature verification');
+        event = JSON.parse(body);
+      }
       if (event.type === 'checkout.session.completed') {
         paymentId = event.data.object.metadata?.payment_id;
       } else if (event.type === 'checkout.session.expired') {
