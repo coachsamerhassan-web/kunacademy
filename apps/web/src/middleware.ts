@@ -18,9 +18,35 @@ function getLocaleFromPath(pathname: string): string {
   return match ? match[1] : 'ar';
 }
 
+// ── Geo-pricing region detection ──────────────────────────────────────────
+// Egypt → EGP | Gulf & Arab → AED | Rest of world → EUR
+const GULF_ARAB_COUNTRIES = new Set([
+  'AE', 'SA', 'KW', 'QA', 'BH', 'OM', // GCC
+  'JO', 'LB', 'IQ', 'SY', 'PS', 'YE', // Levant + others
+  'LY', 'TN', 'DZ', 'MA', 'MR', 'SD', // North/West Africa Arab
+  'SO', 'DJ', 'KM',                     // East Africa Arab
+]);
+
+function getPricingRegion(countryCode: string | null): 'EGP' | 'AED' | 'EUR' {
+  if (!countryCode) return 'AED'; // default for dev/unknown
+  const cc = countryCode.toUpperCase();
+  if (cc === 'EG') return 'EGP';
+  if (GULF_ARAB_COUNTRIES.has(cc)) return 'AED';
+  return 'EUR';
+}
+
 export default async function middleware(request: NextRequest) {
   // Run i18n middleware first
   const response = intlMiddleware(request);
+
+  // ── Set pricing region cookie from Vercel geo header ────────────────
+  const country = request.headers.get('x-vercel-ip-country') || null;
+  const region = getPricingRegion(country);
+  response.cookies.set('pricing-region', region, {
+    path: '/',
+    maxAge: 86400, // 24 hours
+    sameSite: 'lax',
+  });
 
   // Only check auth for protected paths
   if (!isProtectedPath(request.nextUrl.pathname)) {

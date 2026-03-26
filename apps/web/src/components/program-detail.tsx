@@ -1,6 +1,7 @@
 import { Section } from '@kunacademy/ui/section';
 import { GeometricPattern } from '@kunacademy/ui/patterns';
 import type { Program } from '@kunacademy/cms';
+import { getPricingRegion, getGeoPrice } from '@/lib/geo-pricing';
 
 interface ProgramDetailProps {
   program: Program;
@@ -15,12 +16,7 @@ interface ProgramDetailProps {
   ctaHref?: string;
 }
 
-function formatPrice(amount: number, currency: string): string {
-  if (!amount) return '';
-  return `${amount.toLocaleString()} ${currency}`;
-}
-
-export function ProgramDetail({
+export async function ProgramDetail({
   program, locale,
   outcomesAr, outcomesEn,
   audienceAr, audienceEn,
@@ -32,8 +28,16 @@ export function ProgramDetail({
   const subtitle = isAr ? program.subtitle_ar : program.subtitle_en;
   const outcomes = isAr ? outcomesAr : outcomesEn;
   const audience = isAr ? audienceAr : audienceEn;
-  const priceAed = program.price_aed as number;
-  const priceEgp = program.price_egp as number;
+
+  // Geo-based pricing — show only the visitor's regional price
+  const region = await getPricingRegion();
+  const price = getGeoPrice(
+    region,
+    program.price_aed as number,
+    program.price_egp as number,
+    program.price_eur as number,
+    program.early_bird_price_aed as number,
+  );
 
   return (
     <main>
@@ -140,25 +144,18 @@ export function ProgramDetail({
             {isAr ? 'سجّل الآن' : 'Register Now'}
           </h2>
 
-          {(priceAed > 0 || priceEgp > 0) && (
-            <div className="mt-6 flex flex-wrap justify-center gap-6">
-              {priceAed > 0 && (
-                <div className="rounded-xl bg-white/10 border border-white/20 px-6 py-4">
-                  <p className="text-white/60 text-sm">{isAr ? 'الخليج' : 'Gulf'}</p>
-                  <p className="text-2xl font-bold text-white">{priceAed.toLocaleString()} <span className="text-base font-normal">AED</span></p>
-                  {(program.early_bird_price_aed as number) > 0 && (
-                    <p className="text-[var(--color-accent-200)] text-sm mt-1">
-                      {isAr ? 'حجز مبكر:' : 'Early bird:'} {(program.early_bird_price_aed as number).toLocaleString()} AED
-                    </p>
-                  )}
-                </div>
-              )}
-              {priceEgp > 0 && (
-                <div className="rounded-xl bg-white/10 border border-white/20 px-6 py-4">
-                  <p className="text-white/60 text-sm">{isAr ? 'مصر' : 'Egypt'}</p>
-                  <p className="text-2xl font-bold text-white">{priceEgp.toLocaleString()} <span className="text-base font-normal">EGP</span></p>
-                </div>
-              )}
+          {price.amount > 0 && (
+            <div className="mt-6">
+              <div className="inline-block rounded-xl bg-white/10 border border-white/20 px-8 py-5">
+                <p className="text-3xl font-bold text-white">
+                  {price.amount.toLocaleString()} <span className="text-lg font-normal">{price.currency}</span>
+                </p>
+                {price.earlyBird && price.earlyBird > 0 && (
+                  <p className="text-[var(--color-accent-200)] text-sm mt-2">
+                    {isAr ? 'حجز مبكر:' : 'Early bird:'} {price.earlyBird.toLocaleString()} {price.currency}
+                  </p>
+                )}
+              </div>
             </div>
           )}
 
