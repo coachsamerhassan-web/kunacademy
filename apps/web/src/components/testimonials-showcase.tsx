@@ -468,8 +468,13 @@ export function TestimonialsShowcase({ locale, testimonials: propTestimonials }:
   const [activeIndex, setActiveIndex] = useState(0);
   const [playingVideo, setPlayingVideo] = useState<string | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Ref mirror of playingVideo — always current value, no stale closure risk in event handlers
+  const playingVideoRef = useRef<string | null>(null);
 
   const startAutoAdvance = useCallback(() => {
+    // Always clear any existing interval before starting a new one —
+    // prevents leaked intervals when startAutoAdvance is called multiple times
+    if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
     intervalRef.current = setInterval(() => {
       setActiveIndex((prev) => (prev + 1) % testimonials.length);
       setPlayingVideo(null); // Stop video when auto-advancing
@@ -487,6 +492,7 @@ export function TestimonialsShowcase({ locale, testimonials: propTestimonials }:
 
   const handleSelect = (i: number) => {
     stopAutoAdvance();
+    playingVideoRef.current = null;
     setActiveIndex(i);
     setPlayingVideo(null);
     startAutoAdvance();
@@ -494,6 +500,7 @@ export function TestimonialsShowcase({ locale, testimonials: propTestimonials }:
 
   const handlePlay = (id: string) => {
     stopAutoAdvance(); // Don't auto-advance while watching video
+    playingVideoRef.current = id;
     setPlayingVideo(id);
   };
 
@@ -502,7 +509,7 @@ export function TestimonialsShowcase({ locale, testimonials: propTestimonials }:
       className="relative overflow-hidden py-[var(--section-padding-mobile)] md:py-[var(--section-padding)]"
       style={{ background: 'var(--color-surface-high, #f0e7db)' }}
       onMouseEnter={stopAutoAdvance}
-      onMouseLeave={() => { if (!playingVideo) startAutoAdvance(); }}
+      onMouseLeave={() => { if (!playingVideoRef.current) startAutoAdvance(); }}
     >
       <GeometricPattern pattern="girih" opacity={0.06} fade="both" />
 
@@ -548,7 +555,7 @@ export function TestimonialsShowcase({ locale, testimonials: propTestimonials }:
                 isAr={isAr}
                 isPlaying={playingVideo === t.id}
                 onPlay={() => handlePlay(t.id)}
-                onClose={() => { setPlayingVideo(null); startAutoAdvance(); }}
+                onClose={() => { playingVideoRef.current = null; setPlayingVideo(null); startAutoAdvance(); }}
               />
             </div>
           ))}
