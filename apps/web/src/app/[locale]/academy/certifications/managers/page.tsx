@@ -7,7 +7,7 @@ export default async function ManagersPage({ params }: { params: Promise<{ local
   const { locale } = await params;
   setRequestLocale(locale);
 
-  const program = await cms.getProgram('stce-managers');
+  const program = await cms.getProgram('stcm-managers');
   if (!program) notFound();
 
   return (

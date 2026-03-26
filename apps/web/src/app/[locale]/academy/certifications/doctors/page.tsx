@@ -7,7 +7,7 @@ export default async function DoctorsPage({ params }: { params: Promise<{ locale
   const { locale } = await params;
   setRequestLocale(locale);
 
-  const program = await cms.getProgram('stce-doctors');
+  const program = await cms.getProgram('stdc-doctors');
   if (!program) notFound();
 
   return (
