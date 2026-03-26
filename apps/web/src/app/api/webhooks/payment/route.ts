@@ -3,6 +3,8 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { captureTabbyPayment } from '@kunacademy/payments';
 import { createZohoInvoice } from '@/lib/zoho-books';
+import { randomUUID } from 'crypto';
+import { getBusinessConfig } from '@/lib/cms-config';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -131,6 +133,106 @@ export async function POST(request: NextRequest) {
         await supabase.from('bookings')
           .update({ status: 'confirmed' })
           .eq('id', meta.item_id);
+      } else if (meta.item_type === 'product' && meta.item_id && meta.user_id) {
+        // Handle digital product purchases — generate download tokens
+        try {
+          const { data: product } = await supabase
+            .from('products')
+            .select('id, product_type')
+            .eq('id', meta.item_id)
+            .single();
+
+          if (product && (product.product_type === 'digital' || product.product_type === 'hybrid')) {
+            // Find or create order for this product purchase
+            const { data: existingOrder } = await supabase
+              .from('orders')
+              .select('id')
+              .eq('payment_id', paymentId)
+              .single();
+
+            let orderId = existingOrder?.id;
+
+            if (!existingOrder) {
+              const { data: newOrder } = await supabase
+                .from('orders')
+                .insert({
+                  user_id: meta.user_id,
+                  status: 'paid',
+                  payment_id: paymentId,
+                  total_amount: payment.amount,
+                  currency: payment.currency,
+                } as any)
+                .select('id')
+                .single();
+
+              orderId = newOrder?.id;
+            }
+
+            // Create order_item
+            if (orderId) {
+              const { data: existingItem } = await supabase
+                .from('order_items')
+                .select('id')
+                .eq('order_id', orderId)
+                .eq('product_id', meta.item_id)
+                .single();
+
+              if (!existingItem) {
+                await supabase
+                  .from('order_items')
+                  .insert({
+                    order_id: orderId,
+                    product_id: meta.item_id,
+                    quantity: 1,
+                    unit_price: payment.amount,
+                  } as any);
+              }
+
+              // Get order_item and create download token
+              const { data: orderItem } = await supabase
+                .from('order_items')
+                .select('id')
+                .eq('order_id', orderId)
+                .eq('product_id', meta.item_id)
+                .single();
+
+              if (orderItem) {
+                const { data: asset } = await supabase
+                  .from('digital_assets')
+                  .select('id')
+                  .eq('product_id', meta.item_id)
+                  .order('created_at', { ascending: false })
+                  .limit(1)
+                  .single();
+
+                if (asset) {
+                  const config = await getBusinessConfig();
+                  const token = randomUUID();
+                  const expiresAt = new Date(
+                    Date.now() + config.download_token_expiry_hours * 60 * 60 * 1000
+                  ).toISOString();
+
+                  await supabase
+                    .from('download_tokens')
+                    .insert({
+                      order_item_id: orderItem.id,
+                      user_id: meta.user_id,
+                      asset_id: asset.id,
+                      token,
+                      expires_at: expiresAt,
+                      download_count: 0,
+                      max_downloads: config.download_max_count,
+                    } as any);
+
+                  console.log(`[payment-webhook] Generated download token for product ${meta.item_id}`);
+                }
+              }
+            }
+          }
+        } catch (tokenErr: any) {
+          console.error('[payment-webhook] Failed to generate download token:', tokenErr.message);
+          // Don't fail the webhook — token generation can be retried manually
+        }
       }
 
       // Create Zoho Books invoice (non-blocking — don't fail the webhook)

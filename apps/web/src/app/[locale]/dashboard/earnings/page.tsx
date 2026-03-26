@@ -12,7 +12,7 @@ interface Earning {
   source_type: 'service_booking' | 'product_sale';
   source_id: string;
   gross_amount: number;
-  commission_rate: number;
+  commission_pct: number;
   net_amount: number;
   currency: string;
   status: 'pending' | 'available' | 'paid_out' | 'cancelled';
@@ -24,7 +24,7 @@ interface PayoutRequest {
   id: string;
   amount: number;
   currency: string;
-  status: 'requested' | 'approved' | 'processing' | 'completed' | 'rejected';
+  status: 'requested' | 'approved' | 'processed' | 'rejected';
   requested_at: string;
   processed_at: string | null;
 }
@@ -48,8 +48,8 @@ const statusLabelsAr: Record<string, string> = {
   cancelled: 'ملغى',
   requested: 'مطلوب',
   approved: 'موافق عليه',
-  processing: 'قيد المعالجة',
-  completed: 'مكتمل',
+  processed: 'قيد المعالجة',
+  processed: 'مكتمل',
   rejected: 'مرفوض',
 };
 
@@ -101,7 +101,7 @@ export default function Page({ params }: { params: Promise<{ locale: string }> }
       const { data: earningsData } = await supabase
         .from('earnings')
         .select('*')
-        .eq('coach_id', user.id)
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .limit(200);
       setEarnings(earningsData ?? []);
@@ -247,7 +247,7 @@ export default function Page({ params }: { params: Promise<{ locale: string }> }
                         {formatAmount(e.gross_amount, e.currency)}
                       </td>
                       <td className="px-3 py-3" style={{ fontVariantNumeric: 'tabular-nums' }}>
-                        {Number(e.commission_rate).toFixed(1)}%
+                        {Number(e.commission_pct).toFixed(1)}%
                       </td>
                       <td className="px-3 py-3 font-medium" style={{ fontVariantNumeric: 'tabular-nums' }}>
                         {formatAmount(e.net_amount, e.currency)}

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useAuth } from '@kunacademy/auth';
 import { Button } from '@kunacademy/ui/button';
 import type { Product, ProductType } from '@kunacademy/db';
+import { ProductGallery } from './product-gallery';
 
 interface ProductDetailProps {
   product: Product;
@@ -88,21 +89,8 @@ export function ProductDetail({ product, locale }: ProductDetailProps) {
       </nav>
 
       <div className="grid gap-10 lg:grid-cols-2">
-        {/* Image area */}
-        <div className="rounded-2xl overflow-hidden bg-gradient-to-br from-[#474099]/10 to-[#474099]/5 aspect-square flex items-center justify-center">
-          {imageUrl ? (
-            <img src={imageUrl} alt={name} className="h-full w-full object-cover" />
-          ) : (
-            <div className="text-center">
-              <span className="text-6xl block mb-4" aria-hidden="true">
-                {product.product_type === 'digital' ? '📥' : product.product_type === 'physical' ? '📦' : '📦📥'}
-              </span>
-              <p className="text-sm text-[var(--color-neutral-400)]">
-                {isAr ? 'صورة المنتج' : 'Product image'}
-              </p>
-            </div>
-          )}
-        </div>
+        {/* Gallery */}
+        <ProductGallery product={product} isAr={isAr} />
 
         {/* Details */}
         <div>

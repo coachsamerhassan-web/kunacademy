@@ -80,50 +80,39 @@ export async function POST(request: NextRequest) {
   // 1. Coach-specific override
   const { data: coachRate } = await supabase
     .from('commission_rates')
-    .select('rate')
+    .select('rate_pct')
     .eq('scope', 'coach')
     .eq('scope_id', coach_id)
     .single();
-  if (coachRate) rate = Number(coachRate.rate);
+  if (coachRate) rate = Number(coachRate.rate_pct);
 
   // 2. Product/service-specific
   if (rate === null) {
     const { data: specificRate } = await supabase
       .from('commission_rates')
-      .select('rate')
+      .select('rate_pct')
       .eq('scope', source_type === 'service_booking' ? 'service' : 'product')
       .eq('scope_id', source_id)
       .single();
-    if (specificRate) rate = Number(specificRate.rate);
+    if (specificRate) rate = Number(specificRate.rate_pct);
   }
 
-  // 3. Global for source type
+  // 3. Global fallback
   if (rate === null) {
-    const globalScope = source_type === 'service_booking' ? 'service' : 'product';
-    const { data: globalRate } = await supabase
-      .from('commission_rates')
-      .select('rate')
-      .eq('scope', 'global')
-      .is('scope_id', null)
-      .ilike('id', '%') // match any
-      .limit(10);
-
-    // Find the global rate matching the source type
     const { data: globalRateRow } = await supabase
       .from('commission_rates')
-      .select('rate')
+      .select('rate_pct')
       .eq('scope', 'global')
       .is('scope_id', null);
 
     // Pick the right global rate based on source_type
     if (globalRateRow && globalRateRow.length > 0) {
-      // Convention: first seeded row = service (30%), second = product (20%)
-      // Better: look for a comment/tag. For now, use ordering.
-      const sorted = globalRateRow.sort((a: any, b: any) => Number(b.rate) - Number(a.rate));
+      // Convention: higher rates for services, lower for products
+      const sorted = globalRateRow.sort((a: any, b: any) => Number(b.rate_pct) - Number(a.rate_pct));
       if (source_type === 'service_booking') {
-        rate = Number(sorted[0].rate); // higher rate = service
+        rate = Number(sorted[0].rate_pct); // higher rate = service
       } else {
-        rate = Number(sorted[sorted.length - 1].rate); // lower rate = product
+        rate = Number(sorted[sorted.length - 1].rate_pct); // lower rate = product
       }
     }
   }
@@ -132,17 +121,19 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'No commission rate found' }, { status: 400 });
   }
 
-  const net_amount = Math.round(gross_amount * rate / 100);
+  const commission_amount = Math.round(gross_amount * rate / 100);
+  const net_amount = commission_amount;
   const available_at = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
   const { data: earning, error } = await supabase
     .from('earnings')
     .insert({
-      coach_id,
+      user_id: coach_id,
       source_type,
       source_id,
       gross_amount,
-      commission_rate: rate,
+      commission_pct: rate,
+      commission_amount,
       net_amount,
       currency,
       status: 'pending',
@@ -164,13 +155,13 @@ export async function PATCH(request: NextRequest) {
   if (role !== 'admin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   const body = await request.json();
-  const { scope, scope_id, rate } = body;
+  const { scope, scope_id, rate_pct, category = 'services' } = body;
 
-  if (!scope || rate === undefined || rate === null) {
-    return NextResponse.json({ error: 'Missing scope or rate' }, { status: 400 });
+  if (!scope || rate_pct === undefined || rate_pct === null) {
+    return NextResponse.json({ error: 'Missing scope or rate_pct' }, { status: 400 });
   }
 
-  if (rate < 0 || rate > 100) {
+  if (rate_pct < 0 || rate_pct > 100) {
     return NextResponse.json({ error: 'Rate must be between 0 and 100' }, { status: 400 });
   }
 
@@ -178,7 +169,8 @@ export async function PATCH(request: NextRequest) {
   const query = supabase
     .from('commission_rates')
     .select('id')
-    .eq('scope', scope);
+    .eq('scope', scope)
+    .eq('category', category);
 
   if (scope_id) {
     query.eq('scope_id', scope_id);
@@ -191,7 +183,7 @@ export async function PATCH(request: NextRequest) {
   if (existing) {
     const { data: updated, error } = await supabase
       .from('commission_rates')
-      .update({ rate, updated_at: new Date().toISOString() })
+      .update({ rate_pct, updated_at: new Date().toISOString() })
       .eq('id', existing.id)
       .select()
       .single();
@@ -201,7 +193,7 @@ export async function PATCH(request: NextRequest) {
 
   const { data: inserted, error } = await supabase
     .from('commission_rates')
-    .insert({ scope, scope_id: scope_id ?? null, rate })
+    .insert({ scope, scope_id: scope_id ?? null, rate_pct, category })
     .select()
     .single();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

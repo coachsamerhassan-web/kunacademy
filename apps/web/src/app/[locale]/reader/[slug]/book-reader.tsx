@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { ShareModal } from './share-modal';
 
 // Polyfill Map.prototype.getOrInsertComputed (Stage 3 proposal, required by pdfjs-dist 5.x)
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -98,6 +99,9 @@ export function BookReader({ slug, title, author, coverImage, locale, mode }: Bo
   const [volume, setVolume] = useState(0.5);
   const [showAudioPanel, setShowAudioPanel] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Share modal
+  const [showShareModal, setShowShareModal] = useState(false);
 
   // Toolbar
   const [showToolbar, setShowToolbar] = useState(true);
@@ -1098,6 +1102,25 @@ export function BookReader({ slug, title, author, coverImage, locale, mode }: Bo
               )}
             </div>
 
+            {/* Share button */}
+            <button
+              onClick={() => {
+                setShowShareModal(true);
+                setShowToolbar(true); // Keep toolbar visible
+              }}
+              className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg transition-colors"
+              style={{ color: themeConfig.text }}
+              aria-label={isAr ? 'شارك الكتاب' : 'Share book'}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <circle cx="18" cy="5" r="3" strokeLinecap="round" strokeLinejoin="round" />
+                <circle cx="6" cy="12" r="3" strokeLinecap="round" strokeLinejoin="round" />
+                <circle cx="18" cy="19" r="3" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M8.59 13.51a3 3 0 0 0 6.82 0" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M15.41 6.51a3 3 0 0 0-6.82 0" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+
             {/* Fullscreen toggle */}
             <button
               onClick={toggleFullscreen}
@@ -1129,6 +1152,16 @@ export function BookReader({ slug, title, author, coverImage, locale, mode }: Bo
     </div>
   );
 }
+
+      {/* Share Modal */}
+      <ShareModal
+        isOpen={showShareModal}
+        bookSlug={slug}
+        bookTitle={title}
+        senderName={author}
+        locale={locale}
+        onClose={() => setShowShareModal(false)}
+      />
 
 function toArabicNum(n: number): string {
   const d = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];

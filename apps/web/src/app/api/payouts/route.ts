@@ -26,12 +26,12 @@ async function getUserRole(userId: string): Promise<string | null> {
 }
 
 /** Calculate available balance for a coach */
-async function getAvailableBalance(coachId: string): Promise<number> {
-  // Sum of available earnings
+async function getAvailableBalance(userId: string): Promise<number> {
+  // Sum of available earnings (amount is in minor units: 250 AED = 25000)
   const { data: availableEarnings } = await supabase
     .from('earnings')
     .select('net_amount')
-    .eq('coach_id', coachId)
+    .eq('user_id', userId)
     .eq('status', 'available');
 
   const availableTotal = (availableEarnings ?? []).reduce(
@@ -39,12 +39,12 @@ async function getAvailableBalance(coachId: string): Promise<number> {
     0
   );
 
-  // Subtract pending/approved/processing payouts
+  // Subtract requested/approved payouts (use 'processed' instead of 'processing')
   const { data: activePayout } = await supabase
     .from('payout_requests')
     .select('amount')
-    .eq('coach_id', coachId)
-    .in('status', ['requested', 'approved', 'processing']);
+    .eq('user_id', userId)
+    .in('status', ['requested', 'approved']);
 
   const payoutTotal = (activePayout ?? []).reduce(
     (sum: number, p: any) => sum + (p.amount ?? 0),
@@ -62,22 +62,22 @@ export async function GET(request: NextRequest) {
   const role = await getUserRole(user.id);
 
   if (role === 'admin') {
-    // Admin sees all payouts with coach names
+    // Admin sees all payouts with user names
     const { data, error } = await supabase
       .from('payout_requests')
-      .select('*, profiles:coach_id(full_name)')
-      .order('requested_at', { ascending: false })
+      .select('*, profiles:user_id(full_name)')
+      .order('created_at', { ascending: false })
       .limit(200);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ payouts: data });
   }
 
-  // Coach sees own payouts
+  // User sees own payouts
   const { data, error } = await supabase
     .from('payout_requests')
     .select('*')
-    .eq('coach_id', user.id)
-    .order('requested_at', { ascending: false })
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false })
     .limit(100);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -115,12 +115,12 @@ export async function POST(request: NextRequest) {
   const { data: payout, error } = await supabase
     .from('payout_requests')
     .insert({
-      coach_id: user.id,
+      user_id: user.id,
       amount,
       currency,
       status: 'requested',
-      bank_details,
-      requested_at: new Date().toISOString(),
+      bank_details: bank_details || {},
+      created_at: new Date().toISOString(),
     })
     .select()
     .single();
@@ -162,12 +162,13 @@ export async function PATCH(request: NextRequest) {
   const statusMap: Record<string, string> = {
     approve: 'approved',
     reject: 'rejected',
-    complete: 'completed',
+    complete: 'processed', // DB uses 'processed', not 'completed'
   };
 
   const updateData: Record<string, unknown> = {
     status: statusMap[action],
     admin_note: admin_note || payout.admin_note,
+    processed_by: user.id, // Record who processed it
   };
 
   if (action === 'complete' || action === 'reject') {
@@ -189,7 +190,7 @@ export async function PATCH(request: NextRequest) {
     const { data: availableEarnings } = await supabase
       .from('earnings')
       .select('id, net_amount')
-      .eq('coach_id', payout.coach_id)
+      .eq('user_id', payout.user_id)
       .eq('status', 'available')
       .order('created_at', { ascending: true });
 

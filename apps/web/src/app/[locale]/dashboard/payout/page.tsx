@@ -11,7 +11,7 @@ interface PayoutRequest {
   id: string;
   amount: number;
   currency: string;
-  status: 'requested' | 'approved' | 'processing' | 'completed' | 'rejected';
+  status: 'requested' | 'approved' | 'processed' | 'rejected';
   bank_details: { bank_name: string; iban: string; account_name: string };
   admin_note: string | null;
   requested_at: string;
@@ -29,8 +29,8 @@ const statusColors: Record<string, string> = {
 const statusLabelsAr: Record<string, string> = {
   requested: 'مطلوب',
   approved: 'موافق عليه',
-  processing: 'قيد المعالجة',
-  completed: 'مكتمل',
+  processed: 'قيد المعالجة',
+  processed: 'مكتمل',
   rejected: 'مرفوض',
 };
 
