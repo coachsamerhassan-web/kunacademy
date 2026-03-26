@@ -5,12 +5,13 @@ import { routing } from './i18n/routing';
 
 const intlMiddleware = createIntlMiddleware(routing);
 
-const PROTECTED_PATHS = ['/dashboard', '/coach', '/admin'];
+const PROTECTED_PATHS = ['/dashboard', '/coach/', '/admin'];
 
 function isProtectedPath(pathname: string): boolean {
   // Strip locale prefix: /ar/portal → /portal
   const withoutLocale = pathname.replace(/^\/(ar|en)/, '');
-  return PROTECTED_PATHS.some(p => withoutLocale.startsWith(p));
+  // Exact segment match: /coach/ protects /coach/*, but not /coaching/*
+  return PROTECTED_PATHS.some(p => withoutLocale === p.replace(/\/$/, '') || withoutLocale.startsWith(p));
 }
 
 function getLocaleFromPath(pathname: string): string {
