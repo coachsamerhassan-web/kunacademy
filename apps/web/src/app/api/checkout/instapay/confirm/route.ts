@@ -2,6 +2,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from '@kunacademy/db';
+import { sendTelegramAlert } from '@kunacademy/email';
 
 const supabase = createClient<Database>(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -51,8 +52,27 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    // TODO: Send Telegram notification to admin
-    // "New InstaPay payment awaiting verification: {amount} EGP from {sender_name}"
+    // Telegram alert to Samer for manual verification
+    const displayAmount = ((payment.amount as number) / 100).toFixed(2);
+    const itemName = (metadata.item_name as string) || (metadata.item_type as string) || 'Unknown';
+    const userEmail = (metadata.user_email as string) || 'N/A';
+
+    try {
+      await sendTelegramAlert({
+        to: 'samer',
+        message: [
+          `<b>InstaPay Payment Awaiting Verification</b>`,
+          `Amount: ${displayAmount} EGP`,
+          `Sender: ${sender_name || 'Not provided'}`,
+          `Ref: ${transaction_ref || 'Not provided'}`,
+          `Item: ${itemName}`,
+          `Email: ${userEmail}`,
+          `Payment ID: ${payment_id}`,
+        ].join('\n'),
+      });
+    } catch (e) {
+      console.error('[instapay-confirm] Telegram alert failed:', e);
+    }
 
     return NextResponse.json({
       status: 'awaiting_verification',

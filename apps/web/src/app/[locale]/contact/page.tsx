@@ -4,6 +4,7 @@ import { FAQSection } from '@kunacademy/ui/faq-section';
 import { faqJsonLd } from '@kunacademy/ui/faq-jsonld';
 import { contactFaqs } from '@/data/faqs';
 import { GeometricPattern } from '@kunacademy/ui/patterns';
+import { ContactForm } from '@/components/contact-form';
 
 export default async function ContactPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
@@ -34,84 +35,8 @@ export default async function ContactPage({ params }: { params: Promise<{ locale
       <Section variant="surface">
         <div className="grid md:grid-cols-5 gap-10 md:gap-12">
           {/* Form — 3 cols */}
-          <div className="md:col-span-3">
-            <form className="space-y-5">
-              <div className="grid sm:grid-cols-2 gap-5">
-                <div>
-                  <label htmlFor="name" className="block text-sm font-medium text-[var(--color-neutral-700)] mb-1.5">
-                    {isAr ? 'الاسم الكامل' : 'Full Name'}
-                  </label>
-                  <input
-                    type="text"
-                    id="name"
-                    name="name"
-                    required
-                    className="block w-full rounded-xl border border-[var(--color-neutral-200)] bg-white px-4 py-3 text-[var(--color-neutral-800)] focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary-50)] focus:outline-none transition-all duration-200"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="email" className="block text-sm font-medium text-[var(--color-neutral-700)] mb-1.5">
-                    {isAr ? 'البريد الإلكتروني' : 'Email'}
-                  </label>
-                  <input
-                    type="email"
-                    id="email"
-                    name="email"
-                    required
-                    className="block w-full rounded-xl border border-[var(--color-neutral-200)] bg-white px-4 py-3 text-[var(--color-neutral-800)] focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary-50)] focus:outline-none transition-all duration-200"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label htmlFor="phone" className="block text-sm font-medium text-[var(--color-neutral-700)] mb-1.5">
-                  {isAr ? 'رقم الهاتف' : 'Phone Number'}
-                </label>
-                <input
-                  type="tel"
-                  id="phone"
-                  name="phone"
-                  className="block w-full rounded-xl border border-[var(--color-neutral-200)] bg-white px-4 py-3 text-[var(--color-neutral-800)] focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary-50)] focus:outline-none transition-all duration-200"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="subject" className="block text-sm font-medium text-[var(--color-neutral-700)] mb-1.5">
-                  {isAr ? 'الموضوع' : 'Subject'}
-                </label>
-                <select
-                  id="subject"
-                  name="subject"
-                  className="block w-full rounded-xl border border-[var(--color-neutral-200)] bg-white px-4 py-3 text-[var(--color-neutral-800)] focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary-50)] focus:outline-none transition-all duration-200"
-                >
-                  <option value="">{isAr ? 'اختر الموضوع' : 'Select a subject'}</option>
-                  <option value="programs">{isAr ? 'استفسار عن البرامج' : 'Program Inquiry'}</option>
-                  <option value="corporate">{isAr ? 'حلول المؤسسات' : 'Corporate Solutions'}</option>
-                  <option value="coaching">{isAr ? 'حجز جلسة كوتشينج' : 'Book a Coaching Session'}</option>
-                  <option value="other">{isAr ? 'أخرى' : 'Other'}</option>
-                </select>
-              </div>
-
-              <div>
-                <label htmlFor="message" className="block text-sm font-medium text-[var(--color-neutral-700)] mb-1.5">
-                  {isAr ? 'الرسالة' : 'Message'}
-                </label>
-                <textarea
-                  id="message"
-                  name="message"
-                  rows={5}
-                  required
-                  className="block w-full rounded-xl border border-[var(--color-neutral-200)] bg-white px-4 py-3 text-[var(--color-neutral-800)] focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary-50)] focus:outline-none transition-all duration-200 resize-y min-h-[120px]"
-                />
-              </div>
-
-              <button
-                type="submit"
-                className="w-full rounded-xl bg-[var(--color-accent)] px-6 py-3.5 font-semibold text-white min-h-[48px] hover:bg-[var(--color-accent-500)] transition-all duration-300 shadow-[0_4px_16px_rgba(244,126,66,0.25)] hover:shadow-[0_8px_24px_rgba(244,126,66,0.35)] hover:scale-[1.01] active:scale-[0.99]"
-              >
-                {isAr ? 'أرسل الرسالة' : 'Send Message'}
-              </button>
-            </form>
+          <div className="md:col-span-3 relative">
+            <ContactForm locale={locale} />
           </div>
 
           {/* Contact info — 2 cols */}
