@@ -8,6 +8,7 @@ import { faqJsonLd } from '@kunacademy/ui/faq-jsonld';
 import { aboutFaqs } from '@/data/faqs';
 import { GeometricPattern } from '@kunacademy/ui/patterns';
 import type { Metadata } from 'next';
+import { TimelineCardContent } from './timeline-card';
 
 interface Props { params: Promise<{ locale: string }> }
 
@@ -30,7 +31,7 @@ const timeline = [
     titleEn: 'Before KUN: Search & Travel',
     textAr: 'من الصين إلى كندا إلى أمريكا إلى أوروبا، تنقّل سامر بين مدارس الفنون القتالية والفنون الإستشفائية والكوتشينج، وأسّس في القاهرة "Dragon Academy" كأول مركز يجمع بين التدريب الجسدي والعقلي بغرض التوازن والنمو. كوّن خلالها رؤية تُجسّد الإنسان ككائن متكامل، لا كأداء وظيفي، وأسّس بها نواة منهجية "التفكير الحسي".',
     textEn: 'From China to Canada to America to Europe, Samer moved between schools of martial arts, healing arts, and coaching, and founded "Dragon Academy" in Cairo as the first center combining physical and mental training for balance and growth. During this time, he formed a vision that embodies the human as an integrated being, and established the nucleus of the "Somatic Thinking" methodology.',
-    image: 'https://kunacademy.com/wp-content/uploads/2025/05/Collageقبل-كُنْ_-بح-300x300.jpg',
+    image: '/images/about/timeline/before-kun.jpg',
   },
   {
     year: '2014',
@@ -38,7 +39,7 @@ const timeline = [
     titleEn: 'Rome: Official Founding of KUN',
     textAr: 'افتُتح أول مقر رسمي لكُنْ في روما، حيث تلاقحت التجربة الشرقية والغربية. في هذه المرحلة، تأسست منهجية التفكير الحسي®، بوصفها فلسفة تربوية تُفعّل العلاقة بين الجسد، والنية، والوعي، وتعيد الإنسان إلى ذاته من خلال الحضور.',
     textEn: 'The first official headquarters of KUN was opened in Rome, where Eastern and Western experiences converged. The Somatic Thinking® methodology was established as an applied educational philosophy that activates the relationship between body, intention, and awareness.',
-    image: 'https://kunacademy.com/wp-content/uploads/2025/05/Collageروما_-التأسي-150x150.jpg',
+    image: '/images/about/timeline/roma-founding.jpg',
   },
   {
     year: '2017',
@@ -46,7 +47,7 @@ const timeline = [
     titleEn: 'MCC Accreditation from ICF',
     textAr: 'حصل سامر على اعتماد Master Certified Coach (MCC) من الاتحاد الدولي للكوتشينج، ليصبح أول متحدّث بالعربية ينال هذا التصنيف الرفيع.',
     textEn: 'Samer obtained the Master Certified Coach (MCC) accreditation from the International Coaching Federation, becoming the first Arabic speaker to achieve this high classification.',
-    image: 'https://kunacademy.com/wp-content/uploads/2025/05/Collageاعتماد-MCC-م-150x150.jpg',
+    image: '/images/about/timeline/mcc-accreditation.jpg',
   },
   {
     year: '2018',
@@ -54,7 +55,7 @@ const timeline = [
     titleEn: 'Launch of Our Accredited Program',
     textAr: 'اعتماد برنامج التفكير الحسي كبرنامج تدريبي دولي من ICF، مما أسّس لأول مسار تدريبي عربي معتمد في الكوتشينج قائم على فلسفة عربية أصيلة.',
     textEn: 'Accreditation of the Somatic Thinking program as an international training program from ICF, establishing the first accredited Arab training path in coaching based on an authentic Arab philosophy.',
-    image: 'https://kunacademy.com/wp-content/uploads/2025/05/Collageإطلاق-برنامج.jpg',
+    image: '/images/about/timeline/stce-launch.jpg',
   },
   {
     year: '2019',
@@ -62,7 +63,7 @@ const timeline = [
     titleEn: 'ICF Young Leader Award',
     textAr: 'تتويجاً لرحلته الفكرية والتربوية، حصل سامر على جائزة "القائد الشاب في الكوتشينج" من ICF العالمية، اعترافاً برؤيته المتفرّدة.',
     textEn: 'Crowning his intellectual and educational journey, Samer received the "Young Leader in Coaching" award from ICF Global, in recognition of his unique vision.',
-    image: 'https://kunacademy.com/wp-content/uploads/2025/05/Collage2019-جائزة-150x150.jpg',
+    image: '/images/about/timeline/2019-award.jpg',
   },
   {
     year: '2019',
@@ -70,7 +71,7 @@ const timeline = [
     titleEn: 'Egypt: First Arab Expansion',
     textAr: 'افتتاح فرع كُنْ في القاهرة، امتداداً لفرع روما، مع إطلاق برامج تدريبية متجذّرة في القيم واللغة والسياق العربي.',
     textEn: 'Opening of the KUN branch in Cairo, as an extension of the Rome branch, with the launch of training programs rooted in Arab values, language, and context.',
-    image: 'https://kunacademy.com/wp-content/uploads/2025/05/Collage2019-مصر__-150x150.jpg',
+    image: '/images/about/timeline/2019-egypt.jpg',
   },
   {
     year: '2022',
@@ -78,7 +79,7 @@ const timeline = [
     titleEn: 'Iraq: Community Partnership',
     textAr: 'شراكة مع د. خالد البصيصي، لإطلاق برامج تنموية في العراق، ترتكز على التوازن بين الفرد والمجتمع، والأصالة والإبداع.',
     textEn: 'Partnership with Dr. Khaled Al-Basisi, to launch developmental programs in Iraq, based on the balance between the individual and society, authenticity and creativity.',
-    image: 'https://kunacademy.com/wp-content/uploads/2025/05/Collage2022-العرا-150x150.jpg',
+    image: '/images/about/timeline/2022-iraq.jpg',
   },
   {
     year: '2022',
@@ -86,7 +87,7 @@ const timeline = [
     titleEn: 'Dubai: Strategic Hub',
     textAr: 'نقل المقر الرئيسي إلى دبي، وإطلاق البوابة الرقمية الأكاديمية، مع تركيز على تجربة المتعلم، والتوسّع الخليجي والعالمي.',
     textEn: 'Moving the main headquarters to Dubai, and launching the digital academic portal, with a focus on the learner experience, and Gulf and global expansion.',
-    image: 'https://kunacademy.com/wp-content/uploads/2025/05/Collageدبي_-التمركز-150x150.jpg',
+    image: '/images/about/timeline/dubai-base.jpg',
   },
   {
     year: '2024',
@@ -94,7 +95,7 @@ const timeline = [
     titleEn: 'Jeddah: Educational Paths Launch',
     textAr: 'بالشراكة مع كوتش ريم بخيت، أطلقت كُنْ أول مسارات تربوية متكاملة تُفعّل التفكير الحسي في بيئة سعودية أصيلة.',
     textEn: 'In partnership with Coach Reem Bakheet, KUN launched the first integrated educational paths that activate Somatic Thinking in an authentic Saudi environment.',
-    image: 'https://kunacademy.com/wp-content/uploads/2025/05/Collageجدة_-إطلاق-ا-150x150.jpg',
+    image: '/images/about/timeline/jeddah-launch.jpg',
   },
   {
     year: '2024',
@@ -102,7 +103,7 @@ const timeline = [
     titleEn: 'Abu Dhabi: Philosophical Transformation',
     textAr: 'في القمة العربية للكوتشينج، أطلق سامر دعوته لإحياء التربية بوصفها مسار حياة، لا مجرد وسيلة تعليم. دعوة لإعادة تعريف الكوتش كمربٍّ معاصر.',
     textEn: 'At the Arab Coaching Summit, Samer launched his call to revive education as a life path, not just a means of teaching. A call to redefine the coach as a contemporary educator.',
-    image: 'https://kunacademy.com/wp-content/uploads/2025/05/Collageأبوظبي_-إعلا-150x150.jpg',
+    image: '/images/about/timeline/abudhabi-announcement.jpg',
   },
   {
     year: '2025+',
@@ -110,7 +111,7 @@ const timeline = [
     titleEn: 'Towards the Horizon',
     textAr: 'تُطلق منصتنا التعليمية الكاملة، وتُعتمد "البركة الحركية" كمنهج تربوي مستقل، وتُترجم مناهجنا إلى لغات جديدة، ويُفتتح مركز كُنْ للتجربة التربوية الحضورية.',
     textEn: 'Launching our full educational platform, accrediting "Barakah Flows" as an independent methodology, translating our curricula to new languages, and opening the KUN Center for in-person educational experiences.',
-    image: 'https://kunacademy.com/wp-content/uploads/2025/05/نمو-من-الجذور.svg',
+    image: '',
   },
 ];
 
@@ -150,12 +151,12 @@ const values = [
 
 // ── Team Data ─────────────────────────────────────────────────────
 const team = [
-  { nameAr: 'سامر حسن', nameEn: 'Samer Hassan', roleAr: 'مؤسس و CEO', roleEn: 'Founder & CEO', photo: 'https://kunacademy.com/wp-content/uploads/2025/05/Team-Samer-Has.jpg' },
-  { nameAr: 'مروى شريف', nameEn: 'Marwa Sherif', roleAr: 'شريك و PR', roleEn: 'Partner & PR', photo: 'https://kunacademy.com/wp-content/uploads/2025/05/Team-Marwa-she.jpg' },
-  { nameAr: 'إيمان فريد', nameEn: 'Eman Farid', roleAr: 'مديرة المبيعات والتسويق', roleEn: 'Sales & Marketing Manager', photo: 'https://kunacademy.com/wp-content/uploads/2025/05/Team-Eman-fari.jpg' },
-  { nameAr: 'ريم بخيت', nameEn: 'Reem Bakheet', roleAr: 'شريكتنا في جدة', roleEn: 'Our Partner in Jeddah', photo: 'https://kunacademy.com/wp-content/uploads/2025/05/Team-Reem-Bakh.jpg' },
-  { nameAr: 'خالد البصيصي', nameEn: 'Khaled Al-Basisi', roleAr: 'شريكنا في العراق', roleEn: 'Our Partner in Iraq', photo: 'https://kunacademy.com/wp-content/uploads/2025/05/Team-Khaled.jpg' },
-  { nameAr: 'ياسمين حسن', nameEn: 'Yasmin Hassan', roleAr: 'مديرة الحسابات', roleEn: 'Accounts Manager', photo: 'https://kunacademy.com/wp-content/uploads/2025/06/Team-Yassmen-H.jpg' },
+  { nameAr: 'سامر حسن', nameEn: 'Samer Hassan', roleAr: 'مؤسس و CEO', roleEn: 'Founder & CEO', photo: '/images/about/team/samer-hassan.jpg' },
+  { nameAr: 'مروى شريف', nameEn: 'Marwa Sherif', roleAr: 'شريك و PR', roleEn: 'Partner & PR', photo: '/images/about/team/marwa-sherif.jpg' },
+  { nameAr: 'إيمان فريد', nameEn: 'Eman Farid', roleAr: 'مديرة المبيعات والتسويق', roleEn: 'Sales & Marketing Manager', photo: '/images/about/team/eman-farid.jpg' },
+  { nameAr: 'ريم بخيت', nameEn: 'Reem Bakheet', roleAr: 'شريكتنا في جدة', roleEn: 'Our Partner in Jeddah', photo: '/images/about/team/reem-bakheet.jpg' },
+  { nameAr: 'خالد البصيصي', nameEn: 'Khaled Al-Basisi', roleAr: 'شريكنا في العراق', roleEn: 'Our Partner in Iraq', photo: '/images/about/team/khaled-basisi.jpg' },
+  { nameAr: 'ياسمين حسن', nameEn: 'Yasmin Hassan', roleAr: 'مديرة الحسابات', roleEn: 'Accounts Manager', photo: '/images/about/team/yasmin-hassan.jpg' },
 ];
 
 export default async function AboutPage({ params }: Props) {
@@ -169,7 +170,7 @@ export default async function AboutPage({ params }: Props) {
       <section className="relative overflow-hidden py-20 md:py-28">
         <div className="absolute inset-0">
           <img
-            src="https://kunacademy.com/wp-content/uploads/2025/05/blue-windo-islamic-1024x576.webp"
+            src="/images/about/hero-islamic-window.webp"
             alt=""
             className="w-full h-full object-cover"
             style={{ filter: 'brightness(0.25)' }}
@@ -198,7 +199,7 @@ export default async function AboutPage({ params }: Props) {
             </div>
             <div className="hidden md:flex justify-center">
               <img
-                src="https://kunacademy.com/wp-content/uploads/2025/05/Samer-Hassan.png"
+                src="/images/about/samer-hassan.png"
                 alt="Samer Hassan"
                 className="max-h-[400px] object-contain drop-shadow-2xl"
                 loading="eager"
@@ -211,9 +212,9 @@ export default async function AboutPage({ params }: Props) {
       {/* ── 2. MISSION / VISION / VALUES ── */}
       <Section variant="white">
         <div className="text-center mb-12">
-          <p className="text-sm font-medium tracking-[0.15em] uppercase text-[var(--color-accent)] mb-3">
+          <Heading level={2} className="!text-[2rem] md:!text-[2.5rem]">
             {isAr ? 'وِجهتُنا' : 'Our Destination'}
-          </p>
+          </Heading>
         </div>
 
         {/* Mission & Vision */}
@@ -252,7 +253,7 @@ export default async function AboutPage({ params }: Props) {
 
         {/* Values */}
         <div className="text-center mb-8">
-          <Heading level={2}>{isAr ? 'قِيَمُنا' : 'Our Values'}</Heading>
+          <Heading level={2} className="!text-[2rem] md:!text-[2.5rem]">{isAr ? 'قِيَمُنا' : 'Our Values'}</Heading>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 max-w-6xl mx-auto">
           {values.map((v) => (
@@ -301,7 +302,7 @@ export default async function AboutPage({ params }: Props) {
           <p className="text-sm font-medium tracking-[0.15em] uppercase text-[var(--color-accent)] mb-3">
             {isAr ? 'من رحلتنا' : 'From Our Journey'}
           </p>
-          <Heading level={2}>
+          <Heading level={2} className="!text-[2rem] md:!text-[2.5rem]">
             {isAr ? 'محطات في المسيرة' : 'Milestones Along the Way'}
           </Heading>
           <p className="mt-4 text-[var(--color-neutral-600)] max-w-2xl mx-auto" style={{ fontFamily: isAr ? 'var(--font-arabic-body)' : 'inherit' }}>
@@ -326,24 +327,13 @@ export default async function AboutPage({ params }: Props) {
                 {/* Content card */}
                 <div className={`ms-20 md:ms-0 md:w-[calc(50%-3rem)] ${i % 2 === 0 ? '' : 'md:text-end'}`}>
                   <Card className="p-5">
-                    <div className={`flex items-start gap-4 ${i % 2 !== 0 ? 'md:flex-row-reverse' : ''}`}>
-                      {entry.image && !entry.image.endsWith('.svg') && (
-                        <img
-                          src={entry.image}
-                          alt={isAr ? entry.titleAr : entry.titleEn}
-                          className="h-16 w-16 rounded-xl object-cover shrink-0"
-                          loading="lazy"
-                        />
-                      )}
-                      <div>
-                        <h3 className="font-bold text-[var(--text-primary)]">
-                          {isAr ? entry.titleAr : entry.titleEn}
-                        </h3>
-                        <p className="mt-2 text-sm text-[var(--color-neutral-600)] leading-relaxed" style={{ fontFamily: isAr ? 'var(--font-arabic-body)' : 'inherit' }}>
-                          {isAr ? entry.textAr : entry.textEn}
-                        </p>
-                      </div>
-                    </div>
+                    <TimelineCardContent
+                      image={entry.image}
+                      title={isAr ? entry.titleAr : entry.titleEn}
+                      text={isAr ? entry.textAr : entry.textEn}
+                      isAr={isAr}
+                      reverse={i % 2 !== 0}
+                    />
                   </Card>
                 </div>
               </div>
@@ -372,7 +362,7 @@ export default async function AboutPage({ params }: Props) {
       {/* ── 6. TEAM ── */}
       <Section variant="surface">
         <div className="text-center mb-10">
-          <Heading level={2}>{isAr ? 'فريقنا' : 'Our Team'}</Heading>
+          <Heading level={2} className="!text-[2rem] md:!text-[2.5rem]">{isAr ? 'فريقنا' : 'Our Team'}</Heading>
           <p className="mt-3 text-[var(--color-neutral-600)] max-w-2xl mx-auto" style={{ fontFamily: isAr ? 'var(--font-arabic-body)' : 'inherit' }}>
             {isAr
               ? 'في كُنْ، القيادة ليست فردية، بل جماعية ومتعاونة. ويعمل خلف هذه الوجوه فريق من الكوتشز والميسّرين من العالم العربي.'
@@ -382,8 +372,14 @@ export default async function AboutPage({ params }: Props) {
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-6">
           {team.map((member) => (
             <div key={member.nameEn} className="text-center">
-              <div className="mx-auto h-24 w-24 rounded-full overflow-hidden bg-[var(--color-neutral-100)] shadow-[0_4px_16px_rgba(71,64,153,0.1)]">
-                <img src={member.photo} alt={isAr ? member.nameAr : member.nameEn} className="h-full w-full object-cover" loading="lazy" />
+              <div className="mx-auto h-28 w-28 rounded-full overflow-hidden bg-[var(--color-neutral-100)] shadow-[0_4px_16px_rgba(71,64,153,0.1)]">
+                <img
+                  src={member.photo}
+                  alt={isAr ? member.nameAr : member.nameEn}
+                  className="h-full w-full object-cover"
+                  style={{ objectPosition: 'center 15%' }}
+                  loading="lazy"
+                />
               </div>
               <h3 className="mt-3 font-bold text-sm text-[var(--text-primary)]">
                 {isAr ? member.nameAr : member.nameEn}

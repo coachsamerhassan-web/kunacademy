@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import type { Database } from '@kunacademy/db';
 import type {
   PayoutRequest,
   PayoutRequestPayload,
@@ -9,10 +8,11 @@ import type {
   PayoutResponse,
 } from '@/types/commission-system';
 
-const supabase = createClient<Database>(
+// TODO: Regenerate Supabase types once earnings/commission_rates/payout_requests tables exist
+const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+) as any;
 
 async function getUser(request: NextRequest) {
   const authHeader = request.headers.get('authorization');

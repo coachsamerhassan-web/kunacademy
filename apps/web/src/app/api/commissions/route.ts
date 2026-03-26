@@ -9,10 +9,12 @@ import type {
   EarningResponse,
 } from '@/types/commission-system';
 
-const supabase = createClient<Database>(
+// TODO: Regenerate Supabase types once earnings/commission_rates tables exist
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+) as any;
 
 async function getUser(request: NextRequest) {
   const authHeader = request.headers.get('authorization');

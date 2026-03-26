@@ -82,7 +82,8 @@ export default function AdminCommissionsPage() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   async function getAuthToken() {
-    const supabase = createBrowserClient();
+    // TODO: Regenerate Supabase types once earnings/commission_rates/payout_requests tables exist
+    const supabase = createBrowserClient() as any;
     if (!supabase) return null;
     const { data: session } = await supabase.auth.getSession();
     return session?.session?.access_token || null;
@@ -91,7 +92,7 @@ export default function AdminCommissionsPage() {
   async function fetchAll() {
     const token = await getAuthToken();
     if (!token) { setLoading(false); return; }
-    const supabase = createBrowserClient();
+    const supabase = createBrowserClient() as any;
 
     // Rates
     const ratesRes = await fetch('/api/commissions', {
@@ -195,7 +196,7 @@ export default function AdminCommissionsPage() {
   }
 
   async function deleteCoachOverride(rateId: string) {
-    const supabase = createBrowserClient();
+    const supabase = createBrowserClient() as any;
     if (!supabase) return;
     await supabase.from('commission_rates').delete().eq('id', rateId);
     fetchAll();

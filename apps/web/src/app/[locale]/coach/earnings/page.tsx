@@ -61,7 +61,8 @@ export default function Page({ params }: { params: Promise<{ locale: string }> }
     .reduce((s, e) => s + e.net_amount, 0);
 
   async function getAuthToken() {
-    const supabase = createBrowserClient();
+    // TODO: Regenerate Supabase types once earnings/commission_rates/payout_requests tables exist
+    const supabase = createBrowserClient() as any;
     if (!supabase) return null;
     const { data: session } = await supabase.auth.getSession();
     return session?.session?.access_token || null;
@@ -72,7 +73,7 @@ export default function Page({ params }: { params: Promise<{ locale: string }> }
     if (!token) { setLoading(false); return; }
 
     // Fetch earnings
-    const supabase = createBrowserClient();
+    const supabase = createBrowserClient() as any;
     if (supabase && user) {
       const { data: earningsData } = await supabase
         .from('earnings')
