@@ -219,6 +219,34 @@ export class JsonFileProvider implements ContentProvider {
     return [];
   }
 
+  async getAllEvents(): Promise<import('./types').Event[]> {
+    return [];
+  }
+
+  async getUpcomingEvents(): Promise<import('./types').Event[]> {
+    return [];
+  }
+
+  async getEvent(_slug: string): Promise<import('./types').Event | null> {
+    return null;
+  }
+
+  async getAllBlogPosts(): Promise<import('./types').BlogPost[]> {
+    return [];
+  }
+
+  async getBlogPost(_slug: string): Promise<import('./types').BlogPost | null> {
+    return null;
+  }
+
+  async getFeaturedBlogPosts(): Promise<import('./types').BlogPost[]> {
+    return [];
+  }
+
+  async getBlogPostsByCategory(_category: string): Promise<import('./types').BlogPost[]> {
+    return [];
+  }
+
   async invalidateCache(): Promise<void> {
     this.cache.clear();
   }

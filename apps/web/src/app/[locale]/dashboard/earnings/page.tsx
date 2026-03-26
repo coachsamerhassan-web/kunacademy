@@ -1,4 +1,3 @@
-// @ts-nocheck
 'use client';
 
 import { useState, useEffect, use } from 'react';
@@ -6,28 +5,7 @@ import { useAuth } from '@kunacademy/auth';
 import { createBrowserClient } from '@kunacademy/db';
 import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
-
-interface Earning {
-  id: string;
-  source_type: 'service_booking' | 'product_sale';
-  source_id: string;
-  gross_amount: number;
-  commission_pct: number;
-  net_amount: number;
-  currency: string;
-  status: 'pending' | 'available' | 'paid_out' | 'cancelled';
-  available_at: string;
-  created_at: string;
-}
-
-interface PayoutRequest {
-  id: string;
-  amount: number;
-  currency: string;
-  status: 'requested' | 'approved' | 'processed' | 'rejected';
-  requested_at: string;
-  processed_at: string | null;
-}
+import type { Earning, PayoutRequest } from '@/types/commission-system';
 
 const statusColors: Record<string, string> = {
   pending: '#EAB308',
@@ -48,7 +26,6 @@ const statusLabelsAr: Record<string, string> = {
   cancelled: 'ملغى',
   requested: 'مطلوب',
   approved: 'موافق عليه',
-  processed: 'قيد المعالجة',
   processed: 'مكتمل',
   rejected: 'مرفوض',
 };

@@ -1,4 +1,3 @@
-// @ts-nocheck
 'use client';
 
 import { useState, useEffect, use } from 'react';
@@ -6,17 +5,7 @@ import { useAuth } from '@kunacademy/auth';
 import { createBrowserClient } from '@kunacademy/db';
 import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
-
-interface PayoutRequest {
-  id: string;
-  amount: number;
-  currency: string;
-  status: 'requested' | 'approved' | 'processed' | 'rejected';
-  bank_details: { bank_name: string; iban: string; account_name: string };
-  admin_note: string | null;
-  requested_at: string;
-  processed_at: string | null;
-}
+import type { PayoutRequest } from '@/types/commission-system';
 
 const statusColors: Record<string, string> = {
   requested: '#EAB308',
@@ -29,7 +18,6 @@ const statusColors: Record<string, string> = {
 const statusLabelsAr: Record<string, string> = {
   requested: 'مطلوب',
   approved: 'موافق عليه',
-  processed: 'قيد المعالجة',
   processed: 'مكتمل',
   rejected: 'مرفوض',
 };

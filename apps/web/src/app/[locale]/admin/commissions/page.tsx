@@ -1,4 +1,3 @@
-// @ts-nocheck
 'use client';
 
 import { useAuth } from '@kunacademy/auth';
@@ -6,48 +5,8 @@ import { useEffect, useState } from 'react';
 import { createBrowserClient } from '@kunacademy/db';
 import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
-import { useParams, useRouter } from 'next/navigation';
-
-interface CommissionRate {
-  id: string;
-  scope: 'global' | 'coach' | 'product' | 'service';
-  scope_id: string | null;
-  rate: number;
-  created_at: string;
-  updated_at: string;
-}
-
-interface Earning {
-  id: string;
-  user_id: string;
-  source_type: string;
-  source_id: string;
-  gross_amount: number;
-  commission_pct: number;
-  net_amount: number;
-  currency: string;
-  status: 'pending' | 'available' | 'paid_out' | 'cancelled';
-  created_at: string;
-  profiles?: { full_name: string } | null;
-}
-
-interface PayoutRequest {
-  id: string;
-  user_id: string;
-  amount: number;
-  currency: string;
-  status: 'requested' | 'approved' | 'processed' | 'rejected';
-  bank_details: Record<string, string>;
-  admin_note: string | null;
-  requested_at: string;
-  processed_at: string | null;
-  profiles?: { full_name: string } | null;
-}
-
-interface Coach {
-  id: string;
-  full_name: string;
-}
+import { useParams } from 'next/navigation';
+import type { CommissionRate, Earning, PayoutRequest, CoachProfile } from '@/types/commission-system';
 
 const statusColors: Record<string, string> = {
   pending: '#EAB308',
@@ -94,7 +53,7 @@ export default function AdminCommissionsPage() {
   const [rates, setRates] = useState<CommissionRate[]>([]);
   const [earnings, setEarnings] = useState<Earning[]>([]);
   const [payouts, setPayouts] = useState<PayoutRequest[]>([]);
-  const [coaches, setCoaches] = useState<Coach[]>([]);
+  const [coaches, setCoaches] = useState<CoachProfile[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Global rate editing

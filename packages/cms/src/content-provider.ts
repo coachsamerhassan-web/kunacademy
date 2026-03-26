@@ -15,6 +15,8 @@ import type {
   ServiceCategory,
   PathfinderQuestion,
   Testimonial,
+  Event,
+  BlogPost,
 } from './types';
 
 /**
@@ -114,6 +116,31 @@ export interface ContentProvider {
 
   /** Get featured testimonials (for homepage carousel) */
   getFeaturedTestimonials(): Promise<Testimonial[]>;
+
+  // ── Sheet 8: Events ─────────────────────────────────────────────────
+
+  /** Get all published events */
+  getAllEvents(): Promise<Event[]>;
+
+  /** Get upcoming events (date_start >= today) */
+  getUpcomingEvents(): Promise<Event[]>;
+
+  /** Get a single event by slug */
+  getEvent(slug: string): Promise<Event | null>;
+
+  // ── Sheet 9: Blog ─────────────────────────────────────────────────
+
+  /** Get all published blog posts */
+  getAllBlogPosts(): Promise<BlogPost[]>;
+
+  /** Get a single blog post by slug */
+  getBlogPost(slug: string): Promise<BlogPost | null>;
+
+  /** Get featured blog posts */
+  getFeaturedBlogPosts(): Promise<BlogPost[]>;
+
+  /** Get blog posts by category */
+  getBlogPostsByCategory(category: string): Promise<BlogPost[]>;
 
   // ── Cache Control ─────────────────────────────────────────────────────
 

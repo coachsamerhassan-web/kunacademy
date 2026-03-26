@@ -261,6 +261,65 @@ export interface Testimonial extends AuditFields {
   display_order: number;
 }
 
+// ── Sheet 8: Events ─────────────────────────────────────────────────────────
+
+export type EventLocationType = 'in-person' | 'online' | 'hybrid';
+
+export interface Event extends AuditFields {
+  slug: string;
+  title_ar: string;
+  title_en: string;
+  description_ar?: string;
+  description_en?: string;
+  /** ISO 8601 date string */
+  date_start: string;
+  /** ISO 8601 date string (same as start for single-day events) */
+  date_end?: string;
+  location_ar?: string;
+  location_en?: string;
+  location_type: EventLocationType;
+  capacity?: number;
+  price_aed: number;
+  price_egp: number;
+  price_usd: number;
+  image_url?: string;
+  /** Comma-separated slugs referencing Team sheet */
+  speaker_slugs: string[];
+  /** ISO 8601 date string */
+  registration_deadline?: string;
+  is_featured: boolean;
+  display_order: number;
+}
+
+// ── Sheet 9: Blog ───────────────────────────────────────────────────────────
+
+export interface BlogPost extends AuditFields {
+  slug: string;
+  title_ar: string;
+  title_en: string;
+  excerpt_ar?: string;
+  excerpt_en?: string;
+  /** Full article content (Markdown or rich text) */
+  content_ar?: string;
+  content_en?: string;
+  featured_image_url?: string;
+  category?: string;
+  /** Comma-separated tags */
+  tags: string[];
+  /** Author slug referencing Team sheet */
+  author_slug?: string;
+  /** ISO 8601 date string */
+  published_at?: string;
+  reading_time_minutes?: number;
+  is_featured: boolean;
+  display_order: number;
+  /** SEO fields */
+  meta_title_ar?: string;
+  meta_title_en?: string;
+  meta_description_ar?: string;
+  meta_description_en?: string;
+}
+
 // ── Sheet 6: Pathfinder ──────────────────────────────────────────────────────
 
 /** A single answer option within a Pathfinder question */

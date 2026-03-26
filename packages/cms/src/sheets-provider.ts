@@ -18,6 +18,8 @@ import type {
   PathfinderQuestion,
   PathfinderAnswer,
   Testimonial,
+  Event,
+  BlogPost,
 } from './types';
 
 // ── Config ──────────────────────────────────────────────────────────────────
@@ -36,6 +38,8 @@ interface SheetConfig {
     settings: string;
     pathfinder: string;
     testimonials: string;
+    events: string;
+    blog: string;
   };
   /** Cache TTL in milliseconds (default: 5 minutes for ISR alignment) */
   cacheTtlMs?: number;
@@ -116,11 +120,11 @@ function isBooleanColumn(header: string): boolean {
 }
 
 function isNumericColumn(header: string): boolean {
-  return /^(price_|early_bird_price_|discount_percentage|duration_minutes|sessions_count|validity_days|display_order|access_duration_days|cce_units)/.test(header);
+  return /^(price_|early_bird_price_|discount_percentage|duration_minutes|sessions_count|validity_days|display_order|access_duration_days|cce_units|capacity|reading_time_minutes)/.test(header);
 }
 
 function isArrayColumn(header: string): boolean {
-  return /^(specialties|coaching_styles|languages)$/.test(header);
+  return /^(specialties|coaching_styles|languages|speaker_slugs|tags)$/.test(header);
 }
 
 // ── Provider Implementation ─────────────────────────────────────────────────
@@ -315,6 +319,52 @@ export class GoogleSheetsProvider implements ContentProvider {
   async getFeaturedTestimonials(): Promise<Testimonial[]> {
     const all = await this.getAllTestimonials();
     return all.filter((t) => t.is_featured);
+  }
+
+  // ── Sheet 8: Events ─────────────────────────────────────────────────
+
+  async getAllEvents(): Promise<Event[]> {
+    const rows = await this.loadSheet<Event>('events');
+    return this.published(rows).sort((a, b) => {
+      if (a.date_start && b.date_start) return a.date_start.localeCompare(b.date_start);
+      return a.display_order - b.display_order;
+    });
+  }
+
+  async getUpcomingEvents(): Promise<Event[]> {
+    const all = await this.getAllEvents();
+    const today = new Date().toISOString().split('T')[0];
+    return all.filter((e) => e.date_start >= today);
+  }
+
+  async getEvent(slug: string): Promise<Event | null> {
+    const rows = await this.loadSheet<Event>('events');
+    return this.published(rows).find((e) => e.slug === slug) ?? null;
+  }
+
+  // ── Sheet 9: Blog ─────────────────────────────────────────────────
+
+  async getAllBlogPosts(): Promise<BlogPost[]> {
+    const rows = await this.loadSheet<BlogPost>('blog');
+    return this.published(rows).sort((a, b) => {
+      if (a.published_at && b.published_at) return b.published_at.localeCompare(a.published_at);
+      return a.display_order - b.display_order;
+    });
+  }
+
+  async getBlogPost(slug: string): Promise<BlogPost | null> {
+    const rows = await this.loadSheet<BlogPost>('blog');
+    return this.published(rows).find((p) => p.slug === slug) ?? null;
+  }
+
+  async getFeaturedBlogPosts(): Promise<BlogPost[]> {
+    const all = await this.getAllBlogPosts();
+    return all.filter((p) => p.is_featured);
+  }
+
+  async getBlogPostsByCategory(category: string): Promise<BlogPost[]> {
+    const all = await this.getAllBlogPosts();
+    return all.filter((p) => p.category === category);
   }
 
   // ── Cache ─────────────────────────────────────────────────────────────

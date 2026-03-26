@@ -37,6 +37,9 @@ export type {
   PathfinderQuestion,
   PathfinderAnswer,
   Testimonial,
+  Event,
+  EventLocationType,
+  BlogPost,
 } from './types';
 
 export { JsonFileProvider } from './json-provider';
@@ -63,6 +66,8 @@ function createProvider(): ContentProvider {
         settings: process.env.CMS_SHEET_SETTINGS ?? 'Settings',
         pathfinder: process.env.CMS_SHEET_PATHFINDER ?? 'Pathfinder',
         testimonials: process.env.CMS_SHEET_TESTIMONIALS ?? 'Testimonials',
+        events: process.env.CMS_SHEET_EVENTS ?? 'Events',
+        blog: process.env.CMS_SHEET_BLOG ?? 'Blog',
       },
     });
   }
