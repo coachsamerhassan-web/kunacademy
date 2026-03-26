@@ -104,19 +104,53 @@ export interface Course {
   icf_details: string | null;
   thumbnail_url: string | null;
   is_published: boolean;
+  total_lessons: number;
+  total_video_minutes: number;
+  created_at: string;
+}
+
+export type VideoProvider = 'bunny' | 'youtube' | 'vimeo' | 'direct';
+
+export interface CourseSection {
+  id: string;
+  course_id: string;
+  title_ar: string;
+  title_en: string;
+  description_ar: string | null;
+  description_en: string | null;
+  order: number;
   created_at: string;
 }
 
 export interface Lesson {
   id: string;
   course_id: string;
+  section_id: string | null;
   title_ar: string;
   title_en: string;
   content_ar: string | null;
   content_en: string | null;
+  description_ar: string | null;
+  description_en: string | null;
   video_url: string | null;
+  video_provider: VideoProvider | null;
+  video_id: string | null;
   order: number;
   duration_minutes: number | null;
+  is_preview: boolean;
+}
+
+export interface LessonSyllabus {
+  id: string;
+  course_id: string;
+  section_id: string | null;
+  title_ar: string;
+  title_en: string;
+  order: number;
+  duration_minutes: number | null;
+  is_preview: boolean;
+  description_ar: string | null;
+  description_en: string | null;
 }
 
 export interface Enrollment {
@@ -527,6 +561,7 @@ export interface Database {
       instructors: { Row: Instructor; Insert: Partial<Instructor> & Pick<Instructor, 'slug' | 'title_ar' | 'title_en'>; Update: Partial<Instructor> };
       payments: { Row: Payment; Insert: Partial<Payment> & Pick<Payment, 'amount' | 'currency'>; Update: Partial<Payment> };
       courses: { Row: Course; Insert: Partial<Course> & Pick<Course, 'title_ar' | 'title_en' | 'slug'>; Update: Partial<Course> };
+      course_sections: { Row: CourseSection; Insert: Partial<CourseSection> & Pick<CourseSection, 'course_id' | 'title_ar' | 'title_en'>; Update: Partial<CourseSection> };
       lessons: { Row: Lesson; Insert: Partial<Lesson> & Pick<Lesson, 'course_id' | 'title_ar' | 'title_en' | 'order'>; Update: Partial<Lesson> };
       enrollments: { Row: Enrollment; Insert: Partial<Enrollment> & Pick<Enrollment, 'user_id' | 'course_id'>; Update: Partial<Enrollment> };
       services: { Row: Service; Insert: Partial<Service> & Pick<Service, 'name_ar' | 'name_en' | 'duration_minutes'>; Update: Partial<Service> };
