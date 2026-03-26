@@ -28,7 +28,8 @@ async function getUserRole(userId: string): Promise<string | null> {
     .select('role')
     .eq('id', userId)
     .single();
-  return data?.role ?? null;
+  const profile = data as Record<string, unknown> | null;
+  return (profile?.role as string | undefined) ?? null;
 }
 
 /** Calculate available balance for a coach (in minor units) */
@@ -127,7 +128,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<PayoutRes
     );
   }
 
-  const { data: payout, error } = await supabase
+  const { data: payoutData, error } = await supabase
     .from('payout_requests')
     .insert({
       user_id: user.id,
@@ -142,7 +143,8 @@ export async function POST(request: NextRequest): Promise<NextResponse<PayoutRes
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ payout: payout as PayoutRequest }, { status: 201 });
+  const payout = payoutData as unknown as PayoutRequest;
+  return NextResponse.json({ payout }, { status: 201 });
 }
 
 /** PATCH /api/payouts — Admin action on payout (approve/reject/complete) */
@@ -165,15 +167,17 @@ export async function PATCH(request: NextRequest): Promise<NextResponse<PayoutRe
   }
 
   // Get the payout
-  const { data: payout, error: fetchError } = await supabase
+  const { data: payoutData, error: fetchError } = await supabase
     .from('payout_requests')
     .select('*')
     .eq('id', payout_id)
     .single();
 
-  if (fetchError || !payout) {
+  if (fetchError || !payoutData) {
     return NextResponse.json({ error: 'Payout not found' }, { status: 404 });
   }
+
+  const payout = payoutData as unknown as PayoutRequest;
 
   // Map actions to status values
   const statusMap: Record<string, 'approved' | 'rejected' | 'processed'> = {
@@ -182,7 +186,7 @@ export async function PATCH(request: NextRequest): Promise<NextResponse<PayoutRe
     complete: 'processed', // DB schema uses 'processed' for completed payouts
   };
 
-  const updateData: Partial<PayoutRequest> = {
+  const updateData: Record<string, unknown> = {
     status: statusMap[action],
     admin_note: admin_note || payout.admin_note || null,
     processed_by: user.id,
@@ -193,7 +197,7 @@ export async function PATCH(request: NextRequest): Promise<NextResponse<PayoutRe
     updateData.processed_at = new Date().toISOString();
   }
 
-  const { data: updated, error } = await supabase
+  const { data: updatedData, error } = await supabase
     .from('payout_requests')
     .update(updateData)
     .eq('id', payout_id)
@@ -202,10 +206,12 @@ export async function PATCH(request: NextRequest): Promise<NextResponse<PayoutRe
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
+  const updated = updatedData as unknown as PayoutRequest;
+
   // On complete: mark associated earnings as paid_out
   if (action === 'complete') {
     // Accumulate available earnings until we've covered the payout amount
-    const { data: availableEarnings } = await supabase
+    const { data: availableEarningsData } = await supabase
       .from('earnings')
       .select('id, net_amount')
       .eq('user_id', payout.user_id)
@@ -213,13 +219,14 @@ export async function PATCH(request: NextRequest): Promise<NextResponse<PayoutRe
       .lte('available_at', new Date().toISOString())
       .order('created_at', { ascending: true });
 
+    const availableEarnings = availableEarningsData as unknown as Array<Record<string, unknown>> | null;
     let remaining = payout.amount;
     const earningIds: string[] = [];
 
     for (const e of (availableEarnings ?? [])) {
       if (remaining <= 0) break;
-      earningIds.push(e.id);
-      remaining -= e.net_amount;
+      earningIds.push(String(e.id));
+      remaining -= Number(e.net_amount);
     }
 
     if (earningIds.length > 0) {
@@ -230,5 +237,5 @@ export async function PATCH(request: NextRequest): Promise<NextResponse<PayoutRe
     }
   }
 
-  return NextResponse.json({ payout: updated as PayoutRequest });
+  return NextResponse.json({ payout: updated });
 }

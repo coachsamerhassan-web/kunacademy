@@ -7,7 +7,7 @@ interface Props { params: Promise<{ locale: string }> }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
-  return { title: locale === 'ar' ? 'سياسة الاسترجاع | أكاديمية كُن' : 'Refund Policy | Kun Academy' };
+  return { title: locale === 'ar' ? 'سياسة الاسترداد والإلغاء | أكاديمية كُن' : 'Refund & Cancellation Policy | Kun Academy' };
 }
 
 export default async function RefundPage({ params }: Props) {
@@ -21,9 +21,9 @@ export default async function RefundPage({ params }: Props) {
         <GeometricPattern pattern="flower-of-life" opacity={0.06} fade="both" />
         <div className="relative z-10 mx-auto max-w-[var(--max-content-width)] px-4 md:px-6 text-center">
           <h1 className="text-[2rem] md:text-[3rem] font-bold text-[#FFF5E9] leading-[1.1]" style={{ fontFamily: isAr ? 'var(--font-arabic-heading)' : 'var(--font-english-heading)' }}>
-            {isAr ? 'سياسة الاسترجاع' : 'Refund Policy'}
+            {isAr ? 'سياسة الاسترداد والإلغاء' : 'Refund & Cancellation Policy'}
           </h1>
-          <p className="mt-3 text-white/60 text-sm">{isAr ? 'آخر تحديث: مارس ٢٠٢٦' : 'Last updated: March 2026'}</p>
+          <p className="mt-3 text-white/60 text-sm">{isAr ? 'آخر تحديث: ٢٤ أكتوبر ٢٠٢٥' : 'Last updated: October 24, 2025'}</p>
         </div>
       </section>
 
@@ -31,23 +31,91 @@ export default async function RefundPage({ params }: Props) {
         <div className="max-w-3xl mx-auto space-y-8" style={{ fontFamily: isAr ? 'var(--font-arabic-body)' : 'inherit' }}>
           {isAr ? (
             <>
-              <LS t="١. جلسات الكوتشينج الفردية">يمكن إلغاء الجلسة واسترداد المبلغ كاملاً إذا تم الإلغاء قبل ٢٤ ساعة من الموعد المحدد. الإلغاء خلال أقل من ٢٤ ساعة: لا يُسترد المبلغ ولكن يمكن إعادة جدولة الجلسة مرة واحدة. عدم الحضور: لا يُسترد المبلغ.</LS>
-              <LS t="٢. البرامج التدريبية والشهادات">يمكن الانسحاب واسترداد المبلغ كاملاً (ناقص رسوم إدارية ١٠%) خلال ٧ أيام من التسجيل وقبل بدء البرنامج. بعد بدء البرنامج: لا يُسترد المبلغ، ولكن يمكن تحويل التسجيل إلى دورة لاحقة (مرة واحدة).</LS>
-              <LS t="٣. المنتجات الرقمية">الكتب الإلكترونية والمحتوى الرقمي: لا يُسترد المبلغ بعد التحميل أو الوصول إلى المحتوى. إذا واجهت مشكلة تقنية تمنع الوصول، تواصل معنا خلال ٤٨ ساعة.</LS>
-              <LS t="٤. الفعاليات وورش العمل">إلغاء قبل ٧ أيام: استرداد كامل. إلغاء قبل ٣ أيام: استرداد ٥٠%. أقل من ٣ أيام: لا يُسترد المبلغ. إلغاء الفعالية من قبلنا: استرداد كامل.</LS>
-              <LS t="٥. التقسيط (Tabby)">عند الدفع بالتقسيط عبر Tabby، تخضع سياسة الاسترداد لنفس الشروط أعلاه. يتم معالجة الاسترداد عبر Tabby مباشرة.</LS>
-              <LS t="٦. طريقة الاسترداد">يتم الاسترداد بنفس طريقة الدفع الأصلية خلال ٧-١٤ يوم عمل.</LS>
-              <LS t="٧. التواصل">لطلب استرداد: info@kunacademy.com مع ذكر رقم الحجز أو الفاتورة.</LS>
+              <LSPreamble>
+                تُحدد هذه السياسة شروط الاسترداد والإلغاء المطبّقة على جميع خدمات ومنتجات KUN COACHING ACADEMY L.L.C–FZ (أكاديمية كُن كوتشينج ش.ذ.م.م – منطقة حرّة). وتُعد هذه السياسة جزءًا لا يتجزأ من الشروط والأحكام العامة.
+              </LSPreamble>
+
+              <LS t="١. الجلسات الفردية والجماعية والرحلات القصيرة">
+                <ul className="list-disc mr-6 mt-2 space-y-2">
+                  <li>فترة السماح بطلب الاسترداد: <strong>7 أيام تقويمية</strong> من تاريخ الشراء.</li>
+                  <li>يمكن تحويل الرسوم إلى شخص آخر قبل بدء البرنامج.</li>
+                  <li>تُعاد المبالغ المستحقة خلال <strong>30 يومًا</strong> عبر وسيلة الدفع الأصلية فقط.</li>
+                </ul>
+              </LS>
+
+              <LS t="٢. البرامج والدورات والرحلات التعليمية">
+                <ul className="list-disc mr-6 mt-2 space-y-2">
+                  <li>استرداد كامل (<strong>100%</strong>) عند إلغاء البرنامج من قِبل الأكاديمية أو إلغاء المشارك قبل <strong>أسبوعين</strong> من البدء.</li>
+                  <li>استرداد جزئي (<strong>75%</strong>) عند الإلغاء خلال أقل من أسبوعين، و<strong>50%</strong> عند الإلغاء خلال أسبوع.</li>
+                  <li>لا استرداد بعد بدء البرنامج.</li>
+                </ul>
+              </LS>
+
+              <LS t="٣. الخدمات الإضافية">
+                الاستشارات الخاصة أو الدعم الفني أو التصاميم التنفيذية <strong>غير قابلة للاسترداد</strong>.
+              </LS>
+
+              <LS t="٤. طريقة الاسترداد">
+                يتم الاسترداد بنفس طريقة الدفع الأصلية خلال 30 يوم عمل. تُقبل المدفوعات عبر بطاقات فيزا وماستركارد بالدرهم الإماراتي. لا تحتفظ الأكاديمية ببيانات بطاقات الدفع على خوادمها.
+              </LS>
+
+              <LS t="٥. التواصل">
+                لطلب استرداد أو استفسار حول سياسة الإلغاء:
+                <br /><br />
+                info@kuncoaching.com
+                <br />
+                privacy@kunacademy.com
+                <br /><br />
+                العنوان الرسمي:
+                <br />
+                KUN COACHING ACADEMY L.L.C–FZ
+                <br />
+                Business Center 1, Mezzanine Floor, The Meydan Hotel, Nad Al Sheba, Dubai, U.A.E.
+              </LS>
             </>
           ) : (
             <>
-              <LS t="1. Individual Coaching Sessions">Full refund if cancelled 24+ hours before the session. Less than 24 hours: no refund, but one reschedule allowed. No-show: no refund.</LS>
-              <LS t="2. Training Programs & Certifications">Full refund (minus 10% admin fee) within 7 days of registration and before the program starts. After the program starts: no refund, but a one-time transfer to a future cohort is available.</LS>
-              <LS t="3. Digital Products">eBooks and digital content: no refund after download or access. If you experience a technical issue preventing access, contact us within 48 hours.</LS>
-              <LS t="4. Events & Workshops">Cancelled 7+ days before: full refund. 3-7 days before: 50% refund. Less than 3 days: no refund. Event cancelled by us: full refund.</LS>
-              <LS t="5. Installments (Tabby)">For payments via Tabby installments, the same refund terms above apply. Refunds are processed through Tabby directly.</LS>
-              <LS t="6. Refund Method">Refunds are issued to the original payment method within 7-14 business days.</LS>
-              <LS t="7. Contact">To request a refund: info@kunacademy.com with your booking or invoice number.</LS>
+              <LSPreamble>
+                This policy sets out the refund and cancellation terms applicable to all services and products of KUN COACHING ACADEMY L.L.C–FZ. This policy is an integral part of the general Terms &amp; Conditions.
+              </LSPreamble>
+
+              <LS t="1. Individual Sessions, Group Sessions, and Short Trips">
+                <ul className="list-disc ml-6 mt-2 space-y-2">
+                  <li>Refund request grace period: <strong>7 calendar days</strong> from the date of purchase.</li>
+                  <li>Fees may be transferred to another person before the program starts.</li>
+                  <li>Eligible refunds are returned within <strong>30 days</strong> via the original payment method only.</li>
+                </ul>
+              </LS>
+
+              <LS t="2. Programs, Courses, and Educational Trips">
+                <ul className="list-disc ml-6 mt-2 space-y-2">
+                  <li>Full refund (<strong>100%</strong>) if the program is cancelled by the Academy or the participant cancels <strong>2+ weeks</strong> before the start date.</li>
+                  <li>Partial refund (<strong>75%</strong>) if cancelled less than 2 weeks before, and <strong>50%</strong> if cancelled within 1 week.</li>
+                  <li>No refund after the program has started.</li>
+                </ul>
+              </LS>
+
+              <LS t="3. Additional Services">
+                Private consultations, technical support, or executive designs are <strong>non-refundable</strong>.
+              </LS>
+
+              <LS t="4. Refund Method">
+                Refunds are issued to the original payment method within 30 business days. Payments are accepted via Visa and Mastercard in UAE Dirhams. The Academy does not retain payment card data on its servers.
+              </LS>
+
+              <LS t="5. Contact">
+                To request a refund or inquire about the cancellation policy:
+                <br /><br />
+                info@kuncoaching.com
+                <br />
+                privacy@kunacademy.com
+                <br /><br />
+                Official address:
+                <br />
+                KUN COACHING ACADEMY L.L.C–FZ
+                <br />
+                Business Center 1, Mezzanine Floor, The Meydan Hotel, Nad Al Sheba, Dubai, U.A.E.
+              </LS>
             </>
           )}
         </div>
@@ -56,6 +124,12 @@ export default async function RefundPage({ params }: Props) {
   );
 }
 
+function LSPreamble({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="text-[var(--color-neutral-700)] leading-relaxed">{children}</div>
+  );
+}
+
 function LS({ t, children }: { t: string; children: React.ReactNode }) {
-  return <div><h2 className="text-lg font-bold text-[var(--text-primary)] mb-3">{t}</h2><p className="text-[var(--color-neutral-700)] leading-relaxed">{children}</p></div>;
+  return <div><h2 className="text-lg font-bold text-[var(--text-primary)] mb-3">{t}</h2><div className="text-[var(--color-neutral-700)] leading-relaxed">{children}</div></div>;
 }

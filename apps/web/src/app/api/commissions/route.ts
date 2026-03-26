@@ -28,7 +28,8 @@ async function getUserRole(userId: string): Promise<string | null> {
     .select('role')
     .eq('id', userId)
     .single();
-  return data?.role ?? null;
+  const profile = data as Record<string, unknown> | null;
+  return (profile?.role as string | undefined) ?? null;
 }
 
 /** GET /api/commissions — Return commission rates */
@@ -87,42 +88,45 @@ export async function POST(request: NextRequest): Promise<NextResponse<EarningRe
   let rate: number | null = null;
 
   // 1. Coach-specific override
-  const { data: coachRate } = await supabase
+  const { data: coachRateData } = await supabase
     .from('commission_rates')
     .select('rate_pct')
     .eq('scope', 'coach')
     .eq('scope_id', coach_id)
     .single();
-  if (coachRate && 'rate_pct' in coachRate) {
-    rate = Number(coachRate.rate_pct);
+  if (coachRateData) {
+    const rateRow = coachRateData as Record<string, unknown>;
+    rate = Number(rateRow.rate_pct);
   }
 
   // 2. Product/service-specific (item-level rate)
   if (rate === null) {
     const targetScope = source_type === 'service_booking' ? 'service' : 'product';
-    const { data: itemRate } = await supabase
+    const { data: itemRateData } = await supabase
       .from('commission_rates')
       .select('rate_pct')
       .eq('scope', targetScope)
       .eq('scope_id', source_id)
       .single();
-    if (itemRate && 'rate_pct' in itemRate) {
-      rate = Number(itemRate.rate_pct);
+    if (itemRateData) {
+      const rateRow = itemRateData as Record<string, unknown>;
+      rate = Number(rateRow.rate_pct);
     }
   }
 
   // 3. Global fallback (category-aware)
   if (rate === null) {
     const category = source_type === 'service_booking' ? 'services' : 'products';
-    const { data: globalRate } = await supabase
+    const { data: globalRateData } = await supabase
       .from('commission_rates')
       .select('rate_pct')
       .eq('scope', 'global')
       .eq('category', category)
       .is('scope_id', null)
       .single();
-    if (globalRate && 'rate_pct' in globalRate) {
-      rate = Number(globalRate.rate_pct);
+    if (globalRateData) {
+      const rateRow = globalRateData as Record<string, unknown>;
+      rate = Number(rateRow.rate_pct);
     }
   }
 
@@ -199,7 +203,8 @@ export async function PATCH(
     return NextResponse.json({ error: findError.message }, { status: 500 });
   }
 
-  const existing = existingArr && existingArr.length > 0 ? existingArr[0] : null;
+  const existingData = existingArr as unknown as Array<Record<string, unknown>> | null;
+  const existing = existingData && existingData.length > 0 ? existingData[0] : null;
 
   if (existing) {
     // Update existing rate

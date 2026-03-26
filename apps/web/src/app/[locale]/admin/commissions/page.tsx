@@ -5,8 +5,17 @@ import { useEffect, useState } from 'react';
 import { createBrowserClient } from '@kunacademy/db';
 import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import type { CommissionRate, Earning, PayoutRequest, CoachProfile } from '@/types/commission-system';
+
+// Extended types for API responses with joined data
+interface EarningWithCoach extends Earning {
+  profiles?: { full_name: string } | null;
+}
+
+interface PayoutWithCoach extends PayoutRequest {
+  profiles?: { full_name: string } | null;
+}
 
 const statusColors: Record<string, string> = {
   pending: '#EAB308',
@@ -27,7 +36,6 @@ const statusLabelsAr: Record<string, string> = {
   cancelled: 'ملغى',
   requested: 'مطلوب',
   approved: 'موافق عليه',
-  processed: 'قيد المعالجة',
   processed: 'مكتمل',
   rejected: 'مرفوض',
 };
@@ -51,8 +59,8 @@ export default function AdminCommissionsPage() {
   const isAr = locale === 'ar';
 
   const [rates, setRates] = useState<CommissionRate[]>([]);
-  const [earnings, setEarnings] = useState<Earning[]>([]);
-  const [payouts, setPayouts] = useState<PayoutRequest[]>([]);
+  const [earnings, setEarnings] = useState<EarningWithCoach[]>([]);
+  const [payouts, setPayouts] = useState<PayoutWithCoach[]>([]);
   const [coaches, setCoaches] = useState<CoachProfile[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -95,12 +103,12 @@ export default function AdminCommissionsPage() {
       // Set global rate inputs
       const globals = (data.rates ?? []).filter((r: CommissionRate) => r.scope === 'global');
       // Convention: higher = service, lower = product
-      const sorted = globals.sort((a: CommissionRate, b: CommissionRate) => Number(b.rate) - Number(a.rate));
+      const sorted = globals.sort((a: CommissionRate, b: CommissionRate) => Number(b.rate_pct) - Number(a.rate_pct));
       if (sorted.length >= 2) {
-        setServiceRate(String(sorted[0].rate));
-        setProductRate(String(sorted[1].rate));
+        setServiceRate(String(sorted[0].rate_pct));
+        setProductRate(String(sorted[1].rate_pct));
       } else if (sorted.length === 1) {
-        setServiceRate(String(sorted[0].rate));
+        setServiceRate(String(sorted[0].rate_pct));
       }
     }
 
@@ -143,7 +151,7 @@ export default function AdminCommissionsPage() {
 
     // Find existing global rate for this scope type
     const globals = rates.filter((r) => r.scope === 'global');
-    const sorted = globals.sort((a, b) => Number(b.rate) - Number(a.rate));
+    const sorted = globals.sort((a, b) => Number(b.rate_pct) - Number(a.rate_pct));
     const target = scope === 'service' ? sorted[0] : sorted[sorted.length - 1];
 
     if (target) {
@@ -189,7 +197,7 @@ export default function AdminCommissionsPage() {
   async function deleteCoachOverride(rateId: string) {
     const supabase = createBrowserClient();
     if (!supabase) return;
-    await supabase.from('commission_pcts').delete().eq('id', rateId);
+    await supabase.from('commission_rates').delete().eq('id', rateId);
     fetchAll();
   }
 
@@ -406,7 +414,7 @@ export default function AdminCommissionsPage() {
                       <tr key={r.id} className="border-b border-[var(--color-neutral-100)]">
                         <td className="px-3 py-2">{coach?.full_name ?? r.scope_id}</td>
                         <td className="px-3 py-2" style={{ fontVariantNumeric: 'tabular-nums' }}>
-                          {Number(r.rate).toFixed(1)}%
+                          {Number(r.rate_pct).toFixed(1)}%
                         </td>
                         <td className="px-3 py-2">
                           <button
