@@ -1149,10 +1149,6 @@ export function BookReader({ slug, title, author, coverImage, locale, mode }: Bo
           </div>
         </div>
       </div>
-    </div>
-  );
-}
-
       {/* Share Modal */}
       <ShareModal
         isOpen={showShareModal}
@@ -1162,6 +1158,9 @@ export function BookReader({ slug, title, author, coverImage, locale, mode }: Bo
         locale={locale}
         onClose={() => setShowShareModal(false)}
       />
+    </div>
+  );
+}
 
 function toArabicNum(n: number): string {
   const d = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];

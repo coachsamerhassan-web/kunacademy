@@ -23,7 +23,7 @@ export default async function DownloadsPage({
         subtitleEn="Your purchased digital resources and tools"
         eyebrowAr="المكتبة الشخصية"
         eyebrowEn="Personal Library"
-        pattern="geometric"
+        pattern="girih"
       />
 
       <Section>

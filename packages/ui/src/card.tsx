@@ -288,7 +288,7 @@ export function CoachCard({
         </div>
       )}
       <a
-        href={`/${locale}/programs/coaching/${slug}`}
+        href={`/${locale}/coaches/${slug}`}
         className="mt-4 inline-flex items-center justify-center rounded-xl bg-[var(--color-accent)] px-6 py-2 text-sm font-medium text-white min-h-[44px] hover:bg-[var(--color-accent-500)] transition-all duration-300 hover:scale-[1.02]"
       >
         {ctaLabel}
