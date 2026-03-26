@@ -37,19 +37,16 @@ export default async function BlogPage({ params }: Props) {
         <GeometricPattern pattern="flower-of-life" opacity={0.3} fade="both" />
         <div className="relative z-10 mx-auto max-w-[var(--max-content-width)] px-4 md:px-6">
           <div className="max-w-2xl animate-fade-up">
-            <p className="text-sm font-medium tracking-[0.15em] uppercase text-[var(--color-accent)] mb-3">
-              {isAr ? 'المدوّنة' : 'Blog'}
-            </p>
             <h1
               className="text-[2.25rem] md:text-[3.5rem] font-bold text-[var(--text-primary)] leading-tight"
               style={{ fontFamily: isAr ? 'var(--font-arabic-heading)' : 'var(--font-english-heading)' }}
             >
-              {isAr ? 'أفكار ورؤى من أكاديمية كُن' : 'Ideas & Insights from Kun Academy'}
+              {isAr ? 'المدوّنة' : 'Blog'}
             </h1>
             <p className="mt-4 text-[var(--text-muted)] text-lg md:text-xl">
               {isAr
-                ? 'مقالات في التفكير الحسّي والكوتشينج والنمو المهني.'
-                : 'Articles on Somatic Thinking, coaching, and professional growth.'}
+                ? 'أفكار ورؤى في التفكير الحسّي والكوتشينج والنمو المهني.'
+                : 'Ideas & insights on Somatic Thinking, coaching, and professional growth.'}
             </p>
           </div>
         </div>
