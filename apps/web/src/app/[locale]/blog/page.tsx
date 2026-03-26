@@ -63,9 +63,9 @@ export default async function BlogPage({ params }: Props) {
                   {isAr ? 'الكل' : 'All'}
                 </span>
                 {categories.map((cat) => (
-                  <span key={cat} className="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium bg-[var(--color-neutral-100)] text-[var(--color-neutral-600)] hover:bg-[var(--color-primary-50)] hover:text-[var(--color-primary)] transition-colors cursor-pointer">
+                  <a key={cat} href={`/${locale}/blog/category/${encodeURIComponent(cat)}`} className="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium bg-[var(--color-neutral-100)] text-[var(--color-neutral-600)] hover:bg-[var(--color-primary-50)] hover:text-[var(--color-primary)] transition-colors">
                     {cat}
-                  </span>
+                  </a>
                 ))}
               </div>
             )}

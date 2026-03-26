@@ -3,6 +3,7 @@ import { setRequestLocale } from 'next-intl/server';
 import { cms } from '@kunacademy/cms';
 import { Section } from '@kunacademy/ui/section';
 import { GeometricPattern } from '@kunacademy/ui/patterns';
+import { MarkdownContent } from '@/components/markdown-content';
 import type { Metadata } from 'next';
 
 interface Props {
@@ -122,12 +123,7 @@ export default async function BlogPostPage({ params }: Props) {
       <Section variant="white">
         <article className="max-w-3xl mx-auto">
           {content ? (
-            <div
-              className="prose prose-lg max-w-none text-[var(--color-neutral-700)] leading-relaxed whitespace-pre-line"
-              style={{ fontFamily: isAr ? 'var(--font-arabic-body)' : 'inherit' }}
-            >
-              {content}
-            </div>
+            <MarkdownContent content={content} isAr={isAr} />
           ) : excerpt ? (
             <div
               className="text-[var(--color-neutral-700)] leading-relaxed text-lg whitespace-pre-line"
