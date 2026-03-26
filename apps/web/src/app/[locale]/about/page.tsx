@@ -273,10 +273,10 @@ export default async function AboutPage({ params }: Props) {
       {/* ── 3. WHY KUN STARTED — Samer's Quote ── */}
       <Section variant="surface-high" pattern="girih">
         <div className="max-w-3xl mx-auto text-center">
-          <p className="text-sm font-medium tracking-[0.15em] uppercase text-[var(--color-accent)] mb-4">
+          <Heading level={2} className="!text-[2rem] md:!text-[2.5rem]">
             {isAr ? 'لماذا بدأت كُنْ؟' : 'Why did KUN start?'}
-          </p>
-          <p className="text-xs text-[var(--color-neutral-500)] mb-8">
+          </Heading>
+          <p className="text-sm text-[var(--color-neutral-500)] mt-2 mb-8">
             {isAr ? 'بكلمات سامر حسن' : "In Samer Hassan's words"}
           </p>
           <blockquote className="relative">
