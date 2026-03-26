@@ -6,10 +6,10 @@ import { cms } from '@kunacademy/cms';
 const FLAGSHIP_SLUGS = ['stce-level-1-stic', 'stce-level-2-staic', 'stce-level-3-stgc', 'stce-level-4-stoc', 'stce-level-5-stfc'];
 
 const SPECIALIZED_SLUGS = [
-  { slug: 'mcc-mentoring-program', href: '/academy/certifications/mcc-mentoring' },
+  { slug: 'mcc-mentoring', href: '/academy/certifications/mcc-mentoring' },
   { slug: 'menhajak-training', href: '/academy/certifications/menhajak' },
-  { slug: 'stce-doctors', href: '/academy/certifications/doctors' },
-  { slug: 'stce-managers', href: '/academy/certifications/managers' },
+  { slug: 'stdc-doctors', href: '/academy/certifications/doctors' },
+  { slug: 'stcm-managers', href: '/academy/certifications/managers' },
 ];
 
 function parseHours(duration: string | undefined): number {
