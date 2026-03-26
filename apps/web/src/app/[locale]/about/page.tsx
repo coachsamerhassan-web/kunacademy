@@ -299,12 +299,12 @@ export default async function AboutPage({ params }: Props) {
       {/* ── 4. TIMELINE ── */}
       <Section variant="white">
         <div className="text-center mb-12">
-          <p className="text-sm font-medium tracking-[0.15em] uppercase text-[var(--color-accent)] mb-3">
-            {isAr ? 'من رحلتنا' : 'From Our Journey'}
-          </p>
           <Heading level={2} className="!text-[2rem] md:!text-[2.5rem]">
-            {isAr ? 'محطات في المسيرة' : 'Milestones Along the Way'}
+            {isAr ? 'من رحلتنا' : 'From Our Journey'}
           </Heading>
+          <p className="mt-2 text-base text-[var(--color-neutral-600)]">
+            {isAr ? 'محطات في المسيرة' : 'Milestones Along the Way'}
+          </p>
           <p className="mt-4 text-[var(--color-neutral-600)] max-w-2xl mx-auto" style={{ fontFamily: isAr ? 'var(--font-arabic-body)' : 'inherit' }}>
             {isAr
               ? 'كُنْ ليست مؤسسة فقط، بل رحلة بدأت من الجسد والنية، وعَبَرت القارات لتُعيد تعريف التربية من الداخل.'
