@@ -38,7 +38,7 @@ export function ProgramPathway({ locale }: ProgramPathwayProps) {
           <h2 className="text-[1.75rem] md:text-[2.5rem] font-bold text-[#474099]">
             {isAr ? 'مسار التطوّر' : 'Your Growth Pathway'}
           </h2>
-          <p className="mt-4 text-[#6B6B6C] max-w-2xl mx-auto text-lg md:text-xl">
+          <p className="mt-4 text-[var(--color-neutral-600)] max-w-2xl mx-auto text-lg md:text-xl">
             {isAr
               ? 'من الاكتشاف المجاني إلى الشهادات المعتمدة — اختر المسار الذي يناسبك'
               : 'From free discovery to accredited certifications — choose the path that fits you'}
@@ -64,7 +64,7 @@ export function ProgramPathway({ locale }: ProgramPathwayProps) {
                 {i + 1}
               </div>
               <h3 className="text-lg md:text-xl font-bold">{step.label}</h3>
-              <p className="text-sm text-[#6B6B6C] mt-1">{step.desc}</p>
+              <p className="text-sm text-[var(--color-neutral-600)] mt-1">{step.desc}</p>
 
               {/* Arrow connector (desktop) */}
               {i < 3 && (

@@ -262,7 +262,7 @@ function AvatarFrame({
               <button
                 type="button"
                 onClick={onPlay}
-                aria-label={isAr ? 'تشغيل فيديو الشهادة' : 'Play testimonial video'}
+                aria-label={isAr ? 'شاهد التجربة' : 'Watch Story'}
                 className="w-full h-full appearance-none border-0 bg-transparent p-0 cursor-pointer"
               >
                 <VideoPlayOverlay isAr={isAr} />

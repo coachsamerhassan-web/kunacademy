@@ -47,7 +47,7 @@ export function ComingSoon({ locale, titleAr, titleEn, descAr, descEn }: ComingS
           <h2 className="text-lg md:text-xl font-bold text-[#2C2C2D]">
             {isAr ? 'نعمل على هذا المحتوى' : 'We\'re working on this'}
           </h2>
-          <p className="mt-3 text-[#6B6B6C] text-sm leading-relaxed">
+          <p className="mt-3 text-[var(--color-neutral-600)] text-sm leading-relaxed">
             {isAr
               ? 'هذه الصفحة قيد الإعداد وستكون جاهزة قريبًا. سجّل في القائمة البريدية ليصلك إشعار عند الإطلاق.'
               : 'This page is being prepared and will be ready soon. Join our mailing list to be notified at launch.'}
