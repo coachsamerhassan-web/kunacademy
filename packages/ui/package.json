@@ -22,7 +22,8 @@
     "./image-slot": "./src/image-slot.tsx",
     "./footer": "./src/footer.tsx",
     "./scroll-observer": "./src/scroll-observer.tsx",
-    "./faq-jsonld": "./src/faq-jsonld.ts"
+    "./faq-jsonld": "./src/faq-jsonld.ts",
+    "./structured-data": "./src/structured-data.ts"
   },
   "scripts": {
     "build": "tsc --build",
