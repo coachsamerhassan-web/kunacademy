@@ -45,6 +45,15 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: '/programs/family/seeds-adults/', priority: 0.7, freq: 'monthly' },
     { path: '/programs/family/wisal/', priority: 0.7, freq: 'monthly' },
 
+    // Yaqatha
+    { path: '/programs/yaqatha/', priority: 0.7, freq: 'monthly' },
+
+    // Free resources
+    { path: '/programs/free/', priority: 0.7, freq: 'monthly' },
+
+    // Programs hub
+    { path: '/programs/', priority: 0.8, freq: 'monthly' },
+
     // Coaching
     { path: '/coaching/', priority: 0.8, freq: 'monthly' },
     { path: '/coaching/individual/', priority: 0.7, freq: 'monthly' },
@@ -62,6 +71,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: '/about/founder/', priority: 0.7, freq: 'monthly' },
     { path: '/about/samer/', priority: 0.7, freq: 'monthly' },
     { path: '/about/team/', priority: 0.7, freq: 'monthly' },
+    { path: '/about/methodology/', priority: 0.7, freq: 'monthly' },
+    { path: '/about/community/', priority: 0.6, freq: 'monthly' },
     { path: '/about/accreditation/', priority: 0.6, freq: 'monthly' },
     { path: '/about/values/', priority: 0.6, freq: 'monthly' },
 
@@ -80,9 +91,15 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: '/verify/', priority: 0.4, freq: 'monthly' },
 
     // Legal
-    { path: '/privacy/', priority: 0.3, freq: 'yearly' },
-    { path: '/terms/', priority: 0.3, freq: 'yearly' },
-    { path: '/refund/', priority: 0.3, freq: 'yearly' },
+    { path: '/legal/privacy/', priority: 0.3, freq: 'yearly' },
+    { path: '/legal/terms/', priority: 0.3, freq: 'yearly' },
+    { path: '/legal/refund/', priority: 0.3, freq: 'yearly' },
+
+    // FAQ
+    { path: '/faq/', priority: 0.6, freq: 'monthly' },
+
+    // Coaches directory
+    { path: '/coaches/', priority: 0.7, freq: 'weekly' },
   ];
 
   const entries: MetadataRoute.Sitemap = [];
