@@ -1,7 +1,5 @@
-'use client';
-
-import { useEffect, useRef, useState } from 'react';
 import { GeometricPattern } from '@kunacademy/ui/patterns';
+import { HeroParallax } from './hero-parallax';
 
 interface HeroSectionProps {
   locale: string;
@@ -9,88 +7,61 @@ interface HeroSectionProps {
 
 export function HeroSection({ locale }: HeroSectionProps) {
   const isAr = locale === 'ar';
-  const heroRef = useRef<HTMLDivElement>(null);
-  const [unveiled, setUnveiled] = useState(false);
-
-  useEffect(() => {
-    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
-    if (mq.matches) { setUnveiled(true); return; }
-    const timer = setTimeout(() => setUnveiled(true), 200);
-    return () => clearTimeout(timer);
-  }, []);
-
-  // Parallax on scroll
-  useEffect(() => {
-    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
-    if (mq.matches) return;
-    const handleScroll = () => {
-      if (!heroRef.current) return;
-      const bg = heroRef.current.querySelector('[data-hero-bg]') as HTMLElement;
-      if (bg) bg.style.transform = `translateY(${window.scrollY * 0.3}px)`;
-    };
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
 
   const titleText = isAr ? 'أكاديمية كُن للكوتشينج' : 'Kun Coaching Academy';
   const titleWords = titleText.split(' ');
 
   return (
-    <section ref={heroRef} className="relative min-h-[100svh] md:min-h-[85vh] flex items-center overflow-hidden">
-      {/* Veil panels */}
+    <section className="hero-section relative min-h-[100svh] md:min-h-[85vh] flex items-center overflow-hidden">
+      {/* Veil panels — CSS-only, auto-play with delay */}
       <div
-        className="hero-veil-panel absolute inset-y-0 z-50 pointer-events-none"
+        className="hero-veil-panel hero-veil-left absolute inset-y-0 z-50 pointer-events-none"
         style={{
           left: 0, width: '50%',
           background: 'linear-gradient(90deg, #1D1A3D 60%, #474099)',
-          animation: unveiled ? 'hero-veil-left 0.8s cubic-bezier(0.65, 0, 0.35, 1) forwards' : 'none',
         }}
       />
       <div
-        className="hero-veil-panel absolute inset-y-0 z-50 pointer-events-none"
+        className="hero-veil-panel hero-veil-right absolute inset-y-0 z-50 pointer-events-none"
         style={{
           left: '50%', width: '50%',
           background: 'linear-gradient(270deg, #1D1A3D 60%, #474099)',
-          animation: unveiled ? 'hero-veil-right 0.8s cubic-bezier(0.65, 0, 0.35, 1) forwards' : 'none',
         }}
       />
       {/* Light seam */}
       <div
-        className="absolute inset-y-0 z-50 pointer-events-none"
+        className="hero-light-seam absolute inset-y-0 z-50 pointer-events-none"
         style={{
           left: '50%', transform: 'translateX(-50%)', width: '2px',
           background: 'linear-gradient(180deg, transparent, rgba(251,195,163,0.6), transparent)',
-          animation: unveiled ? 'hero-light-seam 0.8s ease-out forwards' : 'none',
         }}
       />
 
-      {/* Background with Ken Burns */}
-      <div
-        data-hero-bg
-        className="hero-bg-cinematic absolute inset-0 w-full h-[120%] -top-[10%]"
-        style={{
-          animation: unveiled ? 'hero-bg-zoom 8s ease-out forwards' : 'none',
-          transform: unveiled ? undefined : 'scale(1.12)',
-        }}
-      >
-        <img
-          src="/images/community/hands-circle-gulf.jpg"
-          alt=""
-          className="w-full h-full object-cover"
-          style={{ filter: 'saturate(0.7) brightness(0.4)' }}
-          loading="eager"
-          fetchPriority="high"
-        />
+      {/* Background with Ken Burns — parallax handled by client component */}
+      <HeroParallax>
         <div
-          className="absolute inset-0"
-          style={{
-            background: isAr
-              ? 'linear-gradient(135deg, rgba(71,64,153,0.92) 0%, rgba(71,64,153,0.7) 40%, rgba(29,26,61,0.85) 100%)'
-              : 'linear-gradient(225deg, rgba(71,64,153,0.92) 0%, rgba(71,64,153,0.7) 40%, rgba(29,26,61,0.85) 100%)',
-          }}
-        />
-        <GeometricPattern pattern="flower-of-life" opacity={0.08} fade="both" />
-      </div>
+          data-hero-bg
+          className="hero-bg-cinematic absolute inset-0 w-full h-[120%] -top-[10%]"
+        >
+          <img
+            src="/images/community/hands-circle-gulf.jpg"
+            alt=""
+            className="w-full h-full object-cover"
+            style={{ filter: 'saturate(0.7) brightness(0.4)' }}
+            loading="eager"
+            fetchPriority="high"
+          />
+          <div
+            className="absolute inset-0"
+            style={{
+              background: isAr
+                ? 'linear-gradient(135deg, rgba(71,64,153,0.92) 0%, rgba(71,64,153,0.7) 40%, rgba(29,26,61,0.85) 100%)'
+                : 'linear-gradient(225deg, rgba(71,64,153,0.92) 0%, rgba(71,64,153,0.7) 40%, rgba(29,26,61,0.85) 100%)',
+            }}
+          />
+          <GeometricPattern pattern="flower-of-life" opacity={0.08} fade="both" />
+        </div>
+      </HeroParallax>
 
       {/* Content */}
       <div className="relative z-10 mx-auto max-w-[var(--max-content-width)] px-4 md:px-6 w-full py-20">
@@ -109,10 +80,9 @@ export function HeroSection({ locale }: HeroSectionProps) {
                   style={{ marginInlineEnd: i < titleWords.length - 1 ? '0.3em' : 0 }}
                 >
                   <span
-                    className="inline-block"
+                    className="hero-word inline-block"
                     style={{
-                      animation: unveiled ? `hero-word-rise 0.6s cubic-bezier(0.16, 1, 0.3, 1) ${700 + i * 120}ms both` : 'none',
-                      opacity: unveiled ? undefined : 0,
+                      animationDelay: `${700 + i * 120}ms`,
                     }}
                   >
                     {word}
@@ -123,12 +93,10 @@ export function HeroSection({ locale }: HeroSectionProps) {
 
             {/* Accent line */}
             <div
-              className="h-[2px] mt-3 mb-4 max-w-[120px] md:max-w-[180px] mx-auto md:mx-0"
+              className="hero-accent-line h-[2px] mt-3 mb-4 max-w-[120px] md:max-w-[180px] mx-auto md:mx-0"
               style={{
                 background: 'linear-gradient(90deg, var(--color-accent), var(--color-accent-200))',
                 transformOrigin: isAr ? 'right' : 'left',
-                animation: unveiled ? 'hero-line-sweep 0.5s cubic-bezier(0.16, 1, 0.3, 1) 1100ms both' : 'none',
-                opacity: unveiled ? undefined : 0,
               }}
             />
 
@@ -137,8 +105,6 @@ export function HeroSection({ locale }: HeroSectionProps) {
               className="hero-tagline text-xl md:text-2xl font-medium text-[var(--color-accent-200)]"
               style={{
                 fontFamily: isAr ? 'var(--font-arabic-heading)' : 'var(--font-english-heading)',
-                animation: unveiled ? 'hero-tagline-in 0.7s cubic-bezier(0.16, 1, 0.3, 1) 1000ms both' : 'none',
-                opacity: unveiled ? undefined : 0,
               }}
             >
               {isAr ? 'وعيٌ يتخطّى الحدود' : 'Growing Beyond Limits'}
@@ -147,10 +113,6 @@ export function HeroSection({ locale }: HeroSectionProps) {
             {/* Subtitle — blur deconvolution */}
             <p
               className="hero-subtitle mt-6 text-lg md:text-xl text-[#FFF5E9]/75 max-w-xl leading-relaxed"
-              style={{
-                animation: unveiled ? 'hero-deblur 0.8s cubic-bezier(0.16, 1, 0.3, 1) 1200ms both' : 'none',
-                opacity: unveiled ? undefined : 0,
-              }}
             >
               {isAr
                 ? 'رحلة تعلّم تبدأ من الجسد وتمتدّ إلى كل بُعد في حياتك المهنية. أكثر من ٥٠٠ كوتش تخرّجوا في ١٣ دولة. مليون حياة تأثّرت.'
@@ -161,34 +123,20 @@ export function HeroSection({ locale }: HeroSectionProps) {
             <div className="mt-8 flex flex-wrap justify-center md:justify-start gap-4">
               <a
                 href={`/${locale}/pathfinder/`}
-                className="hero-cta inline-flex items-center justify-center rounded-xl bg-[var(--color-accent)] px-8 py-3.5 text-base font-semibold text-white min-h-[52px] hover:bg-[var(--color-accent-500)] transition-all duration-300 shadow-[0_4px_24px_rgba(228,96,30,0.35)] hover:shadow-[0_8px_32px_rgba(228,96,30,0.5)] hover:scale-[1.02] active:scale-[0.98]"
-                style={{
-                  animation: unveiled ? 'hero-cta-spring 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) 1400ms both' : 'none',
-                  opacity: unveiled ? undefined : 0,
-                }}
+                className="hero-cta hero-cta-1 inline-flex items-center justify-center rounded-xl bg-[var(--color-accent)] px-8 py-3.5 text-base font-semibold text-white min-h-[52px] hover:bg-[var(--color-accent-500)] transition-all duration-300 shadow-[0_4px_24px_rgba(228,96,30,0.35)] hover:shadow-[0_8px_32px_rgba(228,96,30,0.5)] hover:scale-[1.02] active:scale-[0.98]"
               >
                 {isAr ? 'ابدأ رحلتك' : 'Start Your Journey'}
               </a>
               <a
                 href={`/${locale}/programs/`}
-                className="hero-cta inline-flex items-center justify-center rounded-xl border-2 border-white/30 px-8 py-3.5 text-base font-medium text-white min-h-[52px] hover:bg-white/10 hover:border-white/50 transition-all duration-300 backdrop-blur-sm"
-                style={{
-                  animation: unveiled ? 'hero-cta-spring 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) 1550ms both' : 'none',
-                  opacity: unveiled ? undefined : 0,
-                }}
+                className="hero-cta hero-cta-2 inline-flex items-center justify-center rounded-xl border-2 border-white/30 px-8 py-3.5 text-base font-medium text-white min-h-[52px] hover:bg-white/10 hover:border-white/50 transition-all duration-300 backdrop-blur-sm"
               >
                 {isAr ? 'استكشف البرامج' : 'Explore Programs'}
               </a>
             </div>
 
             {/* Mobile founder photo */}
-            <div
-              className="flex md:hidden justify-center mt-8"
-              style={{
-                animation: unveiled ? 'hero-tagline-in 0.6s cubic-bezier(0.16, 1, 0.3, 1) 1600ms both' : 'none',
-                opacity: unveiled ? undefined : 0,
-              }}
-            >
+            <div className="hero-mobile-photo flex md:hidden justify-center mt-8">
               <div className="relative">
                 <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-white/20 shadow-lg">
                   <img src="/images/founder/samer-closeup-white-thobe-smile.jpg" alt={isAr ? 'سامر حسن' : 'Samer Hassan'} className="w-full h-full object-cover object-top" loading="eager" />
@@ -202,22 +150,15 @@ export function HeroSection({ locale }: HeroSectionProps) {
 
           {/* Founder photo — star backdrop + dark frame */}
           <div
-            className="hero-photo-frame hidden md:flex shrink-0"
-            style={{
-              animation: unveiled ? `${isAr ? 'hero-photo-enter-rtl' : 'hero-photo-enter'} 0.9s cubic-bezier(0.16, 1, 0.3, 1) 1600ms both` : 'none',
-              opacity: unveiled ? undefined : 0,
-            }}
+            className={`hero-photo-frame hidden md:flex shrink-0 ${isAr ? 'hero-photo-rtl' : ''}`}
           >
             <div className="relative">
               {/* SVG stroke-draw star */}
               <div className="absolute -inset-8 animate-float" style={{ animationDuration: '8s' }}>
                 <svg viewBox="0 0 400 400" className="w-full h-full">
-                  <path className="hero-stroke-outer" d="M200 10l55.5 134.5L390 200l-134.5 55.5L200 390l-55.5-134.5L10 200l134.5-55.5z" fill="none" stroke="#FFF5E9" strokeWidth="1" strokeDasharray="2000"
-                    style={{ animation: unveiled ? 'hero-stroke-draw 2s cubic-bezier(0.16, 1, 0.3, 1) 600ms both' : 'none', opacity: 0 }} />
-                  <path className="hero-stroke-inner" d="M200 60l38.7 101.3L340 200l-101.3 38.7L200 340l-38.7-101.3L60 200l101.3-38.7z" fill="none" stroke="#FFF5E9" strokeWidth="0.5" strokeDasharray="1400"
-                    style={{ animation: unveiled ? 'hero-stroke-draw-inner 1.8s cubic-bezier(0.16, 1, 0.3, 1) 900ms both' : 'none', opacity: 0 }} />
-                  <circle className="hero-stroke-circle" cx="200" cy="200" r="155" fill="none" stroke="#FFF5E9" strokeWidth="0.4" strokeDasharray="975"
-                    style={{ animation: unveiled ? 'hero-stroke-draw-circle 2.2s cubic-bezier(0.16, 1, 0.3, 1) 800ms both' : 'none', opacity: 0 }} />
+                  <path className="hero-stroke-outer" d="M200 10l55.5 134.5L390 200l-134.5 55.5L200 390l-55.5-134.5L10 200l134.5-55.5z" fill="none" stroke="#FFF5E9" strokeWidth="1" strokeDasharray="2000" />
+                  <path className="hero-stroke-inner" d="M200 60l38.7 101.3L340 200l-101.3 38.7L200 340l-38.7-101.3L60 200l101.3-38.7z" fill="none" stroke="#FFF5E9" strokeWidth="0.5" strokeDasharray="1400" />
+                  <circle className="hero-stroke-circle" cx="200" cy="200" r="155" fill="none" stroke="#FFF5E9" strokeWidth="0.4" strokeDasharray="975" />
                 </svg>
               </div>
               {/* Photo frame */}
@@ -228,8 +169,7 @@ export function HeroSection({ locale }: HeroSectionProps) {
                 <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-[var(--color-primary-800)] to-transparent rounded-b-2xl" />
               </div>
               {/* Badge — bounce pop */}
-              <div className="hero-badge absolute -bottom-4 start-1/2"
-                style={{ animation: unveiled ? 'hero-badge-pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 1800ms both' : 'none', opacity: unveiled ? undefined : 0, transform: 'translateX(-50%)' }}>
+              <div className="hero-badge absolute -bottom-4 start-1/2" style={{ transform: 'translateX(-50%)' }}>
                 <div className="bg-white rounded-xl px-5 py-2 shadow-[0_4px_20px_rgba(71,64,153,0.2)]">
                   <span className="text-sm font-bold text-[var(--color-primary)]">{isAr ? 'أول عربي MCC' : 'First Arab MCC'}</span>
                 </div>
@@ -240,8 +180,7 @@ export function HeroSection({ locale }: HeroSectionProps) {
       </div>
 
       {/* Scroll indicator */}
-      <div className="hero-scroll-indicator absolute bottom-8 left-1/2 -translate-x-1/2"
-        style={{ animation: unveiled ? 'hero-deblur 0.6s ease-out 2200ms both' : 'none', opacity: unveiled ? undefined : 0 }}>
+      <div className="hero-scroll-indicator absolute bottom-8 left-1/2 -translate-x-1/2">
         <div className="w-6 h-10 rounded-full border-2 border-white/30 flex items-start justify-center pt-2">
           <div className="w-1 h-2.5 rounded-full bg-white/60 animate-bounce" />
         </div>

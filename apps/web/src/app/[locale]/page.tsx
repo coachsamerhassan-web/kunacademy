@@ -6,7 +6,13 @@ import { Heading } from '@kunacademy/ui/heading';
 import { Button } from '@kunacademy/ui/button';
 import { TrustBar } from '@kunacademy/ui/trust-bar';
 import { cms, contentGetter } from '@kunacademy/cms';
-import { TreeNarrative, TreePhase } from '@/components/tree-narrative';
+import dynamic from 'next/dynamic';
+import { TreePhase } from '@/components/tree-phase';
+
+const TreeNarrative = dynamic(
+  () => import('@/components/tree-narrative').then((m) => ({ default: m.TreeNarrative })),
+  { ssr: true }
+);
 import { HeroSection } from '@/components/hero-section';
 import { StatsSection } from '@/components/stats-section';
 import { ProgramPathway } from '@/components/program-pathway';
