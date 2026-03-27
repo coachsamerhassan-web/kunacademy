@@ -56,11 +56,10 @@ export const stixTwoText = STIX_Two_Text({
 });
 
 // Combined className for <body>
+// Cairo + Noto Naskh excluded — fallback only, not preloaded or injected
+// STIX excluded — English heading font, loaded on-demand via CSS
 export const fontVariables = [
   noor.variable,
   tajawal.variable,
-  cairo.variable,
-  notoNaskhArabic.variable,
   inter.variable,
-  stixTwoText.variable,
 ].join(' ');

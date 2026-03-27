@@ -74,8 +74,8 @@
 
   /* Typography — wired via next/font CSS variables (zero CLS) */
   --font-arabic-heading: var(--font-noor), var(--font-tajawal), sans-serif;
-  --font-arabic-body: var(--font-tajawal), var(--font-cairo), var(--font-noto-naskh), sans-serif;
-  --font-english-heading: var(--font-stix), serif;
+  --font-arabic-body: var(--font-tajawal), 'Cairo', 'Noto Naskh Arabic', sans-serif;
+  --font-english-heading: 'STIX Two Text', Georgia, serif;
   --font-english-body: var(--font-inter), sans-serif;
 
   /* Typography — Shahira's 10-level scale (Mobile-first, Major Third ~1.25) */
