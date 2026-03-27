@@ -1,4 +1,4 @@
-// @ts-nocheck — Supabase types resolve to `never` for community tables. Fix with: supabase gen types
+// @ts-nocheck — TODO: fix Supabase client types (types regenerated, needs 'as any' removal)
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@kunacademy/db';
 

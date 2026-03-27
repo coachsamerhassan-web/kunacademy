@@ -1,4 +1,3 @@
-// @ts-nocheck
 'use client';
 
 import { useAuth } from '@kunacademy/auth';
@@ -180,7 +179,7 @@ export default function AdminCoursesPage() {
     if (allLessons) {
       await supabase.from('courses').update({
         total_lessons: allLessons.length,
-        total_video_minutes: allLessons.reduce((sum, l) => sum + (l.duration_minutes ?? 0), 0),
+        total_video_minutes: allLessons.reduce((sum: number, l: { duration_minutes: number | null }) => sum + (l.duration_minutes ?? 0), 0),
       }).eq('id', courseId);
     }
   }

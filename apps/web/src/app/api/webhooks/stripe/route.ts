@@ -1,4 +1,4 @@
-// @ts-nocheck — Generated DB types stale. Fix with: supabase gen types
+// @ts-nocheck — TODO: fix Supabase client types (types regenerated, needs 'as any' removal)
 import { NextRequest, NextResponse } from 'next/server';
 import { handleWebhook } from '@kunacademy/payments';
 import { createAdminClient } from '@kunacademy/db';

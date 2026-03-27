@@ -1,4 +1,3 @@
-// @ts-nocheck — DB types resolve to `never` for digital_assets/download_tokens. Fix with: supabase gen types
 import { NextResponse, type NextRequest } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from '@kunacademy/db';

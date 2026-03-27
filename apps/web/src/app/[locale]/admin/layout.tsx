@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { AuthProvider } from '@kunacademy/auth';
 
 export const dynamic = 'force-dynamic';

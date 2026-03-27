@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { NextResponse, type NextRequest } from 'next/server';
 
 // Old WordPress URL → New Next.js URL mapping

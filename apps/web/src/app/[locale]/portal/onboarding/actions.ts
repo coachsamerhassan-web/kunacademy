@@ -1,4 +1,3 @@
-// @ts-nocheck
 'use server';
 
 import { createAdminClient } from '@kunacademy/db';

@@ -1,4 +1,4 @@
-// @ts-nocheck — Generated DB types lack instapay/tabby gateway values. Fix with: supabase gen types
+// @ts-nocheck — TODO: fix Supabase client types (types regenerated, needs 'as any' removal)
 import { NextResponse, type NextRequest } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { captureTabbyPayment } from '@kunacademy/payments';
