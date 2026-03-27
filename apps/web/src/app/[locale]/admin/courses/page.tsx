@@ -12,13 +12,13 @@ interface CourseRow {
   title_ar: string;
   title_en: string;
   slug: string;
-  is_published: boolean;
-  total_lessons: number;
-  total_video_minutes: number;
+  is_published: boolean | null;
+  total_lessons: number | null;
+  total_video_minutes: number | null;
   type: string | null;
   format: string | null;
-  price_aed: number;
-  created_at: string;
+  price_aed: number | null;
+  created_at: string | null;
 }
 
 interface LessonRow {
@@ -30,7 +30,7 @@ interface LessonRow {
   video_url: string | null;
   order: number;
   duration_minutes: number | null;
-  is_preview: boolean;
+  is_preview: boolean | null;
 }
 
 interface SectionRow {
@@ -111,9 +111,9 @@ export default function AdminCoursesPage() {
 
   async function saveLesson() {
     setSaving(true);
-    const data: Record<string, unknown> = {
-      title_ar: editLesson.title_ar,
-      title_en: editLesson.title_en,
+    const base = {
+      title_ar: editLesson.title_ar ?? '',
+      title_en: editLesson.title_en ?? '',
       video_url: editLesson.video_url || null,
       duration_minutes: editLesson.duration_minutes || null,
       is_preview: editLesson.is_preview ?? false,
@@ -121,11 +121,13 @@ export default function AdminCoursesPage() {
     };
 
     if (editLesson.id) {
-      await supabase.from('lessons').update(data).eq('id', editLesson.id);
+      await supabase.from('lessons').update(base).eq('id', editLesson.id);
     } else {
-      data.course_id = selectedCourse!.id;
-      data.order = lessons.length;
-      await supabase.from('lessons').insert(data);
+      await supabase.from('lessons').insert({
+        ...base,
+        course_id: selectedCourse!.id,
+        order: lessons.length,
+      });
     }
 
     // Refresh
@@ -459,7 +461,7 @@ export default function AdminCoursesPage() {
                   <span>{c.slug}</span>
                   <span>{c.total_lessons} {isAr ? 'درس' : 'lessons'}</span>
                   <span>{enrollmentCounts[c.id] ?? 0} {isAr ? 'مسجّل' : 'enrolled'}</span>
-                  {c.price_aed > 0 && <span>{(c.price_aed / 100).toLocaleString()} AED</span>}
+                  {(c.price_aed ?? 0) > 0 && <span>{((c.price_aed ?? 0) / 100).toLocaleString()} AED</span>}
                 </div>
               </div>
               <button

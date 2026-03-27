@@ -1,4 +1,3 @@
-// @ts-nocheck — TODO: fix Supabase client types (types regenerated, needs 'as any' removal)
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -213,6 +212,7 @@ function OrdersTab({ orders, isAr }: { orders: OrderWithItems[]; isAr: boolean }
     shipped: { ar: 'تم الشحن', en: 'Shipped', color: 'bg-blue-100 text-blue-700' },
     delivered: { ar: 'تم التوصيل', en: 'Delivered', color: 'bg-emerald-100 text-emerald-700' },
     cancelled: { ar: 'ملغى', en: 'Cancelled', color: 'bg-red-100 text-red-700' },
+    refunded: { ar: 'مسترد', en: 'Refunded', color: 'bg-gray-100 text-gray-700' },
   };
 
   return (

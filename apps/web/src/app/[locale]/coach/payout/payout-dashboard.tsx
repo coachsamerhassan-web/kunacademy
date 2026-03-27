@@ -1,4 +1,3 @@
-// @ts-nocheck — TODO: fix Supabase client types (types regenerated, needs 'as any' removal)
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -205,7 +204,7 @@ export function PayoutDashboard({ locale }: { locale: string }) {
             <Button type="submit" disabled={submitting}>
               {submitting ? (isAr ? 'جاري الإرسال...' : 'Submitting...') : (isAr ? 'إرسال الطلب' : 'Submit Request')}
             </Button>
-            <Button variant="outline" type="button" onClick={() => setShowForm(false)}>
+            <Button variant="secondary" type="button" onClick={() => setShowForm(false)}>
               {isAr ? 'إلغاء' : 'Cancel'}
             </Button>
           </div>

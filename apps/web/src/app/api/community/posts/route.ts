@@ -1,4 +1,3 @@
-// @ts-nocheck — TODO: fix Supabase client types (types regenerated, needs 'as any' removal)
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@kunacademy/db';
 
@@ -45,7 +44,9 @@ export async function GET(req: NextRequest) {
         .in('parent_id', postIds);
 
       for (const c of counts || []) {
-        replyCounts[c.parent_id] = (replyCounts[c.parent_id] || 0) + 1;
+        if (c.parent_id) {
+          replyCounts[c.parent_id] = (replyCounts[c.parent_id] || 0) + 1;
+        }
       }
     }
 

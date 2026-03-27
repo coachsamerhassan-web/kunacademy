@@ -19,7 +19,7 @@ export default function CoachReferralsPage({ params }: { params: Promise<{ local
     const supabase = createBrowserClient();
     Promise.all([
       supabase.from('referral_codes').select('code').eq('user_id', user.id).single(),
-      supabase.from('referral_uses').select('id', { count: 'exact', head: true }).eq('referrer_id', user.id),
+      (supabase as any).from('referral_uses').select('id', { count: 'exact', head: true }).eq('referrer_id', user.id),
     ]).then(([codeRes, usesRes]) => {
       setReferralCode(codeRes.data?.code ?? null);
       setReferralCount(usesRes.count ?? 0);

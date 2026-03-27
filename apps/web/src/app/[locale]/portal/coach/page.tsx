@@ -1,4 +1,3 @@
-// @ts-nocheck — TODO: fix Supabase client types (types regenerated, needs 'as any' removal)
 'use client';
 
 import { useAuth } from '@kunacademy/auth';
@@ -15,13 +14,13 @@ export default function CoachDashboard() {
   const { locale } = useParams<{ locale: string }>();
   const { user, loading: authLoading, signOut } = useAuth();
   const [stats, setStats] = useState<CoachStats>({ upcomingBookings: 0, totalSessions: 0, pendingDrafts: 0, totalEarnings: 0 });
-  const [instructor, setInstructor] = useState<{ id: string; title_ar: string; title_en: string; is_visible: boolean } | null>(null);
+  const [instructor, setInstructor] = useState<{ id: string; title_ar: string; title_en: string; is_visible: boolean | null } | null>(null);
   const [recentBookings, setRecentBookings] = useState<any[]>([]);
   const isAr = locale === 'ar';
 
   useEffect(() => {
     if (!user) return;
-    const supabase = createBrowserClient() as any;
+    const supabase = createBrowserClient();
 
     supabase.from('instructors').select('id, title_ar, title_en, is_visible').eq('profile_id', user.id).single().then(({ data }) => {
       if (!data) return;

@@ -1,4 +1,3 @@
-// @ts-nocheck — TODO: fix Supabase client types (types regenerated, needs 'as any' removal)
 'use client';
 
 import { useAuth } from '@kunacademy/auth';
@@ -27,7 +26,7 @@ export default function MyBookings() {
 
   useEffect(() => {
     if (!user) return;
-    const supabase = createBrowserClient() as any;
+    const supabase = createBrowserClient();
     supabase
       .from('bookings')
       .select('id, start_time, end_time, status, notes, service:services(name_ar, name_en), provider:providers(bio_ar, bio_en, profile:profiles(full_name_ar, full_name_en))')

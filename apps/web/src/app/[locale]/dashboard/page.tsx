@@ -17,7 +17,7 @@ export default function DashboardPage({ params }: { params: Promise<{ locale: st
   const isAr = locale === 'ar';
   const { user } = useAuth();
   const [stats, setStats] = useState<DashboardStats>({ enrollments: 0, bookings: 0, certificates: 0 });
-  const [profile, setProfile] = useState<{ full_name_ar?: string; full_name_en?: string } | null>(null);
+  const [profile, setProfile] = useState<{ full_name_ar: string | null; full_name_en: string | null } | null>(null);
 
   useEffect(() => {
     if (!user) return;

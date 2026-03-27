@@ -12,10 +12,9 @@ type TabFilter = 'upcoming' | 'past' | 'all';
 
 interface Booking {
   id: string;
-  booking_date: string;
   start_time: string;
   end_time: string;
-  status: BookingStatus;
+  status: string | null;
   notes: string | null;
   meeting_url: string | null;
   service: { name_ar: string; name_en: string; duration_minutes: number } | null;
@@ -59,15 +58,15 @@ export default function CoachBookingsPage() {
       const { data } = await supabase
         .from('bookings')
         .select(`
-          id, booking_date, start_time, end_time, status, notes, meeting_url,
+          id, start_time, end_time, status, notes, meeting_url,
           service:services(name_ar, name_en, duration_minutes),
-          customer:profiles(full_name_ar, full_name_en, email)
+          customer:profiles!bookings_customer_id_fkey(full_name_ar, full_name_en, email)
         `)
         .eq('provider_id', provider.id)
-        .order('booking_date', { ascending: false })
+        .order('start_time', { ascending: false })
         .limit(100);
 
-      setBookings((data as Booking[]) || []);
+      setBookings((data as unknown as Booking[]) || []);
       setLoading(false);
     })();
   }, [user]);
@@ -75,8 +74,8 @@ export default function CoachBookingsPage() {
   const today = new Date().toISOString().split('T')[0];
 
   const filtered = bookings.filter((b) => {
-    if (tab === 'upcoming') return b.booking_date >= today && b.status !== 'cancelled';
-    if (tab === 'past') return b.booking_date < today || b.status === 'completed';
+    if (tab === 'upcoming') return b.start_time.split('T')[0] >= today && b.status !== 'cancelled';
+    if (tab === 'past') return b.start_time.split('T')[0] < today || b.status === 'completed';
     return true;
   });
 
@@ -134,12 +133,12 @@ export default function CoachBookingsPage() {
         {filtered.length > 0 ? (
           <div className="space-y-3">
             {filtered.map((b) => {
-              const s = statusConfig[b.status] || statusConfig.pending;
+              const s = statusConfig[(b.status ?? 'pending') as BookingStatus] || statusConfig.pending;
               const clientName = isAr
                 ? (b.customer?.full_name_ar || b.customer?.full_name_en || b.customer?.email || '—')
                 : (b.customer?.full_name_en || b.customer?.full_name_ar || b.customer?.email || '—');
               const serviceName = isAr ? b.service?.name_ar : b.service?.name_en;
-              const dateObj = new Date(b.booking_date + 'T00:00:00');
+              const dateObj = new Date(b.start_time.split('T')[0] + 'T00:00:00');
               const dateStr = dateObj.toLocaleDateString(isAr ? 'ar-SA' : 'en-US', {
                 weekday: 'short', year: 'numeric', month: 'short', day: 'numeric',
               });

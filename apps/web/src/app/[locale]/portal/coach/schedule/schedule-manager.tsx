@@ -1,4 +1,3 @@
-// @ts-nocheck — TODO: fix Supabase client types (types regenerated, needs 'as any' removal)
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -21,7 +20,7 @@ interface ScheduleBlock {
   day_of_week: number;
   start_time: string;
   end_time: string;
-  is_active: boolean;
+  is_active: boolean | null;
 }
 
 interface TimeOff {
@@ -114,11 +113,12 @@ export function ScheduleManager({ locale }: { locale: string }) {
     if (!supabase) return;
     const { data } = await supabase.from('coach_time_off').insert({
       coach_id: instructorId,
-      date: newTimeOff.date,
+      start_date: newTimeOff.date,
+      end_date: newTimeOff.date,
       reason: newTimeOff.reason,
     }).select().single();
     if (data) {
-      setTimeOffs(prev => [...prev, { id: data.id, date: data.date, reason: data.reason || '' }]);
+      setTimeOffs(prev => [...prev, { id: data.id, date: data.start_date, reason: data.reason || '' }]);
       setNewTimeOff({ date: '', reason: '' });
     }
   }
@@ -171,7 +171,7 @@ export function ScheduleManager({ locale }: { locale: string }) {
               <label className="flex items-center gap-1 text-sm cursor-pointer min-h-[44px] px-2">
                 <input
                   type="checkbox"
-                  checked={block.is_active}
+                  checked={block.is_active ?? true}
                   onChange={(e) => updateBlock(i, 'is_active', e.target.checked)}
                   className="rounded"
                 />

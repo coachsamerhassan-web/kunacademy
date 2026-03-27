@@ -18,16 +18,16 @@ export interface CommissionRate {
 export interface Earning {
   id: string;
   user_id: string;
-  source_type: 'service_booking' | 'product_sale' | 'referral';
-  source_id: string;
+  source_type: string;
+  source_id: string | null;
   gross_amount: number; // minor units (e.g., 25000 = 250 AED)
   commission_pct: number; // 0-100
   commission_amount: number; // minor units
   net_amount: number; // minor units
   currency: string; // e.g., 'AED'
-  status: 'pending' | 'available' | 'paid_out' | 'cancelled';
-  available_at: string; // ISO timestamp (7 days after creation)
-  created_at: string;
+  status: string | null;
+  available_at: string | null; // ISO timestamp (7 days after creation)
+  created_at: string | null;
 }
 
 export interface PayoutRequest {

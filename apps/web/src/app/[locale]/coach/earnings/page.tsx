@@ -62,7 +62,7 @@ export default function Page({ params }: { params: Promise<{ locale: string }> }
 
   async function getAuthToken() {
     // TODO: Regenerate Supabase types once earnings/commission_rates/payout_requests tables exist
-    const supabase = createBrowserClient() as any;
+    const supabase = createBrowserClient();
     if (!supabase) return null;
     const { data: session } = await supabase.auth.getSession();
     return session?.session?.access_token || null;
@@ -73,7 +73,7 @@ export default function Page({ params }: { params: Promise<{ locale: string }> }
     if (!token) { setLoading(false); return; }
 
     // Fetch earnings
-    const supabase = createBrowserClient() as any;
+    const supabase = createBrowserClient();
     if (supabase && user) {
       const { data: earningsData } = await supabase
         .from('earnings')
@@ -213,7 +213,7 @@ export default function Page({ params }: { params: Promise<{ locale: string }> }
                       }`}
                     >
                       <td className="px-3 py-3" style={{ fontVariantNumeric: 'tabular-nums' }}>
-                        {formatDate(e.created_at, isAr)}
+                        {e.created_at ? formatDate(e.created_at, isAr) : '-'}
                       </td>
                       <td className="px-3 py-3">
                         {e.source_type === 'service_booking'
@@ -234,9 +234,9 @@ export default function Page({ params }: { params: Promise<{ locale: string }> }
                       <td className="px-3 py-3">
                         <span
                           className="inline-block px-2 py-0.5 rounded-full text-xs font-medium text-white"
-                          style={{ backgroundColor: statusColors[e.status] }}
+                          style={{ backgroundColor: statusColors[e.status ?? 'pending'] }}
                         >
-                          {isAr ? statusLabelsAr[e.status] : e.status.replace('_', ' ')}
+                          {isAr ? statusLabelsAr[e.status ?? 'pending'] : (e.status ?? 'pending').replace('_', ' ')}
                         </span>
                       </td>
                     </tr>

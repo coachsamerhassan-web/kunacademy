@@ -10,6 +10,7 @@ import { fontVariables } from '@/lib/fonts';
 import { NextImageProvider } from '@/components/image-provider';
 import { ScrollRestore } from '@/components/scroll-restore';
 import { Analytics } from '@/components/analytics';
+import { organizationJsonLd, websiteJsonLd } from '@kunacademy/ui/structured-data';
 import "../globals.css";
 
 export function generateStaticParams() {
@@ -52,6 +53,16 @@ export default async function LocaleLayout({
 
   return (
     <html lang={locale} dir={dir} className={fontVariables}>
+      <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd(locale)) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd()) }}
+        />
+      </head>
       <body className="flex flex-col min-h-screen">
         <NextIntlClientProvider messages={messages}>
           <NextImageProvider>

@@ -1,4 +1,3 @@
-// @ts-nocheck — TODO: fix Supabase client types (types regenerated, needs 'as any' removal)
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@kunacademy/db';
 
@@ -94,7 +93,7 @@ export async function POST(req: NextRequest) {
     // Get course info for default naming
     const { data: course } = await supabase
       .from('courses')
-      .select('name_ar, name_en, slug')
+      .select('title_ar, title_en, slug')
       .eq('id', course_id)
       .single();
 
@@ -108,10 +107,10 @@ export async function POST(req: NextRequest) {
       .from('community_boards')
       .insert({
         slug,
-        name_ar: name_ar || `مجموعة ${course.name_ar}`,
-        name_en: name_en || `${course.name_en} Cohort`,
-        description_ar: `مساحة خاصة لطلاب ${course.name_ar}`,
-        description_en: `Private space for ${course.name_en} students`,
+        name_ar: name_ar || `مجموعة ${course.title_ar}`,
+        name_en: name_en || `${course.title_en} Cohort`,
+        description_ar: `مساحة خاصة لطلاب ${course.title_ar}`,
+        description_en: `Private space for ${course.title_en} students`,
         type: 'cohort',
         course_id,
         is_admin_only: false,

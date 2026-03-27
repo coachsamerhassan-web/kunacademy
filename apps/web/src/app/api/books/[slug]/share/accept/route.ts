@@ -17,12 +17,14 @@ export async function POST(
   try {
     const { slug } = await params;
 
-    const supabase = createServerClient();
-    if (!supabase) {
+    const supabaseTyped = createServerClient();
+    if (!supabaseTyped) {
       return NextResponse.json({ error: 'Auth not configured' }, { status: 500 });
     }
+    // book_shares and book_access tables are not yet in generated types
+    const supabase = supabaseTyped as any;
 
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await supabaseTyped.auth.getUser();
     if (!user) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }

@@ -1,4 +1,3 @@
-// @ts-nocheck — TODO: fix Supabase client types (types regenerated, needs 'as any' removal)
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -9,7 +8,7 @@ interface Member {
   full_name_ar: string | null;
   full_name_en: string | null;
   avatar_url: string | null;
-  role: string;
+  role: string | null;
   country: string | null;
 }
 
@@ -38,7 +37,7 @@ export function CommunityMembers({ locale }: { locale: string }) {
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
       {members.map(member => {
-        const badge = ROLE_BADGES[member.role] || ROLE_BADGES.student;
+        const badge = ROLE_BADGES[member.role ?? 'student'] || ROLE_BADGES.student;
         return (
           <a
             key={member.id}

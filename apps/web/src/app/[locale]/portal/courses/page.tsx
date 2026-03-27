@@ -1,4 +1,3 @@
-// @ts-nocheck — TODO: fix Supabase client types (types regenerated, needs 'as any' removal)
 'use client';
 
 import { useAuth } from '@kunacademy/auth';
@@ -25,7 +24,7 @@ export default function MyCourses() {
 
   useEffect(() => {
     if (!user) return;
-    const supabase = createBrowserClient() as any;
+    const supabase = createBrowserClient();
     supabase
       .from('enrollments')
       .select('id, enrolled_at, completed_at, progress_data, course:courses(id, title_ar, title_en, slug, thumbnail_url)')

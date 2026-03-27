@@ -1,4 +1,3 @@
-// @ts-nocheck — TODO: fix Supabase client types (types regenerated, needs 'as any' removal)
 'use client';
 
 import { useState } from 'react';
@@ -20,7 +19,7 @@ export function ProductDetail({ product, locale }: ProductDetailProps) {
 
   const name = isAr ? product.name_ar : product.name_en;
   const description = isAr ? product.description_ar : product.description_en;
-  const price = (product.price_aed / 100).toLocaleString(isAr ? 'ar-AE' : 'en-AE', {
+  const price = ((product.price_aed ?? 0) / 100).toLocaleString(isAr ? 'ar-AE' : 'en-AE', {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   });
@@ -28,20 +27,20 @@ export function ProductDetail({ product, locale }: ProductDetailProps) {
   const typeLabel: Record<ProductType, { ar: string; en: string }> = {
     digital: { ar: 'منتج رقمي', en: 'Digital Product' },
     physical: { ar: 'منتج مادي', en: 'Physical Product' },
-    hybrid: { ar: 'منتج رقمي + مادي', en: 'Digital + Physical' },
+    subscription: { ar: 'اشتراك', en: 'Subscription' },
   };
 
   const typeBadgeColor: Record<ProductType, string> = {
     digital: 'bg-emerald-100 text-emerald-700',
     physical: 'bg-blue-100 text-blue-700',
-    hybrid: 'bg-purple-100 text-purple-700',
+    subscription: 'bg-purple-100 text-purple-700',
   };
 
   const imageUrl = Array.isArray(product.images) && product.images.length > 0
     ? String(product.images[0])
     : null;
 
-  const isDigital = product.product_type === 'digital' || product.product_type === 'hybrid';
+  const isDigital = product.product_type === 'digital' || product.product_type === 'subscription';
 
   async function handlePurchase() {
     if (!user) {
@@ -97,9 +96,9 @@ export function ProductDetail({ product, locale }: ProductDetailProps) {
         <div>
           {/* Type badge */}
           <span
-            className={`inline-block px-3 py-1 rounded-full text-xs font-medium mb-4 ${typeBadgeColor[product.product_type]}`}
+            className={`inline-block px-3 py-1 rounded-full text-xs font-medium mb-4 ${typeBadgeColor[(product.product_type ?? 'digital') as ProductType]}`}
           >
-            {isAr ? typeLabel[product.product_type].ar : typeLabel[product.product_type].en}
+            {isAr ? typeLabel[(product.product_type ?? 'digital') as ProductType].ar : typeLabel[(product.product_type ?? 'digital') as ProductType].en}
           </span>
 
           {/* Name */}

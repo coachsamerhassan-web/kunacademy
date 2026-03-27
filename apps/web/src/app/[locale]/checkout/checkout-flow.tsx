@@ -1,4 +1,3 @@
-// @ts-nocheck — TODO: fix Supabase client types (types regenerated, needs 'as any' removal)
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -33,16 +32,16 @@ interface CartItem {
   id: string;
   name_ar: string;
   name_en: string;
-  price_aed: number;
-  price_sar: number;
-  price_egp: number;
-  price_usd: number;
-  price_eur: number;
-  early_bird_price_aed?: number;
-  early_bird_deadline?: string;
-  discount_percentage?: number;
-  discount_valid_until?: string;
-  installment_enabled?: boolean;
+  price_aed: number | null;
+  price_sar: number | null;
+  price_egp: number | null;
+  price_usd: number | null;
+  price_eur: number | null;
+  early_bird_price_aed?: number | null;
+  early_bird_deadline?: string | null;
+  discount_percentage?: number | null;
+  discount_valid_until?: string | null;
+  installment_enabled?: boolean | null;
 }
 
 /** Detect currency from timezone (fallback when geo API unavailable) */
@@ -70,7 +69,7 @@ function getPrice(item: CartItem, currency: Currency): number {
   // Check early bird
   if (item.early_bird_price_aed && item.early_bird_deadline) {
     if (now < new Date(item.early_bird_deadline)) {
-      const ratio = item.early_bird_price_aed / item.price_aed;
+      const ratio = (item.early_bird_price_aed ?? 0) / (item.price_aed ?? 1);
       const basePrice = item[`price_${currency.toLowerCase()}` as keyof CartItem] as number;
       return Math.round(basePrice * ratio);
     }
@@ -150,7 +149,7 @@ export function CheckoutFlow({ locale }: { locale: string }) {
       supabase.from('courses').select('id, title_ar, title_en, price_aed, price_sar, price_egp, price_usd, price_eur')
         .eq('id', itemId).single()
         .then(({ data }) => {
-          if (data) setItem({ type: 'course', id: data.id, name_ar: data.title_ar, name_en: data.title_en, ...data });
+          if (data) setItem({ ...data, type: 'course', id: data.id, name_ar: data.title_ar, name_en: data.title_en });
           setLoading(false);
         });
     } else if (itemType === 'booking') {

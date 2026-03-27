@@ -1,4 +1,3 @@
-// @ts-nocheck — TODO: fix Supabase client types (types regenerated, needs 'as any' removal)
 'use client';
 
 import { useAuth } from '@kunacademy/auth';
@@ -29,7 +28,7 @@ export default function LessonPlayer() {
   const isAr = locale === 'ar';
 
   useEffect(() => {
-    const supabase = createBrowserClient() as any;
+    const supabase = createBrowserClient();
     // Fetch all lessons for this course
     supabase.from('lessons').select('*').eq('course_id', courseId).order('order').then(({ data }) => {
       const allLessons = (data ?? []) as Lesson[];
@@ -48,7 +47,7 @@ export default function LessonPlayer() {
 
   async function markComplete() {
     if (!enrollment || !currentLesson) return;
-    const supabase = createBrowserClient() as any;
+    const supabase = createBrowserClient();
     const newProgress = { ...enrollment.progress_data, [currentLesson.id]: true };
     await supabase.from('enrollments').update({ progress_data: newProgress }).eq('id', enrollment.id);
     setEnrollment({ ...enrollment, progress_data: newProgress });

@@ -1,4 +1,3 @@
-// @ts-nocheck
 'use server';
 
 import { createBrowserClient } from '@kunacademy/db';

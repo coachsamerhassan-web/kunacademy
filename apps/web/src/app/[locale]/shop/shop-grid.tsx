@@ -1,4 +1,3 @@
-// @ts-nocheck — TODO: fix Supabase client types (types regenerated, needs 'as any' removal)
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -39,7 +38,7 @@ const SAMPLE_PRODUCTS: Pick<Product, 'id' | 'name_ar' | 'name_en' | 'slug' | 'de
     description_ar: 'حقيبة أدوات رقمية ومادية للمدرّبين المعتمدين',
     description_en: 'Digital and physical toolkit for certified coaches',
     price_aed: 45000,
-    product_type: 'hybrid',
+    product_type: 'subscription',
     images: [],
   },
 ];
@@ -47,7 +46,7 @@ const SAMPLE_PRODUCTS: Pick<Product, 'id' | 'name_ar' | 'name_en' | 'slug' | 'de
 const TYPE_ICONS: Record<ProductType, string> = {
   digital: '📥',
   physical: '📦',
-  hybrid: '📦📥',
+  subscription: '🔄',
 };
 
 interface ShopGridProps {
@@ -173,7 +172,7 @@ function ProductCard({
 }) {
   const isAr = locale === 'ar';
   const name = isAr ? product.name_ar : product.name_en;
-  const price = (product.price_aed / 100).toLocaleString(isAr ? 'ar-AE' : 'en-AE', {
+  const price = ((product.price_aed ?? 0) / 100).toLocaleString(isAr ? 'ar-AE' : 'en-AE', {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   });
@@ -181,13 +180,13 @@ function ProductCard({
   const typeLabel: Record<ProductType, { ar: string; en: string }> = {
     digital: { ar: 'رقمي', en: 'Digital' },
     physical: { ar: 'مادي', en: 'Physical' },
-    hybrid: { ar: 'رقمي + مادي', en: 'Hybrid' },
+    subscription: { ar: 'اشتراك', en: 'Subscription' },
   };
 
   const typeBadgeColor: Record<ProductType, string> = {
     digital: 'bg-emerald-100 text-emerald-700',
     physical: 'bg-blue-100 text-blue-700',
-    hybrid: 'bg-purple-100 text-purple-700',
+    subscription: 'bg-purple-100 text-purple-700',
   };
 
   const imageUrl = Array.isArray(product.images) && product.images.length > 0
@@ -207,14 +206,14 @@ function ProductCard({
           <img src={imageUrl} alt={name} className="h-full w-full object-cover" />
         ) : (
           <span className="text-4xl" aria-hidden="true">
-            {TYPE_ICONS[product.product_type]}
+            {TYPE_ICONS[(product.product_type ?? 'digital') as ProductType]}
           </span>
         )}
         {/* Type badge */}
         <span
-          className={`absolute top-3 ${isAr ? 'start-3' : 'start-3'} px-2.5 py-1 rounded-full text-xs font-medium ${typeBadgeColor[product.product_type]}`}
+          className={`absolute top-3 ${isAr ? 'start-3' : 'start-3'} px-2.5 py-1 rounded-full text-xs font-medium ${typeBadgeColor[(product.product_type ?? 'digital') as ProductType]}`}
         >
-          {isAr ? typeLabel[product.product_type].ar : typeLabel[product.product_type].en}
+          {isAr ? typeLabel[(product.product_type ?? 'digital') as ProductType].ar : typeLabel[(product.product_type ?? 'digital') as ProductType].en}
         </span>
       </div>
 

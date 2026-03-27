@@ -17,8 +17,7 @@ interface Enrollment {
 
 interface Booking {
   id: string;
-  status: string;
-  booking_date: string;
+  status: string | null;
   start_time: string;
   service: { name_ar: string; name_en: string } | null;
 }
@@ -59,14 +58,14 @@ export function DashboardContent({ locale }: { locale: string }) {
         .limit(10),
       supabase
         .from('bookings')
-        .select('id, status, booking_date, start_time, service:services(name_ar, name_en)')
+        .select('id, status, start_time, service:services(name_ar, name_en)')
         .eq('customer_id', user.id)
-        .order('booking_date', { ascending: false })
+        .order('start_time', { ascending: false })
         .limit(5),
     ]).then(([enrollRes, bookingRes]) => {
       const enrs = enrollRes.data || [];
-      setEnrollments(enrs as Enrollment[]);
-      setBookings((bookingRes.data || []) as Booking[]);
+      setEnrollments(enrs as unknown as Enrollment[]);
+      setBookings((bookingRes.data || []) as unknown as Booking[]);
       setStats({
         enrollments: enrs.length,
         completedCourses: enrs.filter((e: any) => e.completed_at).length,
@@ -190,7 +189,7 @@ export function DashboardContent({ locale }: { locale: string }) {
                 <div className="flex-1">
                   <p className="font-medium">{isAr ? b.service?.name_ar : b.service?.name_en}</p>
                   <p className="text-sm text-[var(--color-neutral-500)]">
-                    {new Date(b.booking_date).toLocaleDateString(isAr ? 'ar-SA' : 'en-US')} — {b.start_time}
+                    {new Date(b.start_time).toLocaleDateString(isAr ? 'ar-SA' : 'en-US')} — {new Date(b.start_time).toLocaleTimeString(isAr ? 'ar-SA' : 'en-US', { hour: '2-digit', minute: '2-digit' })}
                   </p>
                 </div>
                 <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${

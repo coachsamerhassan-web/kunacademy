@@ -94,7 +94,7 @@ export async function GET(request: NextRequest) {
           if (!tokenError && tokens && tokens.length > 0) {
             for (const token of tokens) {
               const isExpired = new Date(token.expires_at) < new Date();
-              const isExhausted = token.download_count >= token.max_downloads;
+              const isExhausted = (token.download_count ?? 0) >= (token.max_downloads ?? Infinity);
 
               downloads.push({
                 id: token.id,

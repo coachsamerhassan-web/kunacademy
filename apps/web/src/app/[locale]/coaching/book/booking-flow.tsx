@@ -18,8 +18,8 @@ interface Service {
   name_ar: string;
   name_en: string;
   duration_minutes: number;
-  price_aed: number;
-  category_id: string;
+  price_aed: number | null;
+  category_id: string | null;
 }
 
 interface Coach {
@@ -220,7 +220,7 @@ export function BookingFlow({ locale }: { locale: string }) {
                   <div className="text-sm text-[var(--color-neutral-500)]">{svc.duration_minutes} {isAr ? 'دقيقة' : 'min'}</div>
                 </div>
                 <div className="text-[var(--color-primary)] font-medium">
-                  {svc.price_aed === 0 ? (isAr ? 'مجاني' : 'Free') : `${(svc.price_aed / 100).toFixed(0)} AED`}
+                  {!svc.price_aed ? (isAr ? 'مجاني' : 'Free') : `${(svc.price_aed / 100).toFixed(0)} AED`}
                 </div>
               </button>
             ))}
@@ -338,7 +338,7 @@ export function BookingFlow({ locale }: { locale: string }) {
             <div className="flex justify-between border-t border-[var(--color-neutral-200)] pt-4">
               <span className="text-[var(--color-neutral-600)] font-medium">{isAr ? 'المبلغ' : 'Amount'}</span>
               <span className="font-bold text-lg text-[var(--color-primary)]">
-                {selectedService.price_aed === 0 ? (isAr ? 'مجاني' : 'Free') : `${(selectedService.price_aed / 100).toFixed(0)} AED`}
+                {!selectedService.price_aed ? (isAr ? 'مجاني' : 'Free') : `${(selectedService.price_aed / 100).toFixed(0)} AED`}
               </span>
             </div>
           </div>

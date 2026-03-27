@@ -1,4 +1,3 @@
-// @ts-nocheck — TODO: fix Supabase client types (types regenerated, needs 'as any' removal)
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -79,7 +78,7 @@ export function BoardDetail({ locale, boardId }: { locale: string; boardId: stri
         replies: (replies || []).filter(r => r.parent_id === post.id),
       }));
 
-      setPosts(postsWithReplies as Post[]);
+      setPosts(postsWithReplies as unknown as Post[]);
     }
     setLoading(false);
   }

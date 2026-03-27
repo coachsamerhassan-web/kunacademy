@@ -1,4 +1,3 @@
-// @ts-nocheck — TODO: fix Supabase client types (types regenerated, needs 'as any' removal)
 'use client';
 
 import { useState } from 'react';
@@ -19,7 +18,7 @@ export function ProductGallery({ product, isAr }: ProductGalleryProps) {
   const typeIcon: Record<ProductType, string> = {
     digital: '📥',
     physical: '📦',
-    hybrid: '📦📥',
+    subscription: '🔄',
   };
 
   return (
@@ -38,7 +37,7 @@ export function ProductGallery({ product, isAr }: ProductGalleryProps) {
         ) : (
           <div className="text-center">
             <span className="text-6xl block mb-4" aria-hidden="true">
-              {typeIcon[product.product_type]}
+              {typeIcon[(product.product_type ?? 'digital') as ProductType]}
             </span>
             <p className="text-sm text-[var(--color-neutral-400)]">
               {isAr ? 'صورة المنتج' : 'Product image'}

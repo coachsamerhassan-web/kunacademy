@@ -1,4 +1,3 @@
-// @ts-nocheck — TODO: fix Supabase client types (types regenerated, needs 'as any' removal)
 import { setRequestLocale } from 'next-intl/server';
 import { GeometricPattern } from '@kunacademy/ui/patterns';
 import { Section } from '@kunacademy/ui/section';
@@ -9,25 +8,26 @@ import { notFound } from 'next/navigation';
 // Import CMS provider
 async function getLandingPage(slug: string, locale: string) {
   try {
-    const { getContentProvider } = await import('@kunacademy/cms');
-    const provider = getContentProvider();
-    const pages = await provider.getPageContent();
-    // Find landing page by slug and type
-    const pageRows = pages.filter(
-      (r: any) => r.slug === slug && r.type === 'landing' && r.published !== 'false'
-    );
-    if (pageRows.length === 0) return null;
+    const { cms } = await import('@kunacademy/cms');
+    const sections = await cms.getPageContent(slug);
+    if (!sections || Object.keys(sections).length === 0) return null;
 
     const content: Record<string, string> = {};
-    for (const row of pageRows) {
-      content[row.key] = locale === 'ar' ? row.value_ar : (row.value_en || row.value_ar);
+    for (const [sectionKey, sectionData] of Object.entries(sections)) {
+      const data = sectionData as Record<string, any>;
+      for (const [key, val] of Object.entries(data)) {
+        if (typeof val === 'object' && val !== null && ('ar' in val || 'en' in val)) {
+          content[key] = locale === 'ar' ? (val.ar || val.en || '') : (val.en || val.ar || '');
+        } else if (typeof val === 'string') {
+          content[key] = val;
+        }
+      }
     }
-    const meta = pageRows[0];
     return {
       content,
-      meta_title: locale === 'ar' ? meta.meta_title_ar : meta.meta_title_en,
-      meta_description: locale === 'ar' ? meta.meta_description_ar : meta.meta_description_en,
-      og_image: meta.og_image_url,
+      meta_title: content.meta_title || content.title || slug,
+      meta_description: content.meta_description || '',
+      og_image: content.og_image_url || '',
     };
   } catch {
     return null;

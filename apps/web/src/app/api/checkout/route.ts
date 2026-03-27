@@ -1,4 +1,3 @@
-// @ts-nocheck — TODO: fix Supabase client types (types regenerated, needs 'as any' removal)
 import { NextResponse, type NextRequest } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { createCheckoutSession, createTabbySession } from '@kunacademy/payments';
@@ -199,7 +198,7 @@ export async function POST(request: NextRequest) {
       });
 
       if ('rejected' in result) {
-        await supabase.from('payments').update({ status: 'failed', metadata: { ...payment.metadata, tabby_rejection: result.reason } }).eq('id', payment.id);
+        await supabase.from('payments').update({ status: 'failed', metadata: { ...(payment.metadata as Record<string, unknown> ?? {}), tabby_rejection: result.reason } }).eq('id', payment.id);
         return NextResponse.json({
           error: locale === 'ar' ? 'عذرًا، التقسيط غير متاح لهذا الطلب' : 'Sorry, installments are not available for this order',
           rejection_reason: result.reason,
@@ -208,7 +207,7 @@ export async function POST(request: NextRequest) {
 
       await supabase.from('payments').update({
         gateway_payment_id: result.paymentId,
-        metadata: { ...payment.metadata, tabby_session_id: result.sessionId },
+        metadata: { ...(payment.metadata as Record<string, unknown> ?? {}), tabby_session_id: result.sessionId },
       }).eq('id', payment.id);
 
       return NextResponse.json({ checkout_url: result.checkoutUrl, payment_id: payment.id, gateway: 'tabby' });

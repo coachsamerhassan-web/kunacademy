@@ -1,4 +1,3 @@
-// @ts-nocheck — TODO: fix Supabase client types (types regenerated, needs 'as any' removal)
 import { NextRequest, NextResponse } from 'next/server';
 import { handleWebhook } from '@kunacademy/payments';
 import { createAdminClient } from '@kunacademy/db';
@@ -62,7 +61,7 @@ export async function POST(request: NextRequest) {
             .eq('id', itemId)
             .single();
 
-          if (!productError && product && (product.product_type === 'digital' || product.product_type === 'hybrid')) {
+          if (!productError && product && (product.product_type === 'digital' || product.product_type === 'subscription')) {
             // Find or create the order for this purchase
             // First, check if there's already an order for this payment
             const { data: existingOrder, error: orderError } = await supabase
@@ -81,8 +80,8 @@ export async function POST(request: NextRequest) {
                   user_id: userId,
                   status: 'paid',
                   payment_id: paymentId,
-                  total_amount: result.amount || 0,
-                  currency: result.currency || 'AED',
+                  total_amount: (result as any).amount || 0,
+                  currency: (result as any).currency || 'AED',
                 } as any)
                 .select('id')
                 .single();
@@ -108,7 +107,7 @@ export async function POST(request: NextRequest) {
                     order_id: orderId,
                     product_id: itemId,
                     quantity: 1,
-                    unit_price: result.amount || 0,
+                    unit_price: (result as any).amount || 0,
                   } as any);
               }
 

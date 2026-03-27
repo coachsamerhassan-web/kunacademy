@@ -1,4 +1,3 @@
-// @ts-nocheck — TODO: fix Supabase client types (types regenerated, needs 'as any' removal)
 import { NextResponse, type NextRequest } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from '@kunacademy/db';
@@ -44,7 +43,7 @@ export async function GET(
     }
 
     // Check download count
-    if (downloadToken.download_count >= downloadToken.max_downloads) {
+    if ((downloadToken.download_count ?? 0) >= (downloadToken.max_downloads ?? Infinity)) {
       return NextResponse.json(
         {
           error: 'Maximum download limit reached',
@@ -74,7 +73,7 @@ export async function GET(
     // Increment download count
     await supabase
       .from('download_tokens')
-      .update({ download_count: downloadToken.download_count + 1 })
+      .update({ download_count: (downloadToken.download_count ?? 0) + 1 })
       .eq('id', downloadToken.id);
 
     // Redirect to the actual file URL

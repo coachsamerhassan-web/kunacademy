@@ -1,4 +1,3 @@
-// @ts-nocheck — TODO: fix Supabase client types (types regenerated, needs 'as any' removal)
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -22,7 +21,7 @@ export function BookingWizard({ locale }: { locale: string }) {
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
 
-  const supabase = createBrowserClient() as any;
+  const supabase = createBrowserClient();
 
   useEffect(() => {
     supabase.from('services').select('*').eq('is_active', true).then(({ data }) => setServices((data ?? []) as Service[]));

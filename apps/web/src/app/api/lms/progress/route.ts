@@ -1,4 +1,3 @@
-// @ts-nocheck — TODO: fix Supabase client types (types regenerated, needs 'as any' removal)
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from '@kunacademy/db';
@@ -93,20 +92,13 @@ export async function POST(request: NextRequest) {
   }
 
   // Upsert lesson progress
-  const updateData: Record<string, unknown> = {
+  const updateData = {
     user_id: user.id,
-    lesson_id: lessonId,
+    lesson_id: lessonId as string,
     updated_at: new Date().toISOString(),
+    ...(typeof playbackPosition === 'number' ? { playback_position_seconds: Math.floor(playbackPosition) } : {}),
+    ...(completed === true ? { completed: true, completed_at: new Date().toISOString() } : {}),
   };
-
-  if (typeof playbackPosition === 'number') {
-    updateData.playback_position_seconds = Math.floor(playbackPosition);
-  }
-
-  if (completed === true) {
-    updateData.completed = true;
-    updateData.completed_at = new Date().toISOString();
-  }
 
   const { data: progress, error } = await supabase
     .from('lesson_progress')

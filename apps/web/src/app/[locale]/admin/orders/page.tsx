@@ -18,7 +18,7 @@ export default function AdminOrdersPage() {
   useEffect(() => {
     if (authLoading) return;
     if (!user || profile?.role !== 'admin') { router.push('/' + locale + '/auth/login'); return; }
-    const s = createBrowserClient() as any;
+    const s = createBrowserClient();
     s.from('orders').select('*').limit(100).then(({ data }: any) => {
       setItems(data ?? []);
       setLoading(false);

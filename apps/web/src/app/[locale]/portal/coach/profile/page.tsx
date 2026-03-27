@@ -1,4 +1,3 @@
-// @ts-nocheck — TODO: fix Supabase client types (types regenerated, needs 'as any' removal)
 'use client';
 
 import { useAuth } from '@kunacademy/auth';
@@ -20,7 +19,7 @@ export default function CoachProfileEdit() {
 
   useEffect(() => {
     if (!user) return;
-    const supabase = createBrowserClient() as any;
+    const supabase = createBrowserClient();
     supabase.from('instructors').select('*').eq('profile_id', user.id).single().then(({ data }) => {
       if (data) {
         setInstructor(data);
@@ -32,7 +31,7 @@ export default function CoachProfileEdit() {
   async function handleSubmitDraft() {
     if (!instructor) return;
     setSaving(true);
-    const supabase = createBrowserClient() as any;
+    const supabase = createBrowserClient();
     await supabase.from('instructor_drafts').insert({
       instructor_id: instructor.id as string,
       field_name: isAr ? 'bio_ar' : 'bio_en',

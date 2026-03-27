@@ -1,4 +1,3 @@
-// @ts-nocheck — TODO: fix Supabase client types (types regenerated, needs 'as any' removal)
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@kunacademy/db';
 import { notify } from '@kunacademy/email';
@@ -28,14 +27,14 @@ export async function GET(req: NextRequest) {
     const { data: bookings, error } = await supabase
       .from('bookings')
       .select(`
-        id, scheduled_at, status, meeting_url,
-        customer:profiles!bookings_customer_id_fkey(id, full_name, email, phone, preferred_locale),
-        coach:profiles!bookings_coach_id_fkey(full_name),
-        service:services!bookings_service_id_fkey(name_ar, name_en)
+        id, start_time, status, meeting_url,
+        customer:profiles!bookings_customer_id_fkey(id, full_name_ar, full_name_en, email, phone),
+        coach:profiles!bookings_coach_id_fkey(full_name_ar, full_name_en),
+        service:services(name_ar, name_en)
       `)
       .eq('status', 'confirmed')
-      .gte('scheduled_at', from.toISOString())
-      .lte('scheduled_at', to.toISOString());
+      .gte('start_time', from.toISOString())
+      .lte('start_time', to.toISOString()) as { data: any[] | null; error: any };
 
     if (error) throw error;
     if (!bookings?.length) {
@@ -52,7 +51,7 @@ export async function GET(req: NextRequest) {
       const locale = customer?.preferred_locale || 'ar';
       const isAr = locale === 'ar';
 
-      const sessionDate = new Date(booking.scheduled_at);
+      const sessionDate = new Date(booking.start_time);
 
       try {
         await notify({

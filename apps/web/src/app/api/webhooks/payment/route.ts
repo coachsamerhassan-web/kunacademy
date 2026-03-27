@@ -1,4 +1,3 @@
-// @ts-nocheck — TODO: fix Supabase client types (types regenerated, needs 'as any' removal)
 import { NextResponse, type NextRequest } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { captureTabbyPayment } from '@kunacademy/payments';
@@ -112,7 +111,6 @@ export async function POST(request: NextRequest) {
       .from('payments')
       .update({
         status,
-        metadata: supabase.rpc ? undefined : undefined, // preserve existing metadata
       })
       .eq('id', paymentId)
       .select('*')

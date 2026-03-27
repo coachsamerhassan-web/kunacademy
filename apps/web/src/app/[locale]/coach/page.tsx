@@ -10,7 +10,7 @@ export default function CoachDashboardPage({ params }: { params: Promise<{ local
   const { locale } = use(params);
   const isAr = locale === 'ar';
   const { user } = useAuth();
-  const [profile, setProfile] = useState<{ full_name_ar?: string; full_name_en?: string } | null>(null);
+  const [profile, setProfile] = useState<{ full_name_ar: string | null; full_name_en: string | null } | null>(null);
   const [stats, setStats] = useState({ bookings: 0, totalEarnings: 0 });
 
   useEffect(() => {
