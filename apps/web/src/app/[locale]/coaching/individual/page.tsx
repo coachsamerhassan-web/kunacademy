@@ -2,6 +2,7 @@ import { setRequestLocale } from 'next-intl/server';
 import { Section } from '@kunacademy/ui/section';
 import { GeometricPattern } from '@kunacademy/ui/patterns';
 import { Card } from '@kunacademy/ui/card';
+import { breadcrumbJsonLd } from '@kunacademy/ui/structured-data';
 import type { Metadata } from 'next';
 
 interface Props { params: Promise<{ locale: string }> }
@@ -68,6 +69,14 @@ export default async function IndividualCoachingPage({ params }: Props) {
 
   return (
     <main>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd(locale, [
+          { name: isAr ? 'الرئيسية' : 'Home', path: '' },
+          { name: isAr ? 'الكوتشينج' : 'Coaching', path: '/coaching' },
+          { name: isAr ? 'كوتشينج فردي' : 'Individual Coaching', path: '/coaching/individual' },
+        ])) }}
+      />
       {/* Hero */}
       <section className="relative overflow-hidden py-16 md:py-28">
         <div className="absolute inset-0" style={{ background: 'linear-gradient(135deg, var(--color-primary) 0%, #1D1A3D 100%)' }} />

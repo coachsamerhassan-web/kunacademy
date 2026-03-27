@@ -2,6 +2,7 @@ import { setRequestLocale } from 'next-intl/server';
 import { Section } from '@kunacademy/ui/section';
 import { Button } from '@kunacademy/ui/button';
 import { GeometricPattern } from '@kunacademy/ui/patterns';
+import { breadcrumbJsonLd } from '@kunacademy/ui/structured-data';
 
 export default async function FounderPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
@@ -10,6 +11,14 @@ export default async function FounderPage({ params }: { params: Promise<{ locale
 
   return (
     <main>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd(locale, [
+          { name: isAr ? 'الرئيسية' : 'Home', path: '' },
+          { name: isAr ? 'عنّا' : 'About', path: '/about' },
+          { name: isAr ? 'سامر حسن' : 'Samer Hassan', path: '/about/samer' },
+        ])) }}
+      />
       {/* Hero — Split layout with founder photo */}
       <section className="relative overflow-hidden min-h-[60vh] flex items-center">
         <div className="absolute inset-0">

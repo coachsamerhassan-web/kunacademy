@@ -3,6 +3,7 @@ import { cms } from '@kunacademy/cms';
 import { Section } from '@kunacademy/ui/section';
 import { GeometricPattern } from '@kunacademy/ui/patterns';
 import { Card } from '@kunacademy/ui/card';
+import { breadcrumbJsonLd } from '@kunacademy/ui/structured-data';
 import type { Metadata } from 'next';
 
 interface Props { params: Promise<{ locale: string }> }
@@ -35,6 +36,14 @@ export default async function TeamPage({ params }: Props) {
 
   return (
     <main>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd(locale, [
+          { name: isAr ? 'الرئيسية' : 'Home', path: '' },
+          { name: isAr ? 'عنّا' : 'About', path: '/about' },
+          { name: isAr ? 'الفريق' : 'Team', path: '/about/team' },
+        ])) }}
+      />
       {/* Hero */}
       <section className="relative overflow-hidden py-16 md:py-24">
         <div className="absolute inset-0" style={{ background: 'linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-600) 100%)' }} />
