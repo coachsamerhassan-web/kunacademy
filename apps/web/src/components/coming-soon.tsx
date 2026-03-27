@@ -40,7 +40,7 @@ export function ComingSoon({ locale, titleAr, titleEn, descAr, descEn }: ComingS
         <div className="max-w-md mx-auto text-center py-12">
           {/* Decorative element */}
           <div className="mx-auto mb-8 w-20 h-20 rounded-2xl bg-[var(--color-primary-50)] flex items-center justify-center">
-            <svg className="w-8 h-8 text-[var(--color-primary)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <svg aria-hidden="true" className="w-8 h-8 text-[var(--color-primary)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
               <path d="M12 6v6l4 2M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </div>
@@ -73,7 +73,7 @@ export function ComingSoon({ locale, titleAr, titleEn, descAr, descEn }: ComingS
             href={`/${locale}/`}
             className="inline-flex items-center gap-2 mt-8 text-sm text-[var(--color-primary)] font-medium hover:text-[var(--color-primary-600)] transition-colors"
           >
-            <svg className="w-4 h-4 rtl:rotate-180" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg aria-hidden="true" className="w-4 h-4 rtl:rotate-180" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M10 3L5 8l5 5" />
             </svg>
             {isAr ? 'العودة للرئيسية' : 'Back to Home'}

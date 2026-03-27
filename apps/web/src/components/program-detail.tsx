@@ -62,13 +62,13 @@ export async function ProgramDetail({
           <div className="mt-6 flex flex-wrap justify-center gap-6 text-white/70 text-sm">
             {program.duration && (
               <span className="flex items-center gap-1.5">
-                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                <svg aria-hidden="true" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
                 {program.duration}
               </span>
             )}
             {program.format && (
               <span className="flex items-center gap-1.5">
-                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="3" width="20" height="14" rx="2" /><path d="M8 21h8M12 17v4" /></svg>
+                <svg aria-hidden="true" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="3" width="20" height="14" rx="2" /><path d="M8 21h8M12 17v4" /></svg>
                 {program.format === 'online' ? (isAr ? 'أونلاين' : 'Online')
                   : program.format === 'hybrid' ? (isAr ? 'هجين' : 'Hybrid')
                   : (isAr ? 'حضوري' : 'In-Person')}
@@ -76,7 +76,7 @@ export async function ProgramDetail({
             )}
             {program.is_icf_accredited && (
               <span className="flex items-center gap-1.5">
-                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg>
+                <svg aria-hidden="true" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg>
                 {program.icf_details || (isAr ? 'معتمد من ICF' : 'ICF Accredited')}
               </span>
             )}
@@ -168,7 +168,7 @@ export async function ProgramDetail({
           <div className="mt-8 flex flex-wrap justify-center gap-4">
             <a
               href={ctaHref || `/${locale}/checkout/?program=${program.slug}`}
-              className="inline-flex items-center justify-center rounded-xl bg-[var(--color-accent)] px-8 py-3.5 text-base font-semibold text-white min-h-[52px] hover:bg-[var(--color-accent-500)] transition-all duration-300 shadow-[0_4px_24px_rgba(244,126,66,0.35)]"
+              className="inline-flex items-center justify-center rounded-xl bg-[var(--color-accent)] px-8 py-3.5 text-base font-semibold text-white min-h-[52px] hover:bg-[var(--color-accent-500)] transition-all duration-300 shadow-[0_4px_24px_rgba(228,96,30,0.35)]"
             >
               {isAr ? 'سجّل الآن' : 'Register Now'}
             </a>

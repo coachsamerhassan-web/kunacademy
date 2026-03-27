@@ -160,7 +160,7 @@ export function HeroSection({ locale }: HeroSectionProps) {
             <div className="mt-8 flex flex-wrap justify-center md:justify-start gap-4">
               <a
                 href={`/${locale}/pathfinder/`}
-                className="hero-cta inline-flex items-center justify-center rounded-xl bg-[var(--color-accent)] px-8 py-3.5 text-base font-semibold text-white min-h-[52px] hover:bg-[var(--color-accent-500)] transition-all duration-300 shadow-[0_4px_24px_rgba(244,126,66,0.35)] hover:shadow-[0_8px_32px_rgba(244,126,66,0.5)] hover:scale-[1.02] active:scale-[0.98]"
+                className="hero-cta inline-flex items-center justify-center rounded-xl bg-[var(--color-accent)] px-8 py-3.5 text-base font-semibold text-white min-h-[52px] hover:bg-[var(--color-accent-500)] transition-all duration-300 shadow-[0_4px_24px_rgba(228,96,30,0.35)] hover:shadow-[0_8px_32px_rgba(228,96,30,0.5)] hover:scale-[1.02] active:scale-[0.98]"
                 style={{
                   animation: unveiled ? 'hero-cta-spring 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) 1400ms both' : 'none',
                   opacity: unveiled ? undefined : 0,

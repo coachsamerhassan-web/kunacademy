@@ -151,7 +151,7 @@ export default async function TeamPage({ params }: Props) {
           </p>
           <a
             href={`/${locale}/coaching/book`}
-            className="inline-flex items-center justify-center rounded-xl bg-[var(--color-accent)] px-8 py-3.5 text-base font-semibold text-white min-h-[52px] hover:bg-[var(--color-accent-500)] transition-all duration-300 shadow-[0_4px_24px_rgba(244,126,66,0.35)]"
+            className="inline-flex items-center justify-center rounded-xl bg-[var(--color-accent)] px-8 py-3.5 text-base font-semibold text-white min-h-[52px] hover:bg-[var(--color-accent-500)] transition-all duration-300 shadow-[0_4px_24px_rgba(228,96,30,0.35)]"
           >
             {isAr ? 'تواصل معنا' : 'Contact Us'}
           </a>

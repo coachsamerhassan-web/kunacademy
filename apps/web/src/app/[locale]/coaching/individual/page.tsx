@@ -91,7 +91,7 @@ export default async function IndividualCoachingPage({ params }: Props) {
             <div className="flex flex-wrap gap-3 mt-8">
               <a
                 href={`/${locale}/coaching/book`}
-                className="inline-flex items-center justify-center rounded-xl bg-[var(--color-accent)] px-6 py-3 text-sm font-semibold text-white min-h-[48px] hover:bg-[var(--color-accent-500)] transition-all duration-300 shadow-[0_4px_24px_rgba(244,126,66,0.35)]"
+                className="inline-flex items-center justify-center rounded-xl bg-[var(--color-accent)] px-6 py-3 text-sm font-semibold text-white min-h-[48px] hover:bg-[var(--color-accent-500)] transition-all duration-300 shadow-[0_4px_24px_rgba(228,96,30,0.35)]"
               >
                 {isAr ? 'احجز جلسة' : 'Book a Session'}
               </a>
@@ -168,7 +168,7 @@ export default async function IndividualCoachingPage({ params }: Props) {
           </h2>
           <a
             href={`/${locale}/coaching/book`}
-            className="inline-flex items-center justify-center rounded-xl bg-[var(--color-accent)] px-8 py-3.5 text-base font-semibold text-white min-h-[52px] hover:bg-[var(--color-accent-500)] transition-all duration-300 shadow-[0_4px_24px_rgba(244,126,66,0.35)]"
+            className="inline-flex items-center justify-center rounded-xl bg-[var(--color-accent)] px-8 py-3.5 text-base font-semibold text-white min-h-[52px] hover:bg-[var(--color-accent-500)] transition-all duration-300 shadow-[0_4px_24px_rgba(228,96,30,0.35)]"
           >
             {isAr ? 'احجز جلستك الأولى' : 'Book Your First Session'}
           </a>

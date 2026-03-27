@@ -47,7 +47,7 @@ export function FounderSection({ locale }: FounderSectionProps) {
             <h2 className="text-[1.75rem] md:text-[2.5rem] font-bold text-[#2C2C2D]">
               {isAr ? 'سامر حسن' : 'Samer Hassan'}
             </h2>
-            <p className="text-[var(--color-accent)] font-medium mt-1.5 text-lg md:text-xl">
+            <p className="text-[var(--color-accent-600)] font-medium mt-1.5 text-lg md:text-xl">
               {isAr ? 'مؤسس التفكير الحسّي® | أول عربي MCC' : 'Founder of Somatic Thinking® | First Arab MCC'}
             </p>
             <p className="mt-5 text-[var(--color-neutral-700)] leading-relaxed max-w-xl">
@@ -61,7 +61,7 @@ export function FounderSection({ locale }: FounderSectionProps) {
                 className="inline-flex items-center gap-2 text-[var(--color-primary)] font-medium hover:text-[var(--color-primary-600)] transition-colors duration-300 group"
               >
                 {isAr ? 'اعرف المزيد عن سامر' : 'Learn More About Samer'}
-                <svg className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1 rtl:group-hover:-translate-x-1 rtl:rotate-180" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
+                <svg aria-hidden="true" className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1 rtl:group-hover:-translate-x-1 rtl:rotate-180" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M6 3l5 5-5 5" />
                 </svg>
               </a>

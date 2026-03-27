@@ -69,7 +69,7 @@ export function ProgramPathway({ locale }: ProgramPathwayProps) {
               {/* Arrow connector (desktop) */}
               {i < 3 && (
                 <div className="hidden md:flex absolute top-1/2 -end-3 z-10 items-center justify-center w-6 h-6 rounded-full bg-white shadow-sm text-[var(--color-neutral-300)]">
-                  <svg className="w-3 h-3 rtl:rotate-180" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2">
+                  <svg aria-hidden="true" className="w-3 h-3 rtl:rotate-180" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M4 2l4 4-4 4" />
                   </svg>
                 </div>

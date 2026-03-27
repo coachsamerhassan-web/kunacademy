@@ -180,7 +180,7 @@ export function ContactForm({ locale }: ContactFormProps) {
       <button
         type="submit"
         disabled={status === 'submitting'}
-        className="w-full rounded-xl bg-[var(--color-accent)] px-6 py-3.5 font-semibold text-white min-h-[48px] hover:bg-[var(--color-accent-500)] transition-all duration-300 shadow-[0_4px_16px_rgba(244,126,66,0.25)] hover:shadow-[0_8px_24px_rgba(244,126,66,0.35)] hover:scale-[1.01] active:scale-[0.99] disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:scale-100"
+        className="w-full rounded-xl bg-[var(--color-accent)] px-6 py-3.5 font-semibold text-white min-h-[48px] hover:bg-[var(--color-accent-500)] transition-all duration-300 shadow-[0_4px_16px_rgba(228,96,30,0.25)] hover:shadow-[0_8px_24px_rgba(228,96,30,0.35)] hover:scale-[1.01] active:scale-[0.99] disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:scale-100"
       >
         {status === 'submitting'
           ? (isAr ? 'جارٍ الإرسال...' : 'Sending...')

@@ -55,8 +55,14 @@ export default async function LocaleLayout({
       <body className="flex flex-col min-h-screen">
         <NextIntlClientProvider messages={messages}>
           <NextImageProvider>
+            <a
+              href="#main-content"
+              className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[100] focus:bg-[var(--color-primary)] focus:text-white focus:px-4 focus:py-2 focus:rounded-lg focus:shadow-lg"
+            >
+              {locale === 'ar' ? 'تخطي إلى المحتوى الرئيسي' : 'Skip to main content'}
+            </a>
             <Header locale={locale} />
-            <main className="flex-1">
+            <main id="main-content" className="flex-1">
               {children}
             </main>
             <Footer locale={locale} />

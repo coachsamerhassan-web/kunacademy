@@ -60,7 +60,7 @@ export function PortalSidebar({ locale, variant }: PortalSidebarProps) {
                   : 'text-[var(--color-neutral-600)] hover:bg-white hover:text-[var(--color-primary)]'
               }`}
             >
-              <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <svg aria-hidden="true" className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d={item.icon} />
               </svg>
               <span>{isAr ? item.labelAr : item.labelEn}</span>

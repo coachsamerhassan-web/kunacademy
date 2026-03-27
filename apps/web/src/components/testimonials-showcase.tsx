@@ -187,8 +187,8 @@ function VideoPlayOverlay({ isAr }: { isAr: boolean }) {
       {/* Animated play button */}
       <div className="relative">
         <div className="absolute inset-0 rounded-full bg-[var(--color-accent)] animate-ping opacity-20" />
-        <div className="relative h-14 w-14 rounded-full bg-[var(--color-accent)] flex items-center justify-center shadow-[0_4px_20px_rgba(244,126,66,0.4)] group-hover/play:scale-110 transition-transform duration-300">
-          <svg className="w-6 h-6 text-white ms-0.5" fill="currentColor" viewBox="0 0 20 20">
+        <div className="relative h-14 w-14 rounded-full bg-[var(--color-accent)] flex items-center justify-center shadow-[0_4px_20px_rgba(228,96,30,0.4)] group-hover/play:scale-110 transition-transform duration-300">
+          <svg aria-hidden="true" className="w-6 h-6 text-white ms-0.5" fill="currentColor" viewBox="0 0 20 20">
             <path d="M6.5 4.5v11l9-5.5-9-5.5z" />
           </svg>
         </div>
@@ -259,9 +259,14 @@ function AvatarFrame({
 
             {/* Video play overlay (shown on video testimonials when not playing) */}
             {isVideo && !isPlaying && (
-              <div onClick={onPlay}>
+              <button
+                type="button"
+                onClick={onPlay}
+                aria-label={isAr ? 'تشغيل فيديو الشهادة' : 'Play testimonial video'}
+                className="w-full h-full appearance-none border-0 bg-transparent p-0 cursor-pointer"
+              >
                 <VideoPlayOverlay isAr={isAr} />
-              </div>
+              </button>
             )}
           </>
         )}
@@ -349,7 +354,7 @@ function FeaturedTestimonial({
                 onClick={onClose}
                 className="mt-4 flex items-center justify-center gap-1.5 w-full px-4 py-2.5 rounded-xl text-sm font-medium border border-[var(--color-neutral-200)] text-[var(--color-neutral-600)] hover:text-[var(--color-primary)] hover:border-[var(--color-primary-200)] hover:bg-[var(--color-primary-50)] transition-all duration-200"
               >
-                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg aria-hidden="true" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <line x1="18" y1="6" x2="6" y2="18" />
                   <line x1="6" y1="6" x2="18" y2="18" />
                 </svg>
@@ -421,7 +426,7 @@ function Navigation({
         className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium text-[var(--color-neutral-500)] hover:text-[var(--color-primary)] hover:bg-[var(--color-primary-50)] transition-all duration-200"
         aria-label={isAr ? 'السابق' : 'Previous'}
       >
-        <svg className="w-4 h-4 rtl:rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <svg aria-hidden="true" className="w-4 h-4 rtl:rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M15 18l-6-6 6-6" />
         </svg>
         <span className="hidden sm:inline">{isAr ? 'السابق' : 'Previous'}</span>
@@ -452,7 +457,7 @@ function Navigation({
         aria-label={isAr ? 'التالي' : 'Next'}
       >
         <span className="hidden sm:inline">{isAr ? 'التالي' : 'Next'}</span>
-        <svg className="w-4 h-4 rtl:rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <svg aria-hidden="true" className="w-4 h-4 rtl:rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M9 18l6-6-6-6" />
         </svg>
       </button>
@@ -579,7 +584,7 @@ export function TestimonialsShowcase({ locale, testimonials: propTestimonials }:
             className="inline-flex items-center gap-1.5 text-sm font-medium text-[var(--color-accent)] hover:text-[var(--color-accent-600)] transition-colors duration-300 group"
           >
             {isAr ? 'اقرأ المزيد من التجارب' : 'Read more experiences'}
-            <svg className="w-4 h-4 group-hover:translate-x-0.5 rtl:group-hover:-translate-x-0.5 transition-transform duration-300 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg aria-hidden="true" className="w-4 h-4 group-hover:translate-x-0.5 rtl:group-hover:-translate-x-0.5 transition-transform duration-300 rtl:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
             </svg>
           </a>

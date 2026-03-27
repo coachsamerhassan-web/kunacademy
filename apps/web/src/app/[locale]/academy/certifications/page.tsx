@@ -184,7 +184,7 @@ export default async function CertificationsPage({ params }: { params: Promise<{
           </p>
           <a
             href={`/${locale}/pathfinder/`}
-            className="inline-flex items-center justify-center mt-8 rounded-xl bg-[var(--color-accent)] px-8 py-3.5 text-base font-semibold text-white min-h-[52px] hover:bg-[var(--color-accent-500)] transition-all duration-300 shadow-[0_4px_24px_rgba(244,126,66,0.35)]"
+            className="inline-flex items-center justify-center mt-8 rounded-xl bg-[var(--color-accent)] px-8 py-3.5 text-base font-semibold text-white min-h-[52px] hover:bg-[var(--color-accent-500)] transition-all duration-300 shadow-[0_4px_24px_rgba(228,96,30,0.35)]"
           >
             {isAr ? 'اختبار المسار' : 'Take the Quiz'}
           </a>

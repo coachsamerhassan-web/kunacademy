@@ -128,7 +128,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
           <div className="mt-6">
             <a
               href={`/${locale}/pathfinder/`}
-              className="inline-flex items-center justify-center rounded-xl bg-[var(--color-accent)] px-8 py-3.5 text-base font-semibold text-white min-h-[44px] hover:bg-[var(--color-accent-500)] transition-all duration-300 hover:shadow-[0_8px_24px_rgba(244,126,66,0.35)] hover:scale-[1.02] active:scale-[0.98]"
+              className="inline-flex items-center justify-center rounded-xl bg-[var(--color-accent)] px-8 py-3.5 text-base font-semibold text-white min-h-[44px] hover:bg-[var(--color-accent-500)] transition-all duration-300 hover:shadow-[0_8px_24px_rgba(228,96,30,0.35)] hover:scale-[1.02] active:scale-[0.98]"
             >
               {isAr ? 'ابدأ رحلتك' : 'Start Your Journey'}
             </a>

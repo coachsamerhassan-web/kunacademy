@@ -159,7 +159,7 @@ export default async function STCEPage({ params }: { params: Promise<{ locale: s
           </p>
           <a
             href={`/${locale}/academy/certifications/stce/packages/`}
-            className="inline-flex items-center justify-center mt-6 rounded-xl bg-[var(--color-accent)] px-8 py-3.5 text-base font-semibold text-white min-h-[44px] hover:bg-[var(--color-accent-500)] transition-all duration-300 shadow-[0_4px_16px_rgba(244,126,66,0.25)]"
+            className="inline-flex items-center justify-center mt-6 rounded-xl bg-[var(--color-accent)] px-8 py-3.5 text-base font-semibold text-white min-h-[44px] hover:bg-[var(--color-accent-500)] transition-all duration-300 shadow-[0_4px_16px_rgba(228,96,30,0.25)]"
           >
             {isAr ? 'استعرض الباقات' : 'View Packages'}
           </a>
@@ -188,7 +188,7 @@ export default async function STCEPage({ params }: { params: Promise<{ locale: s
             {isAr ? 'ابدأ رحلتك في الكوتشينج الحسّي' : 'Begin Your Somatic Coaching Journey'}
           </h2>
           <div className="mt-8 flex flex-wrap justify-center gap-4">
-            <a href={`/${locale}/pathfinder/`} className="inline-flex items-center justify-center rounded-xl bg-[var(--color-accent)] px-8 py-3.5 text-base font-semibold text-white min-h-[52px] hover:bg-[var(--color-accent-500)] transition-all duration-300 shadow-[0_4px_24px_rgba(244,126,66,0.35)]">
+            <a href={`/${locale}/pathfinder/`} className="inline-flex items-center justify-center rounded-xl bg-[var(--color-accent)] px-8 py-3.5 text-base font-semibold text-white min-h-[52px] hover:bg-[var(--color-accent-500)] transition-all duration-300 shadow-[0_4px_24px_rgba(228,96,30,0.35)]">
               {isAr ? 'اختر مستواك' : 'Choose Your Level'}
             </a>
             <a href={`/${locale}/contact/`} className="inline-flex items-center justify-center rounded-xl bg-white/10 border border-white/20 px-8 py-3.5 text-base font-medium text-white min-h-[52px] hover:bg-white/20 transition-all duration-300">

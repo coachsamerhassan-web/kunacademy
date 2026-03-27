@@ -136,7 +136,7 @@ export default async function FounderPage({ params }: { params: Promise<{ locale
             {isAr ? 'جلسات كوتشينج فردية وبرامج إرشاد MCC للكوتشز المتقدمين' : 'Individual coaching sessions and MCC mentoring for advanced coaches'}
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-4">
-            <a href={`/${locale}/book/`} className="inline-flex items-center justify-center rounded-xl bg-[var(--color-accent)] px-8 py-3.5 text-base font-semibold text-white min-h-[52px] hover:bg-[var(--color-accent-500)] transition-all duration-300 shadow-[0_4px_24px_rgba(244,126,66,0.35)]">
+            <a href={`/${locale}/book/`} className="inline-flex items-center justify-center rounded-xl bg-[var(--color-accent)] px-8 py-3.5 text-base font-semibold text-white min-h-[52px] hover:bg-[var(--color-accent-500)] transition-all duration-300 shadow-[0_4px_24px_rgba(228,96,30,0.35)]">
               {isAr ? 'احجز جلسة' : 'Book a Session'}
             </a>
             <a href={`/${locale}/contact/`} className="inline-flex items-center justify-center rounded-xl bg-white/10 border border-white/20 px-8 py-3.5 text-base font-medium text-white min-h-[52px] hover:bg-white/20 transition-all duration-300">

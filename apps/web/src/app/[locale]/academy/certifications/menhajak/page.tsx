@@ -148,7 +148,7 @@ export default async function MenhajakPage({ params }: { params: Promise<{ local
                   )}
                   <a
                     href={`/${locale}/checkout/?program=${pkg!.slug}`}
-                    className="mt-4 inline-flex items-center justify-center rounded-xl bg-[var(--color-accent)] px-6 py-3 text-sm font-semibold text-white min-h-[44px] hover:bg-[var(--color-accent-500)] transition-all duration-300 shadow-[0_4px_16px_rgba(244,126,66,0.25)] w-full"
+                    className="mt-4 inline-flex items-center justify-center rounded-xl bg-[var(--color-accent)] px-6 py-3 text-sm font-semibold text-white min-h-[44px] hover:bg-[var(--color-accent-500)] transition-all duration-300 shadow-[0_4px_16px_rgba(228,96,30,0.25)] w-full"
                   >
                     {isAr ? 'سجّل الآن' : 'Register Now'}
                   </a>
@@ -199,7 +199,7 @@ export default async function MenhajakPage({ params }: { params: Promise<{ local
           <div className="mt-8 flex flex-wrap justify-center gap-4">
             <a
               href={`/${locale}/pathfinder/`}
-              className="inline-flex items-center justify-center rounded-xl bg-[var(--color-accent)] px-8 py-3.5 text-base font-semibold text-white min-h-[52px] hover:bg-[var(--color-accent-500)] transition-all duration-300 shadow-[0_4px_24px_rgba(244,126,66,0.35)]"
+              className="inline-flex items-center justify-center rounded-xl bg-[var(--color-accent)] px-8 py-3.5 text-base font-semibold text-white min-h-[52px] hover:bg-[var(--color-accent-500)] transition-all duration-300 shadow-[0_4px_24px_rgba(228,96,30,0.35)]"
             >
               {isAr ? 'استخدم المُرشد' : 'Use the Pathfinder'}
             </a>

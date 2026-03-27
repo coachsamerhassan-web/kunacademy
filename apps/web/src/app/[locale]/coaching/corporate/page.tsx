@@ -79,7 +79,7 @@ export default async function CorporatePage({ params }: Props) {
             </p>
             <a
               href="mailto:corporate@kuncoaching.com"
-              className="inline-flex items-center justify-center rounded-xl bg-[var(--color-accent)] px-6 py-3 text-sm font-semibold text-white min-h-[48px] mt-8 hover:bg-[var(--color-accent-500)] transition-all duration-300 shadow-[0_4px_24px_rgba(244,126,66,0.35)]"
+              className="inline-flex items-center justify-center rounded-xl bg-[var(--color-accent)] px-6 py-3 text-sm font-semibold text-white min-h-[48px] mt-8 hover:bg-[var(--color-accent-500)] transition-all duration-300 shadow-[0_4px_24px_rgba(228,96,30,0.35)]"
             >
               {isAr ? 'اطلب عرض سعر' : 'Request a Proposal'}
             </a>

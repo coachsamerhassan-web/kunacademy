@@ -105,7 +105,7 @@ export function Footer({ locale, className }: FooterProps) {
                   className="flex items-center justify-center w-10 h-10 rounded-full bg-white/8 hover:bg-white/15 transition-colors duration-300"
                   aria-label={social.name}
                 >
-                  <svg className="w-4 h-4 fill-current text-white/75" viewBox="0 0 24 24">
+                  <svg aria-hidden="true" className="w-4 h-4 fill-current text-white/75" viewBox="0 0 24 24">
                     <path d={social.icon} />
                   </svg>
                 </a>
@@ -117,9 +117,9 @@ export function Footer({ locale, className }: FooterProps) {
           <div className="flex-1 grid grid-cols-2 md:grid-cols-3 gap-8 md:gap-6">
             {Object.values(footerLinks).map((column) => (
               <div key={column.labelEn}>
-                <p className="text-sm font-semibold text-white/90 tracking-wide uppercase mb-4" role="heading" aria-level={2}>
+                <h2 className="text-sm font-semibold text-white/90 tracking-wide uppercase mb-4">
                   {isAr ? column.labelAr : column.labelEn}
-                </p>
+                </h2>
                 <ul className="space-y-2.5">
                   {column.items.map((item) => (
                     <li key={item.href}>
