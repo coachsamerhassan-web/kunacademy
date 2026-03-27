@@ -1,7 +1,14 @@
 import { Section } from '@kunacademy/ui/section';
 import { GeometricPattern } from '@kunacademy/ui/patterns';
+import { courseJsonLd, breadcrumbJsonLd } from '@kunacademy/ui/structured-data';
 import type { Program } from '@kunacademy/cms';
 import { getPricingRegion, getGeoPrice } from '@/lib/geo-pricing';
+
+function parseHours(duration: string | undefined): number {
+  if (!duration) return 0;
+  const match = duration.match(/(\d+)/);
+  return match ? parseInt(match[1], 10) : 0;
+}
 
 interface ProgramDetailProps {
   program: Program;
@@ -14,6 +21,8 @@ interface ProgramDetailProps {
   audienceEn?: string;
   /** CTA link override (defaults to /checkout) */
   ctaHref?: string;
+  /** URL path for JSON-LD (e.g. 'academy/certifications/stce/level-1'). Defaults to program.slug */
+  urlPath?: string;
 }
 
 export async function ProgramDetail({
@@ -21,6 +30,7 @@ export async function ProgramDetail({
   outcomesAr, outcomesEn,
   audienceAr, audienceEn,
   ctaHref,
+  urlPath,
 }: ProgramDetailProps) {
   const isAr = locale === 'ar';
   const title = isAr ? program.title_ar : program.title_en;
@@ -39,8 +49,43 @@ export async function ProgramDetail({
     program.early_bird_price_aed as number,
   );
 
+  const hours = parseHours(program.duration);
+  const pagePath = urlPath || program.slug;
+
+  // Build breadcrumb from URL path
+  const breadcrumbItems: Array<{ name: string; path: string }> = [
+    { name: isAr ? 'الرئيسية' : 'Home', path: '' },
+  ];
+  if (pagePath.startsWith('academy')) {
+    breadcrumbItems.push({ name: isAr ? 'الأكاديمية' : 'Academy', path: '/academy' });
+    if (pagePath.includes('certifications')) {
+      breadcrumbItems.push({ name: isAr ? 'الشهادات' : 'Certifications', path: '/academy/certifications' });
+      if (pagePath.includes('stce')) {
+        breadcrumbItems.push({ name: 'STCE', path: '/academy/certifications/stce' });
+      }
+    } else if (pagePath.includes('courses')) {
+      breadcrumbItems.push({ name: isAr ? 'الدورات' : 'Courses', path: '/academy/courses' });
+    }
+  }
+  breadcrumbItems.push({ name: title, path: `/${pagePath}` });
+
   return (
     <main>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(courseJsonLd({
+          locale,
+          name: isAr ? program.title_ar : program.title_en,
+          description: (isAr ? program.description_ar : program.description_en) || '',
+          slug: pagePath,
+          hours,
+          priceAed: program.price_aed as number | undefined,
+        })) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd(locale, breadcrumbItems)) }}
+      />
       {/* Hero */}
       <section
         className="relative overflow-hidden py-20 md:py-28"

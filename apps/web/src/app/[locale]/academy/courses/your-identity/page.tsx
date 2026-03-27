@@ -14,6 +14,7 @@ export default async function YourIdentityPage({ params }: { params: Promise<{ l
     <ProgramDetail
       program={program}
       locale={locale}
+      urlPath="academy/courses/your-identity"
       outcomesAr={[
         'استكشاف جذورك الثقافية والدينية كمصدر قوة',
         'بناء هوية مهنية متماسكة في الكوتشينج',

@@ -14,6 +14,7 @@ export default async function Level4Page({ params }: { params: Promise<{ locale:
     <ProgramDetail
       program={program}
       locale={locale}
+      urlPath="academy/certifications/stce/level-4"
       outcomesAr={[
         'كوتشينج القيادات التنفيذية',
         'التنقّل بين أصحاب المصلحة المتعددين',

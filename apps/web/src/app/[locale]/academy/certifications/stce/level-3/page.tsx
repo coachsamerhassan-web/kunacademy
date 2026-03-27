@@ -14,6 +14,7 @@ export default async function Level3Page({ params }: { params: Promise<{ locale:
     <ProgramDetail
       program={program}
       locale={locale}
+      urlPath="academy/certifications/stce/level-3"
       outcomesAr={[
         'تيسير جلسات كوتشينج جماعية فعّالة',
         'تصميم برامج تدريبية متكاملة',

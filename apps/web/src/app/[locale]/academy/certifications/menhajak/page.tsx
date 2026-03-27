@@ -1,6 +1,7 @@
 import { setRequestLocale } from 'next-intl/server';
 import { GeometricPattern } from '@kunacademy/ui/patterns';
 import { Section } from '@kunacademy/ui/section';
+import { courseJsonLd, breadcrumbJsonLd } from '@kunacademy/ui/structured-data';
 import { cms } from '@kunacademy/cms';
 import { getPricingRegion, getGeoPrice } from '@/lib/geo-pricing';
 
@@ -54,6 +55,27 @@ export default async function MenhajakPage({ params }: { params: Promise<{ local
 
   return (
     <main>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(courseJsonLd({
+          locale,
+          name: isAr ? 'منهجك — باقات التفكير الحسّي المتكاملة' : 'Menhajak — Complete Somatic Thinking Packages',
+          description: isAr
+            ? 'ثلاث رحلات متكاملة من الصفر إلى التخصّص — اختر المسار الذي يناسب رؤيتك'
+            : 'Three complete journeys from zero to specialization — choose the path that fits your vision',
+          slug: 'academy/certifications/menhajak',
+          hours: 120,
+        })) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd(locale, [
+          { name: isAr ? 'الرئيسية' : 'Home', path: '' },
+          { name: isAr ? 'الأكاديمية' : 'Academy', path: '/academy' },
+          { name: isAr ? 'الشهادات' : 'Certifications', path: '/academy/certifications' },
+          { name: isAr ? 'منهجك' : 'Menhajak', path: '/academy/certifications/menhajak' },
+        ])) }}
+      />
       {/* Hero */}
       <section
         className="relative overflow-hidden py-20 md:py-28"

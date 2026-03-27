@@ -2,7 +2,7 @@ import { setRequestLocale } from 'next-intl/server';
 import { Section } from '@kunacademy/ui/section';
 import { FAQSection } from '@kunacademy/ui/faq-section';
 import { faqJsonLd } from '@kunacademy/ui/faq-jsonld';
-import { courseJsonLd } from '@kunacademy/ui/structured-data';
+import { courseJsonLd, breadcrumbJsonLd } from '@kunacademy/ui/structured-data';
 import { stceFaqs } from '@/data/faqs';
 import { GeometricPattern } from '@kunacademy/ui/patterns';
 import { cms } from '@kunacademy/cms';
@@ -72,6 +72,15 @@ export default async function STCEPage({ params }: { params: Promise<{ locale: s
           slug: 'academy/certifications/stce',
           hours: totalHours,
         })) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd(locale, [
+          { name: isAr ? 'الرئيسية' : 'Home', path: '' },
+          { name: isAr ? 'الأكاديمية' : 'Academy', path: '/academy' },
+          { name: isAr ? 'الشهادات' : 'Certifications', path: '/academy/certifications' },
+          { name: 'STCE', path: '/academy/certifications/stce' },
+        ])) }}
       />
       {/* Hero */}
       <section className="relative overflow-hidden py-20 md:py-28" style={{ background: 'linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-700) 100%)' }}>

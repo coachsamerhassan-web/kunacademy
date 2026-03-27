@@ -3,6 +3,7 @@ import { GeometricPattern } from '@kunacademy/ui/patterns';
 import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
 import { Button } from '@kunacademy/ui/button';
+import { courseJsonLd, breadcrumbJsonLd } from '@kunacademy/ui/structured-data';
 
 export default async function MCCMentoringPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
@@ -11,6 +12,27 @@ export default async function MCCMentoringPage({ params }: { params: Promise<{ l
 
   return (
     <main>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(courseJsonLd({
+          locale,
+          name: isAr ? 'منتورينج متقدم — MCC' : 'Advanced MCC Mentoring',
+          description: isAr
+            ? 'جلسات منتورينج فردية مع سامر حسن (MCC) — ساعات مؤهّلة لتجديد شهادات ICF'
+            : 'Individual mentoring sessions with Samer Hassan (MCC) — qualifying hours for ICF credential renewal',
+          slug: 'academy/certifications/mcc-mentoring',
+          hours: 10,
+        })) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd(locale, [
+          { name: isAr ? 'الرئيسية' : 'Home', path: '' },
+          { name: isAr ? 'الأكاديمية' : 'Academy', path: '/academy' },
+          { name: isAr ? 'الشهادات' : 'Certifications', path: '/academy/certifications' },
+          { name: isAr ? 'منتورينج متقدم' : 'MCC Mentoring', path: '/academy/certifications/mcc-mentoring' },
+        ])) }}
+      />
       <section className="relative overflow-hidden py-16 md:py-24" style={{ background: 'linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-600) 100%)' }}>
         <GeometricPattern pattern="flower-of-life" opacity={0.08} fade="both" />
         <div className="relative z-10 mx-auto max-w-[var(--max-content-width)] px-4 md:px-6 text-center">

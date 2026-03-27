@@ -83,6 +83,23 @@ export function courseJsonLd(opts: {
   };
 }
 
+/** BreadcrumbList schema for nested pages */
+export function breadcrumbJsonLd(
+  locale: string,
+  items: Array<{ name: string; path: string }>
+) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: items.map((item, i) => ({
+      '@type': 'ListItem',
+      position: i + 1,
+      name: item.name,
+      item: `${SITE_URL}/${locale}${item.path}`,
+    })),
+  };
+}
+
 /** WebSite schema with SearchAction — placed in root layout */
 export function websiteJsonLd() {
   return {

@@ -14,6 +14,7 @@ export default async function ManagersPage({ params }: { params: Promise<{ local
     <ProgramDetail
       program={program}
       locale={locale}
+      urlPath="academy/certifications/managers"
       outcomesAr={[
         'الانتقال من أسلوب الإدارة إلى أسلوب القيادة',
         'استخدام التفكير الحسّي في المحادثات اليومية مع الفريق',

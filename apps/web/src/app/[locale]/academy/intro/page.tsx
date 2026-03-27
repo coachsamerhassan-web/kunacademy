@@ -23,6 +23,7 @@ export default async function IntroPage({ params }: { params: Promise<{ locale: 
     <ProgramDetail
       program={program}
       locale={locale}
+      urlPath="academy/intro"
       outcomesAr={[
         'تاريخ الكوتشينج كمهنة وتطوّره عبر العقود',
         'ما هو التفكير الحسّي® وكيف وُلدت هذه المنهجية',

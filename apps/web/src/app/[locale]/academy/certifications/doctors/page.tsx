@@ -14,6 +14,7 @@ export default async function DoctorsPage({ params }: { params: Promise<{ locale
     <ProgramDetail
       program={program}
       locale={locale}
+      urlPath="academy/certifications/doctors"
       outcomesAr={[
         'تطبيق التفكير الحسّي في السياق الطبي',
         'تقنيات الاستخلاص العميق مع المرضى',

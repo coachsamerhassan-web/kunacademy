@@ -14,6 +14,7 @@ export default async function Level5Page({ params }: { params: Promise<{ locale:
     <ProgramDetail
       program={program}
       locale={locale}
+      urlPath="academy/certifications/stce/level-5"
       outcomesAr={[
         'ديناميكيات العلاقة الزوجية من منظور التفكير الحسّي',
         'تقنيات التيسير لجلسات الأزواج والعائلات',

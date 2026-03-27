@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import { GeometricPattern } from '@kunacademy/ui/patterns';
 import { HeroParallax } from './hero-parallax';
 
@@ -43,13 +44,14 @@ export function HeroSection({ locale }: HeroSectionProps) {
           data-hero-bg
           className="hero-bg-cinematic absolute inset-0 w-full h-[120%] -top-[10%]"
         >
-          <img
+          <Image
             src="/images/community/hands-circle-gulf.jpg"
             alt=""
-            className="w-full h-full object-cover"
+            fill
+            className="object-cover"
             style={{ filter: 'saturate(0.7) brightness(0.4)' }}
-            loading="eager"
-            fetchPriority="high"
+            priority
+            sizes="100vw"
           />
           <div
             className="absolute inset-0"

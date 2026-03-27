@@ -94,6 +94,7 @@ export function TreeNarrative({
               opacity: 0.35,
             }}
             loading="lazy"
+            decoding="async"
           />
         ) : null}
 
