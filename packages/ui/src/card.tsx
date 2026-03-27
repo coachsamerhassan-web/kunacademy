@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { cn } from './utils';
 import { useImageComponent } from './image-slot';
+import { ArrowRight } from 'lucide-react';
 
 // Re-export for convenience
 export { ImageProvider, useImageComponent } from './image-slot';
@@ -329,7 +330,7 @@ export function EventCard({ name, date, location, locale, slug, className }: Eve
           href={`/${locale}/events/${slug}`}
           className="mt-2 text-sm font-medium text-[var(--color-accent)] hover:underline"
         >
-          {ctaLabel} →
+          {ctaLabel} <ArrowRight className="w-4 h-4 inline-block rtl:rotate-180" aria-hidden="true" />
         </a>
       </div>
     </Card>

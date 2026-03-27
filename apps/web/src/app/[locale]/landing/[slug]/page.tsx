@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { setRequestLocale } from 'next-intl/server';
 import { GeometricPattern } from '@kunacademy/ui/patterns';
 import { Section } from '@kunacademy/ui/section';
@@ -32,6 +33,22 @@ async function getLandingPage(slug: string, locale: string) {
   } catch {
     return null;
   }
+}
+
+interface Props { params: Promise<{ locale: string; slug: string }> }
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { locale, slug } = await params;
+  const page = await getLandingPage(slug, locale);
+  if (!page) {
+    return { title: 'Kun Academy' };
+  }
+  return {
+    title: page.meta_title ? `${page.meta_title} | ${locale === 'ar' ? 'أكاديمية كُن' : 'Kun Academy'}` : (locale === 'ar' ? 'أكاديمية كُن' : 'Kun Academy'),
+    description: page.meta_description || (locale === 'ar'
+      ? 'صفحة خاصة من أكاديمية كُن للكوتشينج والتفكير الحسّي®'
+      : 'A special page from Kun Coaching Academy for Somatic Thinking®.'),
+  };
 }
 
 export default async function LandingPage({ params }: { params: Promise<{ locale: string; slug: string }> }) {

@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type ReactNode } from 'react';
 import Link from 'next/link';
 import { createBrowserClient } from '@kunacademy/db';
 import type { Product, ProductType } from '@kunacademy/db';
+import { Download, Package, RefreshCw } from 'lucide-react';
 
 type FilterTab = 'all' | 'physical' | 'digital';
 
@@ -43,10 +44,10 @@ const SAMPLE_PRODUCTS: Pick<Product, 'id' | 'name_ar' | 'name_en' | 'slug' | 'de
   },
 ];
 
-const TYPE_ICONS: Record<ProductType, string> = {
-  digital: '📥',
-  physical: '📦',
-  subscription: '🔄',
+const TYPE_ICONS: Record<ProductType, ReactNode> = {
+  digital: <Download className="w-8 h-8" aria-hidden="true" />,
+  physical: <Package className="w-8 h-8" aria-hidden="true" />,
+  subscription: <RefreshCw className="w-8 h-8" aria-hidden="true" />,
 };
 
 interface ShopGridProps {
@@ -205,7 +206,7 @@ function ProductCard({
         {imageUrl ? (
           <img src={imageUrl} alt={name} className="h-full w-full object-cover" />
         ) : (
-          <span className="text-4xl" aria-hidden="true">
+          <span className="text-[var(--color-neutral-400)]" aria-hidden="true">
             {TYPE_ICONS[(product.product_type ?? 'digital') as ProductType]}
           </span>
         )}

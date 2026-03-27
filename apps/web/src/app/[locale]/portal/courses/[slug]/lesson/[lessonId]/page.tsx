@@ -6,6 +6,7 @@ import { createBrowserClient } from '@kunacademy/db';
 import { Section } from '@kunacademy/ui/section';
 import { Button } from '@kunacademy/ui/button';
 import { useParams, useRouter } from 'next/navigation';
+import { Check } from 'lucide-react';
 
 interface Lesson {
   id: string;
@@ -81,7 +82,7 @@ export default function LessonPlayer() {
                     href={`/${locale}/portal/courses/${courseId}/lesson/${i + 1}`}
                     className={`block rounded-lg px-3 py-2 text-sm transition-colors ${active ? 'bg-[var(--color-primary)] text-white' : 'hover:bg-[var(--color-neutral-100)]'}`}
                   >
-                    <span className="inline-block w-5">{done ? '✓' : `${i + 1}.`}</span>
+                    <span className="inline-block w-5">{done ? <Check className="w-4 h-4 inline-block text-green-600" aria-hidden="true" /> : `${i + 1}.`}</span>
                     {isAr ? l.title_ar : l.title_en}
                   </a>
                 );

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@kunacademy/auth';
 import { Button } from '@kunacademy/ui/button';
 import { createBrowserClient } from '@kunacademy/db';
+import { ArrowLeft } from 'lucide-react';
 
 interface ServiceCategory {
   id: string;
@@ -205,7 +206,7 @@ export function BookingFlow({ locale }: { locale: string }) {
       {step === 'service' && (
         <div>
           <button type="button" onClick={() => setStep('category')} className="text-sm text-[var(--color-primary)] hover:underline mb-4 min-h-[44px]">
-            {isAr ? '← تغيير الفئة' : '← Change category'}
+            {isAr ? <><ArrowLeft className="w-4 h-4 inline-block rtl:rotate-180" aria-hidden="true" /> تغيير الفئة</> : <><ArrowLeft className="w-4 h-4 inline-block rtl:rotate-180" aria-hidden="true" /> Change category</>}
           </button>
           <div className="space-y-3">
             {services.filter(s => s.category_id === selectedCategory).map(svc => (
@@ -232,7 +233,7 @@ export function BookingFlow({ locale }: { locale: string }) {
       {step === 'coach' && (
         <div>
           <button type="button" onClick={() => setStep('service')} className="text-sm text-[var(--color-primary)] hover:underline mb-4 min-h-[44px]">
-            {isAr ? '← تغيير الخدمة' : '← Change service'}
+            {isAr ? <><ArrowLeft className="w-4 h-4 inline-block rtl:rotate-180" aria-hidden="true" /> تغيير الخدمة</> : <><ArrowLeft className="w-4 h-4 inline-block rtl:rotate-180" aria-hidden="true" /> Change service</>}
           </button>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {coaches.map(coach => (
@@ -270,7 +271,7 @@ export function BookingFlow({ locale }: { locale: string }) {
       {step === 'time' && (
         <div>
           <button type="button" onClick={() => setStep('coach')} className="text-sm text-[var(--color-primary)] hover:underline mb-4 min-h-[44px]">
-            {isAr ? '← تغيير الكوتش' : '← Change coach'}
+            {isAr ? <><ArrowLeft className="w-4 h-4 inline-block rtl:rotate-180" aria-hidden="true" /> تغيير الكوتش</> : <><ArrowLeft className="w-4 h-4 inline-block rtl:rotate-180" aria-hidden="true" /> Change coach</>}
           </button>
           {slotsLoading ? (
             <div className="py-8 text-center text-[var(--color-neutral-500)]">{isAr ? 'جاري تحميل المواعيد...' : 'Loading available times...'}</div>
@@ -312,7 +313,7 @@ export function BookingFlow({ locale }: { locale: string }) {
       {step === 'confirm' && selectedService && selectedCoach && selectedSlot && (
         <div>
           <button type="button" onClick={() => setStep('time')} className="text-sm text-[var(--color-primary)] hover:underline mb-4 min-h-[44px]">
-            {isAr ? '← تغيير الموعد' : '← Change time'}
+            {isAr ? <><ArrowLeft className="w-4 h-4 inline-block rtl:rotate-180" aria-hidden="true" /> تغيير الموعد</> : <><ArrowLeft className="w-4 h-4 inline-block rtl:rotate-180" aria-hidden="true" /> Change time</>}
           </button>
           <div className="rounded-lg border border-[var(--color-neutral-200)] p-6 space-y-4">
             <div className="flex justify-between">

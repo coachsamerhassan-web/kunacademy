@@ -1,8 +1,22 @@
+import type { Metadata } from 'next';
 import { setRequestLocale } from 'next-intl/server';
 import { Section } from '@kunacademy/ui/section';
 import { GeometricPattern } from '@kunacademy/ui/patterns';
 import { cms, contentGetter } from '@kunacademy/cms';
 import { CommunityMembers } from './community-members';
+
+interface Props { params: Promise<{ locale: string }> }
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { locale } = await params;
+  const isAr = locale === 'ar';
+  return {
+    title: isAr ? 'مجتمع كُن | أكاديمية كُن' : 'Kun Community | Kun Academy',
+    description: isAr
+      ? 'تواصل مع الكوتشز والمتدربين من حول العالم — مجتمع أكاديمية كُن للتفكير الحسّي®'
+      : 'Connect with coaches and learners worldwide — the Kun Academy Somatic Thinking® community.',
+  };
+}
 
 export default async function CommunityPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;

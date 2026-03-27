@@ -1,16 +1,21 @@
+import type { Metadata } from 'next';
 import { setRequestLocale } from 'next-intl/server';
 import { cms } from '@kunacademy/cms';
 import { ProgramDetail } from '@/components/program-detail';
 import { notFound } from 'next/navigation';
-import { createPageMetadata } from '@/lib/og-metadata';
 
-export const metadata = createPageMetadata({
-  title: 'STI Introduction',
-  titleAr: 'مقدمة التفكير الحسّي',
-  description: '6-hour recorded introduction to Somatic Thinking®. Your gateway to coaching certification.',
-  path: '/academy/intro',
-  type: 'program',
-});
+interface Props { params: Promise<{ locale: string }> }
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { locale } = await params;
+  const isAr = locale === 'ar';
+  return {
+    title: isAr ? 'مقدمة التفكير الحسّي STI | أكاديمية كُن' : 'STI Introduction | Kun Academy',
+    description: isAr
+      ? 'مقدمة مسجّلة في التفكير الحسّي® — ٦ ساعات تأسيسية نحو شهادة الكوتشينج المعتمدة'
+      : '6-hour recorded introduction to Somatic Thinking®. Your gateway to coaching certification.',
+  };
+}
 
 export default async function IntroPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;

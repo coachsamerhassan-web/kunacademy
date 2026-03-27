@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import Image from 'next/image';
 import type { Product, ProductType } from '@kunacademy/db';
+import { Download, Package, RefreshCw } from 'lucide-react';
 
 interface ProductGalleryProps {
   product: Product;
@@ -15,10 +16,10 @@ export function ProductGallery({ product, isAr }: ProductGalleryProps) {
   const images = Array.isArray(product.images) ? product.images.filter(Boolean) : [];
   const selectedImage = images.length > 0 ? images[selectedImageIndex] : null;
 
-  const typeIcon: Record<ProductType, string> = {
-    digital: '📥',
-    physical: '📦',
-    subscription: '🔄',
+  const typeIcon: Record<ProductType, ReactNode> = {
+    digital: <Download className="w-14 h-14" />,
+    physical: <Package className="w-14 h-14" />,
+    subscription: <RefreshCw className="w-14 h-14" />,
   };
 
   return (
@@ -35,8 +36,8 @@ export function ProductGallery({ product, isAr }: ProductGalleryProps) {
             priority={selectedImageIndex === 0}
           />
         ) : (
-          <div className="text-center">
-            <span className="text-6xl block mb-4" aria-hidden="true">
+          <div className="text-center text-[var(--color-neutral-400)]">
+            <span className="block mb-4" aria-hidden="true">
               {typeIcon[(product.product_type ?? 'digital') as ProductType]}
             </span>
             <p className="text-sm text-[var(--color-neutral-400)]">

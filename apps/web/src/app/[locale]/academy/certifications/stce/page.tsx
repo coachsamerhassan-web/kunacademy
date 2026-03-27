@@ -5,8 +5,9 @@ import { faqJsonLd } from '@kunacademy/ui/faq-jsonld';
 import { courseJsonLd, breadcrumbJsonLd } from '@kunacademy/ui/structured-data';
 import { stceFaqs } from '@/data/faqs';
 import { GeometricPattern } from '@kunacademy/ui/patterns';
+import type { Metadata } from 'next';
 import { cms } from '@kunacademy/cms';
-import { createPageMetadata } from '@/lib/og-metadata';
+import { ArrowRight } from 'lucide-react';
 
 const STCE_SLUGS = [
   'stce-level-1-stic',
@@ -38,13 +39,18 @@ function parseHours(duration: string | undefined): number {
   return match ? parseInt(match[1], 10) : 0;
 }
 
-export const metadata = createPageMetadata({
-  title: 'STCE Certification',
-  titleAr: 'شهادة التفكير الحسّي للكوتشينج',
-  description: '5-level ICF-accredited Somatic Thinking Coaching Education program. 240 training hours.',
-  path: '/academy/certifications/stce',
-  type: 'program',
-});
+interface Props { params: Promise<{ locale: string }> }
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { locale } = await params;
+  const isAr = locale === 'ar';
+  return {
+    title: isAr ? 'شهادة التفكير الحسّي للكوتشينج STCE | أكاديمية كُن' : 'STCE Certification | Kun Academy',
+    description: isAr
+      ? 'برنامج شهادة التفكير الحسّي للكوتشينج — ٥ مستويات معتمدة من ICF بأكثر من ٢٤٠ ساعة تدريبية'
+      : '5-level ICF-accredited Somatic Thinking Coaching Education program. 240+ training hours.',
+  };
+}
 
 export default async function STCEPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
@@ -157,7 +163,7 @@ export default async function STCEPage({ params }: { params: Promise<{ locale: s
                     <div className="mt-3 flex items-center gap-4 text-xs text-[var(--color-neutral-500)]">
                       <span>{hours} {isAr ? 'ساعة' : 'hours'}</span>
                       <span className="text-[var(--color-primary)] font-medium group-hover:underline">
-                        {isAr ? 'التفاصيل' : 'Details'} →
+                        {isAr ? 'التفاصيل' : 'Details'} <ArrowRight className="w-4 h-4 inline-block rtl:rotate-180" aria-hidden="true" />
                       </span>
                     </div>
                   </div>

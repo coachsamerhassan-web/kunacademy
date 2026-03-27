@@ -4,6 +4,7 @@ import { cms } from '@kunacademy/cms';
 import { Section } from '@kunacademy/ui/section';
 import { GeometricPattern } from '@kunacademy/ui/patterns';
 import type { Metadata } from 'next';
+import { ArrowLeft } from 'lucide-react';
 
 interface Props {
   params: Promise<{ locale: string; slug: string }>;
@@ -218,7 +219,7 @@ export default async function EventDetailPage({ params }: Props) {
       <Section variant="surface">
         <div className="text-center">
           <a href={`/${locale}/events`} className="text-sm text-[var(--color-primary)] hover:underline">
-            ← {isAr ? 'جميع الفعاليات' : 'All Events'}
+            <ArrowLeft className="w-4 h-4 inline-block rtl:rotate-180" aria-hidden="true" /> {isAr ? 'جميع الفعاليات' : 'All Events'}
           </a>
         </div>
       </Section>

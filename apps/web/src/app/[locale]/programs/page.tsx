@@ -4,7 +4,7 @@ import { FAQSection } from '@kunacademy/ui/faq-section';
 import { faqJsonLd } from '@kunacademy/ui/faq-jsonld';
 import { programsFaqs } from '@/data/faqs';
 import { GeometricPattern } from '@kunacademy/ui/patterns';
-import { createPageMetadata } from '@/lib/og-metadata';
+import type { Metadata } from 'next';
 
 const pathways = {
   ar: [
@@ -25,13 +25,18 @@ const pathways = {
   ],
 };
 
-export const metadata = createPageMetadata({
-  title: 'All Programs',
-  titleAr: 'جميع البرامج',
-  description: 'Complete catalog of coaching programs, certifications, and workshops.',
-  path: '/programs',
-  type: 'program',
-});
+interface Props { params: Promise<{ locale: string }> }
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { locale } = await params;
+  const isAr = locale === 'ar';
+  return {
+    title: isAr ? 'جميع البرامج | أكاديمية كُن' : 'All Programs | Kun Academy',
+    description: isAr
+      ? 'برامج كوتشينج وشهادات معتمدة من ICF وورش عمل في التفكير الحسّي® — من المجاني إلى الاحترافي'
+      : 'Coaching programs, ICF-accredited certifications, and Somatic Thinking® workshops — from free to professional.',
+  };
+}
 
 export default async function ProgramsPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;

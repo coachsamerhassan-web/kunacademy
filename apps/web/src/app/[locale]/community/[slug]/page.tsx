@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { setRequestLocale } from 'next-intl/server';
 import { GeometricPattern } from '@kunacademy/ui/patterns';
 import { Section } from '@kunacademy/ui/section';
@@ -13,6 +14,23 @@ async function getProfile(userId: string) {
     .eq('profile_id', userId).single();
 
   return { ...profile, instructor };
+}
+
+interface Props { params: Promise<{ locale: string; slug: string }> }
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { locale, slug } = await params;
+  const isAr = locale === 'ar';
+  const profile = await getProfile(slug);
+  const name = profile ? (isAr ? profile.full_name_ar : profile.full_name_en) : null;
+  return {
+    title: name
+      ? `${name} | ${isAr ? 'مجتمع كُن' : 'Kun Community'}`
+      : (isAr ? 'ملف العضو | أكاديمية كُن' : 'Member Profile | Kun Academy'),
+    description: isAr
+      ? 'ملف عضو في مجتمع أكاديمية كُن للكوتشينج'
+      : 'Member profile in the Kun Coaching Academy community.',
+  };
 }
 
 export default async function CommunityProfilePage({ params }: { params: Promise<{ locale: string; slug: string }> }) {

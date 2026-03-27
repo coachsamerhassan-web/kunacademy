@@ -6,6 +6,7 @@ import { createBrowserClient } from '@kunacademy/db';
 import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
 import { useParams } from 'next/navigation';
+import { BookOpen, Check } from 'lucide-react';
 
 interface Enrollment {
   id: string;
@@ -56,11 +57,11 @@ export default function MyCourses() {
               const lessonsCompleted = Object.keys(e.progress_data).length;
               return (
                 <a key={e.id} href={`/${locale}/portal/courses/${e.course.id}/lesson/1`} className="flex gap-4 rounded-lg border border-[var(--color-neutral-200)] p-4 hover:shadow-md transition-shadow">
-                  <div className="h-20 w-20 shrink-0 rounded bg-[var(--color-primary-100)] flex items-center justify-center text-[var(--color-primary)] text-2xl">📖</div>
+                  <div className="h-20 w-20 shrink-0 rounded bg-[var(--color-primary-100)] flex items-center justify-center text-[var(--color-primary)]"><BookOpen className="w-8 h-8" aria-hidden="true" /></div>
                   <div className="flex-1 min-w-0">
                     <h3 className="font-medium truncate">{title}</h3>
                     <p className="text-sm text-[var(--color-neutral-500)] mt-1">
-                      {e.completed_at ? (isAr ? 'مكتمل ✓' : 'Completed ✓') : `${lessonsCompleted} ${isAr ? 'دروس مكتملة' : 'lessons completed'}`}
+                      {e.completed_at ? (<><span>{isAr ? 'مكتمل' : 'Completed'}</span> <Check className="w-4 h-4 inline-block text-green-600" aria-hidden="true" /></>) : `${lessonsCompleted} ${isAr ? 'دروس مكتملة' : 'lessons completed'}`}
                     </p>
                     <div className="mt-2 h-1.5 rounded-full bg-[var(--color-neutral-100)] overflow-hidden">
                       <div className="h-full bg-[var(--color-primary)] rounded-full" style={{ width: e.completed_at ? '100%' : `${Math.min(lessonsCompleted * 10, 95)}%` }} />

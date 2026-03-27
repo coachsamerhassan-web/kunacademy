@@ -1,9 +1,23 @@
+import type { Metadata } from 'next';
 import { setRequestLocale } from 'next-intl/server';
 import { PageHero } from '@/components/page-hero';
 
 import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
 import { QuizWidget } from './quiz-widget';
+
+interface Props { params: Promise<{ locale: string }> }
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { locale } = await params;
+  const isAr = locale === 'ar';
+  return {
+    title: isAr ? 'اختبار تحديد المسار | أكاديمية كُن' : 'Program Pathfinder Quiz | Kun Academy',
+    description: isAr
+      ? 'أجب على بضعة أسئلة لنرشدك إلى برنامج الكوتشينج المناسب لك في أكاديمية كُن'
+      : 'Answer a few questions and we will guide you to the right coaching program at Kun Academy.',
+  };
+}
 
 export default async function QuizPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;

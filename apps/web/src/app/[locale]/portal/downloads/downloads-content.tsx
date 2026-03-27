@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@kunacademy/ui/button';
+import { Clock, CheckCircle, Download, RefreshCw } from 'lucide-react';
 
 interface Download {
   id: string;
@@ -152,17 +153,17 @@ export function DownloadsContent({ locale }: DownloadsContentProps) {
                 <div className="flex flex-wrap gap-2 mb-3">
                   {download.isExpired && (
                     <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-red-100 text-red-700 text-xs font-medium">
-                      ⏰ {isAr ? 'انتهى الصلاح' : 'Expired'}
+                      <Clock className="w-3.5 h-3.5" aria-hidden="true" /> {isAr ? 'انتهى الصلاح' : 'Expired'}
                     </span>
                   )}
                   {download.isExhausted && (
                     <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-orange-100 text-orange-700 text-xs font-medium">
-                      📥 {isAr ? 'تم استنفاد التحميلات' : 'Downloads Exhausted'}
+                      <Download className="w-3.5 h-3.5" aria-hidden="true" /> {isAr ? 'تم استنفاد التحميلات' : 'Downloads Exhausted'}
                     </span>
                   )}
                   {!download.isExpired && !download.isExhausted && (
                     <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs font-medium">
-                      ✅ {isAr ? 'نشط' : 'Active'}
+                      <CheckCircle className="w-3.5 h-3.5" aria-hidden="true" /> {isAr ? 'نشط' : 'Active'}
                     </span>
                   )}
                 </div>
@@ -197,7 +198,7 @@ export function DownloadsContent({ locale }: DownloadsContentProps) {
                 {!download.isExpired && !download.isExhausted && (
                   <a href={download.downloadLink} download>
                     <Button className="w-full min-h-[44px] bg-emerald-600 hover:bg-emerald-700 text-white">
-                      {isAr ? '⬇️ تحميل' : '⬇️ Download'}
+                      <Download className="w-4 h-4 inline-block" aria-hidden="true" /> {isAr ? 'تحميل' : 'Download'}
                     </Button>
                   </a>
                 )}
@@ -210,7 +211,7 @@ export function DownloadsContent({ locale }: DownloadsContentProps) {
                   >
                     {regenerating === download.id
                       ? (isAr ? 'جاري...' : 'Regenerating...')
-                      : (isAr ? '🔄 إعادة توليد الرابط' : '🔄 Regenerate Link')}
+                      : (<><RefreshCw className="w-4 h-4 inline-block" aria-hidden="true" /> {isAr ? 'إعادة توليد الرابط' : 'Regenerate Link'}</>)}
                   </Button>
                 )}
 

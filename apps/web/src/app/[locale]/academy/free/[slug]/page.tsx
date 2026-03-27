@@ -1,8 +1,23 @@
+import type { Metadata } from 'next';
 import { setRequestLocale } from 'next-intl/server';
 import { GeometricPattern } from '@kunacademy/ui/patterns';
 import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
 import { Button } from '@kunacademy/ui/button';
+
+interface Props { params: Promise<{ locale: string; slug: string }> }
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { locale, slug } = await params;
+  const isAr = locale === 'ar';
+  const title = slug.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+  return {
+    title: isAr ? `${title} — مجاني | أكاديمية كُن` : `${title} — Free | Kun Academy`,
+    description: isAr
+      ? 'محتوى تعليمي مجاني من أكاديمية كُن في التفكير الحسّي® والكوتشينج'
+      : 'Free learning content from Kun Academy on Somatic Thinking® and coaching.',
+  };
+}
 
 export default async function FreeCourseDetailPage({
   params,

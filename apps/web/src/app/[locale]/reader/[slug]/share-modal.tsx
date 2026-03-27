@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { CheckCircle } from 'lucide-react';
 
 interface ShareModalProps {
   isOpen: boolean;
@@ -87,7 +88,7 @@ export function ShareModal({ isOpen, bookSlug, bookTitle, senderName, locale, on
 
         {success ? (
           <div className="text-center py-8">
-            <div className="text-4xl mb-3">✓</div>
+            <CheckCircle className="w-10 h-10 mx-auto mb-3 text-green-600" aria-hidden="true" />
             <p className="text-green-600 font-medium">
               {isAr ? 'تم إرسال الدعوة!' : 'Invitation sent!'}
             </p>

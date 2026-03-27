@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react';
 import type { TeamMember } from '@kunacademy/cms';
 import { Card } from '@kunacademy/ui/card';
+import { ArrowRight } from 'lucide-react';
 
 interface Props {
   coaches: TeamMember[];
@@ -186,7 +187,7 @@ export function CoachesDirectory({ coaches, locale }: Props) {
                   {/* CTA */}
                   <div className="mt-4 pt-4 border-t border-[var(--color-neutral-100)]">
                     <span className="text-sm font-medium text-[var(--color-accent)] group-hover:text-[var(--color-accent-500)] transition-colors">
-                      {isAr ? 'عرض الملف الشخصي' : 'View Profile'} →
+                      {isAr ? 'عرض الملف الشخصي' : 'View Profile'} <ArrowRight className="w-4 h-4 inline-block rtl:rotate-180" aria-hidden="true" />
                     </span>
                   </div>
                 </Card>

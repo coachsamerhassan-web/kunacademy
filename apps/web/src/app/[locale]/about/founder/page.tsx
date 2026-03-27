@@ -3,16 +3,22 @@ import { GeometricPattern } from '@kunacademy/ui/patterns';
 import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
 import { Button } from '@kunacademy/ui/button';
+import type { Metadata } from 'next';
 import { Card } from '@kunacademy/ui/card';
-import { createPageMetadata } from '@/lib/og-metadata';
+import { Award, Trophy, MessageCircle, GraduationCap, Brain } from 'lucide-react';
 
-export const metadata = createPageMetadata({
-  title: 'Samer Hassan — Founder',
-  titleAr: 'سامر حسن — المؤسس',
-  description: 'First Arab MCC (ICF Master Certified Coach). Founder of Somatic Thinking® and Kun Coaching Academy.',
-  path: '/about/founder',
-  type: 'about',
-});
+interface Props { params: Promise<{ locale: string }> }
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { locale } = await params;
+  const isAr = locale === 'ar';
+  return {
+    title: isAr ? 'سامر حسن — المؤسس | أكاديمية كُن' : 'Samer Hassan — Founder | Kun Academy',
+    description: isAr
+      ? 'أول عربي MCC — مؤسس التفكير الحسّي® وأكاديمية كُن. أكثر من ١٠ آلاف جلسة و٥٠٠+ كوتش متخرّج'
+      : 'First Arab MCC. Founder of Somatic Thinking® and Kun Academy. 10,000+ sessions, 500+ coaches graduated.',
+  };
+}
 
 export default async function FounderPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
@@ -42,22 +48,22 @@ export default async function FounderPage({ params }: { params: Promise<{ locale
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {(isAr
             ? [
-                { icon: '🏅', text: 'أول عربي يحصل على شهادة Master Certified Coach (MCC) من ICF' },
-                { icon: '🏆', text: 'حائز على جائزة القائد الشاب من ICF لعام 2019' },
-                { icon: '💬', text: 'أكثر من 10,000 جلسة كوتشنغ فردية' },
-                { icon: '🎓', text: 'تخريج أكثر من 500 كوتش في 13 دولة' },
-                { icon: '🧠', text: 'مؤسس منهجية التفكير الحسّي® — إطار كوتشنغ يربط الفكر بالإشارات الحسّية الجسدية' },
+                { icon: <Award className="w-6 h-6" aria-hidden="true" />, text: 'أول عربي يحصل على شهادة Master Certified Coach (MCC) من ICF' },
+                { icon: <Trophy className="w-6 h-6" aria-hidden="true" />, text: 'حائز على جائزة القائد الشاب من ICF لعام 2019' },
+                { icon: <MessageCircle className="w-6 h-6" aria-hidden="true" />, text: 'أكثر من 10,000 جلسة كوتشنغ فردية' },
+                { icon: <GraduationCap className="w-6 h-6" aria-hidden="true" />, text: 'تخريج أكثر من 500 كوتش في 13 دولة' },
+                { icon: <Brain className="w-6 h-6" aria-hidden="true" />, text: 'مؤسس منهجية التفكير الحسّي® — إطار كوتشنغ يربط الفكر بالإشارات الحسّية الجسدية' },
               ]
             : [
-                { icon: '🏅', text: 'ICF Master Certified Coach (MCC) — first Arab to hold this credential' },
-                { icon: '🏆', text: 'ICF Young Leader Award 2019' },
-                { icon: '💬', text: '10,000+ individual coaching sessions' },
-                { icon: '🎓', text: '500+ coaches graduated across 13 countries' },
-                { icon: '🧠', text: 'Creator of Somatic Thinking® — connecting thought to somatic bodily signals' },
+                { icon: <Award className="w-6 h-6" aria-hidden="true" />, text: 'ICF Master Certified Coach (MCC) — first Arab to hold this credential' },
+                { icon: <Trophy className="w-6 h-6" aria-hidden="true" />, text: 'ICF Young Leader Award 2019' },
+                { icon: <MessageCircle className="w-6 h-6" aria-hidden="true" />, text: '10,000+ individual coaching sessions' },
+                { icon: <GraduationCap className="w-6 h-6" aria-hidden="true" />, text: '500+ coaches graduated across 13 countries' },
+                { icon: <Brain className="w-6 h-6" aria-hidden="true" />, text: 'Creator of Somatic Thinking® — connecting thought to somatic bodily signals' },
               ]
           ).map((item, i) => (
             <Card key={i} accent className="p-6 flex items-start gap-4">
-              <span className="text-2xl shrink-0">{item.icon}</span>
+              <span className="shrink-0 text-[var(--color-primary)]">{item.icon}</span>
               <p className="text-[var(--color-neutral-700)] leading-relaxed">{item.text}</p>
             </Card>
           ))}

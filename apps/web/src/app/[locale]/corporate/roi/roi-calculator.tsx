@@ -4,6 +4,7 @@ import { GeometricPattern } from '@kunacademy/ui/patterns';
 import { Section } from '@kunacademy/ui/section';
 import { Card } from '@kunacademy/ui/card';
 import { useState, use } from 'react';
+import { ArrowLeft } from 'lucide-react';
 
 interface ROIInputs {
   teamSize: number;
@@ -100,7 +101,7 @@ export default function ROICalculatorPage({ params }: { params: Promise<{ locale
         <GeometricPattern pattern="eight-star" opacity={0.08} fade="both" />
         <div className="relative z-10 mx-auto max-w-[var(--max-content-width)] px-4 md:px-6 text-center">
           <a href={`/${locale}/programs/corporate`} className="text-sm text-white/60 hover:text-white/80 mb-4 inline-block">
-            ← {isAr ? 'الحلول المؤسسية' : 'Corporate Solutions'}
+            <ArrowLeft className="w-4 h-4 inline-block rtl:rotate-180" aria-hidden="true" /> {isAr ? 'الحلول المؤسسية' : 'Corporate Solutions'}
           </a>
           <h1
             className="text-[2.25rem] md:text-[3.5rem] font-bold text-[#FFF5E9] leading-[1.1]"

@@ -3,6 +3,7 @@ import { Section } from '@kunacademy/ui/section';
 import { GeometricPattern } from '@kunacademy/ui/patterns';
 import { Card } from '@kunacademy/ui/card';
 import type { Metadata } from 'next';
+import { ArrowLeft, ArrowRight } from 'lucide-react';
 
 interface Props { params: Promise<{ locale: string }> }
 
@@ -56,7 +57,7 @@ export default async function FreeResourcesPage({ params }: Props) {
         <GeometricPattern pattern="flower-of-life" opacity={0.3} fade="both" />
         <div className="relative z-10 mx-auto max-w-[var(--max-content-width)] px-4 md:px-6">
           <a href={`/${locale}/academy`} className="text-sm text-[var(--color-primary)] hover:underline mb-4 inline-block">
-            ← {isAr ? 'الأكاديمية' : 'Academy'}
+            <ArrowLeft className="w-4 h-4 inline-block rtl:rotate-180" aria-hidden="true" /> {isAr ? 'الأكاديمية' : 'Academy'}
           </a>
           <h1
             className="text-[2.25rem] md:text-[3.5rem] font-bold text-[var(--text-primary)] leading-tight"
@@ -90,7 +91,7 @@ export default async function FreeResourcesPage({ params }: Props) {
                   {isAr ? resource.descAr : resource.descEn}
                 </p>
                 <span className="inline-flex items-center mt-4 text-sm font-semibold text-[var(--color-accent)]">
-                  {isAr ? 'استكشف' : 'Explore'} →
+                  {isAr ? 'استكشف' : 'Explore'} <ArrowRight className="w-4 h-4 inline-block rtl:rotate-180" aria-hidden="true" />
                 </span>
               </Card>
             </a>

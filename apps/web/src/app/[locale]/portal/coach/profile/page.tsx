@@ -7,6 +7,7 @@ import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
 import { Button } from '@kunacademy/ui/button';
 import { useParams } from 'next/navigation';
+import { Check } from 'lucide-react';
 
 export default function CoachProfileEdit() {
   const { locale } = useParams<{ locale: string }>();
@@ -61,7 +62,7 @@ export default function CoachProfileEdit() {
           />
           <div className="mt-4 flex gap-3">
             <Button variant="primary" onClick={handleSubmitDraft} disabled={saving || saved}>
-              {saved ? (isAr ? 'تم الإرسال ✓' : 'Submitted ✓') : saving ? (isAr ? 'جاري الإرسال...' : 'Submitting...') : (isAr ? 'إرسال للمراجعة' : 'Submit for Review')}
+              {saved ? (<>{isAr ? 'تم الإرسال' : 'Submitted'} <Check className="w-4 h-4 inline-block" aria-hidden="true" /></>) : saving ? (isAr ? 'جاري الإرسال...' : 'Submitting...') : (isAr ? 'إرسال للمراجعة' : 'Submit for Review')}
             </Button>
           </div>
         </div>

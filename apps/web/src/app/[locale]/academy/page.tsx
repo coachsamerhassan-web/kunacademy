@@ -4,6 +4,7 @@ import { Section } from '@kunacademy/ui/section';
 import { GeometricPattern } from '@kunacademy/ui/patterns';
 import { Card } from '@kunacademy/ui/card';
 import type { Metadata } from 'next';
+import { ArrowRight } from 'lucide-react';
 
 interface Props { params: Promise<{ locale: string }> }
 
@@ -103,7 +104,7 @@ export default async function AcademyPage({ params }: Props) {
                   {isAr ? cat.descAr : cat.descEn}
                 </p>
                 <span className="inline-flex items-center mt-4 text-sm font-semibold text-[var(--color-accent)] group-hover:text-[var(--color-accent-500)] transition-colors">
-                  {isAr ? 'استكشف' : 'Explore'} →
+                  {isAr ? 'استكشف' : 'Explore'} <ArrowRight className="w-4 h-4 inline-block rtl:rotate-180" aria-hidden="true" />
                 </span>
               </Card>
             </a>

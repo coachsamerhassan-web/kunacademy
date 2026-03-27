@@ -4,6 +4,7 @@ import { GeometricPattern } from '@kunacademy/ui/patterns';
 import { Card } from '@kunacademy/ui/card';
 import { breadcrumbJsonLd } from '@kunacademy/ui/structured-data';
 import type { Metadata } from 'next';
+import { ArrowLeft } from 'lucide-react';
 
 interface Props { params: Promise<{ locale: string }> }
 
@@ -84,7 +85,7 @@ export default async function IndividualCoachingPage({ params }: Props) {
         <div className="relative z-10 mx-auto max-w-[var(--max-content-width)] px-4 md:px-6">
           <div className="max-w-2xl animate-fade-up">
             <a href={`/${locale}/coaching`} className="text-[var(--color-accent)] text-sm font-medium hover:underline mb-4 inline-block">
-              ← {isAr ? 'الكوتشينج' : 'Coaching'}
+              <ArrowLeft className="w-4 h-4 inline-block rtl:rotate-180" aria-hidden="true" /> {isAr ? 'الكوتشينج' : 'Coaching'}
             </a>
             <h1
               className="text-[2.25rem] md:text-[3.5rem] font-bold text-[#FFF5E9] leading-[1.05]"

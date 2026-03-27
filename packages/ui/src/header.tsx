@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { cn } from './utils';
+import { ArrowRight } from 'lucide-react';
 
 // ─── Navigation Structure ──────────────────────────────
 
@@ -299,7 +300,7 @@ export function Header({ locale }: HeaderProps) {
                           className="block py-2.5 px-4 text-sm font-medium text-[var(--color-primary)] rounded-lg hover:bg-[var(--color-primary-50)] transition-colors"
                           onClick={() => setMenuOpen(false)}
                         >
-                          {t('عرض الكل', 'View All')} →
+                          {t('عرض الكل', 'View All')} <ArrowRight className="w-3.5 h-3.5 inline-block rtl:rotate-180" aria-hidden="true" />
                         </a>
                         {item.children.map((child) => (
                           <a

@@ -4,17 +4,22 @@ import { Section } from '@kunacademy/ui/section';
 import { FAQSection } from '@kunacademy/ui/faq-section';
 import { faqJsonLd } from '@kunacademy/ui/faq-jsonld';
 import { shopFaqs } from '@/data/faqs';
+import type { Metadata } from 'next';
 import { cms, contentGetter } from '@kunacademy/cms';
 import { ShopGrid } from './shop-grid';
-import { createPageMetadata } from '@/lib/og-metadata';
 
-export const metadata = createPageMetadata({
-  title: 'Shop',
-  titleAr: 'المتجر',
-  description: 'Coaching tools, books, and digital resources from Kun Coaching Academy.',
-  path: '/shop',
-  type: 'default',
-});
+interface Props { params: Promise<{ locale: string }> }
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { locale } = await params;
+  const isAr = locale === 'ar';
+  return {
+    title: isAr ? 'المتجر | أكاديمية كُن' : 'Shop | Kun Academy',
+    description: isAr
+      ? 'كتب وأدوات كوتشينج وموارد تعليمية رقمية من أكاديمية كُن'
+      : 'Coaching tools, books, and digital resources from Kun Coaching Academy.',
+  };
+}
 
 export default async function ShopPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams, useParams } from 'next/navigation';
 import { useAuth } from '@kunacademy/auth';
+import { CheckCircle, AlertTriangle } from 'lucide-react';
 
 export default function SharePage() {
   const { locale, slug } = useParams<{ locale: string; slug: string }>();
@@ -82,7 +83,7 @@ export default function SharePage() {
 
         {status === 'success' && (
           <div>
-            <div className="text-5xl mb-4">✓</div>
+            <CheckCircle className="w-12 h-12 mx-auto mb-4 text-green-600" aria-hidden="true" />
             <h1 className="text-2xl font-semibold text-green-600 mb-2">
               {isAr ? 'تم! تم منح الوصول' : 'Success! Access granted'}
             </h1>
@@ -94,7 +95,7 @@ export default function SharePage() {
 
         {status === 'error' && (
           <div>
-            <div className="text-5xl mb-4">⚠️</div>
+            <AlertTriangle className="w-12 h-12 mx-auto mb-4 text-red-500" aria-hidden="true" />
             <h1 className="text-2xl font-semibold text-red-600 mb-2">
               {isAr ? 'خطأ' : 'Error'}
             </h1>

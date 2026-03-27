@@ -5,6 +5,7 @@ import { Section } from '@kunacademy/ui/section';
 import { GeometricPattern } from '@kunacademy/ui/patterns';
 import { MarkdownContent } from '@/components/markdown-content';
 import type { Metadata } from 'next';
+import { ArrowLeft } from 'lucide-react';
 
 interface Props {
   params: Promise<{ locale: string; slug: string }>;
@@ -154,7 +155,7 @@ export default async function BlogPostPage({ params }: Props) {
       <Section variant="surface">
         <div className="max-w-3xl mx-auto text-center">
           <a href={`/${locale}/blog`} className="text-sm text-[var(--color-primary)] hover:underline">
-            ← {isAr ? 'جميع المقالات' : 'All Articles'}
+            <ArrowLeft className="w-4 h-4 inline-block rtl:rotate-180" aria-hidden="true" /> {isAr ? 'جميع المقالات' : 'All Articles'}
           </a>
         </div>
       </Section>

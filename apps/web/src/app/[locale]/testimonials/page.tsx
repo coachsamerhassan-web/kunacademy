@@ -1,16 +1,21 @@
 import { setRequestLocale } from 'next-intl/server';
 import { GeometricPattern } from '@kunacademy/ui/patterns';
+import type { Metadata } from 'next';
 import { cms } from '@kunacademy/cms';
 import { TestimonialsGrid } from './testimonials-grid';
-import { createPageMetadata } from '@/lib/og-metadata';
 
-export const metadata = createPageMetadata({
-  title: 'Testimonials',
-  titleAr: 'آراء المتدربين',
-  description: 'Hear from 500+ coaches who transformed their practice through Somatic Thinking®.',
-  path: '/testimonials',
-  type: 'default',
-});
+interface Props { params: Promise<{ locale: string }> }
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { locale } = await params;
+  const isAr = locale === 'ar';
+  return {
+    title: isAr ? 'آراء المتدربين | أكاديمية كُن' : 'Testimonials | Kun Academy',
+    description: isAr
+      ? 'تجارب حقيقية من أكثر من ٥٠٠ كوتش تخرّجوا من أكاديمية كُن عبر منهجية التفكير الحسّي®'
+      : 'Real experiences from 500+ coaches who transformed their practice through Somatic Thinking®.',
+  };
+}
 
 export default async function TestimonialsPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;

@@ -5,6 +5,7 @@ import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
 import { Button } from '@kunacademy/ui/button';
 import { Card } from '@kunacademy/ui/card';
+import { Users, BookOpen, Handshake, Star, Link as LinkIcon } from 'lucide-react';
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
   const { locale } = await params;
@@ -20,20 +21,21 @@ export default async function CommunityPage({ params }: { params: Promise<{ loca
   setRequestLocale(locale);
   const isAr = locale === 'ar';
 
+  const iconClass = "w-6 h-6";
   const benefits = isAr
     ? [
-        { icon: '👥', text: 'جلسات إشراف جماعي شهرية' },
-        { icon: '📚', text: 'مكتبة موارد حصرية للخرّيجين' },
-        { icon: '🤝', text: 'فرص منتورنغ مع كوتشز MCC و PCC' },
-        { icon: '⭐', text: 'أولوية التسجيل في البرامج المتقدمة' },
-        { icon: '🔗', text: 'شبكة إحالات مهنية' },
+        { icon: <Users className={iconClass} aria-hidden="true" />, text: 'جلسات إشراف جماعي شهرية' },
+        { icon: <BookOpen className={iconClass} aria-hidden="true" />, text: 'مكتبة موارد حصرية للخرّيجين' },
+        { icon: <Handshake className={iconClass} aria-hidden="true" />, text: 'فرص منتورنغ مع كوتشز MCC و PCC' },
+        { icon: <Star className={iconClass} aria-hidden="true" />, text: 'أولوية التسجيل في البرامج المتقدمة' },
+        { icon: <LinkIcon className={iconClass} aria-hidden="true" />, text: 'شبكة إحالات مهنية' },
       ]
     : [
-        { icon: '👥', text: 'Monthly group supervision sessions' },
-        { icon: '📚', text: 'Exclusive alumni resource library' },
-        { icon: '🤝', text: 'Mentoring opportunities with MCC and PCC coaches' },
-        { icon: '⭐', text: 'Priority enrollment in advanced programs' },
-        { icon: '🔗', text: 'Professional referral network' },
+        { icon: <Users className={iconClass} aria-hidden="true" />, text: 'Monthly group supervision sessions' },
+        { icon: <BookOpen className={iconClass} aria-hidden="true" />, text: 'Exclusive alumni resource library' },
+        { icon: <Handshake className={iconClass} aria-hidden="true" />, text: 'Mentoring opportunities with MCC and PCC coaches' },
+        { icon: <Star className={iconClass} aria-hidden="true" />, text: 'Priority enrollment in advanced programs' },
+        { icon: <LinkIcon className={iconClass} aria-hidden="true" />, text: 'Professional referral network' },
       ];
 
   return (
@@ -59,7 +61,7 @@ export default async function CommunityPage({ params }: { params: Promise<{ loca
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {benefits.map((item, i) => (
             <Card key={i} accent className="p-6 flex items-start gap-4">
-              <span className="text-2xl shrink-0">{item.icon}</span>
+              <span className="shrink-0 text-[var(--color-primary)]">{item.icon}</span>
               <p className="text-[var(--color-neutral-700)] leading-relaxed">{item.text}</p>
             </Card>
           ))}

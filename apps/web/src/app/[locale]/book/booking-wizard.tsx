@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { createBrowserClient } from '@kunacademy/db';
 import { Button } from '@kunacademy/ui/button';
+import { CheckCircle } from 'lucide-react';
 
 type Step = 'service' | 'provider' | 'time' | 'confirm';
 
@@ -51,7 +52,7 @@ export function BookingWizard({ locale }: { locale: string }) {
   if (done) {
     return (
       <div className="text-center py-12">
-        <div className="text-4xl mb-4">✓</div>
+        <CheckCircle className="w-10 h-10 mx-auto mb-4 text-green-600" aria-hidden="true" />
         <h2 className="text-xl font-bold">{isAr ? 'تم الحجز بنجاح!' : 'Booking Confirmed!'}</h2>
         <p className="mt-2 text-[var(--color-neutral-600)]">{isAr ? 'ستصلك رسالة تأكيد عبر البريد الإلكتروني' : 'You\'ll receive a confirmation email shortly'}</p>
         <Button variant="primary" className="mt-6" onClick={() => window.location.href = `/${locale}/portal/bookings`}>

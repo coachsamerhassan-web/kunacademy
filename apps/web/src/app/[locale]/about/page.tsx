@@ -9,6 +9,7 @@ import { aboutFaqs } from '@/data/faqs';
 import { GeometricPattern } from '@kunacademy/ui/patterns';
 import type { Metadata } from 'next';
 import { TimelineCardContent } from './timeline-card';
+import { ArrowUpRight } from 'lucide-react';
 
 interface Props { params: Promise<{ locale: string }> }
 
@@ -237,7 +238,7 @@ export default async function AboutPage({ params }: Props) {
           <Card accent className="p-8">
             <div className="flex items-center gap-3 mb-4">
               <div className="h-10 w-10 rounded-full bg-[var(--color-accent)] flex items-center justify-center shrink-0">
-                <span className="text-white text-lg">↗</span>
+                <ArrowUpRight className="w-5 h-5 text-white" aria-hidden="true" />
               </div>
               <Heading level={3} className="!mb-0">
                 {isAr ? 'مُهِمَتُنا' : 'Our Mission'}

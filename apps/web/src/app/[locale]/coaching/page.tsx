@@ -3,6 +3,7 @@ import { Section } from '@kunacademy/ui/section';
 import { GeometricPattern } from '@kunacademy/ui/patterns';
 import { Card } from '@kunacademy/ui/card';
 import type { Metadata } from 'next';
+import { ArrowRight } from 'lucide-react';
 
 interface Props { params: Promise<{ locale: string }> }
 
@@ -123,7 +124,7 @@ export default async function CoachingPage({ params }: Props) {
                 {/* CTA */}
                 <div className="mt-6 pt-4 border-t border-[var(--color-neutral-100)]">
                   <span className="text-sm font-semibold text-[var(--color-accent)] group-hover:text-[var(--color-accent-500)] transition-colors">
-                    {isAr ? 'المزيد' : 'Learn More'} →
+                    {isAr ? 'المزيد' : 'Learn More'} <ArrowRight className="w-4 h-4 inline-block rtl:rotate-180" aria-hidden="true" />
                   </span>
                 </div>
               </Card>

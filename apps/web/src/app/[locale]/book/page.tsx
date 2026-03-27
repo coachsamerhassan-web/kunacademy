@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { setRequestLocale } from 'next-intl/server';
 import { PageHero } from '@/components/page-hero';
 
@@ -7,6 +8,19 @@ import { FAQSection } from '@kunacademy/ui/faq-section';
 import { faqJsonLd } from '@kunacademy/ui/faq-jsonld';
 import { bookingFaqs } from '@/data/faqs';
 import { BookingWizard } from './booking-wizard';
+
+interface Props { params: Promise<{ locale: string }> }
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { locale } = await params;
+  const isAr = locale === 'ar';
+  return {
+    title: isAr ? 'احجز جلسة كوتشينج | أكاديمية كُن' : 'Book a Coaching Session | Kun Academy',
+    description: isAr
+      ? 'احجز جلسة كوتشينج فردية مع كوتشز معتمدين من أكاديمية كُن'
+      : 'Book an individual coaching session with certified coaches from Kun Academy.',
+  };
+}
 
 export default async function BookingPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;

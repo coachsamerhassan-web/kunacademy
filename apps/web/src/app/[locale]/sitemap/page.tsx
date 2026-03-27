@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { setRequestLocale } from 'next-intl/server';
 import { GeometricPattern } from '@kunacademy/ui/patterns';
 import { Section } from '@kunacademy/ui/section';
@@ -68,6 +69,19 @@ const sections = [
     ],
   },
 ];
+
+interface Props { params: Promise<{ locale: string }> }
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { locale } = await params;
+  const isAr = locale === 'ar';
+  return {
+    title: isAr ? 'خريطة الموقع | أكاديمية كُن' : 'Sitemap | Kun Academy',
+    description: isAr
+      ? 'جميع صفحات موقع أكاديمية كُن للكوتشينج'
+      : 'All pages on the Kun Coaching Academy website.',
+  };
+}
 
 export default async function SitemapPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;

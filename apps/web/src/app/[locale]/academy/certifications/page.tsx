@@ -1,8 +1,9 @@
 import { setRequestLocale } from 'next-intl/server';
 import { Section } from '@kunacademy/ui/section';
 import { GeometricPattern } from '@kunacademy/ui/patterns';
+import type { Metadata } from 'next';
 import { cms } from '@kunacademy/cms';
-import { createPageMetadata } from '@/lib/og-metadata';
+import { ArrowRight } from 'lucide-react';
 
 const FLAGSHIP_SLUGS = ['stce-level-1-stic', 'stce-level-2-staic', 'stce-level-3-stgc', 'stce-level-4-stoc', 'stce-level-5-stfc'];
 
@@ -19,13 +20,18 @@ function parseHours(duration: string | undefined): number {
   return match ? parseInt(match[1], 10) : 0;
 }
 
-export const metadata = createPageMetadata({
-  title: 'Certifications',
-  titleAr: 'الشهادات المعتمدة',
-  description: 'ICF-accredited coaching certifications from ACC to MCC level through Somatic Thinking®.',
-  path: '/academy/certifications',
-  type: 'program',
-});
+interface Props { params: Promise<{ locale: string }> }
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { locale } = await params;
+  const isAr = locale === 'ar';
+  return {
+    title: isAr ? 'الشهادات المعتمدة | أكاديمية كُن' : 'Certifications | Kun Academy',
+    description: isAr
+      ? 'شهادات كوتشينج احترافية معتمدة من ICF عبر منهجية التفكير الحسّي® — من ACC إلى MCC'
+      : 'ICF-accredited coaching certifications from ACC to MCC level through Somatic Thinking®.',
+  };
+}
 
 export default async function CertificationsPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
@@ -114,7 +120,7 @@ export default async function CertificationsPage({ params }: { params: Promise<{
                     {isAr ? `${totalStceHours} ساعة` : `${totalStceHours} Hours`}
                   </span>
                   <span className="text-[var(--color-primary)] font-medium group-hover:underline">
-                    {isAr ? 'استعرض المستويات' : 'Explore Levels'} →
+                    {isAr ? 'استعرض المستويات' : 'Explore Levels'} <ArrowRight className="w-4 h-4 inline-block rtl:rotate-180" aria-hidden="true" />
                   </span>
                 </div>
               </div>
@@ -157,7 +163,7 @@ export default async function CertificationsPage({ params }: { params: Promise<{
                 {isAr ? prog!.description_ar : prog!.description_en}
               </p>
               <span className="text-sm text-[var(--color-primary)] font-medium group-hover:underline">
-                {isAr ? 'التفاصيل' : 'Learn More'} →
+                {isAr ? 'التفاصيل' : 'Learn More'} <ArrowRight className="w-4 h-4 inline-block rtl:rotate-180" aria-hidden="true" />
               </span>
             </a>
           ))}
