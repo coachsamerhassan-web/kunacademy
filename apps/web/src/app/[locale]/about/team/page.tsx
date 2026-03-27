@@ -121,15 +121,18 @@ export default async function TeamPage({ params }: Props) {
                     )}
 
                     {/* Languages */}
-                    {member.languages.length > 0 && (
-                      <div className="flex items-center justify-center gap-2 mt-4 text-xs text-[var(--color-neutral-500)]">
-                        <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M12 21a9 9 0 100-18 9 9 0 000 18z" />
-                          <path d="M3.6 9h16.8M3.6 15h16.8" />
-                        </svg>
-                        {member.languages.join(' · ')}
-                      </div>
-                    )}
+                    {(() => {
+                      const langs = Array.isArray(member.languages) ? member.languages : typeof member.languages === 'string' ? (member.languages as string).split(',').map((s: string) => s.trim()).filter(Boolean) : [];
+                      return langs.length > 0 ? (
+                        <div className="flex items-center justify-center gap-2 mt-4 text-xs text-[var(--color-neutral-500)]">
+                          <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M12 21a9 9 0 100-18 9 9 0 000 18z" />
+                            <path d="M3.6 9h16.8M3.6 15h16.8" />
+                          </svg>
+                          {langs.join(' · ')}
+                        </div>
+                      ) : null;
+                    })()}
                   </Card>
                 </a>
               );

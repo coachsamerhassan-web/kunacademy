@@ -156,10 +156,20 @@ export class JsonFileProvider implements ContentProvider {
 
   // ── Sheet 4: Team ─────────────────────────────────────────────────────
 
+  private normalizeTeamMember(t: TeamMember): TeamMember {
+    return {
+      ...t,
+      languages: Array.isArray(t.languages) ? t.languages : csvToArray(t.languages as unknown as string),
+      specialties: Array.isArray(t.specialties) ? t.specialties : csvToArray(t.specialties as unknown as string),
+      coaching_styles: Array.isArray(t.coaching_styles) ? t.coaching_styles : csvToArray(t.coaching_styles as unknown as string),
+    };
+  }
+
   async getAllTeamMembers(): Promise<TeamMember[]> {
     const rows = await this.loadSheet<TeamMember>('team');
     return this.published(rows)
       .filter((t) => t.is_visible)
+      .map((t) => this.normalizeTeamMember(t))
       .sort((a, b) => a.display_order - b.display_order);
   }
 
@@ -170,7 +180,8 @@ export class JsonFileProvider implements ContentProvider {
 
   async getTeamMember(slug: string): Promise<TeamMember | null> {
     const rows = await this.loadSheet<TeamMember>('team');
-    return this.published(rows).find((t) => t.slug === slug) ?? null;
+    const member = this.published(rows).find((t) => t.slug === slug);
+    return member ? this.normalizeTeamMember(member) : null;
   }
 
   // ── Sheet 5: Settings ─────────────────────────────────────────────────
