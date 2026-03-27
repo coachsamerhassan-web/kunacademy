@@ -1,7 +1,19 @@
+import type { Metadata } from 'next';
 import { setRequestLocale } from 'next-intl/server';
 import { cms } from '@kunacademy/cms';
 import { ProgramDetail } from '@/components/program-detail';
 import { notFound } from 'next/navigation';
+
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  const { locale } = await params;
+  const isAr = locale === 'ar';
+  return {
+    title: isAr ? 'كوتشينج الأطباء | أكاديمية كُن' : 'Coaching for Doctors | Kun Academy',
+    description: isAr
+      ? 'برنامج كوتشينج متخصص للأطباء والممارسين الصحيين بمنهجية التفكير الحسّي'
+      : 'Specialized coaching program for doctors and healthcare practitioners through Somatic Thinking',
+  };
+}
 
 export default async function DoctorsPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;

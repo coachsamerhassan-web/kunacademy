@@ -161,12 +161,20 @@ export default async function CorporatePage({ params }: Props) {
               ? 'تواصل معنا للحصول على عرض سعر مخصّص لاحتياجات مؤسستك'
               : 'Contact us for a custom proposal tailored to your organization\'s needs'}
           </p>
-          <a
-            href="mailto:corporate@kuncoaching.com"
-            className="inline-flex items-center justify-center rounded-xl bg-[var(--color-primary)] px-8 py-3.5 text-base font-semibold text-white min-h-[52px] hover:bg-[var(--color-primary-600)] transition-all duration-300"
-          >
-            {isAr ? 'تواصل مع فريقنا' : 'Contact Our Team'}
-          </a>
+          <div className="flex flex-wrap justify-center gap-4">
+            <a
+              href="mailto:corporate@kuncoaching.com"
+              className="inline-flex items-center justify-center rounded-xl bg-[var(--color-primary)] px-8 py-3.5 text-base font-semibold text-white min-h-[52px] hover:bg-[var(--color-primary-600)] transition-all duration-300"
+            >
+              {isAr ? 'تواصل مع فريقنا' : 'Contact Our Team'}
+            </a>
+            <a
+              href={`/${locale}/corporate/roi`}
+              className="inline-flex items-center justify-center rounded-xl border-2 border-[var(--color-primary)] px-8 py-3.5 text-base font-semibold text-[var(--color-primary)] min-h-[52px] hover:bg-[var(--color-primary-50)] transition-all duration-300"
+            >
+              {isAr ? 'حاسبة العائد على الاستثمار' : 'ROI Calculator'}
+            </a>
+          </div>
         </div>
       </Section>
     </main>

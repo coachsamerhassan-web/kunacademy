@@ -1,8 +1,20 @@
+import type { Metadata } from 'next';
 import { setRequestLocale } from 'next-intl/server';
 import { Section } from '@kunacademy/ui/section';
 import { Button } from '@kunacademy/ui/button';
 import { GeometricPattern } from '@kunacademy/ui/patterns';
 import { breadcrumbJsonLd } from '@kunacademy/ui/structured-data';
+
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  const { locale } = await params;
+  const isAr = locale === 'ar';
+  return {
+    title: isAr ? 'سامر حسن — مؤسس أكاديمية كُن | أول عربي MCC' : 'Samer Hassan — Founder of Kun Academy | First Arab MCC',
+    description: isAr
+      ? 'أول عربي يحصل على شهادة MCC من ICF. مؤسس منهجية التفكير الحسّي®. أكثر من ١٠٬٠٠٠ ساعة كوتشينج.'
+      : 'First Arab to hold an ICF MCC credential. Creator of Somatic Thinking®. 10,000+ coaching hours.',
+  };
+}
 
 export default async function FounderPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;

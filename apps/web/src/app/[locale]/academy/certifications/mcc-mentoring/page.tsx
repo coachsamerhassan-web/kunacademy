@@ -1,9 +1,21 @@
+import type { Metadata } from 'next';
 import { setRequestLocale } from 'next-intl/server';
 import { GeometricPattern } from '@kunacademy/ui/patterns';
 import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
 import { Button } from '@kunacademy/ui/button';
 import { courseJsonLd, breadcrumbJsonLd } from '@kunacademy/ui/structured-data';
+
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  const { locale } = await params;
+  const isAr = locale === 'ar';
+  return {
+    title: isAr ? 'منتورينج متقدم — MCC | أكاديمية كُن' : 'Advanced MCC Mentoring | Kun Academy',
+    description: isAr
+      ? 'جلسات منتورينج فردية مع سامر حسن (MCC) — ساعات مؤهّلة لتجديد شهادات ICF'
+      : 'Individual mentoring sessions with Samer Hassan (MCC) — qualifying hours for ICF credential renewal',
+  };
+}
 
 export default async function MCCMentoringPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;

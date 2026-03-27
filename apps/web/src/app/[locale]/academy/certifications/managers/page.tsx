@@ -1,7 +1,19 @@
+import type { Metadata } from 'next';
 import { setRequestLocale } from 'next-intl/server';
 import { cms } from '@kunacademy/cms';
 import { ProgramDetail } from '@/components/program-detail';
 import { notFound } from 'next/navigation';
+
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  const { locale } = await params;
+  const isAr = locale === 'ar';
+  return {
+    title: isAr ? 'كوتشينج المديرين | أكاديمية كُن' : 'Coaching for Managers | Kun Academy',
+    description: isAr
+      ? 'برنامج كوتشينج متخصص للمديرين والقادة بمنهجية التفكير الحسّي'
+      : 'Specialized coaching program for managers and leaders through Somatic Thinking',
+  };
+}
 
 export default async function ManagersPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;

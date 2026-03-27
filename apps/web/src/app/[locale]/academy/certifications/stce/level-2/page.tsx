@@ -1,7 +1,19 @@
+import type { Metadata } from 'next';
 import { setRequestLocale } from 'next-intl/server';
 import { cms } from '@kunacademy/cms';
 import { ProgramDetail } from '@/components/program-detail';
 import { notFound } from 'next/navigation';
+
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  const { locale } = await params;
+  const isAr = locale === 'ar';
+  return {
+    title: isAr ? 'المستوى الثاني — STAIC | أكاديمية كُن' : 'Level 2 — STAIC | Kun Academy',
+    description: isAr
+      ? 'التطبيق المتقدم للتفكير الحسّي في الكوتشينج — المستوى الثاني من شهادة STCE'
+      : 'Advanced application of Somatic Thinking in coaching — STCE Level 2',
+  };
+}
 
 export default async function Level2Page({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;

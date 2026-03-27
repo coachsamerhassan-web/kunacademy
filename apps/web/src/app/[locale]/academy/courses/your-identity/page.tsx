@@ -1,7 +1,19 @@
+import type { Metadata } from 'next';
 import { setRequestLocale } from 'next-intl/server';
 import { cms } from '@kunacademy/cms';
 import { ProgramDetail } from '@/components/program-detail';
 import { notFound } from 'next/navigation';
+
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  const { locale } = await params;
+  const isAr = locale === 'ar';
+  return {
+    title: isAr ? 'هويّتك — دورة تطوير الهوية | أكاديمية كُن' : 'Your Identity — Identity Development Course | Kun Academy',
+    description: isAr
+      ? 'استكشف جذورك الثقافية وابنِ هوية مهنية متماسكة في الكوتشينج'
+      : 'Explore your cultural roots and build a coherent professional coaching identity',
+  };
+}
 
 export default async function YourIdentityPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;

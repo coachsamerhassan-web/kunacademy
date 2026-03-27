@@ -1,9 +1,21 @@
+import type { Metadata } from 'next';
 import { setRequestLocale } from 'next-intl/server';
 import { GeometricPattern } from '@kunacademy/ui/patterns';
 import { Section } from '@kunacademy/ui/section';
 import { courseJsonLd, breadcrumbJsonLd } from '@kunacademy/ui/structured-data';
 import { cms } from '@kunacademy/cms';
 import { getPricingRegion, getGeoPrice } from '@/lib/geo-pricing';
+
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  const { locale } = await params;
+  const isAr = locale === 'ar';
+  return {
+    title: isAr ? 'منهجك — باقات التفكير الحسّي | أكاديمية كُن' : 'Menhajak — Somatic Thinking Packages | Kun Academy',
+    description: isAr
+      ? 'ثلاث باقات متكاملة من الصفر إلى التخصّص في التفكير الحسّي'
+      : 'Three complete packages from zero to specialization in Somatic Thinking',
+  };
+}
 
 const PACKAGE_SLUGS = [
   'menhajak-training',

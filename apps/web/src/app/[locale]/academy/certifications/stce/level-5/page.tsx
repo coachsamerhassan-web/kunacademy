@@ -1,7 +1,19 @@
+import type { Metadata } from 'next';
 import { setRequestLocale } from 'next-intl/server';
 import { cms } from '@kunacademy/cms';
 import { ProgramDetail } from '@/components/program-detail';
 import { notFound } from 'next/navigation';
+
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  const { locale } = await params;
+  const isAr = locale === 'ar';
+  return {
+    title: isAr ? 'المستوى الخامس — STFC | أكاديمية كُن' : 'Level 5 — STFC | Kun Academy',
+    description: isAr
+      ? 'إتقان التفكير الحسّي للكوتشينج — المستوى الخامس والأخير من شهادة STCE'
+      : 'Mastering Somatic Thinking for coaching — the final level of the STCE certification',
+  };
+}
 
 export default async function Level5Page({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;

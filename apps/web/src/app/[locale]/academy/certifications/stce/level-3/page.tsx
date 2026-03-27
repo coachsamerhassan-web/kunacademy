@@ -1,7 +1,19 @@
+import type { Metadata } from 'next';
 import { setRequestLocale } from 'next-intl/server';
 import { cms } from '@kunacademy/cms';
 import { ProgramDetail } from '@/components/program-detail';
 import { notFound } from 'next/navigation';
+
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  const { locale } = await params;
+  const isAr = locale === 'ar';
+  return {
+    title: isAr ? 'المستوى الثالث — STGC | أكاديمية كُن' : 'Level 3 — STGC | Kun Academy',
+    description: isAr
+      ? 'كوتشينج المجموعات بمنهجية التفكير الحسّي — المستوى الثالث من شهادة STCE'
+      : 'Group coaching through Somatic Thinking — STCE Level 3',
+  };
+}
 
 export default async function Level3Page({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
