@@ -140,6 +140,22 @@ export async function POST(request: NextRequest) {
           completed_at: new Date().toISOString(),
         })
         .eq('id', enrollment.id);
+
+      // Auto-generate certificate
+      const { data: existingCert } = await supabase
+        .from('certificates')
+        .select('id')
+        .eq('enrollment_id', enrollment.id)
+        .single();
+
+      if (!existingCert) {
+        await supabase.from('certificates').insert({
+          user_id: user.id,
+          enrollment_id: enrollment.id,
+          credential_type: 'completion',
+          issued_at: new Date().toISOString(),
+        });
+      }
     }
   }
 
