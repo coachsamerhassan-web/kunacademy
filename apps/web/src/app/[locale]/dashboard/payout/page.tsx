@@ -6,6 +6,7 @@ import { createBrowserClient } from '@kunacademy/db';
 import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
 import type { PayoutRequest } from '@/types/commission-system';
+import { ArrowLeft } from 'lucide-react';
 
 const statusColors: Record<string, string> = {
   requested: '#EAB308',
@@ -148,7 +149,7 @@ export default function Page({ params }: { params: Promise<{ locale: string }> }
             href={`/${locale}/dashboard/earnings`}
             className="text-[var(--color-primary)] text-sm hover:underline"
           >
-            {isAr ? '← الأرباح' : '← Earnings'}
+            <><ArrowLeft className="w-4 h-4 inline-block rtl:rotate-180" aria-hidden="true" /> {isAr ? 'الأرباح' : 'Earnings'}</>
           </a>
         </div>
 

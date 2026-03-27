@@ -6,6 +6,7 @@ import { Section } from '@kunacademy/ui/section';
 import { Card } from '@kunacademy/ui/card';
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { ArrowLeft, ArrowRight } from 'lucide-react';
 
 interface CourseRow {
   id: string;
@@ -201,7 +202,7 @@ export default function AdminCoursesPage() {
     return (
       <Section variant="white">
         <button onClick={() => setView('detail')} className="text-sm text-[var(--color-primary)] hover:underline mb-4">
-          ← {isAr ? 'العودة' : 'Back'}
+          <ArrowLeft className="w-4 h-4 inline-block rtl:rotate-180" aria-hidden="true" /> {isAr ? 'العودة' : 'Back'}
         </button>
         <h1 className="text-xl font-bold mb-6">
           {editLesson.id ? (isAr ? 'تعديل الدرس' : 'Edit Lesson') : (isAr ? 'درس جديد' : 'New Lesson')}
@@ -295,7 +296,7 @@ export default function AdminCoursesPage() {
     return (
       <Section variant="white">
         <button onClick={() => { setView('list'); setSelectedCourse(null); }} className="text-sm text-[var(--color-primary)] hover:underline mb-4">
-          ← {isAr ? 'كل الدورات' : 'All Courses'}
+          <ArrowLeft className="w-4 h-4 inline-block rtl:rotate-180" aria-hidden="true" /> {isAr ? 'كل الدورات' : 'All Courses'}
         </button>
 
         <div className="flex items-start justify-between mb-6">
@@ -442,7 +443,7 @@ export default function AdminCoursesPage() {
           <p className="text-sm text-[var(--color-neutral-500)]">{courses.length} {isAr ? 'دورة' : 'courses'}</p>
         </div>
         <a href={'/' + locale + '/admin'} className="text-sm text-[var(--color-primary)] hover:underline">
-          ← {isAr ? 'لوحة الإدارة' : 'Dashboard'}
+          <ArrowLeft className="w-4 h-4 inline-block rtl:rotate-180" aria-hidden="true" /> {isAr ? 'لوحة الإدارة' : 'Dashboard'}
         </a>
       </div>
 
@@ -478,7 +479,7 @@ export default function AdminCoursesPage() {
                 onClick={() => loadCourseDetail(c)}
                 className="text-sm text-[var(--color-primary)] hover:underline min-h-[44px] flex items-center"
               >
-                {isAr ? 'إدارة' : 'Manage'} →
+                {isAr ? 'إدارة' : 'Manage'} <ArrowRight className="w-4 h-4 inline-block rtl:rotate-180" aria-hidden="true" />
               </button>
             </div>
           </Card>

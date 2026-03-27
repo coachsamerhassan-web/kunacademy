@@ -5,6 +5,7 @@ import { createBrowserClient } from '@kunacademy/db';
 import { Section } from '@kunacademy/ui/section';
 import { Card } from '@kunacademy/ui/card';
 import { useState, useEffect, use } from 'react';
+import { ArrowRight } from 'lucide-react';
 
 export default function CoachProfilePage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = use(params);
@@ -53,7 +54,7 @@ export default function CoachProfilePage({ params }: { params: Promise<{ locale:
         </div>
         <div className="mt-8 pt-6 border-t border-[var(--color-neutral-100)]">
           <a href={`/${locale}/coaches/${profile?.full_name_en?.toLowerCase().replace(/\s+/g, '-') || 'me'}`} className="text-sm text-[var(--color-primary)] hover:underline">
-            {isAr ? 'عرض الملف العام' : 'View Public Profile'} →
+            {isAr ? 'عرض الملف العام' : 'View Public Profile'} <ArrowRight className="w-4 h-4 inline-block rtl:rotate-180" aria-hidden="true" />
           </a>
         </div>
       </Card>

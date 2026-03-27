@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@kunacademy/auth';
 import { Button } from '@kunacademy/ui/button';
+import { ArrowRight } from 'lucide-react';
 
 interface PayoutRequest {
   id: string;
@@ -231,7 +232,7 @@ export function PayoutDashboard({ locale }: { locale: string }) {
                   {new Date(p.created_at).toLocaleDateString(isAr ? 'ar-AE' : 'en-GB')}
                   {p.processed_at && (
                     <span className="ms-2">
-                      → {new Date(p.processed_at).toLocaleDateString(isAr ? 'ar-AE' : 'en-GB')}
+                      <ArrowRight className="w-3.5 h-3.5 inline-block" aria-hidden="true" /> {new Date(p.processed_at).toLocaleDateString(isAr ? 'ar-AE' : 'en-GB')}
                     </span>
                   )}
                 </div>

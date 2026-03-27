@@ -4,6 +4,7 @@ import { useAuth } from '@kunacademy/auth';
 import { createBrowserClient } from '@kunacademy/db';
 import { Card } from '@kunacademy/ui/card';
 import { useState, useEffect, use } from 'react';
+import { ArrowLeft, ArrowRight } from 'lucide-react';
 
 interface Section {
   id: string;
@@ -158,7 +159,7 @@ export default function CourseLearningPage({
         )}
         <div className="flex-1">
           <a href={`/${locale}/dashboard/courses`} className="text-sm text-[var(--color-primary)] hover:underline mb-2 inline-block">
-            ← {isAr ? 'دوراتي' : 'My Courses'}
+            <ArrowLeft className="w-4 h-4 inline-block rtl:rotate-180" aria-hidden="true" /> {isAr ? 'دوراتي' : 'My Courses'}
           </a>
           <h1 className="text-2xl font-bold text-[var(--text-primary)]">{title}</h1>
           {enrollment && (
@@ -212,7 +213,7 @@ export default function CourseLearningPage({
             <div>
               <p className="font-bold text-green-800">{isAr ? 'أكملت الدورة!' : 'Course Completed!'}</p>
               <a href={`/${locale}/dashboard/certificates`} className="text-sm text-green-600 hover:underline">
-                {isAr ? 'عرض الشهادة' : 'View Certificate'} →
+                {isAr ? 'عرض الشهادة' : 'View Certificate'} <ArrowRight className="w-4 h-4 inline-block rtl:rotate-180" aria-hidden="true" />
               </a>
             </div>
           </div>

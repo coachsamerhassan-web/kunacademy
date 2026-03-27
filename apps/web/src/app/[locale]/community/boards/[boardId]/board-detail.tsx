@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@kunacademy/auth';
 import { Button } from '@kunacademy/ui/button';
 import { createBrowserClient } from '@kunacademy/db';
+import { ArrowLeft } from 'lucide-react';
 
 interface Post {
   id: string;
@@ -134,7 +135,7 @@ export function BoardDetail({ locale, boardId }: { locale: string; boardId: stri
   return (
     <div>
       <a href={`/${locale}/community/boards`} className="text-sm text-[var(--color-primary)] hover:underline">
-        {isAr ? '← العودة للمنتديات' : '← Back to boards'}
+        {isAr ? <><ArrowLeft className="w-4 h-4 inline-block rtl:rotate-180" aria-hidden="true" /> العودة للمنتديات</> : <><ArrowLeft className="w-4 h-4 inline-block rtl:rotate-180" aria-hidden="true" /> Back to boards</>}
       </a>
       <h1 className="text-xl font-bold mt-2 mb-6">{boardName}</h1>
 

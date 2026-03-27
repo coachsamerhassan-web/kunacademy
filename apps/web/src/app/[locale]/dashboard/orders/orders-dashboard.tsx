@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@kunacademy/auth';
 import { createBrowserClient } from '@kunacademy/db';
 import type { OrderStatus } from '@kunacademy/db';
+import { Download } from 'lucide-react';
 
 type TabKey = 'orders' | 'downloads';
 
@@ -275,7 +276,7 @@ function DownloadsTab({ downloads, isAr }: { downloads: DownloadItem[]; isAr: bo
   if (downloads.length === 0) {
     return (
       <div className="rounded-2xl bg-[var(--color-surface-container)] p-12 text-center min-h-[300px] flex flex-col items-center justify-center">
-        <span className="text-4xl mb-4" aria-hidden="true">📥</span>
+        <Download className="w-10 h-10 mb-4 text-[var(--color-neutral-400)]" aria-hidden="true" />
         <p className="text-[var(--color-neutral-600)] mb-2 font-medium">
           {isAr ? 'لا توجد تحميلات بعد' : 'No downloads yet'}
         </p>

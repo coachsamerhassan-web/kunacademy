@@ -6,6 +6,7 @@ import { createBrowserClient } from '@kunacademy/db';
 import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
 import type { Earning, PayoutRequest } from '@/types/commission-system';
+import { ArrowLeft } from 'lucide-react';
 
 const statusColors: Record<string, string> = {
   pending: '#EAB308',
@@ -146,7 +147,7 @@ export default function Page({ params }: { params: Promise<{ locale: string }> }
             href={`/${locale}/coach/bookings`}
             className="text-[var(--color-primary)] text-sm hover:underline"
           >
-            {isAr ? '← حجوزاتي' : '← My Bookings'}
+            <><ArrowLeft className="w-4 h-4 inline-block rtl:rotate-180" aria-hidden="true" /> {isAr ? 'حجوزاتي' : 'My Bookings'}</>
           </a>
         </div>
 

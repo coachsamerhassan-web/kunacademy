@@ -7,6 +7,7 @@ import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
 import { useParams, useRouter } from 'next/navigation';
 import type { CommissionRate, Earning, PayoutRequest, CoachProfile } from '@/types/commission-system';
+import { ArrowLeft } from 'lucide-react';
 
 // Extended types for API responses with joined data
 interface EarningWithCoach extends Earning {
@@ -261,7 +262,7 @@ export default function AdminCommissionsPage() {
             href={`/${locale}/admin`}
             className="text-[var(--color-primary)] text-sm hover:underline"
           >
-            {isAr ? '← لوحة الإدارة' : '← Dashboard'}
+            <><ArrowLeft className="w-4 h-4 inline-block rtl:rotate-180" aria-hidden="true" /> {isAr ? 'لوحة الإدارة' : 'Dashboard'}</>
           </a>
         </div>
 

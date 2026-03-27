@@ -2,6 +2,7 @@ import { setRequestLocale } from 'next-intl/server';
 import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
 import { InstructorReview } from './review';
+import { ArrowLeft } from 'lucide-react';
 
 export default async function ReviewInstructorPage({
   params,
@@ -20,7 +21,7 @@ export default async function ReviewInstructorPage({
             href={`/${locale}/admin/instructors`}
             className="text-sm text-[var(--color-primary)] hover:underline mb-4 inline-block"
           >
-            {isAr ? '← العودة للقائمة' : '← Back to list'}
+            {isAr ? <><ArrowLeft className="w-4 h-4 inline-block rtl:rotate-180" aria-hidden="true" /> العودة للقائمة</> : <><ArrowLeft className="w-4 h-4 inline-block rtl:rotate-180" aria-hidden="true" /> Back to list</>}
           </a>
           <Heading level={1}>{isAr ? 'مراجعة ملف الكوتش' : 'Review Coach Profile'}</Heading>
           <InstructorReview locale={locale} instructorId={id} />

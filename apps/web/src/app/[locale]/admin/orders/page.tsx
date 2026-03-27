@@ -6,6 +6,7 @@ import { createBrowserClient } from '@kunacademy/db';
 import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
 import { useParams, useRouter } from 'next/navigation';
+import { ArrowLeft } from 'lucide-react';
 
 export default function AdminOrdersPage() {
   const { locale } = useParams<{ locale: string }>();
@@ -32,7 +33,7 @@ export default function AdminOrdersPage() {
       <Section variant="white">
         <div className="flex items-center justify-between">
           <Heading level={1}>{isAr ? 'الطلبات' : 'Orders'}</Heading>
-          <a href={'/' + locale + '/admin'} className="text-[var(--color-primary)] text-sm hover:underline">{isAr ? '← لوحة الإدارة' : '← Dashboard'}</a>
+          <a href={'/' + locale + '/admin'} className="text-[var(--color-primary)] text-sm hover:underline">{isAr ? <><ArrowLeft className="w-4 h-4 inline-block rtl:rotate-180" aria-hidden="true" /> لوحة الإدارة</> : <><ArrowLeft className="w-4 h-4 inline-block rtl:rotate-180" aria-hidden="true" /> Dashboard</>}</a>
         </div>
         <p className="mt-2 text-[var(--color-neutral-500)]">{items.length} {isAr ? 'سجل' : 'records'}</p>
         <div className="mt-6 overflow-x-auto">
