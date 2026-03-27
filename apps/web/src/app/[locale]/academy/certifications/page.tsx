@@ -2,6 +2,7 @@ import { setRequestLocale } from 'next-intl/server';
 import { Section } from '@kunacademy/ui/section';
 import { GeometricPattern } from '@kunacademy/ui/patterns';
 import { cms } from '@kunacademy/cms';
+import { createPageMetadata } from '@/lib/og-metadata';
 
 const FLAGSHIP_SLUGS = ['stce-level-1-stic', 'stce-level-2-staic', 'stce-level-3-stgc', 'stce-level-4-stoc', 'stce-level-5-stfc'];
 
@@ -17,6 +18,14 @@ function parseHours(duration: string | undefined): number {
   const match = duration.match(/(\d+)/);
   return match ? parseInt(match[1], 10) : 0;
 }
+
+export const metadata = createPageMetadata({
+  title: 'Certifications',
+  titleAr: 'الشهادات المعتمدة',
+  description: 'ICF-accredited coaching certifications from ACC to MCC level through Somatic Thinking®.',
+  path: '/academy/certifications',
+  type: 'program',
+});
 
 export default async function CertificationsPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;

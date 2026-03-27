@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { setRequestLocale } from 'next-intl/server';
 import { GeometricPattern } from '@kunacademy/ui/patterns';
 import { Section } from '@kunacademy/ui/section';
@@ -12,6 +13,17 @@ import { ProgramPathway } from '@/components/program-pathway';
 import { FounderSection } from '@/components/founder-section';
 import { CTASection } from '@/components/cta-section';
 import { TestimonialsShowcase } from '@/components/testimonials-showcase';
+
+export const metadata: Metadata = {
+  title: 'Kun Coaching Academy | أكاديمية كُن للكوتشينج',
+  description: 'أول أكاديمية عربية للتفكير الحسّي® والكوتشينج المعتمد من ICF. أكثر من ٥٠٠ كوتش في ١٣ دولة.',
+  openGraph: {
+    title: 'Kun Coaching Academy | أكاديمية كُن للكوتشينج',
+    description: 'The first Arab academy for Somatic Thinking® and ICF-accredited coaching. 500+ coaches across 13 countries.',
+    images: [{ url: '/api/og?title=Kun%20Coaching%20Academy&subtitle=%D8%A3%D9%83%D8%A7%D8%AF%D9%8A%D9%85%D9%8A%D8%A9%20%D9%83%D9%8F%D9%86%20%D9%84%D9%84%D9%83%D9%88%D8%AA%D8%B4%D9%8A%D9%86%D8%AC&type=default', width: 1200, height: 630 }],
+  },
+  twitter: { card: 'summary_large_image' },
+};
 
 export default async function HomePage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;

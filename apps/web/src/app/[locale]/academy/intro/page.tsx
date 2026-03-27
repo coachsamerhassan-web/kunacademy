@@ -2,6 +2,15 @@ import { setRequestLocale } from 'next-intl/server';
 import { cms } from '@kunacademy/cms';
 import { ProgramDetail } from '@/components/program-detail';
 import { notFound } from 'next/navigation';
+import { createPageMetadata } from '@/lib/og-metadata';
+
+export const metadata = createPageMetadata({
+  title: 'STI Introduction',
+  titleAr: 'مقدمة التفكير الحسّي',
+  description: '6-hour recorded introduction to Somatic Thinking®. Your gateway to coaching certification.',
+  path: '/academy/intro',
+  type: 'program',
+});
 
 export default async function IntroPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;

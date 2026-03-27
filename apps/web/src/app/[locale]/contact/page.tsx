@@ -5,6 +5,15 @@ import { faqJsonLd } from '@kunacademy/ui/faq-jsonld';
 import { contactFaqs } from '@/data/faqs';
 import { GeometricPattern } from '@kunacademy/ui/patterns';
 import { ContactForm } from '@/components/contact-form';
+import { createPageMetadata } from '@/lib/og-metadata';
+
+export const metadata = createPageMetadata({
+  title: 'Contact Us',
+  titleAr: 'تواصل معنا',
+  description: 'Get in touch with Kun Coaching Academy. Dubai, UAE.',
+  path: '/contact',
+  type: 'default',
+});
 
 export default async function ContactPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;

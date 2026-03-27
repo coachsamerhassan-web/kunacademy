@@ -4,6 +4,15 @@ import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
 import { Button } from '@kunacademy/ui/button';
 import { Card } from '@kunacademy/ui/card';
+import { createPageMetadata } from '@/lib/og-metadata';
+
+export const metadata = createPageMetadata({
+  title: 'Samer Hassan — Founder',
+  titleAr: 'سامر حسن — المؤسس',
+  description: 'First Arab MCC (ICF Master Certified Coach). Founder of Somatic Thinking® and Kun Coaching Academy.',
+  path: '/about/founder',
+  type: 'about',
+});
 
 export default async function FounderPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;

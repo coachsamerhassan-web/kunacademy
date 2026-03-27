@@ -5,6 +5,7 @@ import { faqJsonLd } from '@kunacademy/ui/faq-jsonld';
 import { stceFaqs } from '@/data/faqs';
 import { GeometricPattern } from '@kunacademy/ui/patterns';
 import { cms } from '@kunacademy/cms';
+import { createPageMetadata } from '@/lib/og-metadata';
 
 const STCE_SLUGS = [
   'stce-level-1-stic',
@@ -35,6 +36,14 @@ function parseHours(duration: string | undefined): number {
   const match = duration.match(/(\d+)/);
   return match ? parseInt(match[1], 10) : 0;
 }
+
+export const metadata = createPageMetadata({
+  title: 'STCE Certification',
+  titleAr: 'شهادة التفكير الحسّي للكوتشينج',
+  description: '5-level ICF-accredited Somatic Thinking Coaching Education program. 240 training hours.',
+  path: '/academy/certifications/stce',
+  type: 'program',
+});
 
 export default async function STCEPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;

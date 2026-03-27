@@ -16,6 +16,7 @@ import {
   aboutFaqs,
 } from '@/data/faqs';
 import type { FAQItem } from '@kunacademy/ui/faq-section';
+import { createPageMetadata } from '@/lib/og-metadata';
 
 const allFaqs: FAQItem[] = [
   ...aboutFaqs,
@@ -27,6 +28,14 @@ const allFaqs: FAQItem[] = [
   ...familyFaqs,
   ...bookingFaqs,
 ];
+
+export const metadata = createPageMetadata({
+  title: 'FAQ',
+  titleAr: 'الأسئلة الشائعة',
+  description: 'Frequently asked questions about Kun coaching programs, certifications, and enrollment.',
+  path: '/faq',
+  type: 'default',
+});
 
 export default async function FAQPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;

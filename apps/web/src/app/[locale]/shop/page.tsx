@@ -6,6 +6,15 @@ import { faqJsonLd } from '@kunacademy/ui/faq-jsonld';
 import { shopFaqs } from '@/data/faqs';
 import { cms, contentGetter } from '@kunacademy/cms';
 import { ShopGrid } from './shop-grid';
+import { createPageMetadata } from '@/lib/og-metadata';
+
+export const metadata = createPageMetadata({
+  title: 'Shop',
+  titleAr: 'المتجر',
+  description: 'Coaching tools, books, and digital resources from Kun Coaching Academy.',
+  path: '/shop',
+  type: 'default',
+});
 
 export default async function ShopPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
