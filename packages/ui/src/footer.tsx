@@ -85,7 +85,7 @@ export function Footer({ locale, className }: FooterProps) {
               />
               <div className="flex flex-col">
                 <span className="text-xl font-bold text-white leading-none">كُنْ</span>
-                <span className="text-[10px] font-light text-white/60 tracking-widest uppercase leading-none mt-1">Academy</span>
+                <span className="text-[10px] font-normal text-white/60 tracking-widest uppercase leading-none mt-1">Academy</span>
               </div>
             </a>
             <p className="text-sm text-white/65 leading-relaxed max-w-xs">

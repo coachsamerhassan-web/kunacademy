@@ -16,7 +16,7 @@ export const noor = localFont({
 
 export const tajawal = Tajawal({
   subsets: ['arabic', 'latin'],
-  weight: ['300', '400', '500', '700', '800'],
+  weight: ['400', '500', '700'],
   variable: '--font-tajawal',
   display: 'swap',
   preload: true,
