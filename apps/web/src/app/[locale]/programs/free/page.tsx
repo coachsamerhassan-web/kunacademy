@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { setRequestLocale } from 'next-intl/server';
 import { GeometricPattern } from '@kunacademy/ui/patterns';
 import { Section } from '@kunacademy/ui/section';
@@ -5,6 +6,17 @@ import { Heading } from '@kunacademy/ui/heading';
 import { FAQSection } from '@kunacademy/ui/faq-section';
 import { faqJsonLd } from '@kunacademy/ui/faq-jsonld';
 import { freeFaqs } from '@/data/faqs';
+
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  const { locale } = await params;
+  const isAr = locale === 'ar';
+  return {
+    title: isAr ? 'موارد مجانية | أكاديمية كُن' : 'Free Resources | Kun Academy',
+    description: isAr
+      ? 'اكتشف منهجية التفكير الحسّي مجانًا — دورات تمهيدية، مقالات، وأدوات'
+      : 'Discover the Somatic Thinking methodology for free — introductory courses, articles, and tools',
+  };
+}
 
 export default async function FreeResourcesPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
