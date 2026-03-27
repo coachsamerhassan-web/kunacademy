@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { setRequestLocale } from 'next-intl/server';
 import { GeometricPattern } from '@kunacademy/ui/patterns';
 import { Section } from '@kunacademy/ui/section';
@@ -6,6 +7,15 @@ import { Button } from '@kunacademy/ui/button';
 import { FAQSection } from '@kunacademy/ui/faq-section';
 import { faqJsonLd } from '@kunacademy/ui/faq-jsonld';
 import { corporateFaqs } from '@/data/faqs';
+
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  const { locale } = await params;
+  const isAr = locale === 'ar';
+  return {
+    title: isAr ? 'حلول المؤسسات | أكاديمية كُن' : 'Corporate Solutions | Kun Academy',
+    description: isAr ? 'برامج كوتشينج وتطوير قيادي مصمّمة للمؤسسات — التفكير الحسّي® في بيئة العمل' : 'Coaching and leadership development programs for organizations — Somatic Thinking® in the workplace',
+  };
+}
 
 export default async function CorporatePage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;

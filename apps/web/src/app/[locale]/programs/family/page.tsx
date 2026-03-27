@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { setRequestLocale } from 'next-intl/server';
 import { GeometricPattern } from '@kunacademy/ui/patterns';
 import { Section } from '@kunacademy/ui/section';
@@ -5,6 +6,15 @@ import { Heading } from '@kunacademy/ui/heading';
 import { FAQSection } from '@kunacademy/ui/faq-section';
 import { faqJsonLd } from '@kunacademy/ui/faq-jsonld';
 import { familyFaqs } from '@/data/faqs';
+
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  const { locale } = await params;
+  const isAr = locale === 'ar';
+  return {
+    title: isAr ? 'برامج الأسرة والشباب | أكاديمية كُن' : 'Family & Youth Programs | Kun Academy',
+    description: isAr ? 'برامج SEEDS وويصال — بناء وعي حسّي للعائلات والشباب' : 'SEEDS and Wisal programs — building somatic awareness for families and youth',
+  };
+}
 
 export default async function FamilyPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;

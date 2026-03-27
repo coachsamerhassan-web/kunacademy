@@ -1,8 +1,18 @@
+import type { Metadata } from 'next';
 import { setRequestLocale } from 'next-intl/server';
 import { GeometricPattern } from '@kunacademy/ui/patterns';
 import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
 import { Button } from '@kunacademy/ui/button';
+
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  const { locale } = await params;
+  const isAr = locale === 'ar';
+  return {
+    title: isAr ? 'برنامج SEEDS للأطفال | أكاديمية كُن' : 'SEEDS Program for Kids | Kun Academy',
+    description: isAr ? 'برنامج SEEDS — بذور الوعي الحسّي للأطفال والمراهقين' : 'SEEDS — somatic awareness seeds for children and teenagers',
+  };
+}
 
 export default async function SeedsYouthPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
