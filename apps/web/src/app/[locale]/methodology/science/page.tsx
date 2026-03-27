@@ -1,7 +1,17 @@
+import type { Metadata } from 'next';
 import { setRequestLocale } from 'next-intl/server';
 import { GeometricPattern } from '@kunacademy/ui/patterns';
 import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
+
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  const { locale } = await params;
+  const isAr = locale === 'ar';
+  return {
+    title: isAr ? 'العلم وراء التفكير الحسّي | أكاديمية كُن' : 'The Science Behind Somatic Thinking | Kun Academy',
+    description: isAr ? 'الأسس العلمية لمنهجية التفكير الحسّي — من علم الأعصاب إلى الإدراك الجسدي' : 'The scientific foundations of Somatic Thinking — from neuroscience to embodied cognition',
+  };
+}
 
 export default async function SciencePage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;

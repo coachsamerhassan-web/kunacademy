@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { setRequestLocale } from 'next-intl/server';
 import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
@@ -6,6 +7,15 @@ import { FAQSection } from '@kunacademy/ui/faq-section';
 import { faqJsonLd } from '@kunacademy/ui/faq-jsonld';
 import { methodologyFaqs } from '@/data/faqs';
 import { GeometricPattern } from '@kunacademy/ui/patterns';
+
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  const { locale } = await params;
+  const isAr = locale === 'ar';
+  return {
+    title: isAr ? 'التفكير الحسّي® | أكاديمية كُن' : 'Somatic Thinking® | Kun Academy',
+    description: isAr ? 'منهجية التفكير الحسّي — الجسد يقود الفكر. تعرّف على المنهجية العربية الأولى التي تربط الإدراك الحسّي بالكوتشينج' : 'The body leads thought. Discover the first Arab methodology connecting somatic awareness to coaching',
+  };
+}
 
 export default async function MethodologyPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;

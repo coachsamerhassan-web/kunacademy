@@ -1,8 +1,18 @@
+import type { Metadata } from 'next';
 import { setRequestLocale } from 'next-intl/server';
 import { GeometricPattern } from '@kunacademy/ui/patterns';
 import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
 import { Button } from '@kunacademy/ui/button';
+
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  const { locale } = await params;
+  const isAr = locale === 'ar';
+  return {
+    title: isAr ? 'مسار الكوتش | أكاديمية كُن' : 'Coach Pathway | Kun Academy',
+    description: isAr ? 'خارطة طريق الكوتش من الصفر إلى الاعتماد الدولي — ACC, PCC, MCC' : 'Your coaching roadmap from zero to international accreditation — ACC, PCC, MCC',
+  };
+}
 
 export default async function CoachPathwayPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;

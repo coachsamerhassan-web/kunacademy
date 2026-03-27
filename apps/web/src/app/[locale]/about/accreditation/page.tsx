@@ -1,9 +1,19 @@
+import type { Metadata } from 'next';
 import { setRequestLocale } from 'next-intl/server';
 import { GeometricPattern } from '@kunacademy/ui/patterns';
 import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
 import { Button } from '@kunacademy/ui/button';
 import { Card } from '@kunacademy/ui/card';
+
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  const { locale } = await params;
+  const isAr = locale === 'ar';
+  return {
+    title: isAr ? 'الاعتمادات الدولية | أكاديمية كُن' : 'Accreditations | Kun Academy',
+    description: isAr ? 'أكاديمية كُن معتمدة من ICF — اعتمادات دولية تضمن جودة التدريب' : 'Kun Academy is ICF-accredited — international accreditations ensuring training quality',
+  };
+}
 
 export default async function AccreditationPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;

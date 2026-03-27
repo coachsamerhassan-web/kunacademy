@@ -1,8 +1,18 @@
+import type { Metadata } from 'next';
 import { setRequestLocale } from 'next-intl/server';
 import { GeometricPattern } from '@kunacademy/ui/patterns';
 import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
 import { Button } from '@kunacademy/ui/button';
+
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  const { locale } = await params;
+  const isAr = locale === 'ar';
+  return {
+    title: isAr ? 'باقات STCE | أكاديمية كُن' : 'STCE Packages | Kun Academy',
+    description: isAr ? 'اختر الباقة المناسبة لرحلتك في شهادة التفكير الحسّي للكوتشينج' : 'Choose the right package for your Somatic Thinking Coaching Education journey',
+  };
+}
 
 export default async function STCEPackagesPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
