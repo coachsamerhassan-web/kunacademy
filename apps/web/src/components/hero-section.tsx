@@ -79,6 +79,7 @@ export function HeroSection({ locale }: HeroSectionProps) {
           className="w-full h-full object-cover"
           style={{ filter: 'saturate(0.7) brightness(0.4)' }}
           loading="eager"
+          fetchPriority="high"
         />
         <div
           className="absolute inset-0"
