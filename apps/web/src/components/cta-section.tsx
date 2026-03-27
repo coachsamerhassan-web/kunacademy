@@ -14,7 +14,7 @@ export function CTASection({ locale }: CTASectionProps) {
       {/* Background image */}
       <div className="absolute inset-0">
         <img
-          src="/images/community/hands-circle-gulf.png"
+          src="/images/community/hands-circle-gulf.jpg"
           alt=""
           className="w-full h-full object-cover"
           style={{ filter: 'saturate(0.5) brightness(0.3)' }}

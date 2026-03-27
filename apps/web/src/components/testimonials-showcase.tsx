@@ -435,11 +435,13 @@ function Navigation({
             role="tab"
             aria-selected={i === active}
             aria-label={`Testimonial ${i + 1}`}
-            className={`h-2 rounded-full transition-all duration-500 ${
-              i === active ? 'w-8 bg-[var(--color-accent)]' : 'w-2 bg-[var(--color-primary-200)] hover:bg-[var(--color-primary-300)]'
-            }`}
+            className="p-3 -m-1 cursor-pointer"
             onClick={() => onSelect(i)}
-          />
+          >
+            <span className={`block h-2 rounded-full transition-all duration-500 ${
+              i === active ? 'w-8 bg-[var(--color-accent)]' : 'w-2 bg-[var(--color-primary-200)] hover:bg-[var(--color-primary-300)]'
+            }`} />
+          </button>
         ))}
       </div>
 

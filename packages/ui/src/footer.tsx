@@ -117,9 +117,9 @@ export function Footer({ locale, className }: FooterProps) {
           <div className="flex-1 grid grid-cols-2 md:grid-cols-3 gap-8 md:gap-6">
             {Object.values(footerLinks).map((column) => (
               <div key={column.labelEn}>
-                <h4 className="text-sm font-semibold text-white/90 tracking-wide uppercase mb-4">
+                <p className="text-sm font-semibold text-white/90 tracking-wide uppercase mb-4" role="heading" aria-level={2}>
                   {isAr ? column.labelAr : column.labelEn}
-                </h4>
+                </p>
                 <ul className="space-y-2.5">
                   {column.items.map((item) => (
                     <li key={item.href}>

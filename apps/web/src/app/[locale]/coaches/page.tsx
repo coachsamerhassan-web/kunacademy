@@ -33,7 +33,7 @@ export default async function CoachesPage({ params }: Props) {
       <section className="relative overflow-hidden py-16 md:py-24">
         <div className="absolute inset-0">
           <img
-            src="/images/community/hands-circle-gulf.png"
+            src="/images/community/hands-circle-gulf.jpg"
             alt=""
             className="w-full h-full object-cover"
             style={{ filter: 'saturate(0.5) brightness(0.35)' }}

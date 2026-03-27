@@ -74,7 +74,7 @@ export function HeroSection({ locale }: HeroSectionProps) {
         }}
       >
         <img
-          src="/images/community/hands-circle-gulf.png"
+          src="/images/community/hands-circle-gulf.jpg"
           alt=""
           className="w-full h-full object-cover"
           style={{ filter: 'saturate(0.7) brightness(0.4)' }}

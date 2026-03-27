@@ -16,7 +16,7 @@ export default async function FounderPage({ params }: { params: Promise<{ locale
           <div className="absolute inset-0 bg-gradient-to-br from-[var(--color-background)] via-[var(--color-background)] to-transparent md:w-[55%]" style={{ zIndex: 1 }} />
           <div className="absolute inset-y-0 end-0 w-full md:w-[60%]">
             <img
-              src="/images/founder/samer-navy-headshot.png"
+              src="/images/founder/samer-navy-headshot.jpg"
               alt={isAr ? 'سامر حسن' : 'Samer Hassan'}
               className="w-full h-full object-cover object-top"
               style={{ filter: 'brightness(0.95)' }}
@@ -96,7 +96,7 @@ export default async function FounderPage({ params }: { params: Promise<{ locale
           <div className="relative shrink-0">
             <div className="w-64 h-80 rounded-2xl overflow-hidden shadow-[0_12px_40px_rgba(71,64,153,0.12)]">
               <img
-                src="/images/founder/samer-portrait-artistic.png"
+                src="/images/founder/samer-portrait-artistic.jpg"
                 alt={isAr ? 'سامر حسن — بورتريه فني' : 'Samer Hassan — Artistic Portrait'}
                 className="w-full h-full object-cover"
                 loading="lazy"

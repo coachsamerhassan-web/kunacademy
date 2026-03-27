@@ -36,7 +36,7 @@ export default async function MethodologyPage({ params }: { params: Promise<{ lo
             <div className="shrink-0 animate-scale">
               <div className="w-56 h-72 md:w-64 md:h-80 rounded-2xl overflow-hidden shadow-[0_12px_40px_rgba(71,64,153,0.12)]">
                 <img
-                  src="/images/methodology/ink-portrait-meditation.png"
+                  src="/images/methodology/ink-portrait-meditation.jpg"
                   alt={isAr ? 'التفكير الحسّي — الوعي الداخلي' : 'Somatic Thinking — Inner Awareness'}
                   className="w-full h-full object-cover"
                   loading="eager"

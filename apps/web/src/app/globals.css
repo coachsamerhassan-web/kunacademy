@@ -20,12 +20,14 @@
   --color-primary-900: #0E0D1F;
 
   /* Colors — Accent: Mandarin (20% usage — CTAs, energy) */
+  /* Accessibility: base accent passes AA for large text (3.5:1 on white) */
+  /* Use accent-600 for small text on light backgrounds (5.2:1 on white) */
   --color-accent-50: #FEF0E8;
   --color-accent-100: #FDE1D1;
   --color-accent-200: #FBC3A3;
   --color-accent-300: #F8A575;
-  --color-accent: #F47E42;
-  --color-accent-500: #E4601E;
+  --color-accent: #E4601E;
+  --color-accent-500: #C85522;
   --color-accent-600: #B54C18;
   --color-accent-700: #873912;
   --color-accent-800: #5A260C;
@@ -60,7 +62,7 @@
   --color-neutral: #E6E7E8;
   --color-neutral-300: #CDCED0;
   --color-neutral-400: #B4B5B8;
-  --color-neutral-500: #9B9DA0;
+  --color-neutral-500: #757578;
   --color-neutral-600: #7C7E82;
   --color-neutral-700: #5D5F62;
   --color-neutral-800: #3E4042;
