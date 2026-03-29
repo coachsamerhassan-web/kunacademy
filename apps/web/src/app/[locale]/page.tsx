@@ -6,13 +6,7 @@ import { Heading } from '@kunacademy/ui/heading';
 import { Button } from '@kunacademy/ui/button';
 import { TrustBar } from '@kunacademy/ui/trust-bar';
 import { cms, contentGetter } from '@kunacademy/cms';
-import dynamic from 'next/dynamic';
-import { TreePhase } from '@/components/tree-phase';
-
-const TreeNarrative = dynamic(
-  () => import('@/components/tree-narrative').then((m) => ({ default: m.TreeNarrative })),
-  { ssr: true }
-);
+import { FlipCard } from '@/components/flip-card';
 import { HeroSection } from '@/components/hero-section';
 import { StatsSection } from '@/components/stats-section';
 import { ProgramPathway } from '@/components/program-pathway';
@@ -87,72 +81,59 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
       {/* ── STATS — Social proof numbers ── */}
       <StatsSection locale={locale} />
 
-      {/* ── TREE NARRATIVE — Growing through sections ── */}
-      <TreeNarrative imageSrc="/images/tree/olive-tree.jpg">
-        <TreePhase phase="roots" align="start">
-          <p className="text-sm font-semibold text-white/70 mb-2 tracking-wider uppercase">
-            {isAr ? 'الجذور — الحضور' : 'Roots — Presence'}
-          </p>
-          <h2 className="text-[1.75rem] md:text-[2.5rem] font-bold text-white leading-tight">
-            {isAr ? 'الحضور يبدأ من الداخل' : 'Presence begins within'}
-          </h2>
-          <p className="mt-4 text-white/80 leading-relaxed">
+      {/* ── TREE NARRATIVE — Four growth phases as flip cards ── */}
+      <Section variant="dark" pattern="girih">
+        <div className="text-center mb-12">
+          <Heading level={2} className="!text-white !text-[2rem] md:!text-[2.5rem]">
+            {isAr ? 'مراحل النمو' : 'Stages of Growth'}
+          </Heading>
+          <p className="mt-3 text-white/60 max-w-xl mx-auto">
             {isAr
+              ? 'كل رحلة تبدأ بجذور... وتمتد نحو أثر'
+              : 'Every journey begins with roots... and extends toward impact'}
+          </p>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 max-w-5xl mx-auto">
+          <FlipCard
+            locale={locale}
+            variant="dark"
+            icon={<span className="text-2xl">🌱</span>}
+            title={isAr ? 'الجذور — الحضور' : 'Roots — Presence'}
+            description={isAr
               ? 'كل رحلة مؤثرة تبدأ من تربة وعيك، من جذور نيّتك، من رسالة تنتظر أن تنمو بصوتك أنت.'
               : 'Every impactful journey begins from the soil of your awareness, from the roots of your intention.'}
-          </p>
-        </TreePhase>
-
-        <TreePhase phase="trunk" align="end">
-          <p className="text-sm font-semibold text-white/70 mb-2 tracking-wider uppercase">
-            {isAr ? 'النمو — الثبات' : 'Growth — Steadiness'}
-          </p>
-          <h2 className="text-[1.75rem] md:text-[2.5rem] font-bold text-white leading-tight">
-            {isAr ? 'بالثبات تنمو الشجرة' : 'With steadiness, the tree grows'}
-          </h2>
-          <p className="mt-4 text-white/80 leading-relaxed">
-            {isAr
+          />
+          <FlipCard
+            locale={locale}
+            variant="dark"
+            icon={<span className="text-2xl">🌿</span>}
+            title={isAr ? 'النمو — الثبات' : 'Growth — Steadiness'}
+            description={isAr
               ? 'في كُنْ، لا نقدّم لك مجرد محتوى، بل منهجية متكاملة تنبع من تراثنا وتلامس عمق تجربتك.'
               : 'At Kun, we offer not just content, but an integrated methodology rooted in our heritage.'}
-          </p>
-        </TreePhase>
-
-        <TreePhase phase="branches" align="start">
-          <p className="text-sm font-semibold text-white/70 mb-2 tracking-wider uppercase">
-            {isAr ? 'الصلة — الامتداد' : 'Connection — Reach'}
-          </p>
-          <h2 className="text-[1.75rem] md:text-[2.5rem] font-bold text-white leading-tight">
-            {isAr ? 'يمتد أثرك ليلامس من حولك' : 'Your impact extends to those around you'}
-          </h2>
-          <p className="mt-4 text-white/80 leading-relaxed">
-            {isAr
+          />
+          <FlipCard
+            locale={locale}
+            variant="dark"
+            icon={<span className="text-2xl">🌳</span>}
+            title={isAr ? 'الصلة — الامتداد' : 'Connection — Reach'}
+            description={isAr
               ? 'أكثر من 500 كوتش تخرّجوا من كُنْ في 13 دولة — كل واحد منهم يحمل منهجية أصيلة.'
               : 'Over 500 coaches graduated from Kun across 13 countries — each with an authentic methodology.'}
-          </p>
-        </TreePhase>
-
-        <TreePhase phase="canopy" align="end">
-          <p className="text-sm font-semibold text-white/70 mb-2 tracking-wider uppercase">
-            {isAr ? 'الأثر — الإرث' : 'Impact — Legacy'}
-          </p>
-          <h2 className="text-[1.75rem] md:text-[2.5rem] font-bold text-white leading-tight">
-            {isAr ? 'إزرع جذورك... لتنمو بلا حدود' : 'Plant your roots... to grow without limits'}
-          </h2>
-          <p className="mt-4 text-white/80 leading-relaxed">
-            {isAr
+          />
+          <FlipCard
+            locale={locale}
+            variant="dark"
+            icon={<span className="text-2xl">✨</span>}
+            title={isAr ? 'الأثر — الإرث' : 'Impact — Legacy'}
+            description={isAr
               ? 'كُنْ ليست مجرد أكاديمية، بل حركة تربوية معاصرة تعيد تعريف التربية من الداخل.'
               : 'Kun is not just an academy, but a contemporary movement redefining growth from within.'}
-          </p>
-          <div className="mt-6">
-            <a
-              href={`/${locale}/pathfinder/`}
-              className="inline-flex items-center justify-center rounded-xl bg-[var(--color-accent)] px-8 py-3.5 text-base font-semibold text-white min-h-[44px] hover:bg-[var(--color-accent-500)] transition-all duration-300 hover:shadow-[0_8px_24px_rgba(228,96,30,0.35)] hover:scale-[1.02] active:scale-[0.98]"
-            >
-              {isAr ? 'ابدأ رحلتك' : 'Start Your Journey'}
-            </a>
-          </div>
-        </TreePhase>
-      </TreeNarrative>
+            href={`/${locale}/pathfinder`}
+            ctaLabel={isAr ? 'ابدأ رحلتك' : 'Start Your Journey'}
+          />
+        </div>
+      </Section>
 
       {/* ── FOUNDER — Editorial layout with real photo ── */}
       <FounderSection locale={locale} />

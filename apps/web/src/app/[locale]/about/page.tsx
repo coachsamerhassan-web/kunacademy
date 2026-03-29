@@ -11,6 +11,7 @@ import type { Metadata } from 'next';
 import { TimelineCardContent } from './timeline-card';
 import { ArrowUpRight, Eye } from 'lucide-react';
 import { HoverCard } from '@/components/hover-card';
+import { FlipCard } from '@/components/flip-card';
 
 interface Props { params: Promise<{ locale: string }> }
 
@@ -247,15 +248,14 @@ export default async function AboutPage({ params }: Props) {
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 max-w-6xl mx-auto">
           {values.map((v) => (
-            <Card key={v.nameEn} className="p-6 text-center">
-              <div className="text-3xl mb-3 text-[var(--color-primary)]">{v.icon}</div>
-              <h3 className="font-bold text-[var(--text-primary)] text-lg mb-2">
-                {isAr ? v.nameAr : v.nameEn}
-              </h3>
-              <p className="text-sm text-[var(--color-neutral-600)] leading-relaxed" style={{ fontFamily: isAr ? 'var(--font-arabic-body)' : 'inherit' }}>
-                {isAr ? v.textAr : v.textEn}
-              </p>
-            </Card>
+            <FlipCard
+              key={v.nameEn}
+              locale={locale}
+              size="compact"
+              icon={<span className="text-2xl text-[var(--color-primary)]">{v.icon}</span>}
+              title={isAr ? v.nameAr : v.nameEn}
+              description={isAr ? v.textAr : v.textEn}
+            />
           ))}
         </div>
       </Section>

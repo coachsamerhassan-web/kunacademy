@@ -12,6 +12,10 @@ interface FlipCardProps {
   variant?: 'light' | 'dark';
   /** 'default' — standard padding; 'compact' — reduced padding + smaller title for dense grids */
   size?: 'default' | 'compact';
+  /** Optional link on back face — renders a CTA button */
+  href?: string;
+  /** Label for the CTA button (defaults to locale-aware "Discover" / "اكتشف") */
+  ctaLabel?: string;
 }
 
 export function FlipCard({
@@ -21,6 +25,8 @@ export function FlipCard({
   locale,
   variant = 'light',
   size = 'default',
+  href,
+  ctaLabel,
 }: FlipCardProps) {
   const [flipped, setFlipped] = useState(false);
   const isAr = locale === 'ar';
@@ -111,6 +117,15 @@ export function FlipCard({
           >
             {description}
           </p>
+          {href && (
+            <a
+              href={href}
+              className={styles.backCta}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {ctaLabel || (isAr ? 'اكتشف' : 'Discover')}
+            </a>
+          )}
         </div>
       </div>
     </div>
