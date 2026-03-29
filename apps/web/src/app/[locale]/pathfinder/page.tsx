@@ -1,7 +1,7 @@
 import { setRequestLocale } from 'next-intl/server';
 import { Section } from '@kunacademy/ui/section';
 import { GeometricPattern } from '@kunacademy/ui/patterns';
-import { FlipCard } from '@/components/flip-card';
+import { Card } from '@kunacademy/ui/card';
 import type { Metadata } from 'next';
 
 interface Props { params: Promise<{ locale: string }> }
@@ -111,22 +111,33 @@ export default async function PathfinderPage({ params }: Props) {
 
       {/* Paths */}
       <Section variant="white">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
+        <div className="max-w-3xl mx-auto space-y-4">
           {paths.map((path) => (
-            <FlipCard
-              key={path.slug}
-              locale={locale}
-              size="compact"
-              icon={
-                <svg className="w-6 h-6" style={{ color: path.color }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d={path.iconPath} />
-                </svg>
-              }
-              title={isAr ? path.titleAr : path.titleEn}
-              description={isAr ? path.descAr : path.descEn}
-              href={`/${locale}/${path.slug}`}
-              ctaLabel={isAr ? 'ابدأ من هنا' : 'Start here'}
-            />
+            <a key={path.slug} href={`/${locale}/${path.slug}`} className="group block">
+              <Card accent className="p-5 transition-all duration-300 group-hover:shadow-[0_8px_32px_rgba(71,64,153,0.1)] group-hover:-translate-y-0.5">
+                <div className="flex items-center gap-5">
+                  <div
+                    className="shrink-0 h-14 w-14 rounded-2xl flex items-center justify-center"
+                    style={{ backgroundColor: path.bgColor }}
+                  >
+                    <svg className="w-6 h-6" style={{ color: path.color }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d={path.iconPath} />
+                    </svg>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h2 className="text-base md:text-lg font-bold text-[var(--text-primary)] group-hover:text-[var(--color-primary)] transition-colors">
+                      {isAr ? path.titleAr : path.titleEn}
+                    </h2>
+                    <p className="text-sm text-[var(--color-neutral-600)] mt-0.5 line-clamp-1">
+                      {isAr ? path.descAr : path.descEn}
+                    </p>
+                  </div>
+                  <svg className="shrink-0 w-5 h-5 text-[var(--color-neutral-400)] group-hover:text-[var(--color-primary)] transition-colors rtl:rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M9 18l6-6-6-6" />
+                  </svg>
+                </div>
+              </Card>
+            </a>
           ))}
         </div>
       </Section>
