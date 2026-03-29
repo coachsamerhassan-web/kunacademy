@@ -1,9 +1,9 @@
 import { setRequestLocale } from 'next-intl/server';
 import { Section } from '@kunacademy/ui/section';
 import { GeometricPattern } from '@kunacademy/ui/patterns';
-import { Card } from '@kunacademy/ui/card';
 import { breadcrumbJsonLd } from '@kunacademy/ui/structured-data';
 import type { Metadata } from 'next';
+import { FlipCard } from '@/components/flip-card';
 
 interface Props { params: Promise<{ locale: string }> }
 
@@ -18,30 +18,109 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-const pillars = [
+/* ── Pillar Icons — minimalistic line style, 1.5px stroke, brand purple ── */
+const iconProps = {
+  width: 24, height: 24, viewBox: '0 0 24 24',
+  fill: 'none', stroke: 'currentColor', strokeWidth: 1.5,
+  strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const,
+  'aria-hidden': true as const,
+  className: 'w-6 h-6',
+  style: { color: 'var(--color-primary)' },
+};
+
+/* 1. Somatic Signals — body silhouette transmitting Wi-Fi waves */
+const IconSomaticSignals = (
+  <svg {...iconProps}>
+    {/* Simple body — head + torso */}
+    <circle cx="12" cy="15" r="1.2" />
+    <path d="M12 16.2v4" />
+    <path d="M9.5 20.2h5" />
+    {/* Wi-Fi arcs radiating outward from the body */}
+    <path d="M9.5 13a3.5 3.5 0 0 1 5 0" />
+    <path d="M7.5 11a6.5 6.5 0 0 1 9 0" />
+    <path d="M5.5 9a9.5 9.5 0 0 1 13 0" />
+  </svg>
+);
+
+/* 2. Presence — still figure inside analog watch (here & now) */
+const IconPresence = (
+  <svg {...iconProps}>
+    {/* Watch case — circle */}
+    <circle cx="12" cy="12" r="9" />
+    {/* Watch lugs top + bottom */}
+    <line x1="12" y1="1" x2="12" y2="3" />
+    <line x1="12" y1="21" x2="12" y2="23" />
+    {/* Hour markers — 12, 3, 6, 9 */}
+    <line x1="12" y1="4" x2="12" y2="5.5" />
+    <line x1="12" y1="18.5" x2="12" y2="20" />
+    <line x1="4" y1="12" x2="5.5" y2="12" />
+    <line x1="18.5" y1="12" x2="20" y2="12" />
+    {/* Still figure at center — dot head + line body */}
+    <circle cx="12" cy="10" r="1" />
+    <line x1="12" y1="11.5" x2="12" y2="15.5" />
+  </svg>
+);
+
+/* 3. Body-Mind Partnership — brain outline + body outline connected */
+const IconPartnership = (
+  <svg {...iconProps}>
+    {/* Brain — simplified outline on left */}
+    <path d="M4 12c0-2 1-3.5 2.5-3.5.5-1.5 2-2.5 3.5-2.5" />
+    <path d="M4 12c0 2 1 3.5 2.5 3.5.5 1.5 2 2.5 3.5 2.5" />
+    <path d="M10 6c.8-.3 1.5 0 1.5 1" />
+    <path d="M10 18c.8.3 1.5 0 1.5-1" />
+    {/* Connecting line */}
+    <line x1="11.5" y1="12" x2="14.5" y2="12" />
+    {/* Body — simple figure on right */}
+    <circle cx="18" cy="8" r="1.5" />
+    <path d="M18 9.5v5" />
+    <path d="M15.5 12h5" />
+    <path d="M18 14.5l-2 3.5" />
+    <path d="M18 14.5l2 3.5" />
+  </svg>
+);
+
+/* 4. Experience Not Theory — open hand, hands-on symbolism */
+const IconExperience = (
+  <svg {...iconProps}>
+    {/* Palm */}
+    <path d="M12 22c-3 0-5-1.5-5-4v-5" />
+    {/* Fingers */}
+    <path d="M7 13v-2.5a1 1 0 0 1 2 0V13" />
+    <path d="M9 10.5V7a1 1 0 0 1 2 0v6" />
+    <path d="M11 7V5.5a1 1 0 0 1 2 0V13" />
+    <path d="M13 7.5V7a1 1 0 0 1 2 0v4" />
+    {/* Thumb */}
+    <path d="M15 11v-1a1 1 0 0 1 1.5.5l.5 1.5c.5 2 0 4-2 5" />
+    {/* Small touch ripple below */}
+    <path d="M9 20c1.5.7 3.5.7 5 0" />
+  </svg>
+);
+
+const pillarsData = [
   {
-    iconPath: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z',
+    icon: IconSomaticSignals,
     titleAr: 'الإشارات الحسّية الجسدية',
     titleEn: 'Somatic Signals',
     descAr: 'الجسد لا يكذب. كل شعور وكل قرار يبدأ كإشارة جسدية — التفكير الحسّي يُعلّمك قراءة هذه اللغة.',
     descEn: 'The body doesn\'t lie. Every feeling and every decision begins as a somatic signal — Somatic Thinking teaches you to read this language.',
   },
   {
-    iconPath: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z',
+    icon: IconPresence,
     titleAr: 'الحضور',
     titleEn: 'Presence',
     descAr: 'الحضور هو الحالة الطبيعية — لا الاستثناء. المنهجية تُعيد الإنسان إلى حالة الحضور الكامل مع الذات والآخر.',
     descEn: 'Presence is the natural state — not the exception. The methodology restores the human to full presence with self and other.',
   },
   {
-    iconPath: 'M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z',
+    icon: IconPartnership,
     titleAr: 'الشراكة بين الجسد والعقل',
     titleEn: 'Body-Mind Partnership',
     descAr: 'ليس الجسد تابعًا للعقل، ولا العقل سيّدًا على الجسد. التفكير الحسّي يُعيد بناء هذه الشراكة.',
     descEn: 'The body is not subordinate to the mind, nor is the mind master of the body. Somatic Thinking rebuilds this partnership.',
   },
   {
-    iconPath: 'M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z',
+    icon: IconExperience,
     titleAr: 'التجربة لا النظرية',
     titleEn: 'Experience, Not Theory',
     descAr: 'التفكير الحسّي يُعاش ولا يُشرَح. كل تمرين، كل جلسة، كل تعلّم يبدأ من تجربة حقيقية في الجسد.',
@@ -139,20 +218,14 @@ export default async function MethodologyPage({ params }: Props) {
           </h2>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-4xl mx-auto">
-          {pillars.map((pillar, i) => (
-            <Card key={i} accent className="p-6">
-              <div className="h-12 w-12 rounded-xl bg-[var(--color-primary-50)] flex items-center justify-center mb-4">
-                <svg className="w-6 h-6 text-[var(--color-primary)]" viewBox="0 0 24 24" fill="currentColor">
-                  <path d={pillar.iconPath} />
-                </svg>
-              </div>
-              <h3 className="text-lg font-bold text-[var(--text-primary)] mb-2">
-                {isAr ? pillar.titleAr : pillar.titleEn}
-              </h3>
-              <p className="text-sm text-[var(--color-neutral-600)] leading-relaxed">
-                {isAr ? pillar.descAr : pillar.descEn}
-              </p>
-            </Card>
+          {pillarsData.map((pillar, i) => (
+            <FlipCard
+              key={i}
+              icon={pillar.icon}
+              title={isAr ? pillar.titleAr : pillar.titleEn}
+              description={isAr ? pillar.descAr : pillar.descEn}
+              locale={locale}
+            />
           ))}
         </div>
       </Section>

@@ -9,7 +9,8 @@ import { aboutFaqs } from '@/data/faqs';
 import { GeometricPattern } from '@kunacademy/ui/patterns';
 import type { Metadata } from 'next';
 import { TimelineCardContent } from './timeline-card';
-import { ArrowUpRight } from 'lucide-react';
+import { ArrowUpRight, Eye } from 'lucide-react';
+import { HoverCard } from '@/components/hover-card';
 
 interface Props { params: Promise<{ locale: string }> }
 
@@ -218,38 +219,26 @@ export default async function AboutPage({ params }: Props) {
           </Heading>
         </div>
 
-        {/* Mission & Vision */}
-        <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto mb-16">
-          <Card accent className="p-8">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="h-10 w-10 rounded-full bg-[var(--color-primary)] flex items-center justify-center shrink-0">
-                <span className="text-white text-lg">◎</span>
-              </div>
-              <Heading level={3} className="!mb-0">
-                {isAr ? 'رُؤْيتُنا' : 'Our Vision'}
-              </Heading>
-            </div>
-            <p className="text-[var(--color-neutral-700)] leading-relaxed" style={{ fontFamily: isAr ? 'var(--font-arabic-body)' : 'inherit' }}>
-              {isAr
-                ? 'أن نُعيد إحياء التربية كفنٍّ لتنمية الإنسان من الداخل، وبناء مجتمعات تتجذّر في الحضور، وتنمو من أصالتها نحو وعيٍ متجدد وأثر حيّ.'
-                : 'To revive education as an art of developing the human from within, and building communities rooted in presence, growing from their authenticity towards renewed awareness and living impact.'}
-            </p>
-          </Card>
-          <Card accent className="p-8">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="h-10 w-10 rounded-full bg-[var(--color-accent)] flex items-center justify-center shrink-0">
-                <ArrowUpRight className="w-5 h-5 text-white" aria-hidden="true" />
-              </div>
-              <Heading level={3} className="!mb-0">
-                {isAr ? 'مُهِمَتُنا' : 'Our Mission'}
-              </Heading>
-            </div>
-            <p className="text-[var(--color-neutral-700)] leading-relaxed" style={{ fontFamily: isAr ? 'var(--font-arabic-body)' : 'inherit' }}>
-              {isAr
-                ? 'نُرافق الأفراد والمؤسسات في تجارب تربوية حيّة تُعيدهم إلى ذواتهم، وتُفعّل حضورهم، وتفتح أمامهم مسارات نموّ أصيلة، عبر منهجيات تربط الحكمة بالتطبيق.'
-                : 'We accompany individuals and institutions in living educational experiences that return them to themselves, activate their presence, and open up authentic growth paths, through methodologies that link wisdom with application.'}
-            </p>
-          </Card>
+        {/* Mission & Vision — Box Layout 2 hover cards */}
+        <div className="grid md:grid-cols-2 gap-10 max-w-5xl mx-auto mb-16">
+          <HoverCard
+            locale={locale}
+            delay={0}
+            icon={<Eye className="w-6 h-6" aria-hidden="true" />}
+            title={isAr ? 'رُؤْيتُنا' : 'Our Vision'}
+            description={isAr
+              ? 'أن نُعيد إحياء التربية كفنٍّ لتنمية الإنسان من الداخل، وبناء مجتمعات تتجذّر في الحضور، وتنمو من أصالتها نحو وعيٍ متجدد وأثر حيّ.'
+              : 'To revive education as an art of developing the human from within, and building communities rooted in presence, growing from their authenticity towards renewed awareness and living impact.'}
+          />
+          <HoverCard
+            locale={locale}
+            delay={0.15}
+            icon={<ArrowUpRight className="w-6 h-6" aria-hidden="true" />}
+            title={isAr ? 'مُهِمَتُنا' : 'Our Mission'}
+            description={isAr
+              ? 'نُرافق الأفراد والمؤسسات في تجارب تربوية حيّة تُعيدهم إلى ذواتهم، وتُفعّل حضورهم، وتفتح أمامهم مسارات نموّ أصيلة، عبر منهجيات تربط الحكمة بالتطبيق.'
+              : 'We accompany individuals and institutions in living educational experiences that return them to themselves, activate their presence, and open up authentic growth paths, through methodologies that link wisdom with application.'}
+          />
         </div>
 
         {/* Values */}
