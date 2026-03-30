@@ -63,9 +63,9 @@ const questions: Question[] = [
 ];
 
 const recommendations: Record<string, { ar: { title: string; desc: string }; en: { title: string; desc: string }; href: string }> = {
-  certification: { ar: { title: 'شهادة STCE المعتمدة', desc: 'برنامج شامل للحصول على شهادة كوتشينج معتمدة من ICF مع منهجية التفكير الحسّي®' }, en: { title: 'STCE Certification', desc: 'Comprehensive ICF-accredited coaching certification with Somatic Thinking® methodology' }, href: '/programs/certifications/stce' },
-  course: { ar: { title: 'دورات قصيرة', desc: 'طوّر مهارات محدّدة في الكوتشينج والتفكير الحسّي' }, en: { title: 'Short Courses', desc: 'Develop specific skills in coaching and Somatic Thinking' }, href: '/programs/courses' },
-  retreat: { ar: { title: 'خلوة تحوّلية', desc: 'تجربة غمر كاملة مع التفكير الحسّي في بيئة هادئة' }, en: { title: 'Transformative Retreat', desc: 'Full immersion experience with Somatic Thinking in a serene setting' }, href: '/programs/retreats' },
+  certification: { ar: { title: 'شهادة STCE المعتمدة', desc: 'برنامج شامل للحصول على شهادة كوتشينج معتمدة من ICF مع منهجية التفكير الحسّي®' }, en: { title: 'STCE Certification', desc: 'Comprehensive ICF-accredited coaching certification with Somatic Thinking® methodology' }, href: '/academy/certifications/stce' },
+  course: { ar: { title: 'دورات قصيرة', desc: 'طوّر مهارات محدّدة في الكوتشينج والتفكير الحسّي' }, en: { title: 'Short Courses', desc: 'Develop specific skills in coaching and Somatic Thinking' }, href: '/academy/courses' },
+  retreat: { ar: { title: 'خلوة تحوّلية', desc: 'تجربة غمر كاملة مع التفكير الحسّي في بيئة هادئة' }, en: { title: 'Transformative Retreat', desc: 'Full immersion experience with Somatic Thinking in a serene setting' }, href: '/programs' },
   corporate: { ar: { title: 'برامج مؤسسية', desc: 'حلول كوتشينج مصمّمة لمؤسستك وفريقك' }, en: { title: 'Corporate Programs', desc: 'Coaching solutions designed for your organization and team' }, href: '/programs/corporate' },
   family: { ar: { title: 'برامج الأسرة والشباب', desc: 'أدوات كوتشينج للوالدين والشباب' }, en: { title: 'Family & Youth Programs', desc: 'Coaching tools for parents and young adults' }, href: '/programs/family' },
   coaching: { ar: { title: 'جلسة كوتشينج فردية', desc: 'احجز جلسة مع كوتش متخصّص من أكاديمية كُن' }, en: { title: 'Individual Coaching Session', desc: 'Book a session with a specialized Kun Academy coach' }, href: '/book' },

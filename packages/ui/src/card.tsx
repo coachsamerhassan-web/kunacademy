@@ -100,7 +100,7 @@ export function ProgramCard({
             </span>
           )}
           <a
-            href={`/${locale}/programs/courses/${slug}`}
+            href={`/${locale}/academy/courses/${slug}`}
             className="inline-flex items-center justify-center rounded-xl bg-[var(--color-accent)] px-4 py-2 text-sm font-medium text-white min-h-[44px] hover:bg-[var(--color-accent-500)] transition-all duration-300 hover:scale-[1.02]"
           >
             {ctaLabel}

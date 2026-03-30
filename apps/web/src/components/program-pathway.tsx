@@ -7,15 +7,15 @@ interface ProgramPathwayProps {
 const steps = {
   ar: [
     { label: 'مجاني', desc: 'اكتشف المنهجية', icon: '🌱', href: '/programs/free/' },
-    { label: 'دورات', desc: 'تعلّم المهارات', icon: '📚', href: '/programs/courses/' },
-    { label: 'شهادات', desc: 'اعتماد دولي ICF', icon: '🏆', href: '/programs/certifications/' },
-    { label: 'المنصة', desc: 'مارس الكوتشينج', icon: '🎯', href: '/programs/coaching/' },
+    { label: 'دورات', desc: 'تعلّم المهارات', icon: '📚', href: '/academy/courses/' },
+    { label: 'شهادات', desc: 'اعتماد دولي ICF', icon: '🏆', href: '/academy/certifications/' },
+    { label: 'المنصة', desc: 'مارس الكوتشينج', icon: '🎯', href: '/coaching/book/' },
   ],
   en: [
     { label: 'Free', desc: 'Discover the methodology', icon: '🌱', href: '/programs/free/' },
-    { label: 'Courses', desc: 'Learn the skills', icon: '📚', href: '/programs/courses/' },
-    { label: 'Certifications', desc: 'ICF accredited', icon: '🏆', href: '/programs/certifications/' },
-    { label: 'Platform', desc: 'Practice coaching', icon: '🎯', href: '/programs/coaching/' },
+    { label: 'Courses', desc: 'Learn the skills', icon: '📚', href: '/academy/courses/' },
+    { label: 'Certifications', desc: 'ICF accredited', icon: '🏆', href: '/academy/certifications/' },
+    { label: 'Platform', desc: 'Practice coaching', icon: '🎯', href: '/coaching/book/' },
   ],
 };
 
