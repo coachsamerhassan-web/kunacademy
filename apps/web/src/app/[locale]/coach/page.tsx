@@ -16,13 +16,17 @@ export default function CoachDashboardPage({ params }: { params: Promise<{ local
   useEffect(() => {
     if (!user) return;
     const supabase = createBrowserClient();
-    Promise.all([
-      supabase.from('profiles').select('full_name_ar, full_name_en').eq('id', user.id).single(),
-      supabase.from('bookings').select('id', { count: 'exact', head: true }).eq('provider_id', user.id),
-    ]).then(([profileRes, bookingsRes]) => {
+    (async () => {
+      const [profileRes, providerRes] = await Promise.all([
+        supabase.from('profiles').select('full_name_ar, full_name_en').eq('id', user.id).single(),
+        supabase.from('providers').select('id').eq('profile_id', user.id).single(),
+      ]);
       if (profileRes.data) setProfile(profileRes.data);
-      setStats({ bookings: bookingsRes.count ?? 0, totalEarnings: 0 });
-    });
+      if (providerRes.data) {
+        const { count } = await supabase.from('bookings').select('id', { count: 'exact', head: true }).eq('provider_id', providerRes.data.id);
+        setStats({ bookings: count ?? 0, totalEarnings: 0 });
+      }
+    })();
   }, [user]);
 
   const name = profile ? (isAr ? profile.full_name_ar : profile.full_name_en) : '';
