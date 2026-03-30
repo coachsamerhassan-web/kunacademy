@@ -12,7 +12,7 @@ interface Booking {
   end_time: string;
   status: string;
   notes?: string;
-  provider?: { full_name_ar: string | null; full_name_en: string | null };
+  coach?: { profile: { full_name_ar: string | null; full_name_en: string | null } | null } | null;
   service?: { name_ar: string; name_en: string; duration_minutes: number };
 }
 
@@ -39,7 +39,7 @@ export default function BookingsPage({ params }: { params: Promise<{ locale: str
       .from('bookings')
       .select(`
         id, start_time, end_time, status, notes,
-        provider:profiles!bookings_provider_id_fkey(full_name_ar, full_name_en),
+        coach:providers(profile:profiles(full_name_ar, full_name_en)),
         service:services(name_ar, name_en, duration_minutes)
       `)
       .eq('customer_id', user.id)
@@ -81,7 +81,7 @@ export default function BookingsPage({ params }: { params: Promise<{ locale: str
         <div className="space-y-4">
           {bookings.map((b) => {
             const s = statusLabels[b.status] ?? statusLabels.pending;
-            const coachName = isAr ? b.provider?.full_name_ar : b.provider?.full_name_en;
+            const coachName = isAr ? b.coach?.profile?.full_name_ar : b.coach?.profile?.full_name_en;
             const serviceName = isAr ? b.service?.name_ar : b.service?.name_en;
             const isPast = new Date(b.start_time) < new Date();
 

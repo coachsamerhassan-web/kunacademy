@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
     .select(`
       *,
       customer:profiles!bookings_customer_id_fkey(full_name_ar, full_name_en, email, phone),
-      provider:profiles!bookings_provider_id_fkey(full_name_ar, full_name_en),
+      coach:providers(profile:profiles(full_name_ar, full_name_en)),
       service:services(name_en, name_ar)
     `)
     .eq('id', bookingId)
@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
 
   const locale = (user.user_metadata?.locale as string) || 'ar';
   const customer = booking.customer as any;
-  const provider = booking.provider as any;
+  const coach = booking.coach as any;
   const service = booking.service as any;
 
   const results = await notify({
@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
       service: locale === 'ar' ? (service?.name_ar || '') : (service?.name_en || ''),
       date: booking.start_time ? booking.start_time.slice(0, 10) : '',
       time: booking.start_time?.slice(0, 5) || '',
-      coach: (locale === 'ar' ? provider?.full_name_ar : provider?.full_name_en) || '',
+      coach: (locale === 'ar' ? coach?.profile?.full_name_ar : coach?.profile?.full_name_en) || '',
       startTime: booking.start_time || '',
       endTime: booking.end_time || '',
     },

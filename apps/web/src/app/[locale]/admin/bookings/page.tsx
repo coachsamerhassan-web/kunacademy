@@ -18,7 +18,7 @@ interface Booking {
   status: string;
   created_at: string;
   customer?: { full_name_ar: string | null; full_name_en: string | null; email: string };
-  provider?: { full_name_ar: string | null; full_name_en: string | null };
+  coach?: { profile: { full_name_ar: string | null; full_name_en: string | null } | null } | null;
   service?: { name_en: string; name_ar: string };
 }
 
@@ -56,7 +56,7 @@ export default function AdminBookingsPage() {
       .select(`
         *,
         customer:profiles!bookings_customer_id_fkey(full_name_ar, full_name_en, email),
-        provider:profiles!bookings_provider_id_fkey(full_name_ar, full_name_en),
+        coach:providers(profile:profiles(full_name_ar, full_name_en)),
         service:services(name_en, name_ar)
       `)
       .order('start_time', { ascending: false })
@@ -147,7 +147,7 @@ export default function AdminBookingsPage() {
                 <tr><td colSpan={7} className="px-4 py-8 text-center text-[var(--color-neutral-400)]">{isAr ? 'لا توجد حجوزات' : 'No bookings found'}</td></tr>
               ) : filtered.map(booking => {
                 const customerName = (isAr ? booking.customer?.full_name_ar : booking.customer?.full_name_en) || booking.customer?.email || booking.customer_id?.slice(0, 8);
-                const coachName = (isAr ? booking.provider?.full_name_ar : booking.provider?.full_name_en) || booking.provider_id?.slice(0, 8);
+                const coachName = (isAr ? booking.coach?.profile?.full_name_ar : booking.coach?.profile?.full_name_en) || booking.provider_id?.slice(0, 8);
                 const serviceName = isAr ? booking.service?.name_ar : booking.service?.name_en;
                 const startDate = booking.start_time ? new Date(booking.start_time) : null;
                 const dateStr = startDate
