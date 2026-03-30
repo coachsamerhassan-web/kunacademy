@@ -9,21 +9,26 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 /** True when Supabase env vars are configured */
 export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
 
-/** Browser client — uses anon key, respects RLS.
+let _browserClient: TypedSupabaseClient | null = null;
+
+/** Browser client — uses anon key, respects RLS. Singleton to avoid multiple GoTrueClient warnings.
  *  Returns null (typed as client) when env vars missing — build-safe for static gen. */
 export function createBrowserClient(): TypedSupabaseClient {
   if (!supabaseUrl || !supabaseAnonKey) {
     console.warn('[db] Supabase not configured — using mock client');
     return null as unknown as TypedSupabaseClient;
   }
-  return createClient<Database>(supabaseUrl, supabaseAnonKey, {
-    auth: {
-      flowType: 'pkce',
-      autoRefreshToken: true,
-      persistSession: true,
-      detectSessionInUrl: true,
-    },
-  });
+  if (!_browserClient) {
+    _browserClient = createClient<Database>(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        flowType: 'pkce',
+        autoRefreshToken: true,
+        persistSession: true,
+        detectSessionInUrl: true,
+      },
+    });
+  }
+  return _browserClient;
 }
 
 /** Server component client — uses anon key + cookie-based session */
