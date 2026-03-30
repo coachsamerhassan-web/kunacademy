@@ -27,12 +27,13 @@ export default function DashboardPage({ params }: { params: Promise<{ locale: st
       supabase.from('profiles').select('full_name_ar, full_name_en').eq('id', user.id).single(),
       supabase.from('enrollments').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
       supabase.from('bookings').select('id', { count: 'exact', head: true }).eq('customer_id', user.id),
-    ]).then(([profileRes, enrollRes, bookingRes]) => {
+      supabase.from('certificates').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
+    ]).then(([profileRes, enrollRes, bookingRes, certRes]) => {
       if (profileRes.data) setProfile(profileRes.data);
       setStats({
         enrollments: enrollRes.count ?? 0,
         bookings: bookingRes.count ?? 0,
-        certificates: 0,
+        certificates: certRes.count ?? 0,
       });
     });
   }, [user]);
