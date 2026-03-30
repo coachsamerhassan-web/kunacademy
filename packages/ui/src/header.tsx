@@ -25,7 +25,7 @@ const primaryNav: NavItem[] = [
       { labelAr: 'الدورات والورش', labelEn: 'Courses & Workshops', href: '/academy/courses/', descAr: 'تعلّم المهارات', descEn: 'Learn the skills' },
       { labelAr: 'الخلوات', labelEn: 'Retreats', href: '/academy/certifications/', descAr: 'تجارب تحويلية', descEn: 'Transformative experiences' },
       { labelAr: 'حلول المؤسسات', labelEn: 'Corporate', href: '/programs/corporate/', descAr: 'للقادة والفرق', descEn: 'For leaders & teams' },
-      { labelAr: 'الأسرة والشباب', labelEn: 'Family & Youth', href: '/academy/certifications/', descAr: 'SEEDS وويصال', descEn: 'SEEDS & Wisal' },
+      { labelAr: 'الأسرة والشباب', labelEn: 'Family & Youth', href: '/programs/family/', descAr: 'SEEDS وويصال', descEn: 'SEEDS & Wisal' },
       { labelAr: 'منصة الكوتشينج', labelEn: 'Coaching Platform', href: '/programs/coaching/', descAr: 'احجز جلسة', descEn: 'Book a session' },
     ],
   },

@@ -150,7 +150,7 @@ export function BookingFlow({ locale }: { locale: string }) {
         <p className="mt-2 text-green-700 text-sm">
           {selectedSlot?.date} — {selectedSlot?.start_time}
         </p>
-        <a href={`/${locale}/portal/bookings`} className="inline-block mt-4 text-[var(--color-primary)] font-medium hover:underline">
+        <a href={`/${locale}/dashboard/bookings`} className="inline-block mt-4 text-[var(--color-primary)] font-medium hover:underline">
           {isAr ? 'عرض حجوزاتي' : 'View my bookings'}
         </a>
       </div>

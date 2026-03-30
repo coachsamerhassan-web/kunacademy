@@ -33,7 +33,7 @@ export function SuccessContent({ locale }: { locale: string }) {
         </p>
       )}
       <a
-        href={`/${locale}/portal`}
+        href={`/${locale}/dashboard`}
         className="inline-block rounded-lg bg-[var(--color-primary)] text-white px-6 py-3 font-medium hover:opacity-90 transition min-h-[44px]"
       >
         {isAr ? 'الذهاب إلى لوحة التحكم' : 'Go to Dashboard'}

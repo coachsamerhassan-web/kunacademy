@@ -17,6 +17,7 @@ const footerLinks = {
       { labelAr: 'الشهادات المعتمدة', labelEn: 'Certifications', href: '/programs/certifications/' },
       { labelAr: 'الدورات والورش', labelEn: 'Courses & Workshops', href: '/programs/courses/' },
       { labelAr: 'حلول المؤسسات', labelEn: 'Corporate', href: '/programs/corporate/' },
+      { labelAr: 'الأسرة والشباب', labelEn: 'Family & Youth', href: '/programs/family/' },
       { labelAr: 'منصة الكوتشينج', labelEn: 'Coaching Platform', href: '/programs/coaching/' },
     ],
   },

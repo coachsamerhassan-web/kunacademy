@@ -55,7 +55,7 @@ export function BookingWizard({ locale }: { locale: string }) {
         <CheckCircle className="w-10 h-10 mx-auto mb-4 text-green-600" aria-hidden="true" />
         <h2 className="text-xl font-bold">{isAr ? 'تم الحجز بنجاح!' : 'Booking Confirmed!'}</h2>
         <p className="mt-2 text-[var(--color-neutral-600)]">{isAr ? 'ستصلك رسالة تأكيد عبر البريد الإلكتروني' : 'You\'ll receive a confirmation email shortly'}</p>
-        <Button variant="primary" className="mt-6" onClick={() => window.location.href = `/${locale}/portal/bookings`}>
+        <Button variant="primary" className="mt-6" onClick={() => window.location.href = `/${locale}/dashboard/bookings`}>
           {isAr ? 'عرض حجوزاتي' : 'View My Bookings'}
         </Button>
       </div>
