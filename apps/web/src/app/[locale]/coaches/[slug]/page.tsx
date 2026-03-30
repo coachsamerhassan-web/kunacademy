@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { setRequestLocale } from 'next-intl/server';
 import { cms, type TeamMember } from '@kunacademy/cms';
@@ -61,11 +62,13 @@ export default async function CoachProfilePage({ params }: Props) {
             <div className="shrink-0">
               <div className="h-40 w-40 md:h-52 md:w-52 rounded-full overflow-hidden ring-4 ring-white/20 shadow-[0_8px_40px_rgba(0,0,0,0.3)]">
                 {coach.photo_url ? (
-                  <img
+                  <Image
                     src={coach.photo_url}
                     alt={name}
-                    className="h-full w-full object-cover"
-                    loading="eager"
+                    fill
+                    className="object-cover"
+                    priority
+                    sizes="(max-width: 768px) 160px, 208px"
                   />
                 ) : (
                   <div className="h-full w-full bg-[var(--color-primary-300)] flex items-center justify-center">

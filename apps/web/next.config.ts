@@ -37,7 +37,6 @@ const nextConfig: NextConfig = {
       // Programs without dedicated pages → academy hub
       { source: '/:locale/programs/retreats', destination: '/:locale/academy/certifications', permanent: false },
       { source: '/:locale/programs/retreats/:path*', destination: '/:locale/academy/certifications', permanent: false },
-      { source: '/:locale/programs', destination: '/:locale/academy/certifications', permanent: false },
       // Legal consolidation
       { source: '/:locale/privacy', destination: '/:locale/legal/privacy', permanent: true },
       { source: '/:locale/terms', destination: '/:locale/legal/terms', permanent: true },
