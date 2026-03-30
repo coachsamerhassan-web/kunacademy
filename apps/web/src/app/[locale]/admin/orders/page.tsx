@@ -19,7 +19,7 @@ interface Payment {
   item_type: string | null;
   item_id: string | null;
   created_at: string;
-  customer?: { full_name_ar: string | null; full_name_en: string | null; email: string };
+  metadata?: { user_email?: string; user_id?: string; item_type?: string; item_name?: string; sender_name?: string };
 }
 
 const statusColors: Record<string, string> = {
@@ -43,7 +43,7 @@ export default function AdminOrdersPage() {
     if (!user || profile?.role !== 'admin') { router.push('/' + locale + '/auth/login'); return; }
     const s = createBrowserClient();
     s.from('payments')
-      .select('*, customer:profiles!payments_user_id_fkey(full_name_ar, full_name_en, email)')
+      .select('*')
       .order('created_at', { ascending: false })
       .limit(200)
       .then(({ data }: any) => {
@@ -118,7 +118,8 @@ export default function AdminOrdersPage() {
               {filtered.length === 0 ? (
                 <tr><td colSpan={6} className="px-4 py-8 text-center text-[var(--color-neutral-400)]">{isAr ? 'لا توجد مدفوعات' : 'No payments found'}</td></tr>
               ) : filtered.map(payment => {
-                const customerName = (isAr ? payment.customer?.full_name_ar : payment.customer?.full_name_en) || payment.customer?.email || payment.user_id?.slice(0, 8);
+                const meta = (payment.metadata || {}) as Record<string, string>;
+                const customerName = meta.sender_name || meta.user_email || meta.user_id?.slice(0, 8) || '-';
                 const statusColor = statusColors[payment.status] || 'bg-gray-100 text-gray-600';
                 const dateStr = payment.created_at
                   ? new Date(payment.created_at).toLocaleDateString(isAr ? 'ar-SA' : 'en-US', { month: 'short', day: 'numeric', year: 'numeric' })
@@ -128,8 +129,8 @@ export default function AdminOrdersPage() {
                   <tr key={payment.id} className="border-b border-[var(--color-neutral-100)] hover:bg-[var(--color-neutral-50)]">
                     <td className="px-4 py-3">
                       <div className="font-medium text-[var(--text-primary)]">{customerName}</div>
-                      {payment.customer?.email && (
-                        <div className="text-xs text-[var(--color-neutral-400)]">{payment.customer.email}</div>
+                      {meta.user_email && (
+                        <div className="text-xs text-[var(--color-neutral-400)]">{meta.user_email}</div>
                       )}
                     </td>
                     <td className="px-4 py-3 font-semibold text-[var(--text-primary)]">
@@ -141,7 +142,7 @@ export default function AdminOrdersPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-[var(--color-neutral-600)] text-xs">
-                      {payment.item_type || '-'}
+                      {meta.item_type || meta.item_name || '-'}
                     </td>
                     <td className="px-4 py-3">
                       <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${statusColor}`}>
