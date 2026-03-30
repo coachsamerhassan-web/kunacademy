@@ -1,0 +1,23 @@
+{
+  "name": "Kun Coaching Academy",
+  "short_name": "Kun Academy",
+  "description": "Somatic Thinking® & ICF-Accredited Coaching",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FFF5E9",
+  "theme_color": "#474099",
+  "dir": "auto",
+  "lang": "ar",
+  "icons": [
+    {
+      "src": "/favicon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/favicon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

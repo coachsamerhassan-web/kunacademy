@@ -96,7 +96,7 @@ export default async function middleware(request: NextRequest) {
       .single();
 
     if (profile?.role !== 'admin') {
-      return NextResponse.redirect(new URL(`/${locale}/portal`, request.url));
+      return NextResponse.redirect(new URL(`/${locale}/dashboard`, request.url));
     }
   }
 

@@ -54,6 +54,8 @@ export default async function LocaleLayout({
   return (
     <html lang={locale} dir={dir} className={fontVariables}>
       <head>
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="theme-color" content="#474099" />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd(locale)) }}
