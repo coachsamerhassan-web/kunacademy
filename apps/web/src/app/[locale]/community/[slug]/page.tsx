@@ -60,7 +60,7 @@ export default async function CommunityProfilePage({ params }: { params: Promise
               }`}>
                 {profile.role === 'provider' ? (profile.instructor?.coach_level || (isAr ? 'كوتش' : 'Coach')) : (isAr ? 'متدرب' : 'Student')}
               </span>
-              {profile.country && <span className="text-sm text-[var(--color-neutral-500)] block mt-1">{profile.country}</span>}
+              {profile.country && <span className="text-sm text-[var(--color-neutral-500)] block mt-1">{new Intl.DisplayNames([isAr ? 'ar' : 'en'], { type: 'region' }).of(profile.country) ?? profile.country}</span>}
             </div>
           </div>
 

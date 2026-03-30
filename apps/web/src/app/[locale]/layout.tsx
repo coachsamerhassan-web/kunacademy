@@ -3,8 +3,8 @@ import { NextIntlClientProvider } from 'next-intl';
 import { getMessages, setRequestLocale } from 'next-intl/server';
 import { routing } from '@/i18n/routing';
 import { notFound } from 'next/navigation';
-import { Header } from '@kunacademy/ui/header';
 import { Footer } from '@kunacademy/ui/footer';
+import { AuthHeader } from '@/components/auth-header';
 import { ScrollObserver } from '@kunacademy/ui/scroll-observer';
 import { fontVariables } from '@/lib/fonts';
 import { NextImageProvider } from '@/components/image-provider';
@@ -88,7 +88,7 @@ export default async function LocaleLayout({
             >
               {locale === 'ar' ? 'تخطي إلى المحتوى الرئيسي' : 'Skip to main content'}
             </a>
-            <Header locale={locale} />
+            <AuthHeader locale={locale} />
             <main id="main-content" className="flex-1">
               {children}
             </main>

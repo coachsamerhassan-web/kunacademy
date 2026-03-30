@@ -44,7 +44,7 @@ export default function CoachProfilePage({ params }: { params: Promise<{ locale:
         <div className="space-y-4">
           {[
             { l: isAr ? 'الهاتف' : 'Phone', v: profile?.phone },
-            { l: isAr ? 'الدولة' : 'Country', v: profile?.country },
+            { l: isAr ? 'الدولة' : 'Country', v: profile?.country ? (new Intl.DisplayNames([isAr ? 'ar' : 'en'], { type: 'region' }).of(profile.country) ?? profile.country) : undefined },
           ].map((f) => (
             <div key={f.l}>
               <label className="text-xs font-medium text-[var(--color-neutral-500)] uppercase tracking-wider">{f.l}</label>

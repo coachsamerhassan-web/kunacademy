@@ -4,7 +4,7 @@ import { useAuth } from '@kunacademy/auth';
 import { createBrowserClient } from '@kunacademy/db';
 import { Section } from '@kunacademy/ui/section';
 import { Card } from '@kunacademy/ui/card';
-import { useState, useEffect, use } from 'react';
+import { useState, useEffect, use, useCallback } from 'react';
 
 export default function CoachReferralsPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = use(params);
@@ -13,6 +13,15 @@ export default function CoachReferralsPage({ params }: { params: Promise<{ local
   const [referralCode, setReferralCode] = useState<string | null>(null);
   const [referralCount, setReferralCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [copied, setCopied] = useState(false);
+
+  const copyCode = useCallback(() => {
+    if (!referralCode) return;
+    navigator.clipboard.writeText(referralCode).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }, [referralCode]);
 
   useEffect(() => {
     if (!user) return;
@@ -42,6 +51,14 @@ export default function CoachReferralsPage({ params }: { params: Promise<{ local
             <Card accent className="p-6 text-center">
               <p className="text-sm text-[var(--color-neutral-500)] mb-2">{isAr ? 'كود الإحالة' : 'Referral Code'}</p>
               <p className="text-xl font-mono font-bold text-[var(--text-primary)]">{referralCode || (isAr ? 'لا يوجد' : 'None')}</p>
+              {referralCode && (
+                <button
+                  onClick={copyCode}
+                  className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[var(--color-primary)] text-white text-sm font-medium hover:bg-[var(--color-primary-600)] transition-colors min-h-[44px]"
+                >
+                  {copied ? (isAr ? '✓ تم النسخ' : '✓ Copied!') : (isAr ? 'نسخ الكود' : 'Copy Code')}
+                </button>
+              )}
             </Card>
           </div>
           <p className="text-sm text-[var(--color-neutral-500)] text-center">

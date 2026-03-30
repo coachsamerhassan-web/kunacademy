@@ -17,7 +17,7 @@ interface PayoutRequest {
 }
 
 function formatAmount(amount: number, currency: string) {
-  return `${(amount / 100).toLocaleString()} ${currency}`;
+  return `${(amount / 100).toLocaleString('en-US', { minimumFractionDigits: 2 })} ${currency}`;
 }
 
 function statusBadge(status: string, isAr: boolean) {

@@ -113,26 +113,45 @@ export default function Page({ params }: { params: Promise<{ locale: string }> }
     );
   }
 
+  // Calculate "maturing" amount — earnings with status='available' but not yet past hold period
+  const maturingAmount = earnings
+    .filter((e) => e.status === 'available' && e.available_at && new Date(e.available_at) > new Date())
+    .reduce((s, e) => s + e.net_amount, 0);
+
+  // Find earliest maturity date for display
+  const nextMaturityDate = earnings
+    .filter((e) => e.status === 'available' && e.available_at && new Date(e.available_at) > new Date())
+    .map((e) => new Date(e.available_at!))
+    .sort((a, b) => a.getTime() - b.getTime())[0];
+
   const summaryCards = [
     {
       label: isAr ? 'إجمالي الأرباح' : 'Total Earned',
       value: formatAmount(totalEarned, 'AED'),
       color: 'var(--color-primary, #474099)',
+      note: '',
     },
     {
       label: isAr ? 'الرصيد المتاح' : 'Available',
       value: formatAmount(availableBalance, 'AED'),
       color: '#22C55E',
+      note: maturingAmount > 0 && nextMaturityDate
+        ? (isAr
+          ? `${formatAmount(maturingAmount, 'AED')} متاح ${formatDate(nextMaturityDate.toISOString(), isAr)}`
+          : `${formatAmount(maturingAmount, 'AED')} available ${formatDate(nextMaturityDate.toISOString(), isAr)}`)
+        : '',
     },
     {
       label: isAr ? 'قيد الانتظار' : 'Pending',
       value: formatAmount(pendingAmount, 'AED'),
       color: '#EAB308',
+      note: '',
     },
     {
       label: isAr ? 'تم الصرف' : 'Paid Out',
       value: formatAmount(paidOut, 'AED'),
       color: '#3B82F6',
+      note: '',
     },
   ];
 
@@ -165,6 +184,9 @@ export default function Page({ params }: { params: Promise<{ locale: string }> }
                 {card.value}
               </p>
               <p className="text-sm text-[var(--color-neutral-500)] mt-1">{card.label}</p>
+              {card.note && (
+                <p className="text-xs text-[var(--color-neutral-400)] mt-1">{card.note}</p>
+              )}
             </div>
           ))}
         </div>

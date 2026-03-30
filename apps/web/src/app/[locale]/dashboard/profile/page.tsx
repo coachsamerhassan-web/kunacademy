@@ -53,7 +53,7 @@ export default function ProfilePage({ params }: { params: Promise<{ locale: stri
     { labelAr: 'الاسم بالإنجليزية', labelEn: 'Name (English)', value: profile?.full_name_en },
     { labelAr: 'البريد الإلكتروني', labelEn: 'Email', value: profile?.email },
     { labelAr: 'الهاتف', labelEn: 'Phone', value: profile?.phone },
-    { labelAr: 'الدولة', labelEn: 'Country', value: profile?.country },
+    { labelAr: 'الدولة', labelEn: 'Country', value: profile?.country ? (new Intl.DisplayNames([isAr ? 'ar' : 'en'], { type: 'region' }).of(profile.country) ?? profile.country) : null },
   ];
 
   return (
