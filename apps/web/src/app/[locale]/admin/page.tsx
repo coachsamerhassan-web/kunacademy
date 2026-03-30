@@ -37,6 +37,8 @@ export default async function AdminDashboard({ params }: { params: Promise<{ loc
     { href: `/${locale}/admin/products`, labelAr: 'المنتجات', labelEn: 'Products', count: '-', icon: '📦' },
     { href: `/${locale}/admin/testimonials`, labelAr: 'التوصيات', labelEn: 'Testimonials', count: '-', icon: '⭐' },
     { href: `/${locale}/admin/referrals`, labelAr: 'الإحالات', labelEn: 'Referrals', count: '-', icon: '🔗' },
+    { href: `/${locale}/admin/payouts`, labelAr: 'المستحقات', labelEn: 'Payouts', count: '-', icon: '💰' },
+    { href: `/${locale}/admin/content`, labelAr: 'المحتوى', labelEn: 'Content CMS', count: '-', icon: '📄' },
     { href: `/${locale}/admin/community`, labelAr: 'المجتمع', labelEn: 'Community', count: '-', icon: '👥' },
   ];
 
