@@ -289,7 +289,7 @@ export default async function CourseDetailPage({ params }: Props) {
               {/* CTA */}
               <a
                 href={program.is_free
-                  ? `/${locale}/auth/login?redirect=/${locale}/dashboard/courses`
+                  ? `/${locale}/academy/courses/${slug}/enroll`
                   : `/${locale}/checkout?program=${program.slug}`}
                 className="w-full inline-flex items-center justify-center rounded-xl bg-[var(--color-primary)] px-6 py-3.5 text-sm font-semibold text-white min-h-[48px] hover:opacity-90 transition-opacity"
               >

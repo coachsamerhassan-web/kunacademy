@@ -20,15 +20,24 @@ export async function POST(request: NextRequest) {
   const user = await getUser(request);
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const { courseId } = await request.json();
-  if (!courseId) return NextResponse.json({ error: 'courseId required' }, { status: 400 });
+  const body = await request.json();
+  const { courseId, courseSlug } = body;
+  if (!courseId && !courseSlug) {
+    return NextResponse.json({ error: 'courseId or courseSlug required' }, { status: 400 });
+  }
 
   // Verify the course exists, is published, and is free
-  const { data: course, error: courseError } = await supabase
+  let query = supabase
     .from('courses')
-    .select('id, is_published, is_free, price_aed')
-    .eq('id', courseId)
-    .single();
+    .select('id, is_published, is_free, price_aed');
+
+  if (courseId) {
+    query = query.eq('id', courseId);
+  } else {
+    query = query.eq('slug', courseSlug);
+  }
+
+  const { data: course, error: courseError } = await query.single();
 
   if (courseError || !course) {
     return NextResponse.json({ error: 'Course not found' }, { status: 404 });
@@ -45,9 +54,9 @@ export async function POST(request: NextRequest) {
   // Check if already enrolled
   const { data: existing } = await supabase
     .from('enrollments')
-    .select('id, status')
+    .select('id, status, course_id')
     .eq('user_id', user.id)
-    .eq('course_id', courseId)
+    .eq('course_id', course.id)
     .single();
 
   if (existing) {
@@ -59,7 +68,7 @@ export async function POST(request: NextRequest) {
     .from('enrollments')
     .insert({
       user_id: user.id,
-      course_id: courseId,
+      course_id: course.id,
       status: 'enrolled',
       enrollment_type: 'recorded',
     })
