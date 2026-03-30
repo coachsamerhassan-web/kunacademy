@@ -14,7 +14,7 @@ interface ReferralCode {
   code: string;
   is_active: boolean;
   created_at: string;
-  owner?: { full_name: string; email: string };
+  owner?: { full_name_ar: string | null; full_name_en: string | null; email: string };
 }
 
 interface CreditTransaction {
@@ -26,7 +26,7 @@ interface CreditTransaction {
   balance_after: number;
   note: string | null;
   created_at: string;
-  user?: { full_name: string; email: string };
+  user?: { full_name_ar: string | null; full_name_en: string | null; email: string };
 }
 
 const typeColors: Record<string, string> = {
@@ -57,12 +57,12 @@ export default function AdminReferralsPage() {
     const [codesRes, txRes] = await Promise.all([
       supabase
         .from('referral_codes')
-        .select('*, owner:profiles!referral_codes_user_id_fkey(full_name, email)')
+        .select('*, owner:profiles!referral_codes_user_id_fkey(full_name_ar, full_name_en, email)')
         .order('created_at', { ascending: false })
         .limit(200),
       supabase
         .from('credit_transactions')
-        .select('*, user:profiles!credit_transactions_user_id_fkey(full_name, email)')
+        .select('*, user:profiles!credit_transactions_user_id_fkey(full_name_ar, full_name_en, email)')
         .order('created_at', { ascending: false })
         .limit(200),
     ]);
@@ -151,7 +151,7 @@ export default function AdminReferralsPage() {
                 ) : codes.map(code => (
                   <tr key={code.id} className="border-b border-[var(--color-neutral-100)] hover:bg-[var(--color-neutral-50)]">
                     <td className="px-4 py-3">
-                      <div className="font-medium text-[var(--text-primary)]">{code.owner?.full_name || code.user_id?.slice(0, 8)}</div>
+                      <div className="font-medium text-[var(--text-primary)]">{(isAr ? code.owner?.full_name_ar : code.owner?.full_name_en) || code.owner?.email || code.user_id?.slice(0, 8)}</div>
                       {code.owner?.email && <div className="text-xs text-[var(--color-neutral-400)]">{code.owner.email}</div>}
                     </td>
                     <td className="px-4 py-3 font-mono text-xs text-[var(--text-primary)]">{code.code}</td>
@@ -205,7 +205,7 @@ export default function AdminReferralsPage() {
                   return (
                     <tr key={tx.id} className="border-b border-[var(--color-neutral-100)] hover:bg-[var(--color-neutral-50)]">
                       <td className="px-4 py-3">
-                        <div className="font-medium text-[var(--text-primary)]">{tx.user?.full_name || tx.user_id?.slice(0, 8)}</div>
+                        <div className="font-medium text-[var(--text-primary)]">{(isAr ? tx.user?.full_name_ar : tx.user?.full_name_en) || tx.user?.email || tx.user_id?.slice(0, 8)}</div>
                         {tx.user?.email && <div className="text-xs text-[var(--color-neutral-400)]">{tx.user.email}</div>}
                       </td>
                       <td className="px-4 py-3 font-semibold">

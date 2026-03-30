@@ -19,7 +19,7 @@ interface Payment {
   item_type: string | null;
   item_id: string | null;
   created_at: string;
-  customer?: { full_name: string; email: string };
+  customer?: { full_name_ar: string | null; full_name_en: string | null; email: string };
 }
 
 const statusColors: Record<string, string> = {
@@ -43,7 +43,7 @@ export default function AdminOrdersPage() {
     if (!user || profile?.role !== 'admin') { router.push('/' + locale + '/auth/login'); return; }
     const s = createBrowserClient();
     s.from('payments')
-      .select('*, customer:profiles!payments_user_id_fkey(full_name, email)')
+      .select('*, customer:profiles!payments_user_id_fkey(full_name_ar, full_name_en, email)')
       .order('created_at', { ascending: false })
       .limit(200)
       .then(({ data }: any) => {
@@ -118,7 +118,7 @@ export default function AdminOrdersPage() {
               {filtered.length === 0 ? (
                 <tr><td colSpan={6} className="px-4 py-8 text-center text-[var(--color-neutral-400)]">{isAr ? 'لا توجد مدفوعات' : 'No payments found'}</td></tr>
               ) : filtered.map(payment => {
-                const customerName = payment.customer?.full_name || payment.user_id?.slice(0, 8);
+                const customerName = (isAr ? payment.customer?.full_name_ar : payment.customer?.full_name_en) || payment.customer?.email || payment.user_id?.slice(0, 8);
                 const statusColor = statusColors[payment.status] || 'bg-gray-100 text-gray-600';
                 const dateStr = payment.created_at
                   ? new Date(payment.created_at).toLocaleDateString(isAr ? 'ar-SA' : 'en-US', { month: 'short', day: 'numeric', year: 'numeric' })

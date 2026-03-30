@@ -18,7 +18,7 @@ interface PayoutRequest {
   notes: string | null;
   processed_at: string | null;
   created_at: string;
-  requester?: { full_name: string; email: string };
+  requester?: { full_name_ar: string | null; full_name_en: string | null; email: string };
 }
 
 const statusColors: Record<string, string> = {
@@ -50,7 +50,7 @@ export default function AdminPayoutsPage() {
   async function fetchPayouts() {
     const { data } = await supabase
       .from('payout_requests')
-      .select('*, requester:profiles!payout_requests_user_id_fkey(full_name, email)')
+      .select('*, requester:profiles!payout_requests_user_id_fkey(full_name_ar, full_name_en, email)')
       .order('created_at', { ascending: false })
       .limit(200);
     setPayouts((data as any) ?? []);
@@ -153,7 +153,7 @@ export default function AdminPayoutsPage() {
               {filtered.length === 0 ? (
                 <tr><td colSpan={6} className="px-4 py-8 text-center text-[var(--color-neutral-400)]">{isAr ? 'لا توجد طلبات' : 'No payout requests'}</td></tr>
               ) : filtered.map(payout => {
-                const name = payout.requester?.full_name || payout.user_id?.slice(0, 8);
+                const name = (isAr ? payout.requester?.full_name_ar : payout.requester?.full_name_en) || payout.requester?.email || payout.user_id?.slice(0, 8);
                 const statusColor = statusColors[payout.status] || 'bg-gray-100 text-gray-600';
                 const statusLabel = isAr ? statusLabels[payout.status]?.ar : statusLabels[payout.status]?.en;
                 const dateStr = payout.created_at
