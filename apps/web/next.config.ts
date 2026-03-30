@@ -34,6 +34,12 @@ const nextConfig: NextConfig = {
       // About subpages
       { source: '/:locale/about/founder', destination: '/:locale/about/samer', permanent: true },
       { source: '/:locale/about/coaches', destination: '/:locale/coaches', permanent: true },
+      // Programs without dedicated pages → academy hub
+      { source: '/:locale/programs/retreats', destination: '/:locale/academy/certifications', permanent: false },
+      { source: '/:locale/programs/retreats/:path*', destination: '/:locale/academy/certifications', permanent: false },
+      { source: '/:locale/programs/family', destination: '/:locale/academy/certifications', permanent: false },
+      { source: '/:locale/programs/family/:path*', destination: '/:locale/academy/certifications', permanent: false },
+      { source: '/:locale/programs', destination: '/:locale/academy/certifications', permanent: false },
       // Legal consolidation
       { source: '/:locale/privacy', destination: '/:locale/legal/privacy', permanent: true },
       { source: '/:locale/terms', destination: '/:locale/legal/terms', permanent: true },

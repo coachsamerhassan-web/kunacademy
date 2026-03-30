@@ -1,7 +1,13 @@
+import type { Metadata } from 'next';
 import { setRequestLocale } from 'next-intl/server';
 import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
 import { LoginForm } from './login-form';
+
+export const metadata: Metadata = {
+  title: 'Login | Kun Academy',
+  robots: { index: false, follow: false },
+};
 
 export default async function LoginPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;

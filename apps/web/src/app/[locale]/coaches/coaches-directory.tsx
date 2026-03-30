@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { useState, useMemo } from 'react';
 import type { TeamMember } from '@kunacademy/cms';
 import { Card } from '@kunacademy/ui/card';
@@ -132,7 +133,7 @@ export function CoachesDirectory({ coaches, locale }: Props) {
                     {/* Avatar */}
                     <div className="shrink-0 h-16 w-16 rounded-full overflow-hidden bg-[var(--color-neutral-100)]">
                       {coach.photo_url ? (
-                        <img src={coach.photo_url} alt={name} className="h-full w-full object-cover" loading="lazy" />
+                        <Image src={coach.photo_url} alt={name} fill className="object-cover" sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw" />
                       ) : (
                         <div className="h-full w-full flex items-center justify-center text-2xl font-bold text-[var(--color-neutral-400)]">
                           {name.charAt(0)}

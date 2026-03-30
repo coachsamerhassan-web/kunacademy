@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import { setRequestLocale } from 'next-intl/server';
 import { cms } from '@kunacademy/cms';
 import { Section } from '@kunacademy/ui/section';
@@ -62,7 +63,7 @@ export default async function CoursesPage({ params }: Props) {
                   <Card accent className="p-5 h-full">
                     {program.thumbnail_url && (
                       <div className="relative aspect-[16/10] overflow-hidden rounded-lg mb-4">
-                        <img src={program.thumbnail_url} alt={title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />
+                        <Image src={program.thumbnail_url} alt={title} fill className="object-cover group-hover:scale-105 transition-transform duration-500" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" />
                       </div>
                     )}
                     <h3 className="font-bold text-[var(--text-primary)] group-hover:text-[var(--color-primary)] transition-colors mb-1">

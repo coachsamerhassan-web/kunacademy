@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { setRequestLocale } from 'next-intl/server';
 import { cms } from '@kunacademy/cms';
@@ -73,7 +74,7 @@ export default async function EventDetailPage({ params }: Props) {
         {event.image_url ? (
           <>
             <div className="absolute inset-0">
-              <img src={event.image_url} alt="" className="w-full h-full object-cover" style={{ filter: 'brightness(0.3)' }} loading="eager" />
+              <Image src={event.image_url} alt="" fill className="object-cover" style={{ filter: 'brightness(0.3)' }} priority />
               <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[rgba(29,26,61,0.9)]" />
             </div>
           </>
@@ -150,7 +151,7 @@ export default async function EventDetailPage({ params }: Props) {
                         >
                           <div className="h-12 w-12 rounded-full overflow-hidden bg-[var(--color-neutral-100)] shrink-0">
                             {speaker.photo_url ? (
-                              <img src={speaker.photo_url} alt={name} className="h-full w-full object-cover" />
+                              <Image src={speaker.photo_url} alt={name} fill className="object-cover" sizes="48px" />
                             ) : (
                               <div className="h-full w-full flex items-center justify-center text-lg font-bold text-[var(--color-neutral-400)]">
                                 {name.charAt(0)}

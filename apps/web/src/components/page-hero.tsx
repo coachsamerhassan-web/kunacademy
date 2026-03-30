@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import { GeometricPattern, type PatternName } from '@kunacademy/ui/patterns';
 
 interface PageHeroProps {
@@ -28,7 +29,7 @@ export function PageHero({
     >
       {imageUrl && (
         <div className="absolute inset-0">
-          <img src={imageUrl} alt="" className="w-full h-full object-cover" style={{ filter: 'saturate(0.5) brightness(0.35)' }} loading="eager" />
+          <Image src={imageUrl} alt="" fill className="object-cover" style={{ filter: 'saturate(0.5) brightness(0.35)' }} priority />
           <div className="absolute inset-0" style={{ background: 'linear-gradient(135deg, rgba(71,64,153,0.88) 0%, rgba(29,26,61,0.92) 100%)' }} />
         </div>
       )}

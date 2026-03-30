@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import { setRequestLocale } from 'next-intl/server';
 import { cms } from '@kunacademy/cms';
 import { Section } from '@kunacademy/ui/section';
@@ -83,7 +84,7 @@ export default async function EventsPage({ params }: Props) {
                   <Card accent className="overflow-hidden h-full">
                     {event.image_url && (
                       <div className="relative aspect-[16/9] overflow-hidden">
-                        <img src={event.image_url} alt={title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />
+                        <Image src={event.image_url} alt={title} fill className="object-cover group-hover:scale-105 transition-transform duration-500" sizes="(max-width: 768px) 100vw, 50vw" />
                         {locType && (
                           <span className={`absolute top-3 ${isAr ? 'right-3' : 'left-3'} inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${locType.className}`}>
                             {isAr ? locType.ar : locType.en}

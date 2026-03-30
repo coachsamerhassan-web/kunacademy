@@ -141,7 +141,7 @@ export function HeroSection({ locale }: HeroSectionProps) {
             <div className="hero-mobile-photo flex md:hidden justify-center mt-8">
               <div className="relative">
                 <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-white/20 shadow-lg">
-                  <img src="/images/founder/samer-closeup-white-thobe-smile.jpg" alt={isAr ? 'سامر حسن' : 'Samer Hassan'} className="w-full h-full object-cover object-top" loading="eager" />
+                  <Image src="/images/founder/samer-closeup-white-thobe-smile.jpg" alt={isAr ? 'سامر حسن' : 'Samer Hassan'} width={80} height={80} className="w-full h-full object-cover object-top" priority />
                 </div>
                 <div className="absolute -bottom-1 start-1/2 -translate-x-1/2 bg-white/95 rounded-full px-2.5 py-0.5 shadow-sm">
                   <span className="text-[10px] font-bold text-[var(--color-primary)]">MCC</span>
@@ -166,7 +166,7 @@ export function HeroSection({ locale }: HeroSectionProps) {
               {/* Photo frame */}
               <div className="relative w-[280px] h-[320px] rounded-2xl overflow-hidden bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-primary-700)] p-1.5 shadow-[0_20px_60px_rgba(29,26,61,0.4)]">
                 <div className="w-full h-full rounded-xl overflow-hidden">
-                  <img src="/images/founder/samer-closeup-white-thobe-smile.jpg" alt={isAr ? 'سامر حسن' : 'Samer Hassan'} className="w-full h-full object-cover object-top" loading="eager" />
+                  <Image src="/images/founder/samer-closeup-white-thobe-smile.jpg" alt={isAr ? 'سامر حسن' : 'Samer Hassan'} fill className="object-cover object-top" priority />
                 </div>
                 <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-[var(--color-primary-800)] to-transparent rounded-b-2xl" />
               </div>

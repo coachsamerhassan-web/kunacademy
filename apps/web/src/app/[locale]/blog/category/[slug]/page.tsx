@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import { setRequestLocale } from 'next-intl/server';
 import { cms } from '@kunacademy/cms';
 import { Section } from '@kunacademy/ui/section';
@@ -63,7 +64,7 @@ export default async function BlogCategoryPage({ params }: Props) {
                   <Card accent className="overflow-hidden h-full">
                     {post.featured_image_url && (
                       <div className="relative aspect-[16/10] overflow-hidden">
-                        <img src={post.featured_image_url} alt={postTitle} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />
+                        <Image src={post.featured_image_url} alt={postTitle} fill className="object-cover group-hover:scale-105 transition-transform duration-500" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" />
                       </div>
                     )}
                     <div className="p-5">
