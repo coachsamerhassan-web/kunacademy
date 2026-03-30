@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from '@kunacademy/db';
+import { notify } from '@kunacademy/email';
 
 const supabase = createClient<Database>(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -114,7 +115,30 @@ export async function POST(request: NextRequest) {
         }).eq('id', itemId);
       }
 
-      // TODO: Send confirmation email/WhatsApp to customer
+      // Send payment confirmation to customer (non-blocking)
+      const userEmail = metadata.user_email as string;
+      const itemName = metadata.item_name as string;
+      if (userEmail) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('full_name_ar, full_name_en')
+          .eq('id', userId)
+          .single();
+        const name = profile?.full_name_ar || profile?.full_name_en || userEmail;
+        notify({
+          event: 'payment_received',
+          locale: 'ar',
+          email: userEmail,
+          data: {
+            name,
+            item: itemName || '',
+            amount: String((payment.amount / 100).toFixed(0)),
+            currency: payment.currency || 'EGP',
+            method: 'InstaPay',
+            transactionId: payment.id,
+          },
+        }).catch(e => console.error('[instapay] Notification failed:', e));
+      }
     }
 
     return NextResponse.json({
