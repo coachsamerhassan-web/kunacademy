@@ -21,12 +21,11 @@ const primaryNav: NavItem[] = [
     labelEn: 'Programs',
     href: '/programs/',
     children: [
-      { labelAr: 'الشهادات المعتمدة', labelEn: 'Certifications', href: '/programs/certifications/', descAr: 'STCE — اعتماد ICF', descEn: 'STCE — ICF Accredited' },
+      { labelAr: 'الشهادات المعتمدة', labelEn: 'Certifications', href: '/academy/certifications/', descAr: 'STCE — اعتماد ICF', descEn: 'STCE — ICF Accredited' },
       { labelAr: 'الدورات والورش', labelEn: 'Courses & Workshops', href: '/academy/courses/', descAr: 'تعلّم المهارات', descEn: 'Learn the skills' },
-      { labelAr: 'الخلوات', labelEn: 'Retreats', href: '/programs/', descAr: 'تجارب تحويلية', descEn: 'Transformative experiences' },
       { labelAr: 'حلول المؤسسات', labelEn: 'Corporate', href: '/programs/corporate/', descAr: 'للقادة والفرق', descEn: 'For leaders & teams' },
       { labelAr: 'الأسرة والشباب', labelEn: 'Family & Youth', href: '/programs/family/', descAr: 'SEEDS وويصال', descEn: 'SEEDS & Wisal' },
-      { labelAr: 'منصة الكوتشينج', labelEn: 'Coaching Platform', href: '/programs/coaching/', descAr: 'احجز جلسة', descEn: 'Book a session' },
+      { labelAr: 'احجز جلسة كوتشينج', labelEn: 'Book Coaching', href: '/coaching/book/', descAr: 'فردي أو جماعي', descEn: 'Individual or group' },
     ],
   },
   {
