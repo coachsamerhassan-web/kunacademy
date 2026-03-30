@@ -40,7 +40,7 @@ export function StudentOnboarding({ locale }: { locale: string }) {
         get_coaching: `/${locale}/coaching/book`,
         corporate: `/${locale}/coaching/corporate`,
       };
-      router.push(paths[intent] || `/${locale}/portal`);
+      router.push(paths[intent] || `/${locale}/dashboard`);
     } finally {
       setSaving(false);
     }

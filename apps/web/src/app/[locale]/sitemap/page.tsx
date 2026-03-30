@@ -50,7 +50,7 @@ const sections = [
     titleAr: 'البوابة',
     titleEn: 'Portal',
     links: [
-      { href: '/portal', ar: 'لوحة التحكم', en: 'Dashboard' },
+      { href: '/dashboard', ar: 'لوحة التحكم', en: 'Dashboard' },
       { href: '/portal/courses', ar: 'دوراتي', en: 'My Courses' },
       { href: '/portal/bookings', ar: 'حجوزاتي', en: 'My Bookings' },
       { href: '/portal/profile', ar: 'ملفي الشخصي', en: 'My Profile' },

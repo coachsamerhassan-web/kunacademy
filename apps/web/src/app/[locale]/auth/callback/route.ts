@@ -42,11 +42,11 @@ export async function GET(request: Request) {
         role: user.user_metadata?.role || 'student',
       } as any);
 
-      return NextResponse.redirect(`${origin}/${locale}/portal?onboarding=true`);
+      return NextResponse.redirect(`${origin}/${locale}/dashboard?onboarding=true`);
     }
   } catch {
     // If admin client fails, just redirect
   }
 
-  return NextResponse.redirect(`${origin}/${locale}/portal`);
+  return NextResponse.redirect(`${origin}/${locale}/dashboard`);
 }
