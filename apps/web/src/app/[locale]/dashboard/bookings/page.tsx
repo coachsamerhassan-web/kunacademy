@@ -8,7 +8,6 @@ import { useState, useEffect, use } from 'react';
 
 interface Booking {
   id: string;
-  booking_date: string | null;
   start_time: string;
   end_time: string;
   status: string;
@@ -39,7 +38,7 @@ export default function BookingsPage({ params }: { params: Promise<{ locale: str
     supabase
       .from('bookings')
       .select(`
-        id, booking_date, start_time, end_time, status, notes,
+        id, start_time, end_time, status, notes,
         provider:profiles!bookings_provider_id_fkey(full_name_ar, full_name_en),
         service:services(name_ar, name_en, duration_minutes)
       `)

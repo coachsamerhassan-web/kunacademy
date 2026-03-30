@@ -13,7 +13,6 @@ interface Booking {
   customer_id: string;
   provider_id: string;
   service_id: string;
-  booking_date: string;
   start_time: string;
   end_time: string;
   status: string;

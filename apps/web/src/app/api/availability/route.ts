@@ -32,10 +32,10 @@ export async function GET(request: NextRequest) {
   // 2. Get existing bookings in date range
   const { data: bookings } = await supabase
     .from('bookings')
-    .select('booking_date, start_time, end_time')
+    .select('start_time, end_time')
     .eq('provider_id', coachId)
-    .gte('booking_date', startDate)
-    .lte('booking_date', endDate)
+    .gte('start_time', startDate)
+    .lte('start_time', endDate + 'T23:59:59')
     .in('status', ['pending', 'confirmed']);
 
   // 3. Get time-off days
@@ -48,9 +48,9 @@ export async function GET(request: NextRequest) {
 
   const timeOffDates = new Set((timeOffs || []).map(t => t.date));
   const bookedSlots = (bookings || []).map(b => ({
-    date: b.booking_date,
-    start: b.start_time,
-    end: b.end_time,
+    date: b.start_time.split('T')[0],
+    start: b.start_time.split('T')[1]?.slice(0, 5) || b.start_time,
+    end: b.end_time.split('T')[1]?.slice(0, 5) || b.end_time,
   }));
 
   // 4. Generate available slots

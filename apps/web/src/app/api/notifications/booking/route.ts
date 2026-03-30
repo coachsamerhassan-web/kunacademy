@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
     data: {
       name: (locale === 'ar' ? customer?.full_name_ar : customer?.full_name_en) || customer?.email || '',
       service: locale === 'ar' ? (service?.name_ar || '') : (service?.name_en || ''),
-      date: booking.booking_date || '',
+      date: booking.start_time ? booking.start_time.slice(0, 10) : '',
       time: booking.start_time?.slice(0, 5) || '',
       coach: (locale === 'ar' ? provider?.full_name_ar : provider?.full_name_en) || '',
       startTime: booking.start_time || '',

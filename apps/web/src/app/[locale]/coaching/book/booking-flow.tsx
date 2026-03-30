@@ -127,7 +127,6 @@ export function BookingFlow({ locale }: { locale: string }) {
       customer_id: user.id,
       provider_id: provider?.id || selectedCoach.id,
       service_id: selectedService.id,
-      booking_date: selectedSlot.date,
       start_time: selectedSlot.start_time,
       end_time: selectedSlot.end_time,
       status: selectedService.price_aed === 0 ? 'confirmed' : 'pending',

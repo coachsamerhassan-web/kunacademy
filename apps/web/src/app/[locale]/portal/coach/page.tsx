@@ -32,8 +32,8 @@ export default function CoachDashboard() {
           supabase.from('bookings').select('id', { count: 'exact', head: true }).eq('provider_id', provider.id).eq('status', 'confirmed'),
           supabase.from('bookings').select('id', { count: 'exact', head: true }).eq('provider_id', provider.id).eq('status', 'completed'),
           supabase.from('instructor_drafts').select('id', { count: 'exact', head: true }).eq('instructor_id', data.id).eq('status', 'pending'),
-          supabase.from('bookings').select('id, booking_date, start_time, status, service:services(name_ar, name_en), customer:profiles(full_name_ar, full_name_en, email)')
-            .eq('provider_id', provider.id).order('booking_date', { ascending: false }).limit(5),
+          supabase.from('bookings').select('id, start_time, status, service:services(name_ar, name_en), customer:profiles(full_name_ar, full_name_en, email)')
+            .eq('provider_id', provider.id).order('start_time', { ascending: false }).limit(5),
         ]);
         setStats({
           upcomingBookings: upcoming.count ?? 0,
@@ -127,7 +127,7 @@ export default function CoachDashboard() {
                     <span className="text-[var(--color-neutral-400)] mx-2">—</span>
                     <span className="text-[var(--color-neutral-600)]">{isAr ? b.service?.name_ar : b.service?.name_en}</span>
                   </div>
-                  <span className="text-[var(--color-neutral-500)]">{b.booking_date} {b.start_time}</span>
+                  <span className="text-[var(--color-neutral-500)]">{b.start_time ? new Date(b.start_time).toLocaleDateString() + ' ' + new Date(b.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}</span>
                   <span className={`rounded-full px-2 py-0.5 text-xs ${
                     b.status === 'confirmed' ? 'bg-green-100 text-green-700'
                     : b.status === 'completed' ? 'bg-blue-100 text-blue-700'
