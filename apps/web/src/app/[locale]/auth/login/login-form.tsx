@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { Button } from '@kunacademy/ui/button';
 import { createBrowserClient } from '@kunacademy/db';
-import { useRouter } from 'next/navigation';
 
 function GoogleIcon() {
   return (
@@ -24,7 +23,6 @@ export function LoginForm({ locale, mode = 'login' }: { locale: string; mode?: '
   const [authMethod, setAuthMethod] = useState<AuthMethod>('password');
   const [status, setStatus] = useState<'idle' | 'loading' | 'sent' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
-  const router = useRouter();
   const isAr = locale === 'ar';
 
   async function handlePasswordLogin(e: React.FormEvent) {
@@ -49,10 +47,10 @@ export function LoginForm({ locale, mode = 'login' }: { locale: string; mode?: '
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        // Redirect to dashboard on success
+        // Full page reload so middleware picks up the new auth cookies
         const params = new URLSearchParams(window.location.search);
         const redirect = params.get('redirect') || `/${locale}/dashboard`;
-        router.push(redirect);
+        window.location.href = redirect;
       }
     } catch (err: any) {
       setStatus('error');
