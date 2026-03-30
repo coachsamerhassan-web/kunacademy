@@ -22,7 +22,7 @@ const primaryNav: NavItem[] = [
     href: '/programs/',
     children: [
       { labelAr: 'الشهادات المعتمدة', labelEn: 'Certifications', href: '/programs/certifications/', descAr: 'STCE — اعتماد ICF', descEn: 'STCE — ICF Accredited' },
-      { labelAr: 'الدورات والورش', labelEn: 'Courses & Workshops', href: '/programs/courses/', descAr: 'تعلّم المهارات', descEn: 'Learn the skills' },
+      { labelAr: 'الدورات والورش', labelEn: 'Courses & Workshops', href: '/academy/courses/', descAr: 'تعلّم المهارات', descEn: 'Learn the skills' },
       { labelAr: 'الخلوات', labelEn: 'Retreats', href: '/programs/retreats/', descAr: 'تجارب تحويلية', descEn: 'Transformative experiences' },
       { labelAr: 'حلول المؤسسات', labelEn: 'Corporate', href: '/programs/corporate/', descAr: 'للقادة والفرق', descEn: 'For leaders & teams' },
       { labelAr: 'الأسرة والشباب', labelEn: 'Family & Youth', href: '/programs/family/', descAr: 'SEEDS وويصال', descEn: 'SEEDS & Wisal' },

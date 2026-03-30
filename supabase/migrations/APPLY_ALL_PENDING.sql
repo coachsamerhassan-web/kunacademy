@@ -674,6 +674,25 @@ WHERE NOT EXISTS (SELECT 1 FROM lessons WHERE course_id = 'c0000001-0000-4000-a0
 
 
 -- ============================================================================
--- DONE! All 8 migrations applied.
+-- MIGRATION 9: lms_fixes (enrollment unique constraint + RLS)
+-- ============================================================================
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_enrollments_user_course_unique
+  ON enrollments(user_id, course_id);
+
+-- Allow self-enrollment (free courses) and progress updates
+DO $$ BEGIN
+  CREATE POLICY "Users can enroll themselves" ON enrollments FOR INSERT WITH CHECK (user_id = auth.uid());
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  CREATE POLICY "Users can update own enrollment" ON enrollments FOR UPDATE USING (user_id = auth.uid());
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+
+-- ============================================================================
+-- DONE! All 9 migrations applied.
 -- ============================================================================
 SELECT 'ALL MIGRATIONS APPLIED SUCCESSFULLY' as result;

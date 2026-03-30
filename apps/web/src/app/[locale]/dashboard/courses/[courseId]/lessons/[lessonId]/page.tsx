@@ -26,9 +26,24 @@ interface ProgressData {
 
 interface NavLesson {
   id: string;
+  section_id: string | null;
   title_ar: string;
   title_en: string;
   order: number;
+  duration_minutes: number | null;
+}
+
+interface SectionData {
+  id: string;
+  title_ar: string;
+  title_en: string;
+  order: number;
+}
+
+interface AllProgress {
+  lesson_id: string;
+  completed: boolean;
+  playback_position_seconds: number;
 }
 
 export default function LessonPlayerPage({
@@ -43,10 +58,13 @@ export default function LessonPlayerPage({
   const [lesson, setLesson] = useState<LessonData | null>(null);
   const [courseName, setCourseName] = useState('');
   const [allLessons, setAllLessons] = useState<NavLesson[]>([]);
+  const [sections, setSections] = useState<SectionData[]>([]);
   const [progress, setProgress] = useState<ProgressData | null>(null);
+  const [allProgress, setAllProgress] = useState<AllProgress[]>([]);
   const [loading, setLoading] = useState(true);
   const [completing, setCompleting] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const progressTimer = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -73,42 +91,27 @@ export default function LessonPlayerPage({
     const supabase = createBrowserClient();
 
     async function load() {
-      // Fetch lesson
-      const { data: lessonData } = await supabase
-        .from('lessons')
-        .select('*')
-        .eq('id', lessonId)
-        .single();
+      const [lessonRes, courseRes, lessonsRes, sectionsRes] = await Promise.all([
+        supabase.from('lessons').select('*').eq('id', lessonId).single(),
+        supabase.from('courses').select('title_ar, title_en').eq('id', courseId).single(),
+        supabase.from('lessons').select('id, section_id, title_ar, title_en, order, duration_minutes').eq('course_id', courseId).order('order'),
+        supabase.from('course_sections').select('id, title_ar, title_en, order').eq('course_id', courseId).order('order'),
+      ]);
 
-      if (lessonData) setLesson(lessonData as unknown as LessonData);
+      if (lessonRes.data) setLesson(lessonRes.data as unknown as LessonData);
+      if (courseRes.data) setCourseName(isAr ? (courseRes.data as any).title_ar : (courseRes.data as any).title_en);
+      if (lessonsRes.data) setAllLessons(lessonsRes.data as NavLesson[]);
+      if (sectionsRes.data) setSections(sectionsRes.data as SectionData[]);
 
-      // Fetch course name
-      const { data: courseData } = await supabase
-        .from('courses')
-        .select('title_ar, title_en')
-        .eq('id', courseId)
-        .single();
-
-      if (courseData) {
-        setCourseName(isAr ? (courseData as any).title_ar : (courseData as any).title_en);
-      }
-
-      // Fetch all lessons for navigation
-      const { data: lessonsData } = await supabase
-        .from('lessons')
-        .select('id, title_ar, title_en, order')
-        .eq('course_id', courseId)
-        .order('order');
-
-      if (lessonsData) setAllLessons(lessonsData as NavLesson[]);
-
-      // Fetch progress
+      // Fetch all progress for this course
       const res = await fetch(`/api/lms/progress?courseId=${courseId}`, {
         headers: { Authorization: `Bearer ${session?.access_token}` },
       });
       if (res.ok) {
         const data = await res.json();
-        const lessonProgress = (data.progress ?? []).find(
+        const progressList = data.progress ?? [];
+        setAllProgress(progressList);
+        const lessonProgress = progressList.find(
           (p: { lesson_id: string }) => p.lesson_id === lessonId
         );
         if (lessonProgress) {
@@ -145,7 +148,7 @@ export default function LessonPlayerPage({
         if (video && !video.paused) {
           saveProgress(video.currentTime);
         }
-      }, 15000); // save every 15 seconds
+      }, 15000);
     };
 
     const handlePause = () => {
@@ -157,6 +160,16 @@ export default function LessonPlayerPage({
       if (progressTimer.current) clearInterval(progressTimer.current);
       saveProgress(video.duration, true);
       setProgress((prev) => prev ? { ...prev, completed: true } : { playback_position_seconds: 0, completed: true });
+      // Update allProgress too
+      setAllProgress((prev) => {
+        const existing = prev.findIndex((p) => p.lesson_id === lessonId);
+        if (existing >= 0) {
+          const updated = [...prev];
+          updated[existing] = { ...updated[existing], completed: true };
+          return updated;
+        }
+        return [...prev, { lesson_id: lessonId, completed: true, playback_position_seconds: 0 }];
+      });
     };
 
     video.addEventListener('play', handlePlay);
@@ -169,14 +182,34 @@ export default function LessonPlayerPage({
       video.removeEventListener('ended', handleEnded);
       if (progressTimer.current) clearInterval(progressTimer.current);
     };
-  }, [lesson, progress, saveProgress]);
+  }, [lesson, progress, saveProgress, lessonId]);
 
   const handleMarkComplete = async () => {
     setCompleting(true);
     await saveProgress(undefined, true);
     setProgress((prev) => prev ? { ...prev, completed: true } : { playback_position_seconds: 0, completed: true });
+    setAllProgress((prev) => {
+      const existing = prev.findIndex((p) => p.lesson_id === lessonId);
+      if (existing >= 0) {
+        const updated = [...prev];
+        updated[existing] = { ...updated[existing], completed: true };
+        return updated;
+      }
+      return [...prev, { lesson_id: lessonId, completed: true, playback_position_seconds: 0 }];
+    });
     setCompleting(false);
   };
+
+  const toggleSection = (sectionId: string) => {
+    setCollapsedSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(sectionId)) next.delete(sectionId);
+      else next.add(sectionId);
+      return next;
+    });
+  };
+
+  const isLessonCompleted = (id: string) => allProgress.some((p) => p.lesson_id === id && p.completed);
 
   if (loading) {
     return (
@@ -199,6 +232,57 @@ export default function LessonPlayerPage({
   const nextLesson = currentIdx < allLessons.length - 1 ? allLessons[currentIdx + 1] : null;
   const title = isAr ? lesson.title_ar : lesson.title_en;
   const content = isAr ? lesson.content_ar : lesson.content_en;
+
+  const completedCount = allProgress.filter((p) => p.completed).length;
+  const totalLessons = allLessons.length;
+  const progressPercent = totalLessons > 0 ? Math.round((completedCount / totalLessons) * 100) : 0;
+
+  // Group lessons by section for sidebar
+  const unsectioned = allLessons.filter((l) => !l.section_id);
+  const sectionGroups = sections.map((s) => ({
+    ...s,
+    lessons: allLessons.filter((l) => l.section_id === s.id),
+    completedCount: allLessons.filter((l) => l.section_id === s.id && isLessonCompleted(l.id)).length,
+  }));
+
+  function renderLessonItem(l: NavLesson, globalIdx: number) {
+    const isCurrent = l.id === lessonId;
+    const completed = isLessonCompleted(l.id);
+
+    return (
+      <a
+        key={l.id}
+        href={`/${locale}/dashboard/courses/${courseId}/lessons/${l.id}`}
+        onClick={() => setSidebarOpen(false)}
+        className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm transition-colors min-h-[44px] ${
+          isCurrent
+            ? 'bg-[var(--color-primary)] text-white'
+            : 'text-[var(--color-neutral-600)] hover:bg-[var(--color-surface-dim)]'
+        }`}
+      >
+        {/* Status circle */}
+        <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs shrink-0 ${
+          completed
+            ? isCurrent ? 'bg-white/20 text-white' : 'bg-green-100 text-green-600'
+            : isCurrent ? 'bg-white/20 text-white' : 'bg-[var(--color-neutral-100)] text-[var(--color-neutral-500)]'
+        }`}>
+          {completed ? (
+            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+          ) : (
+            String(globalIdx + 1).padStart(2, '0')
+          )}
+        </span>
+        <span className="truncate flex-1">{isAr ? l.title_ar : l.title_en}</span>
+        {l.duration_minutes && (
+          <span className={`text-[10px] shrink-0 ${isCurrent ? 'text-white/60' : 'text-[var(--color-neutral-400)]'}`}>
+            {l.duration_minutes}m
+          </span>
+        )}
+      </a>
+    );
+  }
 
   return (
     <div className="relative">
@@ -226,7 +310,7 @@ export default function LessonPlayerPage({
           </div>
 
           {/* Video player */}
-          {lesson.video_url && (
+          {lesson.video_url ? (
             <div className="relative aspect-video rounded-xl overflow-hidden bg-black">
               {lesson.video_provider === 'youtube' && lesson.video_id ? (
                 <iframe
@@ -237,7 +321,7 @@ export default function LessonPlayerPage({
                 />
               ) : lesson.video_provider === 'bunny' && lesson.video_id ? (
                 <iframe
-                  src={`https://iframe.mediadelivery.net/embed/${lesson.video_id}?autoplay=false&preload=true`}
+                  src={`https://iframe.mediadelivery.net/embed/${process.env.NEXT_PUBLIC_BUNNY_LIBRARY_ID ?? ''}/${lesson.video_id}?autoplay=false&preload=true`}
                   className="absolute inset-0 w-full h-full"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                   allowFullScreen
@@ -254,6 +338,17 @@ export default function LessonPlayerPage({
                   onContextMenu={(e) => e.preventDefault()}
                 />
               )}
+            </div>
+          ) : (
+            <div className="relative aspect-video rounded-xl overflow-hidden bg-[var(--color-neutral-100)] flex items-center justify-center">
+              <div className="text-center">
+                <svg className="w-12 h-12 mx-auto text-[var(--color-neutral-300)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z" />
+                </svg>
+                <p className="mt-2 text-sm text-[var(--color-neutral-400)]">
+                  {isAr ? 'الفيديو قيد الإعداد' : 'Video coming soon'}
+                </p>
+              </div>
             </div>
           )}
 
@@ -331,47 +426,92 @@ export default function LessonPlayerPage({
           </div>
         </div>
 
-        {/* Sidebar — lesson list */}
+        {/* Sidebar — lesson list grouped by section */}
         <div className={`
           fixed md:relative inset-y-0 ltr:right-0 rtl:left-0 z-40
-          w-72 md:w-64 shrink-0
+          w-80 md:w-72 shrink-0
           bg-white md:bg-transparent
           shadow-xl md:shadow-none
           transform transition-transform duration-300 md:transform-none
           ${sidebarOpen ? 'translate-x-0' : 'ltr:translate-x-full rtl:-translate-x-full md:translate-x-0'}
           overflow-y-auto
         `}>
-          {/* Mobile close */}
-          <div className="md:hidden flex items-center justify-between p-4 border-b border-[var(--color-neutral-100)]">
-            <h3 className="font-semibold text-sm">{isAr ? 'الدروس' : 'Lessons'}</h3>
-            <button onClick={() => setSidebarOpen(false)} className="p-2">
-              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+          {/* Sidebar header */}
+          <div className="p-4 border-b border-[var(--color-neutral-100)]">
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold text-sm text-[var(--text-primary)]">{isAr ? 'المنهج' : 'Curriculum'}</h3>
+              <button onClick={() => setSidebarOpen(false)} className="md:hidden p-2">
+                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            {/* Overall progress */}
+            <div className="mt-2">
+              <div className="flex items-center justify-between text-xs text-[var(--color-neutral-500)] mb-1">
+                <span>{completedCount}/{totalLessons} {isAr ? 'مكتمل' : 'done'}</span>
+                <span className="font-semibold text-[var(--color-primary)]">{progressPercent}%</span>
+              </div>
+              <div className="w-full h-1.5 rounded-full bg-[var(--color-neutral-100)] overflow-hidden">
+                <div className="h-full bg-[var(--color-primary)] rounded-full transition-all" style={{ width: `${progressPercent}%` }} />
+              </div>
+            </div>
           </div>
 
-          <div className="p-3 md:p-0 space-y-1">
-            {allLessons.map((l, idx) => {
-              const isCurrent = l.id === lessonId;
+          <div className="p-3 space-y-1">
+            {/* Unsectioned lessons first */}
+            {unsectioned.map((l) => {
+              const globalIdx = allLessons.findIndex((al) => al.id === l.id);
+              return renderLessonItem(l, globalIdx);
+            })}
+
+            {/* Sectioned lessons */}
+            {sectionGroups.map((section) => {
+              const isCollapsed = collapsedSections.has(section.id);
+              const sectionTotal = section.lessons.length;
+              const sectionDone = section.completedCount;
+
               return (
-                <a
-                  key={l.id}
-                  href={`/${locale}/dashboard/courses/${courseId}/lessons/${l.id}`}
-                  onClick={() => setSidebarOpen(false)}
-                  className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm transition-colors min-h-[44px] ${
-                    isCurrent
-                      ? 'bg-[var(--color-primary)] text-white'
-                      : 'text-[var(--color-neutral-600)] hover:bg-[var(--color-surface-dim)]'
-                  }`}
-                >
-                  <span className={`text-xs font-mono ${isCurrent ? 'text-white/70' : 'text-[var(--color-neutral-400)]'}`}>
-                    {String(idx + 1).padStart(2, '0')}
-                  </span>
-                  <span className="truncate">{isAr ? l.title_ar : l.title_en}</span>
-                </a>
+                <div key={section.id} className="mt-2">
+                  {/* Section header */}
+                  <button
+                    onClick={() => toggleSection(section.id)}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-xs font-bold text-[var(--color-neutral-500)] uppercase tracking-wider hover:text-[var(--text-primary)] transition-colors"
+                  >
+                    <svg
+                      className={`w-3 h-3 shrink-0 transition-transform ${isCollapsed ? (isAr ? 'rotate-90' : '-rotate-90') : ''}`}
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                    </svg>
+                    <span className="truncate flex-1 text-start">{isAr ? section.title_ar : section.title_en}</span>
+                    <span className="text-[10px] font-normal text-[var(--color-neutral-400)]">
+                      {sectionDone}/{sectionTotal}
+                    </span>
+                  </button>
+
+                  {/* Section lessons */}
+                  {!isCollapsed && (
+                    <div className="space-y-0.5">
+                      {section.lessons.map((l) => {
+                        const globalIdx = allLessons.findIndex((al) => al.id === l.id);
+                        return renderLessonItem(l, globalIdx);
+                      })}
+                    </div>
+                  )}
+                </div>
               );
             })}
+
+            {/* No sections fallback */}
+            {sections.length === 0 && unsectioned.length === 0 && (
+              <p className="text-xs text-center text-[var(--color-neutral-400)] py-4">
+                {isAr ? 'لا توجد دروس' : 'No lessons'}
+              </p>
+            )}
           </div>
         </div>
 
