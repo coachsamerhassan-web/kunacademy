@@ -4,7 +4,7 @@ test.describe('GP1: Arabic Visitor → Browse Programs → Book Coaching → Pay
   // Flow:
   // 1. Land on Arabic homepage (RTL layout verified)
   // 2. Navigate to programs page via main nav
-  // 3. Browse program cards (STCE, Islamic Coaching Mastery, etc.)
+  // 3. Browse program cards (STCE, Menhajak, etc.)
   // 4. Select a 1:1 coaching session
   // 5. View coaching details page (coach bio, availability, pricing)
   // 6. Click "احجز الآن" (Book Now) CTA

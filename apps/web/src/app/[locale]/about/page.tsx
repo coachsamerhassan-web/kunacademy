@@ -172,7 +172,7 @@ export default async function AboutPage({ params }: Props) {
       <section className="relative overflow-hidden py-20 md:py-28">
         <div className="absolute inset-0">
           <img
-            src="/images/about/hero-islamic-window.webp"
+            src="/images/about/hero-about-window.webp"
             alt=""
             className="w-full h-full object-cover"
             style={{ filter: 'brightness(0.25)' }}

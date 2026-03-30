@@ -4,6 +4,7 @@ import { GeometricPattern } from '@kunacademy/ui/patterns';
 import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
 import { Button } from '@kunacademy/ui/button';
+import { cms } from '@kunacademy/cms';
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
   const { locale } = await params;
@@ -14,24 +15,45 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
   };
 }
 
+function parseDurationHours(dur?: string): number {
+  if (!dur) return 0;
+  const m = dur.match(/(\d+)/);
+  return m ? parseInt(m[1], 10) : 0;
+}
+
 export default async function STCEPackagesPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   setRequestLocale(locale);
   const isAr = locale === 'ar';
+
+  // Fetch STCE level data from CMS to compute package hours dynamically
+  const allPrograms = await cms.getAllPrograms();
+  const levelMap: Record<string, number> = {};
+  for (const p of allPrograms) {
+    if (p.slug.startsWith('stce-level-')) {
+      levelMap[p.slug] = parseDurationHours(p.duration);
+    }
+  }
+  const l1 = levelMap['stce-level-1-stic'] ?? 0;
+  const l2 = levelMap['stce-level-2-staic'] ?? 0;
+  const l3 = levelMap['stce-level-3-stgc'] ?? 0;
+  const l4 = levelMap['stce-level-4-stoc'] ?? 0;
+  const proHours = l1 + l2;
+  const masteryHours = l1 + l2 + l3 + l4;
 
   const packages = isAr
     ? [
       {
         name: 'الباقة المهنية',
         levels: 'المستوى ١ + ٢',
-        hours: '١٤٤ ساعة',
+        hours: `${proHours} ساعة`,
         desc: 'للكوتشز الذين يريدون بناء ممارسة مهنية قوية مع اعتماد ICF',
         highlight: false,
       },
       {
         name: 'باقة الإتقان',
         levels: 'المستوى ١ + ٢ + ٣ + ٤',
-        hours: '٢٢٠ ساعة',
+        hours: `${masteryHours} ساعة`,
         desc: 'المسار الكامل — من المبتدئ إلى المشرف المعتمد',
         highlight: true,
       },
@@ -40,14 +62,14 @@ export default async function STCEPackagesPage({ params }: { params: Promise<{ l
       {
         name: 'Professional Package',
         levels: 'Level 1 + 2',
-        hours: '144 hours',
+        hours: `${proHours} hours`,
         desc: 'For coaches building a strong professional practice with ICF accreditation',
         highlight: false,
       },
       {
         name: 'Mastery Package',
         levels: 'Level 1 + 2 + 3 + 4',
-        hours: '220 hours',
+        hours: `${masteryHours} hours`,
         desc: 'The complete path — from beginner to certified supervisor',
         highlight: true,
       },
