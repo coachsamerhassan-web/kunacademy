@@ -49,8 +49,28 @@ export default async function BlogPostPage({ params }: Props) {
   const author = post.author_slug ? await cms.getTeamMember(post.author_slug) : null;
   const authorName = author ? (isAr ? author.name_ar : author.name_en) : null;
 
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Article',
+    headline: title,
+    description: excerpt || '',
+    ...(post.featured_image_url ? { image: post.featured_image_url } : {}),
+    ...(post.published_at ? { datePublished: post.published_at } : {}),
+    ...(authorName ? { author: { '@type': 'Person', name: authorName } } : {}),
+    publisher: {
+      '@type': 'Organization',
+      name: 'Kun Academy',
+      url: 'https://kunacademy.com',
+    },
+    mainEntityOfPage: {
+      '@type': 'WebPage',
+      '@id': `https://kunacademy.com/${locale}/blog/${slug}`,
+    },
+  };
+
   return (
     <main>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       {/* Hero */}
       <section className="relative overflow-hidden py-12 md:py-20">
         {post.featured_image_url ? (

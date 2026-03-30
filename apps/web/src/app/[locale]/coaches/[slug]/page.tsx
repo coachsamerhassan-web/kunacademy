@@ -50,8 +50,20 @@ export default async function CoachProfilePage({ params }: Props) {
     facilitator: 'bg-teal-100 text-teal-800',
   };
 
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Person',
+    name,
+    ...(title ? { jobTitle: title } : {}),
+    ...(bio ? { description: bio.slice(0, 300) } : {}),
+    ...(coach.photo_url ? { image: coach.photo_url } : {}),
+    url: `https://kunacademy.com/${locale}/coaches/${slug}`,
+    worksFor: { '@type': 'Organization', name: 'Kun Academy', url: 'https://kunacademy.com' },
+  };
+
   return (
     <main>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       {/* Hero */}
       <section className="relative overflow-hidden py-16 md:py-24">
         <div className="absolute inset-0" style={{ background: 'linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-600) 100%)' }} />
