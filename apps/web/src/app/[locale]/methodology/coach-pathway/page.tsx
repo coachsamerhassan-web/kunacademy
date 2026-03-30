@@ -39,18 +39,18 @@ export default async function CoachPathwayPage({ params }: { params: Promise<{ l
             {(isAr
               ? [
                 { step: '١', title: 'الاكتشاف', desc: 'ابدأ بالموارد المجانية واكتشف المنهجية' },
-                { step: '٢', title: 'التأسيس (STIC)', desc: '٧٩ ساعة — المهارات الجوهرية وشهادة ICF Level 1' },
-                { step: '٣', title: 'التعمّق (STAIC)', desc: '١٠٦ ساعات — الأدوات المتقدمة وشهادة ICF Level 2' },
-                { step: '٤', title: 'التوسّع (STGC)', desc: '٣٤ ساعة — كوتشينج المجموعات' },
-                { step: '٥', title: 'القيادة (STOC)', desc: '٣٧ ساعة — الإشراف والمنتورينج' },
+                { step: '٢', title: 'التأسيس (STIC)', desc: '٦٩ ساعة — المهارات الجوهرية وشهادة ICF Level 1' },
+                { step: '٣', title: 'التعمّق (STAIC)', desc: '٧٥ ساعة — الأدوات المتقدمة وشهادة ICF Level 2' },
+                { step: '٤', title: 'التوسّع (STGC)', desc: '٤٠ ساعة — كوتشينج المجموعات' },
+                { step: '٥', title: 'القيادة (STOC)', desc: '٣٦ ساعة — الإشراف والمنتورينج' },
                 { step: '٦', title: 'الممارسة', desc: 'انضم لمنصة الكوتشينج وابدأ ممارستك المهنية' },
               ]
               : [
                 { step: '1', title: 'Discovery', desc: 'Start with free resources and discover the methodology' },
-                { step: '2', title: 'Foundation (STIC)', desc: '79 hours — core skills and ICF Level 1 credential' },
-                { step: '3', title: 'Deepening (STAIC)', desc: '106 hours — advanced tools and ICF Level 2 credential' },
-                { step: '4', title: 'Expansion (STGC)', desc: '34 hours — group coaching' },
-                { step: '5', title: 'Leadership (STOC)', desc: '37 hours — supervision and mentoring' },
+                { step: '2', title: 'Foundation (STIC)', desc: '69 hours — core skills and ICF Level 1 credential' },
+                { step: '3', title: 'Deepening (STAIC)', desc: '75 hours — advanced tools and ICF Level 2 credential' },
+                { step: '4', title: 'Expansion (STGC)', desc: '40 hours — group coaching' },
+                { step: '5', title: 'Leadership (STOC)', desc: '36 hours — supervision and mentoring' },
                 { step: '6', title: 'Practice', desc: 'Join the coaching platform and start your professional practice' },
               ]
             ).map((item, i) => (
