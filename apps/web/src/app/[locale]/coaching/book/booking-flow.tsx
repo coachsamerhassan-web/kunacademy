@@ -123,7 +123,7 @@ export function BookingFlow({ locale }: { locale: string }) {
     // Find provider ID for the coach
     const { data: provider } = await supabase.from('providers').select('id').eq('profile_id', selectedCoach.id).single();
 
-    await supabase.from('bookings').insert({
+    const { data: inserted } = await supabase.from('bookings').insert({
       customer_id: user.id,
       provider_id: provider?.id || selectedCoach.id,
       service_id: selectedService.id,
@@ -131,7 +131,17 @@ export function BookingFlow({ locale }: { locale: string }) {
       start_time: selectedSlot.start_time,
       end_time: selectedSlot.end_time,
       status: selectedService.price_aed === 0 ? 'confirmed' : 'pending',
-    });
+    }).select('id').single();
+
+    // Trigger booking confirmation notification (non-blocking)
+    if (inserted?.id) {
+      const { data: { session } } = await supabase.auth.getSession();
+      fetch('/api/notifications/booking', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
+        body: JSON.stringify({ bookingId: inserted.id }),
+      }).catch(() => {});
+    }
 
     setBooking(false);
     setBooked(true);

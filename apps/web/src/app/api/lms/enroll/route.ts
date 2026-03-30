@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from '@kunacademy/db';
+import { notify } from '@kunacademy/email';
 
 const supabase = createClient<Database>(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -77,6 +78,37 @@ export async function POST(request: NextRequest) {
 
   if (enrollError) {
     return NextResponse.json({ error: enrollError.message }, { status: 500 });
+  }
+
+  // Send enrollment notification (non-blocking)
+  try {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('full_name_ar, full_name_en, email')
+      .eq('id', user.id)
+      .single();
+
+    const { data: courseData } = await supabase
+      .from('courses')
+      .select('title_ar, title_en')
+      .eq('id', course.id)
+      .single();
+
+    if (profile?.email) {
+      const locale = (user.user_metadata?.locale as string) || 'ar';
+      const name = (locale === 'ar' ? profile.full_name_ar : profile.full_name_en) || profile.email;
+      await notify({
+        event: 'enrollment_confirmed',
+        locale,
+        email: profile.email,
+        data: {
+          name,
+          course: locale === 'ar' ? (courseData?.title_ar || '') : (courseData?.title_en || ''),
+        },
+      });
+    }
+  } catch (e) {
+    console.error('[enroll] Notification failed:', e);
   }
 
   return NextResponse.json({ enrollment }, { status: 201 });

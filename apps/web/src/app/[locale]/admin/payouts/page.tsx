@@ -71,6 +71,18 @@ export default function AdminPayoutsPage() {
     }
     await supabase.from('payout_requests').update(updates).eq('id', id);
     setPayouts(prev => prev.map(p => p.id === id ? { ...p, status: newStatus, processed_at: updates.processed_at || p.processed_at } : p));
+
+    // Notify coach of payout status change (non-blocking)
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.access_token) {
+        fetch('/api/notifications/payout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+          body: JSON.stringify({ payoutId: id, newStatus }),
+        }).catch(() => {});
+      }
+    });
+
     setUpdating(null);
   }
 

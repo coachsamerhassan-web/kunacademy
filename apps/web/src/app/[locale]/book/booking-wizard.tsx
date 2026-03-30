@@ -37,13 +37,23 @@ export function BookingWizard({ locale }: { locale: string }) {
     const startTime = new Date(`${selectedDate}T${selectedTime}`);
     const endTime = new Date(startTime.getTime() + (selectedService?.duration_minutes ?? 60) * 60 * 1000);
 
-    await supabase.from('bookings').insert({
+    const { data: inserted } = await supabase.from('bookings').insert({
       customer_id: user.id,
       service_id: selectedService?.id,
       provider_id: selectedProvider?.id,
       start_time: startTime.toISOString(),
       end_time: endTime.toISOString(),
-    });
+    }).select('id').single();
+
+    // Trigger booking confirmation notification (non-blocking)
+    if (inserted?.id) {
+      const { data: { session } } = await supabase.auth.getSession();
+      fetch('/api/notifications/booking', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
+        body: JSON.stringify({ bookingId: inserted.id }),
+      }).catch(() => {});
+    }
 
     setDone(true);
     setSubmitting(false);
