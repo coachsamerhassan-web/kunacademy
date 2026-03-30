@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Button } from '@kunacademy/ui/button';
 import { createBrowserClient } from '@kunacademy/db';
+import { useRouter } from 'next/navigation';
 
 function GoogleIcon() {
   return (
@@ -15,14 +16,61 @@ function GoogleIcon() {
   );
 }
 
+type AuthMethod = 'password' | 'magic-link';
+
 export function LoginForm({ locale, mode = 'login' }: { locale: string; mode?: 'login' | 'signup' }) {
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [authMethod, setAuthMethod] = useState<AuthMethod>('password');
   const [status, setStatus] = useState<'idle' | 'loading' | 'sent' | 'error'>('idle');
+  const [errorMessage, setErrorMessage] = useState('');
+  const router = useRouter();
   const isAr = locale === 'ar';
+
+  async function handlePasswordLogin(e: React.FormEvent) {
+    e.preventDefault();
+    setStatus('loading');
+    setErrorMessage('');
+    try {
+      const supabase = createBrowserClient();
+      if (!supabase) throw new Error('Supabase not configured');
+
+      if (mode === 'signup') {
+        const { error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: { locale },
+            emailRedirectTo: `${window.location.origin}/${locale}/auth/callback`,
+          },
+        });
+        if (error) throw error;
+        setStatus('sent');
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        // Redirect to dashboard on success
+        const params = new URLSearchParams(window.location.search);
+        const redirect = params.get('redirect') || `/${locale}/dashboard`;
+        router.push(redirect);
+      }
+    } catch (err: any) {
+      setStatus('error');
+      const msg = err?.message || '';
+      if (msg.includes('Invalid login')) {
+        setErrorMessage(isAr ? 'البريد أو كلمة المرور غير صحيحة' : 'Invalid email or password');
+      } else if (msg.includes('already registered')) {
+        setErrorMessage(isAr ? 'هذا البريد مسجّل بالفعل' : 'This email is already registered');
+      } else {
+        setErrorMessage(isAr ? 'حدث خطأ. حاول مرة أخرى.' : 'An error occurred. Please try again.');
+      }
+    }
+  }
 
   async function handleMagicLink(e: React.FormEvent) {
     e.preventDefault();
     setStatus('loading');
+    setErrorMessage('');
     try {
       const supabase = createBrowserClient();
       if (!supabase) throw new Error('Supabase not configured');
@@ -34,6 +82,7 @@ export function LoginForm({ locale, mode = 'login' }: { locale: string; mode?: '
       setStatus('sent');
     } catch {
       setStatus('error');
+      setErrorMessage(isAr ? 'حدث خطأ. حاول مرة أخرى.' : 'An error occurred. Please try again.');
     }
   }
 
@@ -57,7 +106,9 @@ export function LoginForm({ locale, mode = 'login' }: { locale: string; mode?: '
     return (
       <div className="mt-8 rounded-lg bg-green-50 p-6 text-center">
         <p className="text-green-800 font-medium">
-          {isAr ? 'تم إرسال رابط الدخول!' : 'Login link sent!'}
+          {authMethod === 'magic-link'
+            ? (isAr ? 'تم إرسال رابط الدخول!' : 'Login link sent!')
+            : (isAr ? 'تحقّق من بريدك لتأكيد الحساب' : 'Check your email to confirm your account')}
         </p>
         <p className="mt-2 text-green-700 text-sm">
           {isAr ? `تحقّق من بريدك ${email}` : `Check your email at ${email}`}
@@ -88,7 +139,7 @@ export function LoginForm({ locale, mode = 'login' }: { locale: string; mode?: '
         </div>
       </div>
 
-      <form onSubmit={handleMagicLink} className="space-y-4">
+      <form onSubmit={authMethod === 'password' ? handlePasswordLogin : handleMagicLink} className="space-y-4">
         <div>
           <label htmlFor="email" className="block text-sm font-medium text-[var(--color-neutral-700)]">
             {isAr ? 'البريد الإلكتروني' : 'Email address'}
@@ -104,17 +155,57 @@ export function LoginForm({ locale, mode = 'login' }: { locale: string; mode?: '
             dir="ltr"
           />
         </div>
+
+        {authMethod === 'password' && (
+          <div>
+            <label htmlFor="password" className="block text-sm font-medium text-[var(--color-neutral-700)]">
+              {isAr ? 'كلمة المرور' : 'Password'}
+            </label>
+            <input
+              id="password"
+              type="password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="mt-1 block w-full rounded-lg border border-[var(--color-neutral-300)] px-4 py-3 text-base focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)] focus:ring-opacity-20 min-h-[44px]"
+              placeholder={isAr ? 'كلمة المرور' : 'Password'}
+              dir="ltr"
+              minLength={6}
+            />
+          </div>
+        )}
+
         {status === 'error' && (
           <p className="text-red-600 text-sm">
-            {isAr ? 'حدث خطأ. حاول مرة أخرى.' : 'An error occurred. Please try again.'}
+            {errorMessage || (isAr ? 'حدث خطأ. حاول مرة أخرى.' : 'An error occurred. Please try again.')}
           </p>
         )}
+
         <Button type="submit" variant="primary" size="lg" className="w-full" disabled={status === 'loading'}>
           {status === 'loading'
-            ? (isAr ? 'جاري الإرسال...' : 'Sending...')
-            : (isAr ? 'أرسل رابط الدخول' : 'Send Login Link')}
+            ? (isAr ? 'جاري الدخول...' : 'Signing in...')
+            : authMethod === 'password'
+              ? (mode === 'signup'
+                ? (isAr ? 'إنشاء حساب' : 'Create Account')
+                : (isAr ? 'تسجيل الدخول' : 'Sign In'))
+              : (isAr ? 'أرسل رابط الدخول' : 'Send Login Link')}
         </Button>
       </form>
+
+      {/* Toggle between password and magic link */}
+      <button
+        type="button"
+        onClick={() => {
+          setAuthMethod(authMethod === 'password' ? 'magic-link' : 'password');
+          setStatus('idle');
+          setErrorMessage('');
+        }}
+        className="w-full text-center text-sm text-[var(--color-neutral-500)] hover:text-[var(--color-primary)] transition-colors"
+      >
+        {authMethod === 'password'
+          ? (isAr ? 'أو أرسل رابط دخول بدون كلمة مرور' : 'Or sign in with a magic link instead')
+          : (isAr ? 'أو سجّل دخول بكلمة المرور' : 'Or sign in with email & password')}
+      </button>
 
       <p className="text-center text-sm text-[var(--color-neutral-500)]">
         {mode === 'login' ? (
