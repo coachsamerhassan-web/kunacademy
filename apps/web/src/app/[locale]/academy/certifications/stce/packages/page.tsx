@@ -24,14 +24,14 @@ export default async function STCEPackagesPage({ params }: { params: Promise<{ l
       {
         name: 'الباقة المهنية',
         levels: 'المستوى ١ + ٢',
-        hours: '١٨٥ ساعة',
+        hours: '١٤٤ ساعة',
         desc: 'للكوتشز الذين يريدون بناء ممارسة مهنية قوية مع اعتماد ICF',
         highlight: false,
       },
       {
         name: 'باقة الإتقان',
         levels: 'المستوى ١ + ٢ + ٣ + ٤',
-        hours: '٢٥٦ ساعة',
+        hours: '٢٢٠ ساعة',
         desc: 'المسار الكامل — من المبتدئ إلى المشرف المعتمد',
         highlight: true,
       },
@@ -40,14 +40,14 @@ export default async function STCEPackagesPage({ params }: { params: Promise<{ l
       {
         name: 'Professional Package',
         levels: 'Level 1 + 2',
-        hours: '185 hours',
+        hours: '144 hours',
         desc: 'For coaches building a strong professional practice with ICF accreditation',
         highlight: false,
       },
       {
         name: 'Mastery Package',
         levels: 'Level 1 + 2 + 3 + 4',
-        hours: '256 hours',
+        hours: '220 hours',
         desc: 'The complete path — from beginner to certified supervisor',
         highlight: true,
       },
