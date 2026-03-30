@@ -17,24 +17,38 @@ export function generateStaticParams() {
   return routing.locales.map((locale) => ({locale}));
 }
 
-export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://kunacademy.com'),
-  title: "Kun Coaching Academy | أكاديمية كُن للكوتشينج",
-  description: "أول أكاديمية عربية للتفكير الحسّي® والكوتشينج المعتمد من ICF. أكثر من ٥٠٠ كوتش في ١٣ دولة.",
-  icons: {
-    icon: [
-      { url: '/favicon-32x32.png', sizes: '32x32', type: 'image/png' },
-      { url: '/favicon-192x192.png', sizes: '192x192', type: 'image/png' },
-    ],
-    apple: '/apple-touch-icon.png',
-  },
-  openGraph: {
+const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://kunacademy.com';
+
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  const { locale } = await params;
+  const otherLocale = locale === 'ar' ? 'en' : 'ar';
+
+  return {
+    metadataBase: new URL(baseUrl),
     title: "Kun Coaching Academy | أكاديمية كُن للكوتشينج",
-    description: "أول أكاديمية عربية للتفكير الحسّي® والكوتشينج المعتمد من ICF",
-    images: [{ url: '/og-image.png', width: 1200, height: 630 }],
-    type: 'website',
-  },
-};
+    description: "أول أكاديمية عربية للتفكير الحسّي® والكوتشينج المعتمد من ICF. أكثر من ٥٠٠ كوتش في ١٣ دولة.",
+    icons: {
+      icon: [
+        { url: '/favicon-32x32.png', sizes: '32x32', type: 'image/png' },
+        { url: '/favicon-192x192.png', sizes: '192x192', type: 'image/png' },
+      ],
+      apple: '/apple-touch-icon.png',
+    },
+    openGraph: {
+      title: "Kun Coaching Academy | أكاديمية كُن للكوتشينج",
+      description: "أول أكاديمية عربية للتفكير الحسّي® والكوتشينج المعتمد من ICF",
+      images: [{ url: '/og-image.png', width: 1200, height: 630 }],
+      type: 'website',
+    },
+    alternates: {
+      canonical: `${baseUrl}/${locale}`,
+      languages: {
+        ar: `${baseUrl}/ar`,
+        en: `${baseUrl}/en`,
+      },
+    },
+  };
+}
 
 export default async function LocaleLayout({
   children,
