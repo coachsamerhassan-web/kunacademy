@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { createBrowserClient as createSSRBrowserClient } from '@supabase/ssr';
 import type { Database } from './types';
 
 export type TypedSupabaseClient = SupabaseClient<Database>;
@@ -11,7 +12,9 @@ export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
 
 let _browserClient: TypedSupabaseClient | null = null;
 
-/** Browser client — uses anon key, respects RLS. Singleton to avoid multiple GoTrueClient warnings.
+/** Browser client — uses anon key, respects RLS. Singleton.
+ *  Uses @supabase/ssr to store auth tokens in cookies (not localStorage)
+ *  so the server-side middleware can read the session.
  *  Returns null (typed as client) when env vars missing — build-safe for static gen. */
 export function createBrowserClient(): TypedSupabaseClient {
   if (!supabaseUrl || !supabaseAnonKey) {
@@ -19,14 +22,7 @@ export function createBrowserClient(): TypedSupabaseClient {
     return null as unknown as TypedSupabaseClient;
   }
   if (!_browserClient) {
-    _browserClient = createClient<Database>(supabaseUrl, supabaseAnonKey, {
-      auth: {
-        flowType: 'pkce',
-        autoRefreshToken: true,
-        persistSession: true,
-        detectSessionInUrl: true,
-      },
-    });
+    _browserClient = createSSRBrowserClient<Database>(supabaseUrl, supabaseAnonKey);
   }
   return _browserClient;
 }
