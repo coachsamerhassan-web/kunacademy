@@ -46,9 +46,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
   }
 
-  // Only the booking owner can trigger their own notification
+  // Only the booking owner or an admin can trigger this notification
   if (booking.customer_id !== user.id) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    const { data: callerProfile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+    if (callerProfile?.role !== 'admin') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
   }
 
   const locale = (user.user_metadata?.locale as string) || 'ar';

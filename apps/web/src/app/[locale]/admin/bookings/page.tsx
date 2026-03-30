@@ -76,6 +76,20 @@ export default function AdminBookingsPage() {
     setUpdating(id);
     await supabase.from('bookings').update({ status: newStatus }).eq('id', id);
     setBookings(prev => prev.map(b => b.id === id ? { ...b, status: newStatus } : b));
+
+    // Notify customer when booking is confirmed (non-blocking)
+    if (newStatus === 'confirmed') {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session?.access_token) {
+          fetch('/api/notifications/booking', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+            body: JSON.stringify({ bookingId: id }),
+          }).catch(() => {});
+        }
+      });
+    }
+
     setUpdating(null);
   }
 
