@@ -142,6 +142,11 @@ export default function CoachBookingsPage() {
               const dateStr = dateObj.toLocaleDateString(isAr ? 'ar-SA' : 'en-US', {
                 weekday: 'short', year: 'numeric', month: 'short', day: 'numeric',
               });
+              const fmtTime = (iso: string) => {
+                const d = new Date(iso);
+                return d.toLocaleTimeString(isAr ? 'ar-SA' : 'en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+              };
+              const timeStr = `${fmtTime(b.start_time)} – ${fmtTime(b.end_time)}`;
 
               return (
                 <div
@@ -152,7 +157,7 @@ export default function CoachBookingsPage() {
                   <div className="shrink-0 text-center sm:text-start sm:w-28">
                     <div className="text-sm font-medium text-[var(--text-primary)]">{dateStr}</div>
                     <div className="text-xs text-[var(--color-neutral-500)]">
-                      {b.start_time}–{b.end_time}
+                      {timeStr}
                     </div>
                   </div>
 

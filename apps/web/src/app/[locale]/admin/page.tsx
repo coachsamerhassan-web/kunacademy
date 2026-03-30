@@ -1,32 +1,44 @@
-import { setRequestLocale } from 'next-intl/server';
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useParams } from 'next/navigation';
 import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
-import { createClient } from '@supabase/supabase-js';
+import { createBrowserClient } from '@kunacademy/db';
 
-async function getAdminStats() {
-  const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
-  const [students, coaches, enrollments, bookings, payments] = await Promise.all([
-    supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'student'),
-    supabase.from('instructors').select('id', { count: 'exact', head: true }),
-    supabase.from('enrollments').select('id', { count: 'exact', head: true }),
-    supabase.from('bookings').select('id', { count: 'exact', head: true }),
-    supabase.from('payments').select('id', { count: 'exact', head: true }).eq('status', 'completed'),
-  ]);
-  return {
-    students: students.count ?? 0,
-    coaches: coaches.count ?? 0,
-    enrollments: enrollments.count ?? 0,
-    bookings: bookings.count ?? 0,
-    payments: payments.count ?? 0,
-  };
+interface Stats {
+  students: number;
+  coaches: number;
+  enrollments: number;
+  bookings: number;
+  payments: number;
 }
 
-export default async function AdminDashboard({ params }: { params: Promise<{ locale: string }> }) {
-  const { locale } = await params;
-  setRequestLocale(locale);
+export default function AdminDashboard() {
+  const { locale } = useParams<{ locale: string }>();
   const isAr = locale === 'ar';
-  let stats = { students: 0, coaches: 0, enrollments: 0, bookings: 0, payments: 0 };
-  try { stats = await getAdminStats(); } catch {}
+  const [stats, setStats] = useState<Stats>({ students: 0, coaches: 0, enrollments: 0, bookings: 0, payments: 0 });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const supabase = createBrowserClient();
+    Promise.all([
+      supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'student'),
+      supabase.from('instructors').select('id', { count: 'exact', head: true }),
+      supabase.from('enrollments').select('id', { count: 'exact', head: true }),
+      supabase.from('bookings').select('id', { count: 'exact', head: true }),
+      supabase.from('payments').select('id', { count: 'exact', head: true }).eq('status', 'completed'),
+    ]).then(([students, coaches, enrollments, bookings, payments]) => {
+      setStats({
+        students: students.count ?? 0,
+        coaches: coaches.count ?? 0,
+        enrollments: enrollments.count ?? 0,
+        bookings: bookings.count ?? 0,
+        payments: payments.count ?? 0,
+      });
+      setLoading(false);
+    }).catch(() => setLoading(false));
+  }, []);
 
   const sections = [
     { href: `/${locale}/admin/students`, labelAr: 'التسجيلات', labelEn: 'Enrollments', count: stats.enrollments, icon: '📋' },
@@ -58,7 +70,7 @@ export default async function AdminDashboard({ params }: { params: Promise<{ loc
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 mt-6 mb-8">
           {statCards.map(s => (
             <div key={s.labelEn} className="rounded-lg border border-[var(--color-neutral-200)] p-4 text-center">
-              <div className="text-2xl font-bold text-[var(--color-primary)]">{s.value}</div>
+              <div className="text-2xl font-bold text-[var(--color-primary)]">{loading ? '...' : s.value}</div>
               <div className="text-xs text-[var(--color-neutral-500)] mt-1">{isAr ? s.labelAr : s.labelEn}</div>
             </div>
           ))}
