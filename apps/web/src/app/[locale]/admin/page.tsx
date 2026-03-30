@@ -29,12 +29,15 @@ export default async function AdminDashboard({ params }: { params: Promise<{ loc
   try { stats = await getAdminStats(); } catch {}
 
   const sections = [
-    { href: `/${locale}/admin/students`, labelAr: 'التسجيلات', labelEn: 'Enrollments', count: stats.enrollments },
-    { href: `/${locale}/admin/instructors`, labelAr: 'الكوتشز', labelEn: 'Coaches', count: stats.coaches },
-    { href: `/${locale}/admin/bookings`, labelAr: 'الحجوزات', labelEn: 'Bookings', count: stats.bookings },
-    { href: `/${locale}/admin/testimonials`, labelAr: 'الشهادات', labelEn: 'Testimonials', count: '-' },
-    { href: `/${locale}/admin/community`, labelAr: 'المجتمع', labelEn: 'Community', count: '-' },
-    { href: `/${locale}/admin/content`, labelAr: 'المحتوى', labelEn: 'Content', count: '-' },
+    { href: `/${locale}/admin/students`, labelAr: 'التسجيلات', labelEn: 'Enrollments', count: stats.enrollments, icon: '📋' },
+    { href: `/${locale}/admin/instructors`, labelAr: 'الكوتشز', labelEn: 'Coaches', count: stats.coaches, icon: '👤' },
+    { href: `/${locale}/admin/bookings`, labelAr: 'الحجوزات', labelEn: 'Bookings', count: stats.bookings, icon: '📅' },
+    { href: `/${locale}/admin/orders`, labelAr: 'الطلبات', labelEn: 'Orders', count: stats.payments, icon: '💳' },
+    { href: `/${locale}/admin/courses`, labelAr: 'الدورات', labelEn: 'Courses', count: '-', icon: '🎓' },
+    { href: `/${locale}/admin/products`, labelAr: 'المنتجات', labelEn: 'Products', count: '-', icon: '📦' },
+    { href: `/${locale}/admin/testimonials`, labelAr: 'التوصيات', labelEn: 'Testimonials', count: '-', icon: '⭐' },
+    { href: `/${locale}/admin/referrals`, labelAr: 'الإحالات', labelEn: 'Referrals', count: '-', icon: '🔗' },
+    { href: `/${locale}/admin/community`, labelAr: 'المجتمع', labelEn: 'Community', count: '-', icon: '👥' },
   ];
 
   const statCards = [
