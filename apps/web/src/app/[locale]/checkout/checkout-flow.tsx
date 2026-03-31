@@ -28,7 +28,7 @@ interface GeoInfo {
 }
 
 interface CartItem {
-  type: 'course' | 'service' | 'booking';
+  type: 'course' | 'service' | 'booking' | 'event';
   id: string;
   name_ar: string;
   name_en: string;
@@ -169,6 +169,21 @@ export function CheckoutFlow({ locale }: { locale: string }) {
           }
           setLoading(false);
         });
+    } else if (itemType === 'event') {
+      // Event registration — item data comes from query params (CMS event, not in Supabase)
+      const name = searchParams.get('name') || 'Event';
+      setItem({
+        type: 'event' as any,
+        id: itemId,
+        name_ar: decodeURIComponent(name),
+        name_en: decodeURIComponent(name),
+        price_aed: Number(searchParams.get('price_aed')) || 0,
+        price_sar: Number(searchParams.get('price_sar')) || 0,
+        price_egp: Number(searchParams.get('price_egp')) || 0,
+        price_usd: Number(searchParams.get('price_usd')) || 0,
+        price_eur: Number(searchParams.get('price_eur')) || 0,
+      });
+      setLoading(false);
     } else {
       setLoading(false);
     }

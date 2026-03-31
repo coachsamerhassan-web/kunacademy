@@ -87,6 +87,8 @@ const nextConfig: NextConfig = {
       // WordPress legacy (migration period)
       { protocol: 'https', hostname: 'kunacademy.com' },
       { protocol: 'https', hostname: 'old.kunacademy.com' },
+      // Unsplash (event images)
+      { protocol: 'https', hostname: 'images.unsplash.com' },
     ],
   },
 };

@@ -6,6 +6,7 @@ import { Section } from '@kunacademy/ui/section';
 import { GeometricPattern } from '@kunacademy/ui/patterns';
 import type { Metadata } from 'next';
 import { ArrowLeft } from 'lucide-react';
+import { EventRegistrationForm } from './event-registration-form';
 
 interface Props {
   params: Promise<{ locale: string; slug: string }>;
@@ -202,45 +203,41 @@ export default async function EventDetailPage({ params }: Props) {
 
             {/* Sidebar — Registration Card */}
             <div>
-              <div className="sticky top-24 rounded-2xl border border-[var(--color-neutral-200)] p-6">
-                <div className="text-center mb-4">
-                  <div className="text-2xl font-bold text-[var(--color-primary)]">
-                    {isFree ? (isAr ? 'مجاني' : 'Free') : `${event.price_aed} ${isAr ? 'د.إ' : 'AED'}`}
+              {isPast ? (
+                <div className="sticky top-24 rounded-2xl border border-[var(--color-neutral-200)] p-6">
+                  <div className="text-center mb-4">
+                    <div className="text-2xl font-bold text-[var(--color-primary)]">
+                      {isFree ? (isAr ? 'مجاني' : 'Free') : `${event.price_aed} ${isAr ? 'د.إ' : 'AED'}`}
+                    </div>
                   </div>
-                </div>
-
-                {isPast ? (
                   <div className="text-center py-3 rounded-xl bg-[var(--color-neutral-100)] text-[var(--color-neutral-500)] text-sm font-medium">
                     {isAr ? 'انتهت هذه الفعالية' : 'This event has ended'}
                   </div>
-                ) : isDeadlinePassed ? (
+                </div>
+              ) : isDeadlinePassed ? (
+                <div className="sticky top-24 rounded-2xl border border-[var(--color-neutral-200)] p-6">
+                  <div className="text-center mb-4">
+                    <div className="text-2xl font-bold text-[var(--color-primary)]">
+                      {isFree ? (isAr ? 'مجاني' : 'Free') : `${event.price_aed} ${isAr ? 'د.إ' : 'AED'}`}
+                    </div>
+                  </div>
                   <div className="text-center py-3 rounded-xl bg-[var(--color-neutral-100)] text-[var(--color-neutral-500)] text-sm font-medium">
                     {isAr ? 'انتهى التسجيل' : 'Registration closed'}
                   </div>
-                ) : (
-                  <a
-                    href={`/${locale}/coaching/book`}
-                    className="block w-full text-center rounded-xl bg-[var(--color-accent)] px-6 py-3 text-sm font-semibold text-white min-h-[44px] hover:bg-[var(--color-accent-500)] transition-all duration-300"
-                  >
-                    {isAr ? 'سجّل الآن' : 'Register Now'}
-                  </a>
-                )}
-
-                {event.registration_deadline && !isPast && !isDeadlinePassed && (
-                  <p className="text-xs text-center text-[var(--color-neutral-500)] mt-3">
-                    {isAr ? 'آخر موعد للتسجيل: ' : 'Registration deadline: '}
-                    {new Date(event.registration_deadline + 'T00:00:00').toLocaleDateString(isAr ? 'ar-SA' : 'en-US', {
-                      month: 'long', day: 'numeric',
-                    })}
-                  </p>
-                )}
-
-                {event.capacity && (
-                  <p className="text-xs text-center text-[var(--color-neutral-500)] mt-2">
-                    {isAr ? `${event.capacity} مقعد` : `${event.capacity} seats`}
-                  </p>
-                )}
-              </div>
+                </div>
+              ) : (
+                <EventRegistrationForm
+                  eventSlug={event.slug}
+                  eventName={title}
+                  isFree={isFree}
+                  priceAed={event.price_aed}
+                  priceEgp={event.price_egp}
+                  priceUsd={event.price_usd}
+                  capacity={event.capacity}
+                  locale={locale}
+                  registrationDeadline={event.registration_deadline}
+                />
+              )}
             </div>
           </div>
         </div>
