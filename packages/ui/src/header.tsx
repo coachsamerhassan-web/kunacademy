@@ -6,12 +6,19 @@ import { ArrowRight } from 'lucide-react';
 
 // ─── Navigation Structure ──────────────────────────────
 
+interface NavGroup {
+  groupLabelAr: string;
+  groupLabelEn: string;
+  items: { labelAr: string; labelEn: string; href: string }[];
+}
+
 interface NavItem {
   key: string;
   labelAr: string;
   labelEn: string;
   href: string;
   children?: { labelAr: string; labelEn: string; href: string; descAr?: string; descEn?: string }[];
+  groups?: NavGroup[];
 }
 
 const primaryNav: NavItem[] = [
@@ -20,12 +27,63 @@ const primaryNav: NavItem[] = [
     labelAr: 'البرامج',
     labelEn: 'Programs',
     href: '/programs/',
-    children: [
-      { labelAr: 'الشهادات المعتمدة', labelEn: 'Certifications', href: '/academy/certifications/', descAr: 'STCE — اعتماد ICF', descEn: 'STCE — ICF Accredited' },
-      { labelAr: 'الدورات والورش', labelEn: 'Courses & Workshops', href: '/academy/courses/', descAr: 'تعلّم المهارات', descEn: 'Learn the skills' },
-      { labelAr: 'حلول المؤسسات', labelEn: 'Corporate', href: '/programs/corporate/', descAr: 'للقادة والفرق', descEn: 'For leaders & teams' },
-      { labelAr: 'الأسرة والشباب', labelEn: 'Family & Youth', href: '/programs/family/', descAr: 'SEEDS وويصال', descEn: 'SEEDS & Wisal' },
-      { labelAr: 'احجز جلسة كوتشينج', labelEn: 'Book Coaching', href: '/coaching/book/', descAr: 'فردي أو جماعي', descEn: 'Individual or group' },
+    groups: [
+      {
+        groupLabelAr: 'ابدأ من هنا',
+        groupLabelEn: 'Start Here',
+        items: [
+          { labelAr: 'مدخل التفكير الحسّي (STI)', labelEn: 'Somatic Thinking Intro (STI)', href: '/academy/intro/' },
+          { labelAr: 'اكتشف مسارك', labelEn: 'Find Your Path', href: '/pathfinder/' },
+        ],
+      },
+      {
+        groupLabelAr: 'الشهادات المعتمدة',
+        groupLabelEn: 'Certifications',
+        items: [
+          { labelAr: 'المستوى ١ — أساسيات الأفراد (STIC)', labelEn: 'Level 1 — Individual Fundamentals (STIC)', href: '/academy/certifications/stce/level-1/' },
+          { labelAr: 'المستوى ٢ — متقدّم (STAIC)', labelEn: 'Level 2 — Advanced (STAIC)', href: '/academy/certifications/stce/level-2/' },
+          { labelAr: 'المستوى ٣ — المجموعات (STGC)', labelEn: 'Level 3 — Group (STGC)', href: '/academy/certifications/stce/level-3/' },
+          { labelAr: 'المستوى ٤ — المؤسسات (STOC)', labelEn: 'Level 4 — Organizational (STOC)', href: '/academy/certifications/stce/level-4/' },
+          { labelAr: 'المستوى ٥ — العائلات والأزواج (STFC)', labelEn: 'Level 5 — Family & Couples (STFC)', href: '/academy/certifications/stce/level-5/' },
+          { labelAr: 'الكوتشينج للأطباء (STDC)', labelEn: 'Coaching for Doctors (STDC)', href: '/academy/certifications/doctors/' },
+          { labelAr: 'الكوتشينج للمديرين (STCM)', labelEn: 'Coaching for Managers (STCM)', href: '/academy/certifications/managers/' },
+        ],
+      },
+      {
+        groupLabelAr: 'الباقات',
+        groupLabelEn: 'Packages',
+        items: [
+          { labelAr: 'منهجك التدريبي', labelEn: 'Training Methodology', href: '/academy/packages/training/' },
+          { labelAr: 'منهجك المؤسسي', labelEn: 'Organizational Methodology', href: '/academy/packages/organizational/' },
+          { labelAr: 'منهجك القيادي', labelEn: 'Leadership Methodology', href: '/academy/packages/leadership/' },
+        ],
+      },
+      {
+        groupLabelAr: 'الدورات والورش',
+        groupLabelEn: 'Courses & Workshops',
+        items: [
+          { labelAr: 'هويّتك (YPI)', labelEn: 'Your Identity (YPI)', href: '/academy/courses/your-identity/' },
+          { labelAr: 'هندسة التأثير', labelEn: 'Impact Engineering', href: '/events/' },
+          { labelAr: 'الدورات المسجّلة', labelEn: 'Recorded Courses', href: '/academy/recorded/' },
+        ],
+      },
+      {
+        groupLabelAr: 'حلول المؤسسات',
+        groupLabelEn: 'Corporate',
+        items: [
+          { labelAr: 'GM Playbook', labelEn: 'GM Playbook', href: '/programs/corporate/gm-playbook/' },
+          { labelAr: 'التسهيل التنفيذي', labelEn: 'Executive Facilitation', href: '/programs/corporate/facilitation/' },
+        ],
+      },
+      {
+        groupLabelAr: 'الأسرة والشباب',
+        groupLabelEn: 'Family & Youth',
+        items: [
+          { labelAr: 'SEEDS بذور', labelEn: 'SEEDS', href: '/programs/family/seeds/' },
+          { labelAr: 'وِصال Wisal', labelEn: 'Wisal', href: '/programs/family/wisal/' },
+          { labelAr: 'يقظة Yaqatha', labelEn: 'Yaqatha', href: '/programs/yaqatha/' },
+        ],
+      },
     ],
   },
   {
@@ -144,59 +202,150 @@ export function Header({ locale, user }: HeaderProps) {
 
         {/* Desktop Nav */}
         <nav className="hidden lg:flex items-center gap-0.5">
-          {primaryNav.map((item) => (
-            <div
-              key={item.key}
-              className="relative"
-              onMouseEnter={() => item.children && handleMouseEnter(item.key)}
-              onMouseLeave={() => item.children && handleMouseLeave()}
-            >
-              <a
-                href={`/${locale}${item.href}`}
-                className={cn(
-                  'flex items-center gap-1 px-3 py-2 text-[var(--text-nav)] font-medium rounded-lg transition-all duration-300 min-h-[44px]',
-                  activeDropdown === item.key
-                    ? 'text-[var(--color-primary)] bg-[var(--color-primary-50)]'
-                    : 'text-[var(--color-neutral-700)] hover:text-[var(--color-primary)]',
-                )}
+          {primaryNav.map((item) => {
+            const hasDropdown = item.children || item.groups;
+            return (
+              <div
+                key={item.key}
+                className="relative"
+                onMouseEnter={() => hasDropdown && handleMouseEnter(item.key)}
+                onMouseLeave={() => hasDropdown && handleMouseLeave()}
               >
-                {isAr ? item.labelAr : item.labelEn}
-                {item.children && (
-                  <svg
-                    className={cn('w-3 h-3 transition-transform duration-300', activeDropdown === item.key && 'rotate-180')}
-                    viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2"
-                  >
-                    <path d="M3 5l3 3 3-3" />
-                  </svg>
-                )}
-              </a>
-
-              {/* Dropdown — mega-menu style */}
-              {item.children && activeDropdown === item.key && (
-                <div
-                  className="absolute top-full start-0 mt-2 w-72 bg-white rounded-2xl shadow-[0_12px_48px_rgba(71,64,153,0.12)] border border-[var(--color-neutral-100)] py-2 z-50"
-                  style={{ animation: 'fade-in-item 0.2s ease-out' }}
+                <a
+                  href={`/${locale}${item.href}`}
+                  className={cn(
+                    'flex items-center gap-1 px-3 py-2 text-[var(--text-nav)] font-medium rounded-lg transition-all duration-300 min-h-[44px]',
+                    activeDropdown === item.key
+                      ? 'text-[var(--color-primary)] bg-[var(--color-primary-50)]'
+                      : 'text-[var(--color-neutral-700)] hover:text-[var(--color-primary)]',
+                  )}
                 >
-                  {item.children.map((child) => (
-                    <a
-                      key={child.href}
-                      href={`/${locale}${child.href}`}
-                      className="flex flex-col px-4 py-3 hover:bg-[var(--color-primary-50)] transition-colors duration-200 group/item"
+                  {isAr ? item.labelAr : item.labelEn}
+                  {hasDropdown && (
+                    <svg
+                      className={cn('w-3 h-3 transition-transform duration-300', activeDropdown === item.key && 'rotate-180')}
+                      viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2"
                     >
-                      <span className="text-sm font-medium text-[var(--color-neutral-800)] group-hover/item:text-[var(--color-primary)]">
-                        {isAr ? child.labelAr : child.labelEn}
-                      </span>
-                      {child.descAr && (
-                        <span className="text-xs text-[var(--color-neutral-500)] mt-0.5">
-                          {isAr ? child.descAr : child.descEn}
-                        </span>
-                      )}
+                      <path d="M3 5l3 3 3-3" />
+                    </svg>
+                  )}
+                </a>
+
+                {/* Mega-menu for groups (Programs) */}
+                {item.groups && activeDropdown === item.key && (
+                  <div
+                    className="absolute top-full start-0 mt-2 bg-white rounded-2xl shadow-[0_12px_48px_rgba(71,64,153,0.12)] border border-[var(--color-neutral-100)] py-6 px-8 z-50"
+                    style={{ animation: 'fade-in-item 0.2s ease-out', width: 'max(680px, 56vw)', maxWidth: '820px' }}
+                  >
+                    <div className="grid grid-cols-3 gap-6 mb-6">
+                      {/* Column 1: Start Here + Certifications */}
+                      <div className="space-y-6">
+                        {[item.groups[0], item.groups[1]].map((group) => (
+                          <div key={group.groupLabelEn}>
+                            <h3 className="text-[10px] uppercase font-semibold tracking-wider text-[var(--color-neutral-400)] mb-3">
+                              {isAr ? group.groupLabelAr : group.groupLabelEn}
+                            </h3>
+                            <ul className="space-y-2">
+                              {group.items.map((link) => (
+                                <li key={link.href}>
+                                  <a
+                                    href={`/${locale}${link.href}`}
+                                    className="text-sm text-[var(--color-neutral-700)] hover:text-[var(--color-primary)] transition-colors duration-200"
+                                  >
+                                    {isAr ? link.labelAr : link.labelEn}
+                                  </a>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Column 2: Packages + Courses */}
+                      <div className="space-y-6">
+                        {[item.groups[2], item.groups[3]].map((group) => (
+                          <div key={group.groupLabelEn}>
+                            <h3 className="text-[10px] uppercase font-semibold tracking-wider text-[var(--color-neutral-400)] mb-3">
+                              {isAr ? group.groupLabelAr : group.groupLabelEn}
+                            </h3>
+                            <ul className="space-y-2">
+                              {group.items.map((link) => (
+                                <li key={link.href}>
+                                  <a
+                                    href={`/${locale}${link.href}`}
+                                    className="text-sm text-[var(--color-neutral-700)] hover:text-[var(--color-primary)] transition-colors duration-200"
+                                  >
+                                    {isAr ? link.labelAr : link.labelEn}
+                                  </a>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Column 3: Corporate + Family */}
+                      <div className="space-y-6">
+                        {[item.groups[4], item.groups[5]].map((group) => (
+                          <div key={group.groupLabelEn}>
+                            <h3 className="text-[10px] uppercase font-semibold tracking-wider text-[var(--color-neutral-400)] mb-3">
+                              {isAr ? group.groupLabelAr : group.groupLabelEn}
+                            </h3>
+                            <ul className="space-y-2">
+                              {group.items.map((link) => (
+                                <li key={link.href}>
+                                  <a
+                                    href={`/${locale}${link.href}`}
+                                    className="text-sm text-[var(--color-neutral-700)] hover:text-[var(--color-primary)] transition-colors duration-200"
+                                  >
+                                    {isAr ? link.labelAr : link.labelEn}
+                                  </a>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* CTA Bar */}
+                    <a
+                      href={`/${locale}/pathfinder/`}
+                      className="flex items-center justify-center w-full rounded-xl bg-[var(--color-accent)] px-4 py-3 text-sm font-semibold text-white hover:bg-[var(--color-accent-500)] transition-all duration-300 group/cta"
+                    >
+                      {isAr ? 'اكتشف المسار المناسب' : 'Find Your Path'}
+                      <ArrowRight className="w-4 h-4 ms-2 transition-transform group-hover/cta:translate-x-1" />
                     </a>
-                  ))}
-                </div>
-              )}
-            </div>
-          ))}
+                  </div>
+                )}
+
+                {/* Simple dropdown for children (About) */}
+                {item.children && activeDropdown === item.key && (
+                  <div
+                    className="absolute top-full start-0 mt-2 w-72 bg-white rounded-2xl shadow-[0_12px_48px_rgba(71,64,153,0.12)] border border-[var(--color-neutral-100)] py-2 z-50"
+                    style={{ animation: 'fade-in-item 0.2s ease-out' }}
+                  >
+                    {item.children.map((child) => (
+                      <a
+                        key={child.href}
+                        href={`/${locale}${child.href}`}
+                        className="flex flex-col px-4 py-3 hover:bg-[var(--color-primary-50)] transition-colors duration-200 group/item"
+                      >
+                        <span className="text-sm font-medium text-[var(--color-neutral-800)] group-hover/item:text-[var(--color-primary)]">
+                          {isAr ? child.labelAr : child.labelEn}
+                        </span>
+                        {child.descAr && (
+                          <span className="text-xs text-[var(--color-neutral-500)] mt-0.5">
+                            {isAr ? child.descAr : child.descEn}
+                          </span>
+                        )}
+                      </a>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </nav>
 
         {/* Right actions */}
@@ -305,64 +454,88 @@ export function Header({ locale, user }: HeaderProps) {
           )}
         >
           <div className="p-5 space-y-1">
-            {primaryNav.map((item, idx) => (
-              <div
-                key={item.key}
-                className="mobile-menu-item"
-                style={{ animationDelay: menuOpen ? `${idx * 60}ms` : '0ms' }}
-              >
-                {item.children ? (
-                  <>
-                    <button
-                      onClick={() => setMobileExpanded(mobileExpanded === item.key ? null : item.key)}
-                      className="w-full flex items-center justify-between py-3.5 px-4 text-base font-medium rounded-xl hover:bg-[var(--color-neutral-50)] transition-colors duration-200"
-                    >
-                      <span>{isAr ? item.labelAr : item.labelEn}</span>
-                      <svg
-                        className={cn('w-4 h-4 text-[var(--color-neutral-400)] transition-transform duration-300', mobileExpanded === item.key && 'rotate-180')}
-                        viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2"
+            {primaryNav.map((item, idx) => {
+              const hasDropdown = item.children || item.groups;
+              return (
+                <div
+                  key={item.key}
+                  className="mobile-menu-item"
+                  style={{ animationDelay: menuOpen ? `${idx * 60}ms` : '0ms' }}
+                >
+                  {hasDropdown ? (
+                    <>
+                      <button
+                        onClick={() => setMobileExpanded(mobileExpanded === item.key ? null : item.key)}
+                        className="w-full flex items-center justify-between py-3.5 px-4 text-base font-medium rounded-xl hover:bg-[var(--color-neutral-50)] transition-colors duration-200"
                       >
-                        <path d="M3 5l3 3 3-3" />
-                      </svg>
-                    </button>
-                    <div
-                      className={cn(
-                        'overflow-hidden transition-all duration-300 ease-out',
-                        mobileExpanded === item.key ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
-                      )}
-                    >
-                      <div className="ps-4 pb-2 space-y-0.5">
-                        <a
-                          href={`/${locale}${item.href}`}
-                          className="block py-2.5 px-4 text-sm font-medium text-[var(--color-primary)] rounded-lg hover:bg-[var(--color-primary-50)] transition-colors"
-                          onClick={() => setMenuOpen(false)}
+                        <span>{isAr ? item.labelAr : item.labelEn}</span>
+                        <svg
+                          className={cn('w-4 h-4 text-[var(--color-neutral-400)] transition-transform duration-300', mobileExpanded === item.key && 'rotate-180')}
+                          viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2"
                         >
-                          {t('عرض الكل', 'View All')} <ArrowRight className="w-3.5 h-3.5 inline-block rtl:rotate-180" aria-hidden="true" />
-                        </a>
-                        {item.children.map((child) => (
+                          <path d="M3 5l3 3 3-3" />
+                        </svg>
+                      </button>
+                      <div
+                        className={cn(
+                          'overflow-hidden transition-all duration-300 ease-out',
+                          mobileExpanded === item.key ? 'max-h-[600px] opacity-100' : 'max-h-0 opacity-0'
+                        )}
+                      >
+                        <div className="ps-4 pb-2 space-y-0.5">
                           <a
-                            key={child.href}
-                            href={`/${locale}${child.href}`}
-                            className="block py-2.5 px-4 text-sm text-[var(--color-neutral-600)] hover:text-[var(--color-primary)] rounded-lg hover:bg-[var(--color-neutral-50)] transition-colors"
+                            href={`/${locale}${item.href}`}
+                            className="block py-2.5 px-4 text-sm font-medium text-[var(--color-primary)] rounded-lg hover:bg-[var(--color-primary-50)] transition-colors"
                             onClick={() => setMenuOpen(false)}
                           >
-                            {isAr ? child.labelAr : child.labelEn}
+                            {t('عرض الكل', 'View All')} <ArrowRight className="w-3.5 h-3.5 inline-block rtl:rotate-180" aria-hidden="true" />
                           </a>
-                        ))}
+
+                          {/* Groups (Programs) */}
+                          {item.groups && item.groups.map((group) => (
+                            <div key={group.groupLabelEn} className="pt-3 first:pt-0">
+                              <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--color-neutral-400)] px-4 mb-2">
+                                {isAr ? group.groupLabelAr : group.groupLabelEn}
+                              </h3>
+                              {group.items.map((link) => (
+                                <a
+                                  key={link.href}
+                                  href={`/${locale}${link.href}`}
+                                  className="block py-2 px-4 text-sm text-[var(--color-neutral-600)] hover:text-[var(--color-primary)] rounded-lg hover:bg-[var(--color-neutral-50)] transition-colors"
+                                  onClick={() => setMenuOpen(false)}
+                                >
+                                  {isAr ? link.labelAr : link.labelEn}
+                                </a>
+                              ))}
+                            </div>
+                          ))}
+
+                          {/* Children (About) */}
+                          {item.children && item.children.map((child) => (
+                            <a
+                              key={child.href}
+                              href={`/${locale}${child.href}`}
+                              className="block py-2.5 px-4 text-sm text-[var(--color-neutral-600)] hover:text-[var(--color-primary)] rounded-lg hover:bg-[var(--color-neutral-50)] transition-colors"
+                              onClick={() => setMenuOpen(false)}
+                            >
+                              {isAr ? child.labelAr : child.labelEn}
+                            </a>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  </>
-                ) : (
-                  <a
-                    href={`/${locale}${item.href}`}
-                    className="block py-3.5 px-4 text-base font-medium rounded-xl hover:bg-[var(--color-neutral-50)] transition-colors"
-                    onClick={() => setMenuOpen(false)}
-                  >
-                    {isAr ? item.labelAr : item.labelEn}
-                  </a>
-                )}
-              </div>
-            ))}
+                    </>
+                  ) : (
+                    <a
+                      href={`/${locale}${item.href}`}
+                      className="block py-3.5 px-4 text-base font-medium rounded-xl hover:bg-[var(--color-neutral-50)] transition-colors"
+                      onClick={() => setMenuOpen(false)}
+                    >
+                      {isAr ? item.labelAr : item.labelEn}
+                    </a>
+                  )}
+                </div>
+              );
+            })}
 
             {/* Divider */}
             <div className="py-3">

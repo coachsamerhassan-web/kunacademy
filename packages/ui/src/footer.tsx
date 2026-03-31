@@ -10,38 +10,49 @@ interface FooterProps {
 }
 
 const footerLinks = {
+  academy: {
+    labelAr: 'الأكاديمية',
+    labelEn: 'Academy',
+    items: [
+      { labelAr: 'الشهادات المعتمدة', labelEn: 'Certifications', href: '/academy/certifications/' },
+      { labelAr: 'الباقات (منهجك)', labelEn: 'Packages (Menhajak)', href: '/academy/packages/' },
+      { labelAr: 'الدورات المسجّلة', labelEn: 'Recorded Courses', href: '/academy/recorded/' },
+      { labelAr: 'المسار التعليمي', labelEn: 'Learning Pathway', href: '/academy/pathway/' },
+      { labelAr: 'دورات مجانية', labelEn: 'Free Courses', href: '/academy/free/' },
+    ],
+  },
   programs: {
     labelAr: 'البرامج',
     labelEn: 'Programs',
     items: [
-      { labelAr: 'الشهادات المعتمدة', labelEn: 'Certifications', href: '/academy/certifications/' },
-      { labelAr: 'الدورات والورش', labelEn: 'Courses & Workshops', href: '/academy/courses/' },
-      { labelAr: 'حلول المؤسسات', labelEn: 'Corporate', href: '/programs/corporate/' },
-      { labelAr: 'الأسرة والشباب', labelEn: 'Family & Youth', href: '/programs/family/' },
-      { labelAr: 'احجز جلسة كوتشينج', labelEn: 'Book Coaching', href: '/coaching/book/' },
-    ],
-  },
-  about: {
-    labelAr: 'عن كُن',
-    labelEn: 'About Kun',
-    items: [
-      { labelAr: 'من نحن', labelEn: 'About Us', href: '/about/' },
-      { labelAr: 'سامر حسن', labelEn: 'Samer Hassan', href: '/about/founder/' },
-      { labelAr: 'التفكير الحسّي®', labelEn: 'Somatic Thinking®', href: '/methodology/' },
-      { labelAr: 'الكوتشز', labelEn: 'Our Coaches', href: '/coaches/' },
-      { labelAr: 'المجتمع', labelEn: 'Community', href: '/community/' },
-      { labelAr: 'المدونة', labelEn: 'Blog', href: '/blog/' },
+      { labelAr: 'الكوتشينج الفردي', labelEn: 'Individual Coaching', href: '/coaching/individual/' },
+      { labelAr: 'كوتشينج المؤسسات', labelEn: 'Corporate Coaching', href: '/coaching/corporate/' },
+      { labelAr: 'بذور SEEDS', labelEn: 'SEEDS', href: '/programs/family/seeds/' },
+      { labelAr: 'وِصال Wisal', labelEn: 'Wisal', href: '/programs/family/wisal/' },
+      { labelAr: 'يقظة Yaqatha', labelEn: 'Yaqatha', href: '/programs/yaqatha/' },
     ],
   },
   resources: {
-    labelAr: 'موارد',
+    labelAr: 'المصادر',
     labelEn: 'Resources',
     items: [
-      { labelAr: 'المُرشد', labelEn: 'Pathfinder', href: '/pathfinder/' },
+      { labelAr: 'المدونة', labelEn: 'Blog', href: '/blog/' },
       { labelAr: 'الفعاليات', labelEn: 'Events', href: '/events/' },
-      { labelAr: 'موارد مجانية', labelEn: 'Free Resources', href: '/programs/free/' },
+      { labelAr: 'الشهادات والتوصيات', labelEn: 'Testimonials', href: '/testimonials/' },
       { labelAr: 'الأسئلة الشائعة', labelEn: 'FAQ', href: '/faq/' },
-      { labelAr: 'الشهادات', labelEn: 'Testimonials', href: '/testimonials/' },
+      { labelAr: 'اكتشف مسارك', labelEn: 'Find Your Path', href: '/pathfinder/' },
+    ],
+  },
+  connect: {
+    labelAr: 'تواصل',
+    labelEn: 'Connect',
+    items: [
+      { labelAr: 'عن كُن', labelEn: 'About Kun', href: '/about/' },
+      { labelAr: 'سامر حسن', labelEn: 'Samer Hassan', href: '/about/founder/' },
+      { labelAr: 'تواصل معنا', labelEn: 'Contact Us', href: '/contact/' },
+      { labelAr: 'المتجر', labelEn: 'Shop', href: '/shop/' },
+      { labelAr: 'الخصوصية', labelEn: 'Privacy', href: '/legal/privacy/' },
+      { labelAr: 'الشروط والأحكام', labelEn: 'Terms', href: '/legal/terms/' },
     ],
   },
 };
@@ -113,7 +124,7 @@ export function Footer({ locale, className }: FooterProps) {
           </div>
 
           {/* Link columns */}
-          <div className="flex-1 grid grid-cols-2 md:grid-cols-3 gap-8 md:gap-6">
+          <div className="flex-1 grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-6">
             {Object.values(footerLinks).map((column) => (
               <div key={column.labelEn}>
                 <h2 className="text-sm font-semibold text-white/90 tracking-wide uppercase mb-4">

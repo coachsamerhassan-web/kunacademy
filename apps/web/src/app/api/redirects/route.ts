@@ -31,6 +31,13 @@ const REDIRECTS: Record<string, string> = {
   // Coaching
   '/book-a-session/': '/ar/coaching/book',
   '/coaching/': '/ar/coaching',
+  // Program redirects (Packages & Islamic Coaching removed)
+  '/academy/certifications/stce/packages/': '/en/academy/packages/',
+  '/ar/academy/certifications/stce/packages/': '/ar/academy/packages/',
+  '/en/academy/certifications/stce/packages/': '/en/academy/packages/',
+  '/academy/certifications/islamic-coaching/': '/en/academy/certifications/',
+  '/ar/academy/certifications/islamic-coaching/': '/ar/academy/certifications/',
+  '/en/academy/certifications/islamic-coaching/': '/en/academy/certifications/',
 };
 
 export async function GET(request: NextRequest) {
