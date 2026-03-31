@@ -4,6 +4,7 @@ import { courseJsonLd, breadcrumbJsonLd } from '@kunacademy/ui/structured-data';
 import type { Program } from '@kunacademy/cms';
 import { getPricingRegion, getGeoPrice } from '@/lib/geo-pricing';
 import { PromoVideo } from '@/components/promo-video';
+import { LeadCaptureForm } from '@/components/lead-capture-form';
 
 function parseHours(duration: string | undefined): number {
   if (!duration) return 0;
@@ -221,24 +222,30 @@ export async function ProgramDetail({
             </p>
           )}
 
-          <div className="mt-8 flex flex-wrap justify-center gap-4">
-            <a
-              href={hidePrice ? (ctaHref || `/${locale}/contact/`) : (ctaHref || `/${locale}/checkout/?program=${program.slug}`)}
-              className="inline-flex items-center justify-center rounded-xl bg-[var(--color-accent)] px-8 py-3.5 text-base font-semibold text-white min-h-[52px] hover:bg-[var(--color-accent-500)] transition-all duration-300 shadow-[0_4px_24px_rgba(228,96,30,0.35)]"
-            >
-              {hidePrice
-                ? (isAr ? 'تحدّث مع مرشد كُن' : 'Talk to a Kun Guide')
-                : (isAr ? 'سجّل الآن' : 'Register Now')}
-            </a>
-            {!hidePrice && (
+          {hidePrice ? (
+            <div className="mt-6 max-w-md mx-auto">
+              <LeadCaptureForm
+                locale={locale}
+                programCode={program.slug}
+                programName={isAr ? program.title_ar : program.title_en}
+              />
+            </div>
+          ) : (
+            <div className="mt-8 flex flex-wrap justify-center gap-4">
+              <a
+                href={ctaHref || `/${locale}/checkout/?program=${program.slug}`}
+                className="inline-flex items-center justify-center rounded-xl bg-[var(--color-accent)] px-8 py-3.5 text-base font-semibold text-white min-h-[52px] hover:bg-[var(--color-accent-500)] transition-all duration-300 shadow-[0_4px_24px_rgba(228,96,30,0.35)]"
+              >
+                {isAr ? 'سجّل الآن' : 'Register Now'}
+              </a>
               <a
                 href={`/${locale}/contact/`}
                 className="inline-flex items-center justify-center rounded-xl bg-white/10 border border-white/20 px-8 py-3.5 text-base font-medium text-white min-h-[52px] hover:bg-white/20 transition-all duration-300"
               >
                 {isAr ? 'استفسر أولاً' : 'Ask First'}
               </a>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </section>
     </main>
