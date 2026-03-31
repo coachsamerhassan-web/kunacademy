@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
 
       if (error) {
         console.error('Event registration error:', error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ error: 'Failed to register' }, { status: 500 });
       }
 
       return NextResponse.json({
@@ -118,7 +118,7 @@ export async function POST(request: NextRequest) {
 
       if (error) {
         console.error('Event registration error:', error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ error: 'Failed to register' }, { status: 500 });
       }
 
       // Return checkout URL — client will redirect
@@ -151,8 +151,8 @@ export async function GET(request: NextRequest) {
   const { data } = await supabase
     .from('event_registrations')
     .select('id, status')
-    .eq('event_slug', event_slug)
-    .eq('email', email)
+    .eq('event_slug', sanitize(event_slug))
+    .eq('email', sanitize(email))
     .in('status', ['registered', 'confirmed'])
     .maybeSingle();
 

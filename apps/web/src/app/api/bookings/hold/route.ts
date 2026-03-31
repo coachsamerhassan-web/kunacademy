@@ -67,6 +67,25 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // Validate UUIDs to prevent injection / oversized values
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!uuidRegex.test(String(coach_id)) || !uuidRegex.test(String(service_id))) {
+    return NextResponse.json({ error: 'Invalid coach_id or service_id' }, { status: 400 });
+  }
+
+  // Validate ISO 8601 datetime strings (length + parsability)
+  if (String(start_time).length > 50 || String(end_time).length > 50) {
+    return NextResponse.json({ error: 'Invalid time format' }, { status: 400 });
+  }
+  const parsedStart = new Date(String(start_time));
+  const parsedEnd = new Date(String(end_time));
+  if (isNaN(parsedStart.getTime()) || isNaN(parsedEnd.getTime())) {
+    return NextResponse.json({ error: 'Invalid time format' }, { status: 400 });
+  }
+  if (parsedEnd <= parsedStart) {
+    return NextResponse.json({ error: 'end_time must be after start_time' }, { status: 400 });
+  }
+
   const now = new Date();
   const heldUntil = new Date(now.getTime() + 5 * 60 * 1000); // 5 min hold
 
@@ -108,7 +127,7 @@ export async function POST(request: NextRequest) {
     .single();
 
   if (insertError || !inserted) {
-    console.error('[bookings/hold] insert error:', insertError);
+    console.error('[bookings/hold] insert error:', insertError?.message);
     return NextResponse.json({ error: 'Failed to hold slot' }, { status: 500 });
   }
 

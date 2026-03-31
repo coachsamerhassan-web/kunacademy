@@ -77,6 +77,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(contact.email))) {
+      return NextResponse.json({ error: 'Invalid email address' }, { status: 400 });
+    }
+
+    if (
+      String(contact.name).length > 200 ||
+      String(contact.email).length > 254 ||
+      (contact.phone && String(contact.phone).length > 30) ||
+      String(type).length > 50 ||
+      (Array.isArray(answers) && answers.length > 100)
+    ) {
+      return NextResponse.json({ error: 'Input too long' }, { status: 400 });
+    }
+
     if (!answers || !Array.isArray(answers) || answers.length === 0) {
       return NextResponse.json(
         { error: 'answers array is required' },

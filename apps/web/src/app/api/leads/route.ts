@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (cleanName.length > 200 || cleanMessage.length > 2000) {
+    if (cleanName.length > 200 || cleanMessage.length > 2000 || cleanPhone.length > 30 || cleanProgram.length > 100) {
       return NextResponse.json(
         { error: 'Input too long', error_ar: 'النص طويل جدًا' },
         { status: 400 },
