@@ -25,3 +25,6 @@ export { sendWhatsApp, whatsappBookingConfirmation, whatsappBookingReminder, wha
 // Unified dispatcher (orchestrates all channels)
 export { notify } from './dispatcher';
 export type { NotificationEvent } from './dispatcher';
+
+// Zoho CRM integration
+export { createZohoCrmContact } from './zoho-crm';

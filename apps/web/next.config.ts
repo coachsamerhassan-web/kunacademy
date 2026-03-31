@@ -9,6 +9,9 @@ const nextConfig: NextConfig = {
 
   async redirects() {
     return [
+      // Legacy quiz → Pathfinder assess
+      { source: '/:locale/quiz', destination: '/:locale/pathfinder/assess', permanent: true },
+      { source: '/:locale/quiz/:path*', destination: '/:locale/pathfinder/assess', permanent: true },
       // Portal → Dashboard/Coach (v2 restructure)
       { source: '/:locale/portal', destination: '/:locale/dashboard', permanent: true },
       { source: '/:locale/portal/courses', destination: '/:locale/dashboard/courses', permanent: true },
@@ -41,6 +44,9 @@ const nextConfig: NextConfig = {
       { source: '/:locale/privacy', destination: '/:locale/legal/privacy', permanent: true },
       { source: '/:locale/terms', destination: '/:locale/legal/terms', permanent: true },
       { source: '/:locale/refund', destination: '/:locale/legal/refund', permanent: true },
+      // Booking flow consolidation (Wave 15)
+      { source: '/:locale/book', destination: '/:locale/coaching/book', permanent: true },
+      { source: '/:locale/book/:path*', destination: '/:locale/coaching/book', permanent: true },
     ];
   },
 

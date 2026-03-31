@@ -48,30 +48,32 @@ export function ProductDetail({ product, locale }: ProductDetailProps) {
       return;
     }
 
+    if (!isDigital) {
+      // Physical product: add to cart
+      const cartKey = 'kun_cart';
+      const saved = localStorage.getItem(cartKey);
+      const cart: Array<{ productId: string; name_ar: string; name_en: string; price_aed: number; quantity: number }> = saved ? JSON.parse(saved) : [];
+      const existing = cart.findIndex((c) => c.productId === product.id);
+      if (existing >= 0) {
+        cart[existing].quantity += 1;
+      } else {
+        cart.push({
+          productId: product.id,
+          name_ar: product.name_ar,
+          name_en: product.name_en,
+          price_aed: product.price_aed ?? 0,
+          quantity: 1,
+        });
+      }
+      localStorage.setItem(cartKey, JSON.stringify(cart));
+      window.location.href = `/${locale}/shop/cart`;
+      return;
+    }
+
+    // Digital/subscription: go straight to checkout
     setPurchasing(true);
     try {
-      const res = await fetch('/api/checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          item_type: 'product',
-          item_id: product.id,
-          item_name: isAr ? product.name_ar : product.name_en,
-          user_id: user.id,
-          user_email: user.email,
-          currency: 'AED',
-          amount: product.price_aed,
-          gateway: 'stripe',
-          locale,
-        }),
-      });
-
-      const data = await res.json();
-      if (data.checkout_url) {
-        window.location.href = data.checkout_url;
-      }
-    } catch (err) {
-      console.error('[shop] Purchase error:', err);
+      window.location.href = `/${locale}/checkout?type=product&id=${product.id}`;
     } finally {
       setPurchasing(false);
     }

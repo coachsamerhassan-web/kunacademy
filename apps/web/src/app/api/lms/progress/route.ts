@@ -141,12 +141,32 @@ export async function POST(request: NextRequest) {
         .single();
 
       if (!existingCert) {
-        await supabase.from('certificates').insert({
-          user_id: user.id,
-          enrollment_id: enrollment.id,
-          credential_type: 'completion',
-          issued_at: new Date().toISOString(),
-        });
+        const { data: newCert } = await supabase
+          .from('certificates')
+          .insert({
+            user_id: user.id,
+            enrollment_id: enrollment.id,
+            credential_type: 'completion',
+            issued_at: new Date().toISOString(),
+          })
+          .select('id')
+          .single();
+
+        // Trigger PDF generation asynchronously — non-blocking
+        if (newCert?.id) {
+          const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://kunacademy.com';
+          const authToken = request.headers.get('authorization')?.slice(7);
+          if (authToken) {
+            fetch(`${appUrl}/api/certificates/generate`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${authToken}`,
+              },
+              body: JSON.stringify({ certificate_id: newCert.id }),
+            }).catch((e) => console.error('[lms/progress] Certificate PDF generation failed:', e));
+          }
+        }
       }
     }
   }

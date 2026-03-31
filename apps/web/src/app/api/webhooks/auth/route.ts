@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { sendWelcomeEmail, sendTelegramAlert } from '@kunacademy/email';
+import { sendWelcomeEmail, sendTelegramAlert, createZohoCrmContact } from '@kunacademy/email';
+import { createClient } from '@supabase/supabase-js';
 
 // Supabase Auth webhook — fires on new user signup
 // Supabase sends database webhook payloads with { type: 'INSERT', record: {...}, ... }
@@ -42,10 +43,32 @@ export async function POST(request: Request) {
         console.error('[auth-webhook] Telegram alert failed:', e);
       }
 
-      // 3. Zoho CRM contact creation — deferred to Wave D
-      // When implementing: use the Zoho Books zoho-client.py pattern
-      // or create a direct Zoho CRM API call here.
-      // Required fields: contact_name, email, source = 'Website Signup'
+      // 3. Zoho CRM contact creation — non-blocking fire-and-forget
+      if (email) {
+        createZohoCrmContact(name, email, undefined, 'Website Signup').catch((e) => {
+          console.error('[auth-webhook] Zoho CRM contact creation failed:', e);
+        });
+      }
+
+      // 4. Link any prior pathfinder_responses by email → new user_id (non-blocking)
+      if (email && record.id) {
+        const supabaseAdmin = createClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.SUPABASE_SERVICE_ROLE_KEY!
+        );
+        supabaseAdmin
+          .from('pathfinder_responses')
+          .update({ user_id: record.id as string })
+          .eq('email', email)
+          .is('user_id', null)
+          .then(({ error }) => {
+            if (error) {
+              console.error('[auth-webhook] Pathfinder linking failed:', error);
+            } else {
+              console.log('[auth-webhook] Pathfinder responses linked for:', email);
+            }
+          });
+      }
     }
 
     return NextResponse.json({ received: true });

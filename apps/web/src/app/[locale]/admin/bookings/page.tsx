@@ -89,6 +89,19 @@ export default function AdminBookingsPage() {
       });
     }
 
+    // Calculate earnings when booking is completed (non-blocking)
+    if (newStatus === 'completed') {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session?.access_token) {
+          fetch('/api/earnings/calculate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+            body: JSON.stringify({ booking_id: id }),
+          }).catch(() => {});
+        }
+      });
+    }
+
     setUpdating(null);
   }
 

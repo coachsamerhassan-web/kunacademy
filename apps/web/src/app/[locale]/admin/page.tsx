@@ -52,6 +52,7 @@ export default function AdminDashboard() {
     { href: `/${locale}/admin/payouts`, labelAr: 'المستحقات', labelEn: 'Payouts', count: '-', icon: '💰' },
     { href: `/${locale}/admin/content`, labelAr: 'المحتوى', labelEn: 'Content CMS', count: '-', icon: '📄' },
     { href: `/${locale}/admin/community`, labelAr: 'المجتمع', labelEn: 'Community', count: '-', icon: '👥' },
+    { href: `/${locale}/admin/pathfinder`, labelAr: 'تقييمات المُرشد', labelEn: 'Pathfinder Leads', count: '-', icon: '🧭' },
   ];
 
   const statCards = [

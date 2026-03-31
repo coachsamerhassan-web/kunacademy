@@ -39,17 +39,18 @@ export default function CartPage() {
     localStorage.setItem('kun_cart', JSON.stringify(updated));
   }
 
-  async function handleCheckout() {
+  function handleCheckout() {
+    if (cart.length === 0) return;
     setLoading(true);
-    try {
-      const res = await fetch('/api/checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ items: cart.map((c) => ({ productId: c.productId, quantity: c.quantity })), locale }),
-      });
-      const { url } = await res.json();
-      if (url) window.location.href = url;
-    } catch { setLoading(false); }
+    // For multi-item carts, check out the first item — the checkout flow handles one item at a time.
+    // Products are physical items; the checkout page handles currency/gateway selection.
+    if (cart.length === 1) {
+      window.location.href = `/${locale}/checkout?type=product&id=${cart[0].productId}`;
+    } else {
+      // Store cart in sessionStorage so checkout page can iterate items
+      sessionStorage.setItem('kun_cart_checkout', JSON.stringify(cart));
+      window.location.href = `/${locale}/checkout?type=product&id=${cart[0].productId}`;
+    }
   }
 
   const total = cart.reduce((sum, item) => sum + item.price_aed * item.quantity, 0);

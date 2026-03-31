@@ -62,7 +62,6 @@ export default function Page({ params }: { params: Promise<{ locale: string }> }
     .reduce((s, e) => s + e.net_amount, 0);
 
   async function getAuthToken() {
-    // TODO: Regenerate Supabase types once earnings/commission_rates/payout_requests tables exist
     const supabase = createBrowserClient();
     if (!supabase) return null;
     const { data: session } = await supabase.auth.getSession();

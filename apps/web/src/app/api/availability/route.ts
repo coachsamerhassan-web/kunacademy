@@ -18,10 +18,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'coach_id, start, and end are required' }, { status: 400 });
   }
 
-  // 1. Get weekly schedule
+  // 1. Get weekly schedule (include buffer_minutes)
   const { data: schedules } = await supabase
     .from('coach_schedules')
-    .select('day_of_week, start_time, end_time, timezone')
+    .select('day_of_week, start_time, end_time, timezone, buffer_minutes')
     .eq('coach_id', coachId)
     .eq('is_active', true);
 
@@ -29,35 +29,56 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ slots: [] });
   }
 
-  // 2. Get existing bookings in date range
+  // 2. Determine buffer: use first schedule's buffer_minutes, default 15
+  const bufferMinutes = (schedules[0] as any)?.buffer_minutes ?? 15;
+
+  // 3. Get existing bookings in date range — exclude held slots that are still held
+  //    A slot is "blocked" if:
+  //      status in ('pending', 'confirmed'), OR
+  //      status = 'held' AND held_until > now()
+  const now = new Date().toISOString();
   const { data: bookings } = await supabase
     .from('bookings')
-    .select('start_time, end_time')
+    .select('start_time, end_time, status, held_until')
     .eq('provider_id', coachId)
     .gte('start_time', startDate)
-    .lte('start_time', endDate + 'T23:59:59')
-    .in('status', ['pending', 'confirmed']);
+    .lte('start_time', endDate + 'T23:59:59');
 
-  // 3. Get time-off days
+  const activeBookings = (bookings || []).filter(b => {
+    if (b.status === 'pending' || b.status === 'confirmed') return true;
+    if (b.status === 'held' && b.held_until && b.held_until > now) return true;
+    return false;
+  });
+
+  // 4. Get time-off days (range-aware)
   const { data: timeOffs } = await supabase
     .from('coach_time_off')
-    .select('date')
+    .select('start_date, end_date')
     .eq('coach_id', coachId)
-    .gte('date', startDate)
-    .lte('date', endDate);
+    .lte('start_date', endDate)
+    .gte('end_date', startDate);
 
-  const timeOffDates = new Set((timeOffs || []).map(t => t.date));
-  const bookedSlots = (bookings || []).map(b => ({
+  // Build a set of blocked dates from time-off ranges
+  const timeOffDates = new Set<string>();
+  for (const t of timeOffs || []) {
+    const rangeStart = new Date(t.start_date);
+    const rangeEnd = new Date(t.end_date);
+    for (let d = new Date(rangeStart); d <= rangeEnd; d.setDate(d.getDate() + 1)) {
+      timeOffDates.add(d.toISOString().split('T')[0]);
+    }
+  }
+
+  const bookedSlots = activeBookings.map(b => ({
     date: b.start_time.split('T')[0],
     start: b.start_time.split('T')[1]?.slice(0, 5) || b.start_time,
     end: b.end_time.split('T')[1]?.slice(0, 5) || b.end_time,
   }));
 
-  // 4. Generate available slots
+  // 5. Generate available slots with buffer
   const slots: Array<{ date: string; start_time: string; end_time: string }> = [];
   const start = new Date(startDate);
   const end = new Date(endDate);
-  const tz = schedules[0]?.timezone || 'Asia/Dubai';
+  const tz = (schedules[0] as any)?.timezone || 'Asia/Dubai';
 
   for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
     const dateStr = d.toISOString().split('T')[0];
@@ -70,29 +91,42 @@ export async function GET(request: NextRequest) {
     const daySchedules = schedules.filter(s => s.day_of_week === dayOfWeek);
 
     for (const sched of daySchedules) {
-      // Generate slots within the schedule block
       const [startH, startM] = sched.start_time.split(':').map(Number);
       const [endH, endM] = sched.end_time.split(':').map(Number);
       const blockStartMinutes = startH * 60 + startM;
       const blockEndMinutes = endH * 60 + endM;
 
-      for (let slotStart = blockStartMinutes; slotStart + durationMinutes <= blockEndMinutes; slotStart += durationMinutes) {
-        const slotStartTime = `${String(Math.floor(slotStart / 60)).padStart(2, '0')}:${String(slotStart % 60).padStart(2, '0')}`;
-        const slotEndTime = `${String(Math.floor((slotStart + durationMinutes) / 60)).padStart(2, '0')}:${String((slotStart + durationMinutes) % 60).padStart(2, '0')}`;
+      // Generate slots with buffer: after each slot, advance by duration + buffer
+      let slotStart = blockStartMinutes;
+      while (slotStart + durationMinutes <= blockEndMinutes) {
+        const slotEnd = slotStart + durationMinutes;
 
-        // Check if slot is already booked
-        const isBooked = bookedSlots.some(b =>
-          b.date === dateStr &&
-          b.start < slotEndTime &&
-          b.end > slotStartTime
+        const slotStartTime = minutesToTime(slotStart);
+        const slotEndTime = minutesToTime(slotEnd);
+
+        // Check if slot overlaps any booked block
+        const isBooked = bookedSlots.some(
+          b =>
+            b.date === dateStr &&
+            b.start < slotEndTime &&
+            b.end > slotStartTime
         );
 
         if (!isBooked) {
           slots.push({ date: dateStr, start_time: slotStartTime, end_time: slotEndTime });
         }
+
+        // Advance by duration + buffer
+        slotStart = slotEnd + bufferMinutes;
       }
     }
   }
 
-  return NextResponse.json({ slots, timezone: tz });
+  return NextResponse.json({ slots, timezone: tz, buffer_minutes: bufferMinutes });
+}
+
+function minutesToTime(minutes: number): string {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 }

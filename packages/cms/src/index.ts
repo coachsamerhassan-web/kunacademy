@@ -46,6 +46,8 @@ export { JsonFileProvider } from './json-provider';
 export { GoogleSheetsProvider } from './sheets-provider';
 export { contentGetter, localize } from './helpers';
 export { fetchDocAsHtml, invalidateDocCache } from './google-docs-fetcher';
+export { scoreAnswers, calculateRoi } from './pathfinder-scorer';
+export type { ScoredAnswer, Recommendation, RoiInputs, RoiResult } from './pathfinder-scorer';
 
 // ── Provider Factory ────────────────────────────────────────────────────────
 

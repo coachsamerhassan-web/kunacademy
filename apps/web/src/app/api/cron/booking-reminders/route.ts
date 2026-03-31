@@ -19,6 +19,13 @@ export async function GET(req: NextRequest) {
   try {
     const supabase = createAdminClient();
 
+    // Clean up expired holds first
+    await supabase
+      .from('bookings')
+      .update({ status: 'cancelled' })
+      .eq('status', 'held')
+      .lt('held_until', new Date().toISOString());
+
     // Find bookings 23-25 hours from now (1-hour window to avoid duplicates)
     const now = new Date();
     const from = new Date(now.getTime() + 23 * 60 * 60 * 1000);

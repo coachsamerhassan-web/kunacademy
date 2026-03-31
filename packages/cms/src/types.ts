@@ -327,6 +327,13 @@ export interface PathfinderAnswer {
   id: string;
   text_ar: string;
   text_en: string;
+  /** Optional icon name (from Lucide icon set) */
+  icon?: string;
+  /** Optional longer description shown below the answer text */
+  description_ar?: string;
+  description_en?: string;
+  /** Scoring weights per program category — used by pathfinder-scorer */
+  category_weights?: Record<string, number>;
 }
 
 /** Pathfinder question tree node — for the guided recommendation flow */

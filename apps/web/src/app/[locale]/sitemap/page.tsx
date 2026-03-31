@@ -43,7 +43,7 @@ const sections = [
     links: [
       { href: '/shop', ar: 'المتجر', en: 'Shop' },
       { href: '/shop/cart', ar: 'سلة المشتريات', en: 'Cart' },
-      { href: '/book', ar: 'احجز جلسة', en: 'Book a Session' },
+      { href: '/coaching/book', ar: 'احجز جلسة', en: 'Book a Session' },
     ],
   },
   {

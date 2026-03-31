@@ -4,7 +4,7 @@ import { useAuth } from '@kunacademy/auth';
 import { createBrowserClient } from '@kunacademy/db';
 import { Section } from '@kunacademy/ui/section';
 import { Card } from '@kunacademy/ui/card';
-import { useState, useEffect, use } from 'react';
+import { useState, useEffect, use, useCallback } from 'react';
 
 interface CertificateRow {
   id: string;
@@ -22,6 +22,7 @@ export default function CertificatesPage({ params }: { params: Promise<{ locale:
   const { user } = useAuth();
   const [certificates, setCertificates] = useState<CertificateRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [generatingId, setGeneratingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -71,6 +72,36 @@ export default function CertificatesPage({ params }: { params: Promise<{ locale:
     load();
   }, [user]);
 
+  const handleGeneratePDF = useCallback(async (certId: string) => {
+    setGeneratingId(certId);
+    try {
+      const supabase = createBrowserClient();
+      const { data: session } = await supabase.auth.getSession();
+      const token = session?.session?.access_token;
+      if (!token) return;
+
+      const res = await fetch('/api/certificates/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ certificate_id: certId }),
+      });
+
+      if (res.ok) {
+        const { pdf_url } = await res.json();
+        setCertificates((prev) =>
+          prev.map((c) => (c.id === certId ? { ...c, pdf_url } : c))
+        );
+      }
+    } catch (e) {
+      console.error('[certificates] PDF generation failed:', e);
+    } finally {
+      setGeneratingId(null);
+    }
+  }, []);
+
   return (
     <Section variant="white">
       <h1 className="text-2xl font-bold text-[var(--text-primary)] mb-6">
@@ -97,7 +128,47 @@ export default function CertificatesPage({ params }: { params: Promise<{ locale:
                     {isAr ? 'رمز التحقق:' : 'Verification:'} {cert.verification_code}
                   </p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  {/* Download PDF — shown when pdf_url exists */}
+                  {cert.pdf_url && (
+                    <a
+                      href={cert.pdf_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      download
+                      className="inline-flex items-center px-3 py-2 rounded-lg bg-[var(--color-primary)] text-sm text-white hover:opacity-90 transition-opacity min-h-[44px]"
+                    >
+                      <svg className="w-4 h-4 ltr:mr-1.5 rtl:ml-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                      </svg>
+                      {isAr ? 'تحميل PDF' : 'Download PDF'}
+                    </a>
+                  )}
+
+                  {/* Generate Certificate button — shown when no pdf_url */}
+                  {!cert.pdf_url && (
+                    <button
+                      onClick={() => handleGeneratePDF(cert.id)}
+                      disabled={generatingId === cert.id}
+                      className="inline-flex items-center px-3 py-2 rounded-lg border border-[var(--color-primary)] text-sm text-[var(--color-primary)] hover:bg-[var(--color-primary-50)] transition-colors min-h-[44px] disabled:opacity-50"
+                    >
+                      {generatingId === cert.id ? (
+                        <>
+                          <div className="h-4 w-4 animate-spin rounded-full border-2 border-[var(--color-primary)] border-t-transparent ltr:mr-1.5 rtl:ml-1.5" />
+                          {isAr ? 'جاري التوليد...' : 'Generating...'}
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-4 h-4 ltr:mr-1.5 rtl:ml-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                          {isAr ? 'توليد الشهادة' : 'Generate Certificate'}
+                        </>
+                      )}
+                    </button>
+                  )}
+
+                  {/* Verify link */}
                   <a
                     href={`/${locale}/verify?code=${cert.verification_code}`}
                     className="inline-flex items-center px-3 py-2 rounded-lg border border-[var(--color-neutral-200)] text-sm text-[var(--color-neutral-600)] hover:bg-[var(--color-neutral-50)] transition-colors min-h-[44px]"
