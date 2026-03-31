@@ -68,6 +68,9 @@ export default async function EventDetailPage({ params }: Props) {
     );
   }
 
+  // Fetch featured testimonials (only used when speakers are present)
+  const testimonials = await cms.getFeaturedTestimonials();
+
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'Event',
@@ -163,7 +166,7 @@ export default async function EventDetailPage({ params }: Props) {
                 </div>
               )}
 
-              {/* Speakers */}
+              {/* Speakers — rich profile cards */}
               {speakers.filter(Boolean).length > 0 && (
                 <div className="mt-8">
                   <h2 className="text-lg font-bold text-[var(--text-primary)] mb-4">
@@ -172,28 +175,91 @@ export default async function EventDetailPage({ params }: Props) {
                   <div className="space-y-4">
                     {speakers.filter(Boolean).map((speaker) => {
                       if (!speaker) return null;
-                      const name = isAr ? speaker.name_ar : speaker.name_en;
+                      const name = speaker.name_ar || speaker.name_en;
                       const speakerTitle = isAr ? speaker.title_ar : speaker.title_en;
+                      const bio = isAr ? speaker.bio_ar : speaker.bio_en;
+                      const specialties: string[] = speaker.specialties ?? [];
                       return (
-                        <a
+                        <div
                           key={speaker.slug}
-                          href={`/${locale}/coaches/${speaker.slug}`}
-                          className="flex items-center gap-3 p-3 rounded-xl border border-[var(--color-neutral-200)] hover:border-[var(--color-primary)]/30 transition-colors"
+                          className="rounded-2xl border border-[var(--color-neutral-200)] p-5"
                         >
-                          <div className="h-12 w-12 rounded-full overflow-hidden bg-[var(--color-neutral-100)] shrink-0">
-                            {speaker.photo_url ? (
-                              <Image src={speaker.photo_url} alt={name} fill className="object-cover" sizes="48px" />
-                            ) : (
-                              <div className="h-full w-full flex items-center justify-center text-lg font-bold text-[var(--color-neutral-400)]">
-                                {name.charAt(0)}
+                          {/* Top row: photo + meta */}
+                          <div className="flex gap-4">
+                            {/* Photo */}
+                            <div className="relative h-[120px] w-[120px] rounded-2xl overflow-hidden bg-[var(--color-neutral-100)] shrink-0">
+                              {speaker.photo_url ? (
+                                <Image
+                                  src={speaker.photo_url}
+                                  alt={name}
+                                  fill
+                                  className="object-cover"
+                                  style={{ objectPosition: 'center 15%' }}
+                                  sizes="120px"
+                                />
+                              ) : (
+                                <div className="h-full w-full flex items-center justify-center text-3xl font-bold text-[var(--color-neutral-400)]">
+                                  {name.charAt(0)}
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Name / title / badges */}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex flex-wrap items-center gap-2 mb-1">
+                                <span
+                                  className="text-xl font-bold text-[var(--text-primary)]"
+                                  style={{ fontFamily: 'var(--font-arabic-body)' }}
+                                >
+                                  {name}
+                                </span>
+                                {speaker.coach_level && (
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-[var(--color-primary)] text-white">
+                                    {speaker.coach_level}
+                                  </span>
+                                )}
                               </div>
-                            )}
+
+                              {speakerTitle && (
+                                <div
+                                  className="text-sm text-[var(--color-neutral-600)] mb-2"
+                                  style={{ fontFamily: isAr ? 'var(--font-arabic-body)' : 'inherit' }}
+                                >
+                                  {speakerTitle}
+                                </div>
+                              )}
+
+                              {specialties.length > 0 && (
+                                <div
+                                  className="text-xs text-[var(--color-neutral-500)]"
+                                  style={{ fontFamily: isAr ? 'var(--font-arabic-body)' : 'inherit' }}
+                                >
+                                  {specialties.join('  ·  ')}
+                                </div>
+                              )}
+                            </div>
                           </div>
-                          <div>
-                            <div className="font-medium text-[var(--text-primary)]">{name}</div>
-                            {speakerTitle && <div className="text-sm text-[var(--color-neutral-600)]">{speakerTitle}</div>}
+
+                          {/* Bio excerpt */}
+                          {bio && (
+                            <p
+                              className="mt-4 text-sm text-[var(--color-neutral-700)] leading-relaxed line-clamp-3"
+                              style={{ fontFamily: isAr ? 'var(--font-arabic-body)' : 'inherit' }}
+                            >
+                              {bio}
+                            </p>
+                          )}
+
+                          {/* View full profile link */}
+                          <div className="mt-3">
+                            <a
+                              href={`/${locale}/coaches/${speaker.slug}`}
+                              className="text-sm font-medium text-[var(--color-primary)] hover:underline inline-flex items-center gap-1"
+                            >
+                              {isAr ? 'عرض الملف الكامل ←' : 'View Full Profile →'}
+                            </a>
                           </div>
-                        </a>
+                        </div>
                       );
                     })}
                   </div>
@@ -242,6 +308,80 @@ export default async function EventDetailPage({ params }: Props) {
           </div>
         </div>
       </Section>
+
+      {/* Testimonials — only when there are speakers and featured testimonials */}
+      {speakers.filter(Boolean).length > 0 && testimonials.length > 0 && (
+        <Section variant="surface">
+          <div className="max-w-[var(--max-content-width)] mx-auto px-4 md:px-6">
+            <h2
+              className="text-xl font-bold text-[var(--text-primary)] mb-6 text-center"
+              style={{ fontFamily: isAr ? 'var(--font-arabic-body)' : 'inherit' }}
+            >
+              {isAr ? 'ماذا يقول طلاب مدربينا' : "What Our Coaches' Students Say"}
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+              {testimonials.slice(0, 3).map((t, idx) => {
+                const flagMap: Record<string, string> = {
+                  AE: '🇦🇪', SA: '🇸🇦', EG: '🇪🇬', DZ: '🇩🇿',
+                  KW: '🇰🇼', QA: '🇶🇦', BH: '🇧🇭', OM: '🇴🇲',
+                  JO: '🇯🇴', LB: '🇱🇧', MA: '🇲🇦', TN: '🇹🇳',
+                };
+                const flag = t.country_code ? flagMap[t.country_code] ?? '' : '';
+                const content = t.content_ar || t.content_en || '';
+                const tName = t.name_ar || t.name_en || '';
+                const role = isAr ? t.role_ar : t.role_en;
+                return (
+                  <div
+                    key={idx}
+                    className="rounded-2xl border border-[var(--color-neutral-200)] bg-white p-5 flex flex-col gap-3"
+                  >
+                    {/* Quote */}
+                    <p
+                      className="text-sm italic text-[var(--color-neutral-700)] leading-relaxed line-clamp-3 flex-1"
+                      style={{ fontFamily: 'var(--font-arabic-body)' }}
+                      dir="rtl"
+                    >
+                      &ldquo;{content}&rdquo;
+                    </p>
+
+                    {/* Attribution */}
+                    <div>
+                      <div
+                        className="font-medium text-[var(--text-primary)] text-sm"
+                        style={{ fontFamily: 'var(--font-arabic-body)' }}
+                        dir="rtl"
+                      >
+                        — {tName} {flag}
+                      </div>
+                      {(role || t.program) && (
+                        <div
+                          className="text-xs text-[var(--color-neutral-500)] mt-0.5"
+                          style={{ fontFamily: 'var(--font-arabic-body)' }}
+                          dir="rtl"
+                        >
+                          {[role, t.program].filter(Boolean).join(' · ')}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Video link */}
+                    {t.video_url && (
+                      <a
+                        href={t.video_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs font-medium text-[var(--color-primary)] hover:underline inline-flex items-center gap-1"
+                      >
+                        🎥 {isAr ? 'شاهد الفيديو' : 'Watch'}
+                      </a>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </Section>
+      )}
 
       {/* Back link */}
       <Section variant="surface">
