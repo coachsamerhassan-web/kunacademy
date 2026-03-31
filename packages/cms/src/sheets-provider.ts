@@ -124,7 +124,7 @@ function isNumericColumn(header: string): boolean {
 }
 
 function isArrayColumn(header: string): boolean {
-  return /^(specialties|coaching_styles|languages|speaker_slugs|tags)$/.test(header);
+  return /^(specialties|coaching_styles|languages|speaker_slugs|tags|prerequisite_codes|pathway_codes)$/.test(header);
 }
 
 // ── Provider Implementation ─────────────────────────────────────────────────
@@ -210,9 +210,20 @@ export class GoogleSheetsProvider implements ContentProvider {
 
   // ── Sheet 2: Programs ─────────────────────────────────────────────────
 
+  private normalizeProgram(p: Program): Program {
+    return {
+      ...p,
+      status: p.status || 'active',
+      prerequisite_codes: Array.isArray(p.prerequisite_codes) ? p.prerequisite_codes : [],
+      pathway_codes: Array.isArray(p.pathway_codes) ? p.pathway_codes : [],
+    };
+  }
+
   async getAllPrograms(): Promise<Program[]> {
     const rows = await this.loadSheet<Program>('programs');
-    return this.published(rows).sort((a, b) => a.display_order - b.display_order);
+    return this.published(rows)
+      .map((p) => this.normalizeProgram(p))
+      .sort((a, b) => a.display_order - b.display_order);
   }
 
   async getProgramsByNavGroup(group: NavGroup): Promise<Program[]> {
@@ -222,7 +233,8 @@ export class GoogleSheetsProvider implements ContentProvider {
 
   async getProgram(slug: string): Promise<Program | null> {
     const rows = await this.loadSheet<Program>('programs');
-    return this.published(rows).find((p) => p.slug === slug) ?? null;
+    const found = this.published(rows).find((p) => p.slug === slug);
+    return found ? this.normalizeProgram(found) : null;
   }
 
   async getFeaturedPrograms(): Promise<Program[]> {

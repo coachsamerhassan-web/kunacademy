@@ -117,9 +117,24 @@ export class JsonFileProvider implements ContentProvider {
 
   // ── Sheet 2: Programs ─────────────────────────────────────────────────
 
+  private normalizeProgram(p: Program): Program {
+    return {
+      ...p,
+      status: p.status || 'active',
+      prerequisite_codes: Array.isArray(p.prerequisite_codes)
+        ? p.prerequisite_codes
+        : csvToArray(p.prerequisite_codes as unknown as string),
+      pathway_codes: Array.isArray(p.pathway_codes)
+        ? p.pathway_codes
+        : csvToArray(p.pathway_codes as unknown as string),
+    };
+  }
+
   async getAllPrograms(): Promise<Program[]> {
     const rows = await this.loadSheet<Program>('programs');
-    return this.published(rows).sort((a, b) => a.display_order - b.display_order);
+    return this.published(rows)
+      .map((p) => this.normalizeProgram(p))
+      .sort((a, b) => a.display_order - b.display_order);
   }
 
   async getProgramsByNavGroup(group: NavGroup): Promise<Program[]> {
@@ -129,7 +144,8 @@ export class JsonFileProvider implements ContentProvider {
 
   async getProgram(slug: string): Promise<Program | null> {
     const rows = await this.loadSheet<Program>('programs');
-    return this.published(rows).find((p) => p.slug === slug) ?? null;
+    const found = this.published(rows).find((p) => p.slug === slug);
+    return found ? this.normalizeProgram(found) : null;
   }
 
   async getFeaturedPrograms(): Promise<Program[]> {
@@ -231,15 +247,21 @@ export class JsonFileProvider implements ContentProvider {
   }
 
   async getAllEvents(): Promise<import('./types').Event[]> {
-    return [];
+    const rows = await this.loadSheet<import('./types').Event>('events');
+    return rows.filter((e) => e.published !== false);
   }
 
   async getUpcomingEvents(): Promise<import('./types').Event[]> {
-    return [];
+    const all = await this.getAllEvents();
+    const today = new Date().toISOString().split('T')[0];
+    return all
+      .filter((e) => e.date_start >= today)
+      .sort((a, b) => a.date_start.localeCompare(b.date_start));
   }
 
-  async getEvent(_slug: string): Promise<import('./types').Event | null> {
-    return null;
+  async getEvent(slug: string): Promise<import('./types').Event | null> {
+    const all = await this.getAllEvents();
+    return all.find((e) => e.slug === slug) ?? null;
   }
 
   async getAllBlogPosts(): Promise<import('./types').BlogPost[]> {

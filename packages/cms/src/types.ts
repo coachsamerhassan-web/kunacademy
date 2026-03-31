@@ -149,6 +149,23 @@ export interface Program extends AuditFields, TheaterPricing {
   meta_description_ar?: string;
   meta_description_en?: string;
   og_image_url?: string;
+  promo_video_url?: string;
+  /** Program category for filtering: 'certification' | 'specialization' | 'professional' | 'foundational' | 'micro' */
+  category?: string;
+  /** Parent program code (e.g., STCE for all STCE levels) */
+  parent_code?: string;
+  /** Comma-separated prerequisite program slugs */
+  prerequisite_codes?: string[];
+  /** Program lifecycle: 'active' | 'coming-soon' | 'archived' | 'paused' */
+  status?: 'active' | 'coming-soon' | 'archived' | 'paused';
+  /** Comma-separated pathway codes this program belongs to */
+  pathway_codes?: string[];
+  /** JSON string: array of { module_title_ar, module_title_en, hours, description_ar?, description_en? } */
+  curriculum_json?: string;
+  /** JSON string: array of { question_ar, question_en, answer_ar, answer_en } */
+  faq_json?: string;
+  /** Program-specific logo URL (from /Brand/programs logos/) */
+  program_logo?: string;
 }
 
 // ── Sheet 3: Services & Packages ────────────────────────────────────────────
@@ -283,6 +300,7 @@ export interface Event extends AuditFields {
   price_egp: number;
   price_usd: number;
   image_url?: string;
+  promo_video_url?: string;
   /** Comma-separated slugs referencing Team sheet */
   speaker_slugs: string[];
   /** ISO 8601 date string */

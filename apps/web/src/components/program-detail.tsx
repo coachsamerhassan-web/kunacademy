@@ -3,6 +3,7 @@ import { GeometricPattern } from '@kunacademy/ui/patterns';
 import { courseJsonLd, breadcrumbJsonLd } from '@kunacademy/ui/structured-data';
 import type { Program } from '@kunacademy/cms';
 import { getPricingRegion, getGeoPrice } from '@/lib/geo-pricing';
+import { PromoVideo } from '@/components/promo-video';
 
 function parseHours(duration: string | undefined): number {
   if (!duration) return 0;
@@ -126,6 +127,11 @@ export async function ProgramDetail({
               </span>
             )}
           </div>
+          {program.promo_video_url && (
+            <div className="mt-8 flex justify-center">
+              <PromoVideo url={program.promo_video_url} title={title} className="max-w-2xl w-full" />
+            </div>
+          )}
         </div>
       </section>
 

@@ -6,6 +6,8 @@ import { Section } from '@kunacademy/ui/section';
 import { GeometricPattern } from '@kunacademy/ui/patterns';
 import type { Metadata } from 'next';
 import { ArrowLeft } from 'lucide-react';
+import { PromoVideo } from '@/components/promo-video';
+import { EventCountdown } from '@/components/event-countdown';
 import { EventRegistrationForm } from './event-registration-form';
 
 interface Props {
@@ -147,9 +149,19 @@ export default async function EventDetailPage({ params }: Props) {
                 </div>
               )}
             </div>
+            {event.promo_video_url && (
+              <PromoVideo url={event.promo_video_url} title={title} className="max-w-2xl mt-6" />
+            )}
           </div>
         </div>
       </section>
+
+      {/* Countdown */}
+      {!isPast && !isDeadlinePassed && (
+        <div className="mx-auto max-w-lg my-8 px-4">
+          <EventCountdown targetDate={event.date_start} locale={locale} />
+        </div>
+      )}
 
       {/* Content */}
       <Section variant="white">
