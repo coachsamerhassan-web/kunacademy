@@ -24,6 +24,8 @@ interface ProgramDetailProps {
   ctaHref?: string;
   /** URL path for JSON-LD (e.g. 'academy/certifications/stce/level-1'). Defaults to program.slug */
   urlPath?: string;
+  /** Hide price display and show contact CTA instead (for programs > 4,000 AED) */
+  hidePrice?: boolean;
 }
 
 export async function ProgramDetail({
@@ -32,6 +34,7 @@ export async function ProgramDetail({
   audienceAr, audienceEn,
   ctaHref,
   urlPath,
+  hidePrice,
 }: ProgramDetailProps) {
   const isAr = locale === 'ar';
   const title = isAr ? program.title_ar : program.title_en;
@@ -192,10 +195,12 @@ export async function ProgramDetail({
             className="text-[1.75rem] md:text-[2.5rem] font-bold text-white"
             style={{ fontFamily: isAr ? 'var(--font-arabic-heading)' : 'var(--font-english-heading)' }}
           >
-            {isAr ? 'سجّل الآن' : 'Register Now'}
+            {hidePrice
+              ? (isAr ? 'ابدأ رحلتك' : 'Start Your Journey')
+              : (isAr ? 'سجّل الآن' : 'Register Now')}
           </h2>
 
-          {price.amount > 0 && (
+          {!hidePrice && price.amount > 0 && (
             <div className="mt-6">
               <div className="inline-block rounded-xl bg-white/10 border border-white/20 px-8 py-5">
                 <p className="text-3xl font-bold text-white">
@@ -210,7 +215,7 @@ export async function ProgramDetail({
             </div>
           )}
 
-          {program.installment_enabled && (
+          {!hidePrice && program.installment_enabled && (
             <p className="mt-4 text-white/50 text-sm">
               {isAr ? 'التقسيط متاح عبر Tabby' : 'Installments available via Tabby'}
             </p>
@@ -218,17 +223,21 @@ export async function ProgramDetail({
 
           <div className="mt-8 flex flex-wrap justify-center gap-4">
             <a
-              href={ctaHref || `/${locale}/checkout/?program=${program.slug}`}
+              href={hidePrice ? (ctaHref || `/${locale}/contact/`) : (ctaHref || `/${locale}/checkout/?program=${program.slug}`)}
               className="inline-flex items-center justify-center rounded-xl bg-[var(--color-accent)] px-8 py-3.5 text-base font-semibold text-white min-h-[52px] hover:bg-[var(--color-accent-500)] transition-all duration-300 shadow-[0_4px_24px_rgba(228,96,30,0.35)]"
             >
-              {isAr ? 'سجّل الآن' : 'Register Now'}
+              {hidePrice
+                ? (isAr ? 'تحدّث مع مرشد كُن' : 'Talk to a Kun Guide')
+                : (isAr ? 'سجّل الآن' : 'Register Now')}
             </a>
-            <a
-              href={`/${locale}/contact/`}
-              className="inline-flex items-center justify-center rounded-xl bg-white/10 border border-white/20 px-8 py-3.5 text-base font-medium text-white min-h-[52px] hover:bg-white/20 transition-all duration-300"
-            >
-              {isAr ? 'استفسر أولاً' : 'Ask First'}
-            </a>
+            {!hidePrice && (
+              <a
+                href={`/${locale}/contact/`}
+                className="inline-flex items-center justify-center rounded-xl bg-white/10 border border-white/20 px-8 py-3.5 text-base font-medium text-white min-h-[52px] hover:bg-white/20 transition-all duration-300"
+              >
+                {isAr ? 'استفسر أولاً' : 'Ask First'}
+              </a>
+            )}
           </div>
         </div>
       </section>

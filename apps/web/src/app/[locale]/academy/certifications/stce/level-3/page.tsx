@@ -26,6 +26,8 @@ export default async function Level3Page({ params }: { params: Promise<{ locale:
     <ProgramDetail
       program={program}
       locale={locale}
+      hidePrice
+      ctaHref={`/${locale}/contact/`}
       urlPath="academy/certifications/stce/level-3"
       outcomesAr={[
         'تيسير جلسات كوتشينج جماعية فعّالة',

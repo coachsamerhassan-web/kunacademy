@@ -9,7 +9,7 @@ const FLAGSHIP_SLUGS = ['stce-level-1-stic', 'stce-level-2-staic', 'stce-level-3
 
 const SPECIALIZED_SLUGS = [
   { slug: 'mcc-mentoring', href: '/academy/certifications/mcc-mentoring' },
-  { slug: 'menhajak-training', href: '/academy/certifications/menhajak' },
+  { slug: 'menhajak-training', href: '/academy/packages' },
   { slug: 'stdc-doctors', href: '/academy/certifications/doctors' },
   { slug: 'stcm-managers', href: '/academy/certifications/managers' },
 ];
@@ -129,8 +129,60 @@ export default async function CertificationsPage({ params }: { params: Promise<{
         </div>
       </Section>
 
-      {/* Specialized programs */}
+      {/* STCE Level Cards */}
       <Section variant="white">
+        <div className="text-center mb-8 animate-fade-up">
+          <p className="text-sm font-semibold text-[var(--color-primary)] tracking-wide uppercase mb-2">
+            {isAr ? 'مستويات STCE' : 'STCE Levels'}
+          </p>
+          <h2
+            className="text-[1.5rem] md:text-[2rem] font-bold text-[var(--text-accent)]"
+            style={{ fontFamily: isAr ? 'var(--font-arabic-heading)' : 'var(--font-english-heading)' }}
+          >
+            {isAr ? 'من الأساسيات إلى التخصّص' : 'From Foundations to Specialization'}
+          </h2>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 stagger-children">
+          {stceLevels.map((level, i) => {
+            const levelSlugs: Record<string, string> = {
+              'stce-level-1-stic': `/${locale}/academy/certifications/stce/level-1`,
+              'stce-level-2-staic': `/${locale}/academy/certifications/stce/level-2`,
+              'stce-level-3-stgc': `/${locale}/academy/certifications/stce/level-3`,
+              'stce-level-4-stoc': `/${locale}/academy/certifications/stce/level-4`,
+              'stce-level-5-stfc': `/${locale}/academy/certifications/stce/level-5`,
+            };
+            const codes = ['STIC', 'STAIC', 'STGC', 'STOC', 'STFC'];
+            return (
+              <a
+                key={level!.slug}
+                href={levelSlugs[level!.slug] || `/${locale}/academy/certifications/stce`}
+                className="group rounded-2xl bg-[var(--color-neutral-50)] p-4 text-center hover:shadow-[0_8px_32px_rgba(71,64,153,0.10)] hover:-translate-y-1 transition-all duration-500 block"
+              >
+                <div
+                  className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl text-white text-xs font-bold"
+                  style={{ background: 'linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-600) 100%)' }}
+                >
+                  {codes[i]}
+                </div>
+                <h3 className="text-sm font-bold text-[var(--text-accent)] leading-snug mb-1">
+                  {isAr ? level!.title_ar : level!.title_en}
+                </h3>
+                {level!.duration && (
+                  <p className="text-xs text-[var(--text-muted)]">{level!.duration}</p>
+                )}
+                {level!.icf_details && (
+                  <span className="mt-2 inline-block text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[var(--color-primary-50)] text-[var(--color-primary)]">
+                    {level!.icf_details}
+                  </span>
+                )}
+              </a>
+            );
+          })}
+        </div>
+      </Section>
+
+      {/* Specialized programs */}
+      <Section variant="surface">
         <div className="text-center mb-10 animate-fade-up">
           <h2
             className="text-[1.75rem] md:text-[2.5rem] font-bold text-[var(--text-accent)]"
@@ -145,28 +197,62 @@ export default async function CertificationsPage({ params }: { params: Promise<{
           </p>
         </div>
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 stagger-children">
-          {specialized.map((prog) => (
-            <a
-              key={prog!.slug}
-              href={`/${locale}${prog!.href}`}
-              className="group rounded-2xl bg-[var(--color-neutral-50)] p-6 hover:shadow-[0_12px_40px_rgba(71,64,153,0.10)] hover:-translate-y-1 transition-all duration-500 block"
-            >
-              {prog!.icf_details && (
-                <span className="inline-block text-[10px] font-semibold px-2.5 py-1 rounded-full bg-[var(--color-primary-50)] text-[var(--color-primary)] mb-4">
-                  {prog!.icf_details}
-                </span>
-              )}
-              <h3 className="text-lg font-bold text-[var(--text-accent)] mb-2">
-                {isAr ? prog!.title_ar : prog!.title_en}
-              </h3>
-              <p className="text-sm text-[var(--text-muted)] leading-relaxed mb-4">
-                {isAr ? prog!.description_ar : prog!.description_en}
-              </p>
-              <span className="text-sm text-[var(--color-primary)] font-medium group-hover:underline">
-                {isAr ? 'التفاصيل' : 'Learn More'} <ArrowRight className="w-4 h-4 inline-block rtl:rotate-180" aria-hidden="true" />
-              </span>
-            </a>
-          ))}
+          {specialized.map((prog) => {
+            const isComingSoon = prog!.status === 'coming-soon';
+            return (
+              <a
+                key={prog!.slug}
+                href={`/${locale}${prog!.href}`}
+                className="group relative rounded-2xl bg-[var(--color-neutral-50)] p-6 hover:shadow-[0_12px_40px_rgba(71,64,153,0.10)] hover:-translate-y-1 transition-all duration-500 block"
+              >
+                {isComingSoon && (
+                  <span className="absolute top-3 end-3 text-[10px] font-bold px-2.5 py-1 rounded-full bg-[var(--color-neutral-200)] text-[var(--color-neutral-500)]">
+                    {isAr ? 'قريبًا' : 'Coming Soon'}
+                  </span>
+                )}
+                {prog!.icf_details && (
+                  <span className="inline-block text-[10px] font-semibold px-2.5 py-1 rounded-full bg-[var(--color-primary-50)] text-[var(--color-primary)] mb-4">
+                    {prog!.icf_details}
+                  </span>
+                )}
+                <h3 className="text-lg font-bold text-[var(--text-accent)] mb-2">
+                  {isAr ? prog!.title_ar : prog!.title_en}
+                </h3>
+                <p className="text-sm text-[var(--text-muted)] leading-relaxed mb-4">
+                  {isAr ? prog!.description_ar : prog!.description_en}
+                </p>
+                {!isComingSoon && (
+                  <span className="text-sm text-[var(--color-primary)] font-medium group-hover:underline">
+                    {isAr ? 'التفاصيل' : 'Learn More'} <ArrowRight className="w-4 h-4 inline-block rtl:rotate-180" aria-hidden="true" />
+                  </span>
+                )}
+              </a>
+            );
+          })}
+        </div>
+      </Section>
+
+      {/* Packages Banner */}
+      <Section variant="white">
+        <div className="rounded-2xl bg-gradient-to-r from-[var(--color-primary-50)] to-[var(--color-secondary-50)] p-8 md:p-10 text-center animate-fade-up">
+          <h2
+            className="text-[1.5rem] md:text-[2rem] font-bold text-[var(--text-accent)]"
+            style={{ fontFamily: isAr ? 'var(--font-arabic-heading)' : 'var(--font-english-heading)' }}
+          >
+            {isAr ? 'هل تبحث عن رحلة متكاملة؟' : 'Looking for a complete journey?'}
+          </h2>
+          <p className="mt-3 text-[var(--text-muted)] max-w-xl mx-auto">
+            {isAr
+              ? 'باقات منهجك تأخذك من الصفر إلى التخصّص — وفّر أكثر مع الباقة'
+              : 'Menhajak packages take you from zero to specialization — save more with a package'}
+          </p>
+          <a
+            href={`/${locale}/academy/packages/`}
+            className="inline-flex items-center justify-center mt-6 rounded-xl bg-[var(--color-primary)] px-8 py-3.5 text-base font-semibold text-white min-h-[52px] hover:bg-[var(--color-primary-700)] transition-all duration-300 shadow-[0_4px_24px_rgba(71,64,153,0.25)]"
+          >
+            {isAr ? 'اكتشف باقات منهجك' : 'Explore Menhajak Packages'}
+            <ArrowRight className="ms-2 w-4 h-4 rtl:rotate-180" aria-hidden="true" />
+          </a>
         </div>
       </Section>
 

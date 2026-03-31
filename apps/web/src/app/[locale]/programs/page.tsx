@@ -117,6 +117,35 @@ export default async function ProgramsPage({ params }: { params: Promise<{ local
         />
       </Section>
 
+      {/* Academy Pathway Card */}
+      <Section variant="white">
+        <div className="max-w-3xl mx-auto">
+          <a href={`/${locale}/academy/`} className="group block">
+            <div className="rounded-2xl p-6 md:p-8 flex flex-col md:flex-row md:items-center gap-5 transition-all duration-300 group-hover:shadow-[0_12px_40px_rgba(71,64,153,0.12)] group-hover:-translate-y-1 border border-[var(--color-primary)]/15 bg-[var(--color-primary-50)]">
+              <div className="h-14 w-14 rounded-2xl bg-[var(--color-primary)] flex items-center justify-center shrink-0">
+                <svg className="w-7 h-7 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-1.447-.894L15 9m0 8V9m0 0L9 7" />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <h2
+                  className="text-xl font-bold text-[var(--text-primary)] group-hover:text-[var(--color-primary)] transition-colors mb-2"
+                  style={{ fontFamily: isAr ? 'var(--font-arabic-heading)' : 'var(--font-english-heading)' }}
+                >
+                  {isAr ? 'هل تريد أن تصبح كوتش معتمد؟' : 'Want to become a certified coach?'}
+                </h2>
+                <p className="text-sm text-[var(--color-neutral-600)] leading-relaxed">
+                  {isAr
+                    ? 'اكتشف مسار الأكاديمية — من مدخل التفكير الحسّي إلى شهادات ICF المعتمدة'
+                    : 'Explore the Academy pathway — from Somatic Thinking Intro to ICF-accredited certifications'}
+                </p>
+              </div>
+              <svg className="w-5 h-5 text-[var(--color-primary)] rtl:rotate-180 shrink-0" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" /></svg>
+            </div>
+          </a>
+        </div>
+      </Section>
+
       {/* CTA */}
       <section className="relative overflow-hidden py-16 md:py-20" style={{ background: 'linear-gradient(160deg, var(--color-primary-800) 0%, var(--color-primary-900) 100%)' }}>
         <GeometricPattern pattern="eight-star" opacity={0.08} fade="both" />

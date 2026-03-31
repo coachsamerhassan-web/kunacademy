@@ -26,6 +26,8 @@ export default async function Level1Page({ params }: { params: Promise<{ locale:
     <ProgramDetail
       program={program}
       locale={locale}
+      hidePrice
+      ctaHref={`/${locale}/contact/`}
       urlPath="academy/certifications/stce/level-1"
       outcomesAr={[
         'أساسيات التفكير الحسّي وعلاقته بالكوتشينج',

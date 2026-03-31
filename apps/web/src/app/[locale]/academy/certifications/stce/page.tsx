@@ -174,6 +174,62 @@ export default async function STCEPage({ params }: { params: Promise<{ locale: s
         </div>
       </Section>
 
+      {/* Sector Branch Note */}
+      <Section variant="white">
+        <div className="max-w-3xl mx-auto animate-fade-up">
+          <p className="text-sm font-medium tracking-[0.15em] uppercase text-[var(--color-primary)] mb-4 text-center">
+            {isAr ? 'هل أنت طبيب أو مدير؟' : 'Are you a doctor or manager?'}
+          </p>
+          <h2
+            className="text-[1.5rem] md:text-[2rem] font-bold text-[var(--text-accent)] text-center mb-3"
+            style={{ fontFamily: isAr ? 'var(--font-arabic-heading)' : 'var(--font-english-heading)' }}
+          >
+            {isAr ? 'اكتشف المسارات القطاعية' : 'Explore Sector Pathways'}
+          </h2>
+          <p className="text-[var(--text-muted)] text-center mb-8">
+            {isAr
+              ? 'شهادة مخصصة تبني على مدخل التفكير الحسّي'
+              : 'A specialised credential built on the Somatic Thinking entry point'}
+          </p>
+          <div className="grid md:grid-cols-2 gap-6">
+            <a
+              href={`/${locale}/academy/certifications/doctors/`}
+              className="group rounded-2xl bg-[var(--color-primary-50)] p-6 hover:shadow-[0_12px_40px_rgba(71,64,153,0.12)] hover:-translate-y-1 transition-all duration-500 block min-h-[44px]"
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-semibold text-[var(--color-primary)] uppercase tracking-wide mb-1">STDC</p>
+                  <h3
+                    className="text-xl font-bold text-[var(--text-accent)]"
+                    style={{ fontFamily: isAr ? 'var(--font-arabic-heading)' : 'var(--font-english-heading)' }}
+                  >
+                    {isAr ? 'الكوتشينج للأطباء' : 'Coaching for Doctors'}
+                  </h3>
+                </div>
+                <ArrowRight className="w-5 h-5 text-[var(--color-primary)] rtl:rotate-180 shrink-0 group-hover:translate-x-1 transition-transform duration-300" aria-hidden="true" />
+              </div>
+            </a>
+            <a
+              href={`/${locale}/academy/certifications/managers/`}
+              className="group rounded-2xl bg-[var(--color-primary-50)] p-6 hover:shadow-[0_12px_40px_rgba(71,64,153,0.12)] hover:-translate-y-1 transition-all duration-500 block min-h-[44px]"
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-semibold text-[var(--color-primary)] uppercase tracking-wide mb-1">STCM</p>
+                  <h3
+                    className="text-xl font-bold text-[var(--text-accent)]"
+                    style={{ fontFamily: isAr ? 'var(--font-arabic-heading)' : 'var(--font-english-heading)' }}
+                  >
+                    {isAr ? 'الكوتشينج للمديرين' : 'Coaching for Managers'}
+                  </h3>
+                </div>
+                <ArrowRight className="w-5 h-5 text-[var(--color-primary)] rtl:rotate-180 shrink-0 group-hover:translate-x-1 transition-transform duration-300" aria-hidden="true" />
+              </div>
+            </a>
+          </div>
+        </div>
+      </Section>
+
       {/* Packages CTA */}
       <Section variant="surface-high" pattern="eight-star">
         <div className="text-center animate-fade-up">
@@ -206,6 +262,31 @@ export default async function STCEPage({ params }: { params: Promise<{ locale: s
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd(stceFaqs, locale)) }}
         />
+      </Section>
+
+      {/* Manhajak Packages Banner */}
+      <Section variant="surface">
+        <div className="max-w-3xl mx-auto text-center animate-fade-up">
+          <p className="text-sm font-medium tracking-[0.15em] uppercase text-[var(--color-accent)] mb-3">
+            {isAr ? 'هل تبحث عن رحلة متكاملة؟' : 'Looking for a complete journey?'}
+          </p>
+          <h2
+            className="text-[1.5rem] md:text-[2rem] font-bold text-[var(--text-accent)] mb-4"
+            style={{ fontFamily: isAr ? 'var(--font-arabic-heading)' : 'var(--font-english-heading)' }}
+          >
+            {isAr ? 'اكتشف باقات منهجك' : 'Discover Manhajak Packages'}
+          </h2>
+          <p className="text-[var(--text-muted)] mb-6">
+            {isAr ? 'من الصفر إلى التخصّص — رحلة متكاملة بسعر أفضل' : 'From zero to specialisation — a complete journey at better value'}
+          </p>
+          <a
+            href={`/${locale}/academy/packages/`}
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-[var(--color-primary)] px-8 py-3.5 text-base font-semibold text-white min-h-[44px] hover:bg-[var(--color-primary-700)] transition-all duration-300"
+          >
+            {isAr ? 'استعرض الباقات' : 'View Packages'}
+            <ArrowRight className="w-4 h-4 rtl:rotate-180" aria-hidden="true" />
+          </a>
+        </div>
       </Section>
 
       {/* Final CTA */}

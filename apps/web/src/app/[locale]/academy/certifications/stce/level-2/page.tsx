@@ -26,6 +26,8 @@ export default async function Level2Page({ params }: { params: Promise<{ locale:
     <ProgramDetail
       program={program}
       locale={locale}
+      hidePrice
+      ctaHref={`/${locale}/contact/`}
       urlPath="academy/certifications/stce/level-2"
       outcomesAr={[
         'منهجية S-Work المتقدّمة',

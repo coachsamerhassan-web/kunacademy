@@ -47,14 +47,26 @@ const categories = [
     iconPath: 'M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z',
     accent: false,
   },
+];
+
+const menhajaqPackages = [
   {
-    slug: 'certifications/stce/packages',
-    titleAr: 'باقات منهجك',
-    titleEn: 'Menhajak Packages',
-    descAr: '٣ باقات شاملة — تدريبية ومؤسسية وقيادية بسعر مدمج',
-    descEn: '3 comprehensive packages — Training, Organizational, and Leadership at bundled pricing',
-    iconPath: 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4',
-    accent: false,
+    slug: 'training',
+    titleAr: 'باقة التدريب',
+    titleEn: 'Training Package',
+    iconPath: 'M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253',
+  },
+  {
+    slug: 'organizational',
+    titleAr: 'باقة المؤسسات',
+    titleEn: 'Organizational Package',
+    iconPath: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4',
+  },
+  {
+    slug: 'leadership',
+    titleAr: 'باقة القيادة',
+    titleEn: 'Leadership Package',
+    iconPath: 'M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z',
   },
 ];
 
@@ -86,8 +98,42 @@ export default async function AcademyPage({ params }: Props) {
         </div>
       </section>
 
-      {/* Categories */}
+      {/* STI Gateway — Start Here card */}
       <Section variant="white">
+        <div className="max-w-4xl mx-auto">
+          <a href={`/${locale}/academy/intro/`} className="group block">
+            <div className="relative overflow-hidden rounded-2xl p-8 md:p-10 transition-all duration-300 group-hover:shadow-[0_16px_48px_rgba(71,64,153,0.18)] group-hover:-translate-y-1"
+              style={{ background: 'linear-gradient(135deg, var(--color-primary) 0%, #1D1A3D 100%)' }}
+            >
+              <GeometricPattern pattern="girih" opacity={0.07} fade="both" />
+              <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+                <div>
+                  <span className="inline-block rounded-full bg-[var(--color-accent)] px-4 py-1 text-xs font-bold text-white mb-4 uppercase tracking-wider">
+                    {isAr ? 'ابدأ هنا' : 'Start Here'}
+                  </span>
+                  <h2
+                    className="text-2xl md:text-3xl font-bold text-white leading-snug mb-3"
+                    style={{ fontFamily: isAr ? 'var(--font-arabic-heading)' : 'var(--font-english-heading)' }}
+                  >
+                    {isAr ? 'مدخل التفكير الحسّي' : 'Somatic Thinking Intro'}
+                  </h2>
+                  <p className="text-white/70 text-base md:text-lg">
+                    {isAr ? '٦ ساعات مسجّلة — ٣٥٠ د.إ فقط' : '6 recorded hours — only 350 AED'}
+                  </p>
+                </div>
+                <div className="shrink-0">
+                  <span className="inline-flex items-center justify-center rounded-xl bg-[var(--color-accent)] px-8 py-3.5 text-base font-bold text-white min-h-[52px] group-hover:bg-[var(--color-accent-500)] transition-all duration-300 shadow-[0_4px_24px_rgba(228,96,30,0.4)]">
+                    {isAr ? 'ابدأ الآن' : 'Start Now'} <ArrowRight className="w-5 h-5 ms-2 rtl:rotate-180" aria-hidden="true" />
+                  </span>
+                </div>
+              </div>
+            </div>
+          </a>
+        </div>
+      </Section>
+
+      {/* Categories + Pathway */}
+      <Section variant="surface">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-4xl mx-auto">
           {categories.map((cat) => (
             <a key={cat.slug} href={`/${locale}/academy/${cat.slug}`} className="group">
@@ -109,6 +155,63 @@ export default async function AcademyPage({ params }: Props) {
               </Card>
             </a>
           ))}
+
+          {/* Pathway Explorer card */}
+          <a href={`/${locale}/academy/pathway/`} className="group sm:col-span-2">
+            <Card className="p-6 h-full transition-all duration-300 group-hover:shadow-[0_12px_40px_rgba(71,64,153,0.12)] group-hover:-translate-y-1 bg-[var(--color-primary-50)]">
+              <div className="flex items-center gap-4">
+                <div className="h-12 w-12 rounded-xl bg-[var(--color-primary)] flex items-center justify-center shrink-0">
+                  <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-1.447-.894L15 9m0 8V9m0 0L9 7" />
+                  </svg>
+                </div>
+                <div className="flex-1">
+                  <h2 className="text-lg font-bold text-[var(--text-primary)] group-hover:text-[var(--color-primary)] transition-colors mb-1">
+                    {isAr ? 'المسار التعليمي' : 'Learning Pathway'}
+                  </h2>
+                  <p className="text-sm text-[var(--color-neutral-600)] leading-relaxed">
+                    {isAr
+                      ? 'اكتشف الطريق من المدخل إلى التخصّص'
+                      : 'Discover the path from intro to specialization'}
+                  </p>
+                </div>
+                <ArrowRight className="w-5 h-5 text-[var(--color-primary)] rtl:rotate-180 shrink-0" aria-hidden="true" />
+              </div>
+            </Card>
+          </a>
+        </div>
+      </Section>
+
+      {/* Menhajak Packages */}
+      <Section variant="white">
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center mb-8">
+            <h2
+              className="text-2xl md:text-3xl font-bold text-[var(--text-accent)]"
+              style={{ fontFamily: isAr ? 'var(--font-arabic-heading)' : 'var(--font-english-heading)' }}
+            >
+              {isAr ? 'باقات منهجك' : 'Menhajak Packages'}
+            </h2>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+            {menhajaqPackages.map((pkg) => (
+              <a key={pkg.slug} href={`/${locale}/academy/packages/${pkg.slug}/`} className="group">
+                <Card className="p-5 h-full transition-all duration-300 group-hover:shadow-[0_12px_40px_rgba(71,64,153,0.12)] group-hover:-translate-y-1">
+                  <div className="h-10 w-10 rounded-lg bg-[var(--color-primary-50)] flex items-center justify-center mb-3">
+                    <svg className="w-5 h-5 text-[var(--color-primary)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d={pkg.iconPath} />
+                    </svg>
+                  </div>
+                  <h3 className="text-base font-bold text-[var(--text-primary)] group-hover:text-[var(--color-primary)] transition-colors mb-2">
+                    {isAr ? pkg.titleAr : pkg.titleEn}
+                  </h3>
+                  <span className="inline-flex items-center text-xs font-semibold text-[var(--color-accent)] group-hover:text-[var(--color-accent-500)] transition-colors">
+                    {isAr ? 'التفاصيل' : 'Details'} <ArrowRight className="w-3 h-3 inline-block ms-1 rtl:rotate-180" aria-hidden="true" />
+                  </span>
+                </Card>
+              </a>
+            ))}
+          </div>
         </div>
       </Section>
 
@@ -146,25 +249,28 @@ export default async function AcademyPage({ params }: Props) {
       )}
 
       {/* Pathfinder CTA */}
-      <Section variant="white">
-        <div className="text-center py-4">
-          <h2
-            className="text-xl md:text-2xl font-bold text-[var(--text-primary)] mb-3"
-            style={{ fontFamily: isAr ? 'var(--font-arabic-heading)' : 'var(--font-english-heading)' }}
-          >
-            {isAr ? 'مش عارف من وين تبدأ؟' : 'Not Sure Where to Start?'}
-          </h2>
-          <p className="text-[var(--color-neutral-600)] mb-6 max-w-xl mx-auto">
-            {isAr
-              ? 'استخدم أداة المسار لاكتشاف البرنامج الأنسب لك'
-              : 'Use our Pathfinder tool to discover the right program for you'}
-          </p>
-          <a
-            href={`/${locale}/pathfinder`}
-            className="inline-flex items-center justify-center rounded-xl bg-[var(--color-primary)] px-8 py-3.5 text-base font-semibold text-white min-h-[52px] hover:bg-[var(--color-primary-600)] transition-all duration-300"
-          >
-            {isAr ? 'ابدأ أداة المسار' : 'Start Pathfinder'}
-          </a>
+      <Section variant="surface">
+        <div className="relative overflow-hidden rounded-2xl py-12 px-8 text-center" style={{ background: 'linear-gradient(135deg, var(--color-primary) 0%, #1D1A3D 100%)' }}>
+          <GeometricPattern pattern="flower-of-life" opacity={0.06} fade="both" />
+          <div className="relative z-10">
+            <h2
+              className="text-xl md:text-2xl font-bold text-white mb-3"
+              style={{ fontFamily: isAr ? 'var(--font-arabic-heading)' : 'var(--font-english-heading)' }}
+            >
+              {isAr ? 'لا تعرف من أين تبدأ؟ اكتشف مسارك' : "Not sure where to start? Find your path"}
+            </h2>
+            <p className="text-white/70 mb-6 max-w-xl mx-auto">
+              {isAr
+                ? 'أجب على بضعة أسئلة وسنرشدك إلى البرنامج المناسب لك'
+                : 'Answer a few questions and we\'ll guide you to the right program'}
+            </p>
+            <a
+              href={`/${locale}/pathfinder/`}
+              className="inline-flex items-center justify-center rounded-xl bg-[var(--color-accent)] px-8 py-3.5 text-base font-semibold text-white min-h-[52px] hover:bg-[var(--color-accent-500)] transition-all duration-300 shadow-[0_4px_24px_rgba(228,96,30,0.35)]"
+            >
+              {isAr ? 'ابدأ أداة المسار' : 'Start Pathfinder'} <ArrowRight className="w-4 h-4 ms-2 rtl:rotate-180" aria-hidden="true" />
+            </a>
+          </div>
         </div>
       </Section>
     </main>
