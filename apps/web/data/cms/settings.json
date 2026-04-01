@@ -166,5 +166,29 @@
     "published": true,
     "last_edited_by": "",
     "last_edited_at": ""
+  },
+  {
+    "category": "pricing",
+    "key": "corporate_multiplier",
+    "value": "2",
+    "published": true,
+    "last_edited_by": "samer",
+    "last_edited_at": "2026-04-01"
+  },
+  {
+    "category": "pricing",
+    "key": "per_leader_session_rate_aed",
+    "value": "2000",
+    "published": true,
+    "last_edited_by": "samer",
+    "last_edited_at": "2026-04-01"
+  },
+  {
+    "category": "pricing",
+    "key": "per_leader_package_sessions",
+    "value": "6",
+    "published": true,
+    "last_edited_by": "samer",
+    "last_edited_at": "2026-04-01"
   }
 ]

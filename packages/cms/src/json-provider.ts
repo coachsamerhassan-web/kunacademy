@@ -250,7 +250,12 @@ export class JsonFileProvider implements ContentProvider {
 
   async getAllPathfinderQuestions(): Promise<PathfinderQuestion[]> {
     const rows = await this.loadSheet<PathfinderQuestion>('pathfinder');
-    return this.published(rows);
+    return this.published(rows).map(row => ({
+      ...row,
+      answers: typeof row.answers === 'string'
+        ? (() => { try { return JSON.parse(row.answers as unknown as string); } catch { return []; } })()
+        : (row.answers ?? []),
+    }));
   }
 
   async getPathfinderRoots(type?: 'individual' | 'corporate'): Promise<PathfinderQuestion[]> {

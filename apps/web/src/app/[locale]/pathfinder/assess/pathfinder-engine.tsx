@@ -3,10 +3,27 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import type { PathfinderQuestion, PathfinderAnswer } from '@kunacademy/cms';
+import {
+  DirectionSelectStep,
+  SelfAssessmentStep,
+  BenefitsQuizStep,
+  SavingsAnalysisStep,
+} from './corporate-steps';
+import type { Direction, Benefit, SelfAssessmentRating, CorporateBenefitsData } from './corporate-steps';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
-type Step = 'welcome' | 'type_select' | 'questions' | 'roi_inputs' | 'lead_capture' | 'processing';
+type Step =
+  | 'welcome'
+  | 'type_select'
+  | 'questions'             // individual path
+  | 'direction_select'      // corporate: pick a direction
+  | 'self_assessment'       // corporate: rate current state
+  | 'benefits_quiz'         // corporate: pick priority benefits
+  | 'roi_inputs'            // shared: individual ROI / corporate team data
+  | 'savings_analysis'      // corporate only (Wave 2 placeholder)
+  | 'lead_capture'
+  | 'processing';
 
 interface AnswerRecord {
   question_id: string;
@@ -26,11 +43,12 @@ interface RoiInputs {
 interface Props {
   locale: string;
   questions: PathfinderQuestion[];
+  corporateBenefits?: CorporateBenefitsData;
 }
 
 // ── Component ────────────────────────────────────────────────────────────────
 
-export function PathfinderEngine({ locale, questions }: Props) {
+export function PathfinderEngine({ locale, questions, corporateBenefits }: Props) {
   const isAr = locale === 'ar';
   const router = useRouter();
 
@@ -43,10 +61,17 @@ export function PathfinderEngine({ locale, questions }: Props) {
   const [roiInputs, setRoiInputs] = useState<RoiInputs>({
     team_size: 20, avg_salary: 25000, turnover_rate: 15, absenteeism_days: 8, engagement_score: 55,
   });
-  const [contact, setContact] = useState({ name: '', email: '', phone: '' });
+  const [contact, setContact] = useState({ name: '', email: '', phone: '', job_title: '' });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
+  const [roiCollected, setRoiCollected] = useState(false);
+
+  // Corporate-path state
+  const [direction, setDirection] = useState<string | null>(null);
+  const [selectedBenefitIds, setSelectedBenefitIds] = useState<string[]>([]);
+  const [selfAssessment, setSelfAssessment] = useState<Map<string, SelfAssessmentRating>>(new Map());
+  const [customBenefitText, setCustomBenefitText] = useState('');
 
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -58,6 +83,26 @@ export function PathfinderEngine({ locale, questions }: Props) {
   const getChildren = useCallback((parentAnswerId: string) => {
     return questions.filter(q => q.parent_answer_id === parentAnswerId);
   }, [questions]);
+
+  // Returns benefits for the currently selected direction (flattens 'all' for custom_program)
+  const getDirectionBenefits = useCallback((dirId?: string | null): Benefit[] => {
+    const id = dirId ?? direction;
+    if (!corporateBenefits || !id) return [];
+    const dir = corporateBenefits.directions.find(d => d.id === id);
+    if (!dir) return [];
+    if (dir.benefits === 'all') {
+      return corporateBenefits.directions
+        .filter(d => d.benefits !== 'all')
+        .flatMap(d => d.benefits as Benefit[]);
+    }
+    return dir.benefits;
+  }, [corporateBenefits, direction]);
+
+  // Returns the full Benefit objects for the currently selected benefit IDs
+  const getSelectedBenefitObjects = useCallback((): Benefit[] => {
+    const allBenefits = getDirectionBenefits();
+    return allBenefits.filter(b => selectedBenefitIds.includes(b.id));
+  }, [getDirectionBenefits, selectedBenefitIds]);
 
   // ── Transition helper ──────────────────────────────────────────────────────
 
@@ -77,13 +122,17 @@ export function PathfinderEngine({ locale, questions }: Props) {
 
   const handleTypeSelect = useCallback((type: 'individual' | 'corporate') => {
     setAssessmentType(type);
-    const roots = getRoots(type);
-    if (roots.length > 0) {
-      animateTransition(() => {
-        setCurrentQuestion(roots[0]);
-        setQuestionHistory([roots[0]]);
-        setStep('questions');
-      });
+    if (type === 'corporate') {
+      animateTransition(() => setStep('direction_select'));
+    } else {
+      const roots = getRoots(type);
+      if (roots.length > 0) {
+        animateTransition(() => {
+          setCurrentQuestion(roots[0]);
+          setQuestionHistory([roots[0]]);
+          setStep('questions');
+        });
+      }
     }
   }, [getRoots, animateTransition]);
 
@@ -106,20 +155,58 @@ export function PathfinderEngine({ locale, questions }: Props) {
         // More questions in this branch
         setCurrentQuestion(children[0]);
         setQuestionHistory(prev => [...prev, children[0]]);
-      } else if (assessmentType === 'corporate' && !answerTrail.some(a => a.question_id === 'roi')) {
-        // Corporate path: collect ROI inputs before lead capture
+      } else if (assessmentType === 'corporate' && !roiCollected) {
+        // Corporate path: collect ROI inputs before lead capture (once)
         setStep('roi_inputs');
       } else {
         // End of questions → lead capture
         setStep('lead_capture');
       }
     });
-  }, [answerTrail, getChildren, animateTransition, assessmentType, isAr]);
+  }, [answerTrail, getChildren, animateTransition, assessmentType, roiCollected, isAr]);
+
+  // ── Corporate step handlers ────────────────────────────────────────────────
+
+  const handleDirectionSelect = useCallback((dirId: string) => {
+    setDirection(dirId);
+    // Initialize self-assessment with defaults for all benefits in this direction
+    const benefits = getDirectionBenefits(dirId);
+    const initial = new Map<string, SelfAssessmentRating>();
+    benefits.forEach(b => {
+      initial.set(b.id, { benefit_id: b.id, current: 3, target_3m: 6, target_6m: 8 });
+    });
+    setSelfAssessment(initial);
+    // Reset any prior selection when direction changes
+    setSelectedBenefitIds([]);
+    setCustomBenefitText('');
+    animateTransition(() => setStep('self_assessment'));
+  }, [getDirectionBenefits, animateTransition]);
+
+  const handleSelfAssessmentUpdate = useCallback((
+    benefitId: string,
+    field: 'current' | 'target_3m' | 'target_6m',
+    value: number,
+  ) => {
+    setSelfAssessment(prev => {
+      const next = new Map(prev);
+      const existing = next.get(benefitId) ?? { benefit_id: benefitId, current: 3, target_3m: 6, target_6m: 8 };
+      next.set(benefitId, { ...existing, [field]: value });
+      return next;
+    });
+  }, []);
+
+  const handleBenefitToggle = useCallback((benefitId: string) => {
+    setSelectedBenefitIds(prev => {
+      if (prev.includes(benefitId)) return prev.filter(id => id !== benefitId);
+      if (prev.length >= 5) return prev; // max 5
+      return [...prev, benefitId];
+    });
+  }, []);
 
   const handleBack = useCallback(() => {
     if (step === 'lead_capture') {
       if (assessmentType === 'corporate') {
-        animateTransition(() => setStep('roi_inputs'));
+        animateTransition(() => setStep('savings_analysis'));
       } else if (questionHistory.length > 0) {
         animateTransition(() => {
           setStep('questions');
@@ -129,11 +216,35 @@ export function PathfinderEngine({ locale, questions }: Props) {
       return;
     }
 
+    if (step === 'savings_analysis') {
+      animateTransition(() => setStep('roi_inputs'));
+      return;
+    }
+
     if (step === 'roi_inputs') {
-      animateTransition(() => {
-        setStep('questions');
-        setCurrentQuestion(questionHistory[questionHistory.length - 1]);
-      });
+      if (assessmentType === 'corporate') {
+        animateTransition(() => setStep('benefits_quiz'));
+      } else {
+        animateTransition(() => {
+          setStep('questions');
+          setCurrentQuestion(questionHistory[questionHistory.length - 1]);
+        });
+      }
+      return;
+    }
+
+    if (step === 'benefits_quiz') {
+      animateTransition(() => setStep('self_assessment'));
+      return;
+    }
+
+    if (step === 'self_assessment') {
+      animateTransition(() => setStep('direction_select'));
+      return;
+    }
+
+    if (step === 'direction_select') {
+      animateTransition(() => setStep('type_select'));
       return;
     }
 
@@ -203,8 +314,15 @@ export function PathfinderEngine({ locale, questions }: Props) {
   const progressPct = (() => {
     if (step === 'welcome') return 0;
     if (step === 'type_select') return 10;
+    // Corporate path
+    if (step === 'direction_select') return 15;
+    if (step === 'self_assessment') return 30;
+    if (step === 'benefits_quiz') return 45;
+    // Individual path
     if (step === 'questions') return 15 + Math.min(answerTrail.length * 15, 55);
-    if (step === 'roi_inputs') return 75;
+    // Shared
+    if (step === 'roi_inputs') return 60;
+    if (step === 'savings_analysis') return 75;
     if (step === 'lead_capture') return 90;
     return 100;
   })();
@@ -247,7 +365,9 @@ export function PathfinderEngine({ locale, questions }: Props) {
       </div>
 
       {/* Content area */}
-      <div className={`flex-1 flex items-center justify-center px-4 py-20 transition-opacity duration-[250ms] ${isAnimating ? 'opacity-0' : 'opacity-100'}`}>
+      <div className={`flex-1 flex justify-center px-4 py-20 transition-opacity duration-[250ms] ${isAnimating ? 'opacity-0' : 'opacity-100'} ${
+          ['self_assessment', 'benefits_quiz', 'savings_analysis'].includes(step) ? 'items-start' : 'items-center'
+        }`}>
         <div className="w-full max-w-xl">
 
           {/* ── Welcome ───────────────────────────────────────────────── */}
@@ -281,7 +401,7 @@ export function PathfinderEngine({ locale, questions }: Props) {
 
           {/* ── Type Selection ─────────────────────────────────────────── */}
           {step === 'type_select' && (
-            <div className="animate-fade-up">
+            <div className="animate-fade-up is-visible">
               <h2
                 className="text-2xl md:text-3xl font-bold text-[var(--text-primary)] text-center mb-3"
                 style={{ fontFamily: isAr ? 'var(--font-arabic-heading)' : 'var(--font-english-heading)' }}
@@ -308,9 +428,67 @@ export function PathfinderEngine({ locale, questions }: Props) {
             </div>
           )}
 
+          {/* ── Direction Select (Corporate) ───────────────────────────── */}
+          {step === 'direction_select' && corporateBenefits && (
+            <div className="animate-fade-up is-visible">
+              <DirectionSelectStep
+                directions={corporateBenefits.directions}
+                isAr={isAr}
+                onSelect={handleDirectionSelect}
+              />
+            </div>
+          )}
+
+          {/* ── Self Assessment (Corporate) ────────────────────────────── */}
+          {step === 'self_assessment' && (
+            <div className="animate-fade-up is-visible">
+              <SelfAssessmentStep
+                benefits={getDirectionBenefits()}
+                selfAssessment={selfAssessment}
+                onUpdate={handleSelfAssessmentUpdate}
+                onContinue={() => animateTransition(() => setStep('benefits_quiz'))}
+                isAr={isAr}
+              />
+            </div>
+          )}
+
+          {/* ── Benefits Quiz (Corporate) ──────────────────────────────── */}
+          {step === 'benefits_quiz' && (
+            <div className="animate-fade-up is-visible">
+              <BenefitsQuizStep
+                benefits={getDirectionBenefits()}
+                selectedBenefits={selectedBenefitIds}
+                onToggle={handleBenefitToggle}
+                customText={customBenefitText}
+                onCustomTextChange={setCustomBenefitText}
+                onContinue={() => animateTransition(() => setStep('roi_inputs'))}
+                isAr={isAr}
+              />
+            </div>
+          )}
+
+          {/* ── Savings Analysis (Corporate) ───────────────────────────── */}
+          {step === 'savings_analysis' && (
+            <div className="animate-fade-up is-visible">
+              <SavingsAnalysisStep
+                selectedBenefits={getSelectedBenefitObjects()}
+                selfAssessment={selfAssessment}
+                roiInputs={roiInputs}
+                settings={{
+                  corporate_multiplier: 2,
+                  per_leader_session_rate: 2000,
+                  per_leader_package_sessions: 6,
+                  base_program_price_aed: 15000,
+                }}
+                onContinue={() => animateTransition(() => setStep('lead_capture'))}
+                isAr={isAr}
+              />
+            </div>
+          )}
+
           {/* ── Questions ──────────────────────────────────────────────── */}
           {step === 'questions' && currentQuestion && (
-            <div className="animate-fade-up">
+            <div className="animate-fade-up is-visible">
               <p className="text-sm text-[var(--color-primary)] font-medium text-center mb-2">
                 {isAr ? `السؤال ${answerTrail.length + 1}` : `Question ${answerTrail.length + 1}`}
               </p>
@@ -330,12 +508,34 @@ export function PathfinderEngine({ locale, questions }: Props) {
                   />
                 ))}
               </div>
+              {currentQuestion.answers.length === 0 && (
+                <div className="text-center mt-6">
+                  {currentQuestion.recommendation_slug && (
+                    <p className="text-[var(--color-neutral-500)] mb-4">
+                      {isAr ? 'وجدنا لك التوصية المثالية!' : "We've found your ideal recommendation!"}
+                    </p>
+                  )}
+                  <button
+                    onClick={() => {
+                      if (assessmentType === 'corporate') {
+                        animateTransition(() => setStep('roi_inputs'));
+                      } else {
+                        animateTransition(() => setStep('lead_capture'));
+                      }
+                    }}
+                    className="rounded-2xl px-10 py-4 text-lg font-bold text-white min-h-[56px] transition-all duration-300 hover:scale-105"
+                    style={{ background: 'linear-gradient(135deg, var(--color-accent) 0%, #C44D12 100%)' }}
+                  >
+                    {isAr ? 'أكمل' : 'Continue'}
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
           {/* ── ROI Inputs (Corporate) ────────────────────────────────── */}
           {step === 'roi_inputs' && (
-            <div className="animate-fade-up">
+            <div className="animate-fade-up is-visible">
               <h2
                 className="text-2xl md:text-3xl font-bold text-[var(--text-primary)] text-center mb-3"
                 style={{ fontFamily: isAr ? 'var(--font-arabic-heading)' : 'var(--font-english-heading)' }}
@@ -353,7 +553,14 @@ export function PathfinderEngine({ locale, questions }: Props) {
                 <RoiSlider label={isAr ? 'نسبة تفاعل الموظفين' : 'Employee Engagement Score'} value={roiInputs.engagement_score} min={10} max={100} step={1} unit="%" onChange={v => setRoiInputs(p => ({ ...p, engagement_score: v }))} />
               </div>
               <button
-                onClick={() => animateTransition(() => setStep('lead_capture'))}
+                onClick={() => {
+                  setRoiCollected(true);
+                  if (assessmentType === 'corporate') {
+                    animateTransition(() => setStep('savings_analysis'));
+                  } else {
+                    animateTransition(() => setStep('lead_capture'));
+                  }
+                }}
                 className="mt-8 w-full rounded-2xl px-8 py-4 text-lg font-bold text-white min-h-[56px] transition-all duration-300 hover:scale-[1.02]"
                 style={{ background: 'linear-gradient(135deg, var(--color-accent) 0%, #C44D12 100%)' }}
               >
@@ -364,7 +571,7 @@ export function PathfinderEngine({ locale, questions }: Props) {
 
           {/* ── Lead Capture ───────────────────────────────────────────── */}
           {step === 'lead_capture' && (
-            <div className="animate-fade-up">
+            <div className="animate-fade-up is-visible">
               <h2
                 className="text-2xl md:text-3xl font-bold text-[var(--text-primary)] text-center mb-3"
                 style={{ fontFamily: isAr ? 'var(--font-arabic-heading)' : 'var(--font-english-heading)' }}
@@ -390,13 +597,22 @@ export function PathfinderEngine({ locale, questions }: Props) {
                   error={errors.email}
                   placeholder={isAr ? 'example@email.com' : 'example@email.com'}
                 />
-                <InputField
-                  label={isAr ? 'رقم الهاتف (اختياري)' : 'Phone (optional)'}
-                  type="tel"
-                  value={contact.phone}
-                  onChange={v => setContact(p => ({ ...p, phone: v }))}
-                  placeholder={isAr ? '+971 50 123 4567' : '+971 50 123 4567'}
-                />
+                {assessmentType === 'corporate' ? (
+                  <InputField
+                    label={isAr ? 'المسمى الوظيفي' : 'Job Title'}
+                    value={contact.job_title}
+                    onChange={v => setContact(p => ({ ...p, job_title: v }))}
+                    placeholder={isAr ? 'مثال: مدير الموارد البشرية' : 'e.g. VP of People & Culture'}
+                  />
+                ) : (
+                  <InputField
+                    label={isAr ? 'رقم الهاتف (اختياري)' : 'Phone (optional)'}
+                    type="tel"
+                    value={contact.phone}
+                    onChange={v => setContact(p => ({ ...p, phone: v }))}
+                    placeholder={isAr ? '+971 50 123 4567' : '+971 50 123 4567'}
+                  />
+                )}
               </div>
               {/* UX-Pro: error-recovery — show submit error with retry guidance */}
               {submitError && (

@@ -2,6 +2,7 @@ import { setRequestLocale } from 'next-intl/server';
 import { cms } from '@kunacademy/cms';
 import type { Metadata } from 'next';
 import { PathfinderEngine } from './pathfinder-engine';
+import corporateBenefitsData from '@/data/cms/corporate-benefits.json';
 
 interface Props { params: Promise<{ locale: string }> }
 
@@ -24,5 +25,11 @@ export default async function PathfinderAssessPage({ params }: Props) {
   // Fetch all pathfinder questions from CMS (they come with branching structure)
   const allQuestions = await cms.getAllPathfinderQuestions();
 
-  return <PathfinderEngine locale={locale} questions={allQuestions} />;
+  return (
+    <PathfinderEngine
+      locale={locale}
+      questions={allQuestions}
+      corporateBenefits={corporateBenefitsData as Parameters<typeof PathfinderEngine>[0]['corporateBenefits']}
+    />
+  );
 }

@@ -49,6 +49,9 @@ export { fetchDocAsHtml, invalidateDocCache } from './google-docs-fetcher';
 export { scoreAnswers, calculateRoi } from './pathfinder-scorer';
 export type { ScoredAnswer, Recommendation, RoiInputs, RoiResult } from './pathfinder-scorer';
 
+export { calculateCorporateRoi } from './benefits-roi-calculator';
+export type { CorporateRoiResult, BenefitSavings, CorporateSettings, SelectedBenefit } from './benefits-roi-calculator';
+
 // ── Provider Factory ────────────────────────────────────────────────────────
 
 function createProvider(): ContentProvider {
