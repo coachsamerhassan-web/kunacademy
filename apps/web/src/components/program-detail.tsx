@@ -93,23 +93,56 @@ export async function ProgramDetail({
       />
       {/* Hero */}
       <section
-        className="relative overflow-hidden py-20 md:py-28"
-        style={{ background: 'linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-700) 100%)' }}
+        className="relative overflow-hidden py-16 md:py-24"
+        style={{
+          background: program.hero_image_url
+            ? undefined
+            : 'linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-700) 100%)',
+        }}
       >
-        <GeometricPattern pattern="girih" opacity={0.1} fade="both" />
-        <div className="relative z-10 mx-auto max-w-[var(--max-content-width)] px-4 md:px-6 text-center animate-fade-up">
-          {subtitle && (
-            <p className="text-sm font-medium tracking-[0.15em] uppercase text-[var(--color-accent-200)] mb-4">
-              {subtitle}
-            </p>
+        {program.hero_image_url ? (
+          <>
+            <img
+              src={program.hero_image_url}
+              alt=""
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 bg-[var(--color-primary)]/80" />
+          </>
+        ) : (
+          <GeometricPattern pattern="girih" opacity={0.1} fade="both" />
+        )}
+        <div className={`relative z-10 mx-auto max-w-[var(--max-content-width)] px-4 md:px-6 animate-fade-up ${program.program_logo ? 'md:flex md:items-center md:gap-12' : ''}`}>
+          {/* Logo — mobile: centered above title, desktop: side column */}
+          {program.program_logo && (
+            <div className="flex justify-center mb-8 md:mb-0 md:shrink-0 md:order-2">
+              <div className="relative">
+                <div
+                  className="absolute inset-0 rounded-full blur-2xl opacity-20"
+                  style={{ background: 'radial-gradient(circle, #D4A853 0%, transparent 70%)' }}
+                />
+                <img
+                  src={program.program_logo}
+                  alt=""
+                  className="relative h-40 w-40 md:h-64 md:w-64 lg:h-80 lg:w-80 object-contain drop-shadow-[0_0_30px_rgba(212,168,83,0.3)]"
+                />
+              </div>
+            </div>
           )}
-          <h1
-            className="text-[2.25rem] md:text-[3.5rem] font-bold text-[#FFF5E9] leading-[1.1]"
-            style={{ fontFamily: isAr ? 'var(--font-arabic-heading)' : 'var(--font-english-heading)' }}
-          >
-            {title}
-          </h1>
-          <div className="mt-6 flex flex-wrap justify-center gap-6 text-white/70 text-sm">
+          {/* Text content */}
+          <div className={program.program_logo ? 'text-center md:text-start md:flex-1 md:order-1' : 'text-center'}>
+            {subtitle && (
+              <p className="text-sm font-medium tracking-[0.15em] uppercase text-[var(--color-accent-200)] mb-4">
+                {subtitle}
+              </p>
+            )}
+            <h1
+              className="text-[2.25rem] md:text-[3.5rem] font-bold text-[#FFF5E9] leading-[1.1]"
+              style={{ fontFamily: isAr ? 'var(--font-arabic-heading)' : 'var(--font-english-heading)' }}
+            >
+              {title}
+            </h1>
+            <div className={`mt-6 flex flex-wrap gap-6 text-white/70 text-sm ${program.program_logo ? 'justify-center md:justify-start' : 'justify-center'}`}>
             {program.duration && (
               <span className="flex items-center gap-1.5">
                 <svg aria-hidden="true" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
@@ -130,12 +163,13 @@ export async function ProgramDetail({
                 {program.icf_details || (isAr ? 'معتمد من ICF' : 'ICF Accredited')}
               </span>
             )}
-          </div>
-          {program.promo_video_url && (
-            <div className="mt-8 flex justify-center">
-              <PromoVideo url={program.promo_video_url} title={title} className="max-w-2xl w-full" />
             </div>
-          )}
+            {program.promo_video_url && (
+              <div className="mt-8 flex justify-center md:justify-start">
+                <PromoVideo url={program.promo_video_url} title={title} className="max-w-2xl w-full" />
+              </div>
+            )}
+          </div>
         </div>
       </section>
 

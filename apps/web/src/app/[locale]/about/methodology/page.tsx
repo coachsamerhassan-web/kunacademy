@@ -144,24 +144,41 @@ export default async function MethodologyPage({ params }: Props) {
         ])) }}
       />
       {/* Hero */}
-      <section className="relative overflow-hidden py-16 md:py-28">
+      <section className="relative overflow-hidden py-16 md:py-24">
         <div className="absolute inset-0" style={{ background: 'linear-gradient(135deg, var(--color-primary) 0%, #1D1A3D 100%)' }} />
         <GeometricPattern pattern="flower-of-life" opacity={0.06} fade="both" />
-        <div className="relative z-10 mx-auto max-w-[var(--max-content-width)] px-4 md:px-6 text-center animate-fade-up">
-          <p className="text-[var(--color-accent)] font-medium text-sm uppercase tracking-wider mb-4">
-            {isAr ? 'المنهجية' : 'The Methodology'}
-          </p>
-          <h1
-            className="text-[2.5rem] md:text-[4rem] font-bold text-[#FFF5E9] leading-[1.05]"
-            style={{ fontFamily: isAr ? 'var(--font-arabic-heading)' : 'var(--font-english-heading)' }}
-          >
-            {isAr ? 'التفكير الحسّي®' : 'Somatic Thinking®'}
-          </h1>
-          <p className="mt-6 text-white/70 max-w-2xl mx-auto text-lg md:text-xl leading-relaxed">
-            {isAr
-              ? 'منهجية كوتشينج عربية أصيلة تبدأ من الجسد — معتمدة من الاتحاد الدولي للكوتشينج (ICF)'
-              : 'An original Arabic coaching methodology that starts from the body — accredited by the International Coaching Federation (ICF)'}
-          </p>
+        <div className="relative z-10 mx-auto max-w-[var(--max-content-width)] px-4 md:px-6 animate-fade-up md:flex md:items-center md:gap-12">
+          {/* Logo — mobile: centered above title, desktop: side column */}
+          <div className="flex justify-center mb-8 md:mb-0 md:shrink-0 md:order-2">
+            <div className="relative">
+              <div
+                className="absolute inset-0 rounded-full blur-2xl opacity-20"
+                style={{ background: 'radial-gradient(circle, #D4A853 0%, transparent 70%)' }}
+              />
+              <img
+                src="/images/programs/logos/somatic-thinking-methodology.png"
+                alt=""
+                className="relative h-40 w-40 md:h-64 md:w-64 lg:h-80 lg:w-80 object-contain drop-shadow-[0_0_30px_rgba(212,168,83,0.3)]"
+              />
+            </div>
+          </div>
+          {/* Text content */}
+          <div className="text-center md:text-start md:flex-1 md:order-1">
+            <p className="text-[var(--color-accent)] font-medium text-sm uppercase tracking-wider mb-4">
+              {isAr ? 'المنهجية' : 'The Methodology'}
+            </p>
+            <h1
+              className="text-[2.5rem] md:text-[4rem] font-bold text-[#FFF5E9] leading-[1.05]"
+              style={{ fontFamily: isAr ? 'var(--font-arabic-heading)' : 'var(--font-english-heading)' }}
+            >
+              {isAr ? 'التفكير الحسّي®' : 'Somatic Thinking®'}
+            </h1>
+            <p className="mt-6 text-white/70 max-w-2xl text-lg md:text-xl leading-relaxed">
+              {isAr
+                ? 'منهجية كوتشينج عربية أصيلة تبدأ من الجسد — معتمدة من الاتحاد الدولي للكوتشينج (ICF)'
+                : 'An original Arabic coaching methodology that starts from the body — accredited by the International Coaching Federation (ICF)'}
+            </p>
+          </div>
         </div>
       </section>
 

@@ -127,6 +127,35 @@ function isArrayColumn(header: string): boolean {
   return /^(specialties|coaching_styles|languages|speaker_slugs|tags|prerequisite_codes|pathway_codes)$/.test(header);
 }
 
+// ── Program Logo Defaults (code assets, not CMS content) ────────────────────
+
+const PROGRAM_LOGO_MAP: Record<string, string> = {
+  'somatic-thinking-intro': '/images/programs/logos/stic.png',
+  'stce-level-1-stic': '/images/programs/logos/stic.png',
+  'your-identity': '/images/programs/logos/stic.png',
+  'stce-level-2-staic': '/images/programs/logos/staic.png',
+  'stce-level-3-stgc': '/images/programs/logos/stgc.png',
+  'stce-level-4-stoc': '/images/programs/logos/stoc.png',
+  'stce-level-5-stfc': '/images/programs/logos/stfc.png',
+  'stdc-doctors': '/images/programs/logos/stdc.png',
+  'stcm-managers': '/images/programs/logos/stcm.png',
+  'menhajak-training': '/images/programs/logos/manhajak-dark.png',
+  'menhajak-organizational': '/images/programs/logos/manhajak-dark.png',
+  'menhajak-leadership': '/images/programs/logos/manhajak-dark.png',
+  'impact-engineering': '/images/programs/logos/impact-eng-white.png',
+  'gm-playbook-briefing': '/images/programs/logos/gm-milestone-1-briefing.png',
+  'gm-playbook-foundation': '/images/programs/logos/gm-milestone-2-foundation.png',
+  'gm-playbook-mastery': '/images/programs/logos/gm-milestone-3-mastery.png',
+};
+
+// ── Program Hero Image Defaults (reusing existing site assets) ───────────────
+
+const PROGRAM_HERO_MAP: Record<string, string> = {
+  'stce-level-3-stgc': '/images/community/hands-circle-gulf.jpg',
+  'mcc-mentoring': '/images/founder/samer-podcast-smile-warm-light.jpg',
+  'menhajak-training': '/images/founder/samer-workshop-candid-thumbsup.jpg',
+};
+
 // ── Provider Implementation ─────────────────────────────────────────────────
 
 export class GoogleSheetsProvider implements ContentProvider {
@@ -216,6 +245,8 @@ export class GoogleSheetsProvider implements ContentProvider {
       status: p.status || 'active',
       prerequisite_codes: Array.isArray(p.prerequisite_codes) ? p.prerequisite_codes : [],
       pathway_codes: Array.isArray(p.pathway_codes) ? p.pathway_codes : [],
+      program_logo: p.program_logo || PROGRAM_LOGO_MAP[p.slug],
+      hero_image_url: p.hero_image_url || PROGRAM_HERO_MAP[p.slug],
     };
   }
 

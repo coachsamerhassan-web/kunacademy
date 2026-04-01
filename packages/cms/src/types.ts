@@ -136,6 +136,8 @@ export interface Program extends AuditFields, TheaterPricing {
   access_duration_days?: number;
   /** Learning journey stages (Hakima's pedagogical model) */
   journey_stages?: string;
+  /** Hero background image for program detail page */
+  hero_image_url?: string;
   /** Thumbnail/card image */
   thumbnail_url?: string;
   /** Featured on homepage */
