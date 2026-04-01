@@ -24,10 +24,9 @@ interface Coach {
   provider_id: string;  // providers.id (needed for availability)
   title_ar: string;
   title_en: string;
-  avatar_url: string | null;
+  photo_url: string | null;
   coach_level: string | null;
   specialties: string[] | null;
-  timezone: string | null;
 }
 
 interface Slot {
@@ -355,7 +354,6 @@ function BookingFlowInner({ locale }: { locale: string }) {
       .from('services')
       .select('*')
       .eq('is_active', true)
-      .order('display_order' as any)
       .then(({ data }) => {
         const loaded = (data as Service[]) || [];
         setServices(loaded);
@@ -385,25 +383,35 @@ function BookingFlowInner({ locale }: { locale: string }) {
     const supabase = createBrowserClient();
     if (!supabase) { setCoachesLoading(false); return; }
 
-    // Get providers that offer this service, joined with instructors
+    // Two-step: fetch visible providers, then fetch matching instructors by profile_id
     supabase
       .from('providers')
-      .select('id, profile_id, instructors:instructors!providers_profile_id_fkey(id, title_ar, title_en, avatar_url, coach_level, specialties, timezone)')
+      .select('id, profile_id')
       .eq('is_visible', true)
-      .then(({ data }) => {
+      .then(async ({ data: providers }) => {
+        if (!providers || providers.length === 0) {
+          setCoaches([]);
+          setCoachesLoading(false);
+          return;
+        }
+        const profileIds = providers.map((p: any) => p.profile_id).filter(Boolean);
+        const { data: instructors } = await supabase
+          .from('instructors')
+          .select('id, profile_id, title_ar, title_en, photo_url, coach_level, specialties')
+          .in('profile_id', profileIds);
+
         const result: Coach[] = [];
-        for (const p of (data as any[]) || []) {
-          const inst = Array.isArray(p.instructors) ? p.instructors[0] : p.instructors;
+        for (const p of providers) {
+          const inst = (instructors || []).find((i: any) => i.profile_id === p.profile_id);
           if (!inst) continue;
           result.push({
             id: inst.id,
             provider_id: p.id,
             title_ar: inst.title_ar || '',
             title_en: inst.title_en || '',
-            avatar_url: inst.avatar_url,
+            photo_url: inst.photo_url,
             coach_level: inst.coach_level,
             specialties: inst.specialties,
-            timezone: inst.timezone,
           });
         }
         setCoaches(result);
@@ -713,10 +721,10 @@ function BookingFlowInner({ locale }: { locale: string }) {
                 >
                   <div className="flex items-center gap-3 mb-3">
                     <div className="w-12 h-12 rounded-full bg-[var(--color-neutral-100)] overflow-hidden flex-shrink-0">
-                      {coach.avatar_url ? (
+                      {coach.photo_url ? (
                         // UX-Pro: alt-text — descriptive alt text with coach name
                         <img
-                          src={coach.avatar_url}
+                          src={coach.photo_url}
                           alt={isAr ? coach.title_ar : coach.title_en}
                           className="w-full h-full object-cover object-[center_15%]"
                         />

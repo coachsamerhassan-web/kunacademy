@@ -30,7 +30,11 @@ const nextConfig: NextConfig = {
       { source: '/:locale/programs/free', destination: '/:locale/academy/free', permanent: true },
       { source: '/:locale/programs/free/:path*', destination: '/:locale/academy/free/:path*', permanent: true },
       { source: '/:locale/programs/corporate', destination: '/:locale/coaching/corporate', permanent: true },
-      { source: '/:locale/programs/corporate/:path*', destination: '/:locale/coaching/corporate', permanent: true },
+      // NOTE: /:locale/programs/corporate/:path+ is intentionally NOT redirected here.
+      // Subpaths (e.g. /programs/corporate/gm-playbook) have real page.tsx files and must
+      // resolve normally. The old wildcard redirect was blocking them with a 308 to /coaching/corporate.
+      // STCE packages subpage → canonical packages hub
+      { source: '/:locale/academy/certifications/stce/packages', destination: '/:locale/academy/packages', permanent: true },
       // Methodology → About
       { source: '/:locale/methodology', destination: '/:locale/about/methodology', permanent: true },
       { source: '/:locale/methodology/:path*', destination: '/:locale/about/methodology', permanent: true },

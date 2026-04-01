@@ -18,11 +18,26 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'coach_id, start, and end are required' }, { status: 400 });
   }
 
+  // Resolve provider_id → profile_id for coach_schedules / coach_time_off lookup
+  // (coach_schedules.coach_id and coach_time_off.coach_id reference profiles(id),
+  //  not providers(id) — these are different UUIDs)
+  const { data: provider } = await supabase
+    .from('providers')
+    .select('profile_id')
+    .eq('id', coachId)
+    .single();
+
+  if (!provider?.profile_id) {
+    return NextResponse.json({ slots: [] });
+  }
+
+  const profileId = provider.profile_id;
+
   // 1. Get weekly schedule (include buffer_minutes)
   const { data: schedules } = await supabase
     .from('coach_schedules')
     .select('day_of_week, start_time, end_time, timezone, buffer_minutes')
-    .eq('coach_id', coachId)
+    .eq('coach_id', profileId)
     .eq('is_active', true);
 
   if (!schedules || schedules.length === 0) {
@@ -51,10 +66,11 @@ export async function GET(request: NextRequest) {
   });
 
   // 4. Get time-off days (range-aware)
+  // coach_time_off.coach_id references profiles(id) — use profileId
   const { data: timeOffs } = await supabase
     .from('coach_time_off')
     .select('start_date, end_date')
-    .eq('coach_id', coachId)
+    .eq('coach_id', profileId)
     .lte('start_date', endDate)
     .gte('end_date', startDate);
 

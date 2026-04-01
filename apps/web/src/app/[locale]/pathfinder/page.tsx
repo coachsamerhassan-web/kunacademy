@@ -102,7 +102,7 @@ export default async function PathfinderPage({ params }: Props) {
             {isAr ? 'تفضّل تتكلّم مع شخص؟' : 'Prefer to talk to someone?'}
           </p>
           <a
-            href="https://wa.me/971501234567"
+            href="https://wa.me/971502587895"
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center justify-center rounded-xl bg-green-600 px-6 py-3 text-sm font-semibold text-white min-h-[48px] hover:bg-green-700 transition-all duration-300"

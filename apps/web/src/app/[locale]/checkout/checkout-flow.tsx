@@ -109,6 +109,7 @@ export function CheckoutFlow({ locale }: { locale: string }) {
 
   const itemType = searchParams.get('type');
   const itemId = searchParams.get('id');
+  const programSlug = searchParams.get('program');
 
   // Fetch geo info on mount
   useEffect(() => {
@@ -141,9 +142,37 @@ export function CheckoutFlow({ locale }: { locale: string }) {
 
   // Fetch item data
   useEffect(() => {
-    if (!itemId || !itemType) { setLoading(false); return; }
     const supabase = createBrowserClient();
     if (!supabase) return;
+
+    // ?program=slug — look up course by slug
+    if (programSlug && !itemType && !itemId) {
+      supabase
+        .from('courses')
+        .select('id, title_ar, title_en, price_aed, price_sar, price_egp, price_usd, price_eur')
+        .eq('slug', programSlug)
+        .eq('is_published', true)
+        .single()
+        .then(({ data }) => {
+          if (data) {
+            setItem({
+              type: 'course',
+              id: data.id,
+              name_ar: data.title_ar,
+              name_en: data.title_en,
+              price_aed: data.price_aed,
+              price_sar: data.price_sar,
+              price_egp: data.price_egp,
+              price_usd: data.price_usd,
+              price_eur: data.price_eur,
+            });
+          }
+          setLoading(false);
+        });
+      return;
+    }
+
+    if (!itemId || !itemType) { setLoading(false); return; }
 
     if (itemType === 'course') {
       supabase.from('courses').select('id, title_ar, title_en, price_aed, price_sar, price_egp, price_usd, price_eur')
@@ -187,7 +216,7 @@ export function CheckoutFlow({ locale }: { locale: string }) {
     } else {
       setLoading(false);
     }
-  }, [itemId, itemType]);
+  }, [itemId, itemType, programSlug]);
 
   // Derived: which currencies are available based on geo
   const availableCurrencies: Currency[] = (() => {

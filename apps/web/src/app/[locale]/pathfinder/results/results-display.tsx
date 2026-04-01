@@ -6,6 +6,34 @@ import { JourneyMap } from '@/lib/pathfinder/journey-map';
 import { generateReportHtml } from '@/lib/pathfinder/report-template';
 import type { RoiResult } from '@kunacademy/cms';
 
+// ── Program URL Map ────────────────────────────────────────────────────────────
+// Maps pathfinder recommendation slugs to their actual page URLs.
+// Fallback: /${locale}/programs/${slug} (keeps backward-compat for unknown slugs)
+
+const PROGRAM_URL_MAP: Record<string, string> = {
+  'somatic-thinking-intro':    '/academy/intro',
+  'stce-level-1-stic':         '/academy/certifications/stce/level-1',
+  'stce-level-2-staic':        '/academy/certifications/stce/level-2',
+  'stce-level-3-stgc':         '/academy/certifications/stce/level-3',
+  'stce-level-4-stoc':         '/academy/certifications/stce/level-4',
+  'stce-level-5-stfc':         '/academy/certifications/stce/level-5',
+  'stdc-doctors':              '/academy/certifications/doctors',
+  'stcm-managers':             '/academy/certifications/managers',
+  'menhajak-training':         '/academy/packages/training',
+  'menhajak-organizational':   '/academy/packages/organizational',
+  'menhajak-leadership':       '/academy/packages/leadership',
+  'mcc-mentoring':             '/academy/certifications/mcc-mentoring',
+  'your-identity':             '/academy/courses/your-identity',
+  'impact-engineering':        '/academy/courses/impact-engineering',
+  'gm-playbook-briefing':      '/programs/corporate/gm-playbook',
+  'gm-playbook-foundation':    '/programs/corporate/gm-playbook',
+  'gm-playbook-mastery':       '/programs/corporate/gm-playbook',
+};
+
+function getProgramUrl(locale: string, slug: string): string {
+  return `/${locale}${PROGRAM_URL_MAP[slug] ?? `/programs/${slug}`}`;
+}
+
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 interface Recommendation {
@@ -254,7 +282,7 @@ function PrimaryRec({ rec, isAr, locale }: { rec: Recommendation; isAr: boolean;
   const title     = isAr ? (rec.title_ar ?? rec.slug) : (rec.title_en ?? rec.slug);
   const catLabel  = getCat(rec.category, isAr);
   const reasons   = rec.reasons.slice(0, 3).map((r) => getReason(r, isAr));
-  const programUrl = `/${locale}/programs/${rec.slug}`;
+  const programUrl = getProgramUrl(locale, rec.slug);
 
   return (
     <div className="rounded-xl p-5 border-2" style={{ borderColor: '#E4601E', background: 'rgba(228,96,30,.03)' }}>
@@ -298,7 +326,7 @@ function AltRec({ rec, isAr, locale }: { rec: Recommendation; isAr: boolean; loc
   const title    = isAr ? (rec.title_ar ?? rec.slug) : (rec.title_en ?? rec.slug);
   const catLabel = getCat(rec.category, isAr);
   const reasons  = rec.reasons.slice(0, 2).map((r) => getReason(r, isAr));
-  const programUrl = `/${locale}/programs/${rec.slug}`;
+  const programUrl = getProgramUrl(locale, rec.slug);
 
   return (
     <div className="rounded-xl p-4 border flex flex-col" style={{ borderColor: '#E8E3DC', background: 'white' }}>

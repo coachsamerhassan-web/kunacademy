@@ -1,36 +1,33 @@
 import Link from 'next/link';
-import { GeometricPattern } from '@kunacademy/ui/patterns';
 
 export default function NotFound() {
   return (
     <section className="relative overflow-hidden min-h-[60vh] flex items-center justify-center py-16">
-      <GeometricPattern pattern="eight-star" opacity={0.04} fade="both" />
-      <div className="relative z-10 text-center px-4 max-w-lg mx-auto">
-        <div className="text-8xl font-bold text-[var(--color-primary)] opacity-20 mb-2">404</div>
-        <h1
-          className="text-2xl md:text-3xl font-bold text-[var(--text-primary)] mb-4"
-          style={{ fontFamily: 'var(--font-arabic-heading)' }}
-        >
+      <div className="text-center px-4 max-w-lg mx-auto">
+        <div className="text-8xl font-bold text-primary/20 leading-none mb-2">
+          404
+        </div>
+        <h1 className="text-2xl font-bold text-stone-900 mb-3 font-arabic">
           الصفحة غير موجودة
         </h1>
-        <p className="text-[var(--color-neutral-500)] mb-2">
+        <p className="text-stone-500 mb-1">
           Page not found
         </p>
-        <p className="text-sm text-[var(--color-neutral-400)] mb-8">
+        <p className="text-sm text-stone-400 mb-8">
           The page you&apos;re looking for doesn&apos;t exist or has been moved.
         </p>
-        <div className="flex flex-col sm:flex-row gap-3 justify-center">
+        <div className="flex flex-col gap-3 items-center">
           <Link
             href="/"
-            className="inline-flex items-center justify-center rounded-xl bg-[var(--color-primary)] px-6 py-3 text-sm font-semibold text-white min-h-[48px] hover:opacity-90 transition-opacity"
+            className="inline-flex items-center justify-center rounded-xl bg-primary px-6 py-3 text-sm font-semibold text-white min-h-[48px] min-w-[160px] hover:bg-primary/90 transition-colors"
           >
-            Go Home
+            العودة للرئيسية
           </Link>
           <Link
             href="/academy/certifications"
-            className="inline-flex items-center justify-center rounded-xl border border-[var(--color-neutral-200)] bg-white px-6 py-3 text-sm font-semibold text-[var(--text-primary)] min-h-[48px] hover:bg-[var(--color-neutral-50)] transition-colors"
+            className="inline-flex items-center justify-center rounded-xl border border-stone-200 bg-white px-6 py-3 text-sm font-semibold text-stone-900 min-h-[48px] min-w-[160px] hover:bg-stone-50 transition-colors"
           >
-            Browse Programs
+            تصفّح البرامج
           </Link>
         </div>
       </div>

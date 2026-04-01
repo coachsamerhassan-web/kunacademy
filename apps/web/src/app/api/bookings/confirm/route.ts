@@ -128,7 +128,7 @@ export async function POST(request: NextRequest) {
         quantity: 1,
       }],
       customerEmail: userEmail,
-      successUrl: `${origin}/${locale}/checkout/success?booking_id=${hold_id}`,
+      successUrl: `${origin}/${locale}/checkout/success?payment_id=${hold_id}`,
       cancelUrl: `${origin}/${locale}/coaching/book`,
       metadata: {
         booking_id: hold_id,
