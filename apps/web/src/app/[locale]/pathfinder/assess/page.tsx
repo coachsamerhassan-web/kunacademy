@@ -1,5 +1,5 @@
 import { setRequestLocale } from 'next-intl/server';
-import { cms } from '@kunacademy/cms';
+import { cms } from '@kunacademy/cms/server';
 import type { Metadata } from 'next';
 import { PathfinderEngine } from './pathfinder-engine';
 import corporateBenefitsData from '@/data/cms/corporate-benefits.json';

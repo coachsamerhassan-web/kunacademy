@@ -168,12 +168,20 @@ export interface Program extends AuditFields, TheaterPricing {
   faq_json?: string;
   /** Program-specific logo URL (from /Brand/programs logos/) */
   program_logo?: string;
+  /** Google Doc ID for rich program content (rendered via fetchDocAsHtml) */
+  content_doc_id?: string;
 }
 
 // ── Sheet 3: Services & Packages ────────────────────────────────────────────
 
 /** Service audience category (Nashit's critique) */
-export type ServiceCategory = 'seeker' | 'student' | 'corporate';
+export type ServiceCategory =
+  | 'seeker'
+  | 'student'
+  | 'corporate'
+  | 'coaching'
+  | 'mentoring'
+  | 'package';
 
 export interface Service extends AuditFields, TheaterPricing {
   slug: string;
@@ -200,11 +208,35 @@ export interface Service extends AuditFields, TheaterPricing {
   bundle_id?: string;
   /** Display order */
   display_order: number;
+  /** Free service flag */
+  is_free?: boolean;
+  /** Minimum coach credential level required to offer this service */
+  coach_level_min?: string;
+  /** Exact coach credential level required (exclusive) */
+  coach_level_exact?: string;
+  /** Restrict visibility to enrolled students only */
+  student_only?: boolean;
+  /** ICF credential this service supports (e.g. "ACC", "PCC", "MCC") */
+  icf_credential_target?: string;
+  /** Program slug this package belongs to (e.g. "manhajak") */
+  program_slug?: string;
 }
 
 // ── Sheet 4: Team ───────────────────────────────────────────────────────────
 
-/** Coach/instructor credential level */
+/** ICF credential (external accreditation) */
+export type IcfCredential = 'ACC' | 'PCC' | 'MCC';
+
+/** Kun internal coaching level (Samer's assessment, independent of ICF) */
+export type KunLevel = 'basic' | 'professional' | 'expert' | 'master';
+
+/** Special service roles (beyond standard coaching) */
+export type ServiceRole = 'mentor_coach' | 'advanced_mentor';
+
+/**
+ * @deprecated Use IcfCredential or KunLevel instead.
+ * Kept for backward compat during migration — maps to coach_level column in Sheets.
+ */
 export type CoachLevel = 'ACC' | 'PCC' | 'MCC' | 'instructor' | 'facilitator' | 'guest';
 
 export interface TeamMember extends AuditFields {
@@ -215,12 +247,21 @@ export interface TeamMember extends AuditFields {
   title_en?: string;
   bio_ar?: string;
   bio_en?: string;
+  /** Google Doc ID for rich bio content (rendered via fetchDocAsHtml) */
+  bio_doc_id?: string;
   /** Photo URL (Supabase Storage or external) */
   photo_url?: string;
-  /** Credential level (for coaches) */
+  /**
+   * ICF credential level — kept as `coach_level` for backward compat with Sheets column name.
+   * New code should also check `kun_level` for Kun's internal assessment.
+   */
   coach_level?: CoachLevel;
-  /** ICF credential details */
+  /** Kun internal level (basic/professional/expert/master) — column V in Sheets */
+  kun_level?: KunLevel;
+  /** ICF credential details (free text, e.g. "ICF ACC, 2024") */
   credentials?: string;
+  /** Special service roles (comma-separated in sheet → string[]) — column W in Sheets */
+  service_roles: string[];
   /** Specialties list (comma-separated in sheet → string[]) */
   specialties: string[];
   /** Coaching styles */
@@ -280,6 +321,20 @@ export interface Testimonial extends AuditFields {
   display_order: number;
 }
 
+// ── Quotes ─────────────────────────────────────────────────────────────────
+
+export interface Quote extends AuditFields {
+  quote_id: string;
+  author_ar: string;
+  author_en: string;
+  content_ar: string;
+  content_en: string;
+  category?: string;
+  /** ISO 8601 scheduled display date — used for date-based daily rotation */
+  date?: string;
+  display_order: number;
+}
+
 // ── Sheet 8: Events ─────────────────────────────────────────────────────────
 
 export type EventLocationType = 'in-person' | 'online' | 'hybrid';
@@ -303,6 +358,12 @@ export interface Event extends AuditFields {
   price_usd: number;
   image_url?: string;
   promo_video_url?: string;
+  /** Slug referencing Programs sheet — used to show program logo overlay on event card */
+  program_slug?: string;
+  /** Registration / booking URL */
+  registration_url?: string;
+  /** "open" | "sold_out" | "completed" — derived from date if not set */
+  status?: 'open' | 'sold_out' | 'completed';
   /** Comma-separated slugs referencing Team sheet */
   speaker_slugs: string[];
   /** ISO 8601 date string */
@@ -322,6 +383,8 @@ export interface BlogPost extends AuditFields {
   /** Full article content (Markdown or rich text) */
   content_ar?: string;
   content_en?: string;
+  /** Google Doc ID for rich article content (rendered via fetchDocAsHtml) */
+  content_doc_id?: string;
   featured_image_url?: string;
   category?: string;
   /** Comma-separated tags */

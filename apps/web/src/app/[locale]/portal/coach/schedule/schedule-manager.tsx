@@ -1,9 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@kunacademy/auth';
 import { Button } from '@kunacademy/ui/button';
-import { createBrowserClient } from '@kunacademy/db';
 
 /* ─── Constants ───────────────────────────────────────────────────── */
 
@@ -88,8 +87,14 @@ export function ScheduleManager({ locale }: { locale: string }) {
   const [availGrid, setAvailGrid] = useState<Set<GridKey>>(new Set());
   // Booked cells (from bookings table, next 4 weeks)
   const [bookedCells, setBookedCells] = useState<BookedCell[]>([]);
-  // Buffer toggle
-  const [bufferEnabled, setBufferEnabled] = useState(false);
+  // Buffer minutes between sessions (0 = no buffer)
+  const [bufferMinutes, setBufferMinutes] = useState<number>(0);
+
+  // Timezone (resolved from browser)
+  const [timezone, setTimezone] = useState<string>('');
+
+  // Clear-all confirmation
+  const [confirmClear, setConfirmClear] = useState(false);
 
   // Mobile: active day tab (0-6)
   const [mobileDay, setMobileDay] = useState<number>(new Date().getDay());
@@ -107,81 +112,56 @@ export function ScheduleManager({ locale }: { locale: string }) {
   const [popoverReason, setPopoverReason] = useState('');
   const [savingTimeOff, setSavingTimeOff] = useState(false);
 
+  /* ── Resolve timezone once ── */
+  useEffect(() => {
+    setTimezone(Intl.DateTimeFormat().resolvedOptions().timeZone);
+  }, []);
+
   /* ── Load data ── */
   useEffect(() => {
     if (!user) return;
-    const supabase = createBrowserClient();
-    if (!supabase) return;
 
-    supabase
-      .from('instructors')
-      .select('id')
-      .eq('profile_id', user.id)
-      .single()
-      .then(({ data: inst }) => {
-        if (!inst) { setLoading(false); return; }
-        setInstructorId(inst.id);
+    fetch('/api/coach/schedule')
+      .then((r) => r.json())
+      .then((data) => {
+        if (!data.instructor_id) { setLoading(false); return; }
+        setInstructorId(data.instructor_id);
 
-        const now = new Date();
-        const fourWeeks = new Date(now.getTime() + 28 * 24 * 60 * 60 * 1000);
-        const startStr = now.toISOString().split('T')[0];
-        const endStr = fourWeeks.toISOString().split('T')[0];
+        // Rebuild grid from schedules
+        const grid = new Set<GridKey>();
+        let maxBuffer = 0;
 
-        Promise.all([
-          supabase
-            .from('coach_schedules')
-            .select('day_of_week, start_time, end_time')
-            .eq('coach_id', inst.id)
-            .eq('is_active', true) as unknown as Promise<{ data: Array<{ day_of_week: number; start_time: string; end_time: string; buffer_minutes?: number }> | null; error: unknown }>,
-          supabase
-            .from('bookings')
-            .select('start_time, end_time')
-            .eq('provider_id', inst.id)
-            .gte('start_time', startStr)
-            .lte('start_time', endStr + 'T23:59:59')
-            .in('status', ['pending', 'confirmed']),
-          supabase
-            .from('coach_time_off')
-            .select('*')
-            .eq('coach_id', inst.id)
-            .order('start_date'),
-        ]).then(([schedRes, bookRes, offRes]) => {
-          // Rebuild grid from schedules
-          const grid = new Set<GridKey>();
-          let hasBuffer = false;
-
-          for (const s of schedRes.data || []) {
-            if ((s as any).buffer_minutes > 0) hasBuffer = true;
-            const startSlot = timeToSlot(s.start_time);
-            const endSlot = timeToSlot(s.end_time);
-            if (startSlot < 0 || endSlot < 0) continue;
-            for (let slot = startSlot; slot < endSlot; slot++) {
-              grid.add(gridKey(s.day_of_week, slot));
-            }
+        for (const s of data.schedules || []) {
+          if ((s.buffer_minutes ?? 0) > maxBuffer) maxBuffer = s.buffer_minutes ?? 0;
+          const startSlot = timeToSlot(s.start_time);
+          const endSlot = timeToSlot(s.end_time);
+          if (startSlot < 0 || endSlot < 0) continue;
+          for (let slot = startSlot; slot < endSlot; slot++) {
+            grid.add(gridKey(s.day_of_week, slot));
           }
-          setAvailGrid(grid);
-          setBufferEnabled(hasBuffer);
+        }
+        setAvailGrid(grid);
+        setBufferMinutes(maxBuffer);
 
-          // Map bookings → day-of-week + slot (approximate — for visual indicator)
-          const booked: BookedCell[] = [];
-          for (const b of bookRes.data || []) {
-            const dt = new Date(b.start_time);
-            const day = dt.getDay();
-            const timeStr = `${String(dt.getHours()).padStart(2, '0')}:${String(dt.getMinutes()).padStart(2, '0')}`;
-            const slot = timeToSlot(timeStr);
-            if (slot >= 0) booked.push({ day, slot });
-          }
-          setBookedCells(booked);
+        // Map bookings → day-of-week + slot (approximate — for visual indicator)
+        const booked: BookedCell[] = [];
+        for (const b of data.bookings || []) {
+          const dt = new Date(b.start_time);
+          const day = dt.getDay();
+          const timeStr = `${String(dt.getHours()).padStart(2, '0')}:${String(dt.getMinutes()).padStart(2, '0')}`;
+          const slot = timeToSlot(timeStr);
+          if (slot >= 0) booked.push({ day, slot });
+        }
+        setBookedCells(booked);
 
-          setTimeOffs((offRes.data || []).map((t: any) => ({
-            id: t.id,
-            start_date: t.start_date,
-            end_date: t.end_date,
-            reason: t.reason || '',
-          })));
+        setTimeOffs((data.time_offs || []).map((t: any) => ({
+          id: t.id,
+          start_date: t.start_date,
+          end_date: t.end_date,
+          reason: t.reason || '',
+        })));
 
-          setLoading(false);
-        });
+        setLoading(false);
       });
   }, [user]);
 
@@ -214,31 +194,58 @@ export function ScheduleManager({ locale }: { locale: string }) {
     isDragging.current = false;
   }
 
+  /* ── Quick actions ── */
+
+  /** Copy Monday (day 1) availability to Tue–Fri (days 2-5) */
+  function copyMondayToWeekdays() {
+    setAvailGrid(prev => {
+      const next = new Set(prev);
+      // Collect Monday slots
+      const mondaySlots: number[] = [];
+      for (let slot = 0; slot < TOTAL_SLOTS; slot++) {
+        if (prev.has(gridKey(1, slot))) mondaySlots.push(slot);
+      }
+      // Apply to Tue (2), Wed (3), Thu (4), Fri (5)
+      for (const targetDay of [2, 3, 4, 5]) {
+        // Clear existing
+        for (let slot = 0; slot < TOTAL_SLOTS; slot++) next.delete(gridKey(targetDay, slot));
+        // Paint Monday's slots
+        for (const slot of mondaySlots) next.add(gridKey(targetDay, slot));
+      }
+      return next;
+    });
+  }
+
+  function handleClearAll() {
+    if (!confirmClear) {
+      setConfirmClear(true);
+      // Auto-dismiss confirmation after 4 seconds if user doesn't act
+      setTimeout(() => setConfirmClear(false), 4000);
+      return;
+    }
+    setAvailGrid(new Set());
+    setConfirmClear(false);
+  }
+
   /* ── Save schedule ── */
 
   async function handleSave() {
     if (!instructorId) return;
     setSaving(true);
     setSaveMsg(null);
-    const supabase = createBrowserClient();
-    if (!supabase) return;
 
     try {
-      await supabase.from('coach_schedules').delete().eq('coach_id', instructorId);
-
       // Compress contiguous slots per day into schedule blocks
       const rows: Array<{
-        coach_id: string;
         day_of_week: number;
         start_time: string;
         end_time: string;
         timezone: string;
-        is_active: boolean;
         buffer_minutes: number;
       }> = [];
 
-      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      const bufferMins = bufferEnabled ? 15 : 0;
+      const tz = timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const bufferMins = bufferMinutes;
 
       for (const day of DAYS.map(d => d.value)) {
         let blockStart: number | null = null;
@@ -250,12 +257,10 @@ export function ScheduleManager({ locale }: { locale: string }) {
             blockStart = slot;
           } else if (!active && blockStart !== null) {
             rows.push({
-              coach_id: instructorId,
               day_of_week: day,
               start_time: slotToTime(blockStart),
               end_time: slotToTime(slot),
-              timezone,
-              is_active: true,
+              timezone: tz,
               buffer_minutes: bufferMins,
             });
             blockStart = null;
@@ -263,10 +268,13 @@ export function ScheduleManager({ locale }: { locale: string }) {
         }
       }
 
-      if (rows.length > 0) {
-        await supabase.from('coach_schedules').insert(rows);
-      }
+      const res = await fetch('/api/coach/schedule', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ instructor_id: instructorId, rows }),
+      });
 
+      if (!res.ok) throw new Error('Save failed');
       setSaveMsg({ type: 'success', text: isAr ? 'تم حفظ المواعيد بنجاح' : 'Schedule saved successfully' });
     } catch {
       setSaveMsg({ type: 'error', text: isAr ? 'حدث خطأ أثناء الحفظ' : 'Error saving schedule' });
@@ -289,9 +297,7 @@ export function ScheduleManager({ locale }: { locale: string }) {
       // Toggle off
       if (!existing.id) return;
       setSavingTimeOff(true);
-      const supabase = createBrowserClient();
-      if (!supabase) return;
-      await supabase.from('coach_time_off').delete().eq('id', existing.id);
+      await fetch(`/api/coach/schedule?time_off_id=${existing.id}`, { method: 'DELETE' });
       setTimeOffs(prev => prev.filter(t => t.id !== existing.id));
       setSavingTimeOff(false);
       setPopoverDay(null);
@@ -304,24 +310,23 @@ export function ScheduleManager({ locale }: { locale: string }) {
   async function confirmTimeOff() {
     if (!instructorId || !popoverDay) return;
     setSavingTimeOff(true);
-    const supabase = createBrowserClient();
-    if (!supabase) return;
-    const { data } = await supabase
-      .from('coach_time_off')
-      .insert({
-        coach_id: instructorId,
+    const res = await fetch('/api/coach/schedule', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        instructor_id: instructorId,
         start_date: popoverDay,
         end_date: popoverDay,
         reason: popoverReason,
-      })
-      .select()
-      .single();
-    if (data) {
+      }),
+    });
+    const data = await res.json();
+    if (data.time_off) {
       setTimeOffs(prev => [...prev, {
-        id: data.id,
-        start_date: data.start_date,
-        end_date: data.end_date,
-        reason: data.reason || '',
+        id: data.time_off.id,
+        start_date: data.time_off.start_date,
+        end_date: data.time_off.end_date,
+        reason: data.time_off.reason || '',
       }]);
     }
     setSavingTimeOff(false);
@@ -396,43 +401,92 @@ export function ScheduleManager({ locale }: { locale: string }) {
       {/* ══════════════════ WEEKLY SCHEDULE TAB ══════════════════ */}
       {activeTab === 'schedule' && (
         <div>
-          {/* Controls bar */}
-          <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-            <div className="flex items-center gap-2">
-              <label className="flex items-center gap-2 text-sm text-[var(--color-neutral-700)] cursor-pointer select-none min-h-[44px]">
-                <span
-                  role="checkbox"
-                  aria-checked={bufferEnabled}
-                  tabIndex={0}
-                  onClick={() => setBufferEnabled(b => !b)}
-                  onKeyDown={e => e.key === ' ' && setBufferEnabled(b => !b)}
-                  className={[
-                    'relative inline-flex items-center w-10 h-5 rounded-full transition-colors outline-none focus:ring-2 focus:ring-[var(--color-primary)] cursor-pointer',
-                    bufferEnabled ? 'bg-[var(--color-primary)]' : 'bg-[var(--color-neutral-300)]',
-                  ].join(' ')}
-                >
-                  {/* UX-Pro: RTL toggle — use start/end logical values for correct direction */}
-                  <span className={[
-                    'absolute w-4 h-4 bg-white rounded-full shadow transition-transform',
-                    bufferEnabled
-                      ? (isAr ? 'translate-x-[-20px]' : 'translate-x-5')
-                      : (isAr ? 'translate-x-[-2px]' : 'translate-x-0.5'),
-                  ].join(' ')} />
+          {/* ── Timezone banner ── */}
+          {timezone && (
+            <div className="flex items-center gap-2 mb-4 px-3 py-2 rounded-lg bg-[var(--color-neutral-50)] border border-[var(--color-neutral-200)] text-xs text-[var(--color-neutral-600)]">
+              <svg className="w-3.5 h-3.5 shrink-0 text-[var(--color-neutral-400)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="10" /><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+              </svg>
+              <span>
+                {isAr
+                  ? `جميع الأوقات بتوقيت ${timezone}`
+                  : `All times shown in ${timezone}`}
+                {' '}
+                <span className="text-[var(--color-neutral-400)]">
+                  ({new Intl.DateTimeFormat('en', { timeZoneName: 'short', timeZone: timezone }).formatToParts(new Date()).find(p => p.type === 'timeZoneName')?.value ?? ''})
                 </span>
-                {isAr ? 'فاصل 15 دقيقة بين الجلسات' : '15-min buffer between sessions'}
-              </label>
+              </span>
             </div>
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1 text-xs text-[var(--color-neutral-500)]">
-                <span className="w-3 h-3 rounded-sm bg-[#22C55E] inline-block" />
+          )}
+
+          {/* ── Controls bar ── */}
+          <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
+
+            {/* Left: buffer selector + quick actions */}
+            <div className="flex flex-wrap items-center gap-3">
+              {/* Buffer dropdown */}
+              <label className="flex items-center gap-2 text-sm text-[var(--color-neutral-700)] min-h-[44px]">
+                <span className="shrink-0">
+                  {isAr ? 'فاصل بين الجلسات:' : 'Buffer between sessions:'}
+                </span>
+                <select
+                  value={bufferMinutes}
+                  onChange={e => setBufferMinutes(Number(e.target.value))}
+                  className="rounded-lg border border-[var(--color-neutral-300)] px-2 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] min-h-[44px] cursor-pointer"
+                >
+                  <option value={0}>{isAr ? 'بدون فاصل' : 'No buffer'}</option>
+                  <option value={5}>5 {isAr ? 'دقائق' : 'min'}</option>
+                  <option value={10}>10 {isAr ? 'دقائق' : 'min'}</option>
+                  <option value={15}>15 {isAr ? 'دقيقة' : 'min'}</option>
+                  <option value={30}>30 {isAr ? 'دقيقة' : 'min'}</option>
+                </select>
+              </label>
+
+              {/* Quick actions */}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={copyMondayToWeekdays}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--color-neutral-300)] text-xs text-[var(--color-neutral-700)] hover:bg-[var(--color-neutral-100)] transition-colors min-h-[44px]"
+                  title={isAr ? 'نسخ جدول الاثنين إلى باقي أيام الأسبوع' : 'Copy Monday schedule to Tue–Fri'}
+                >
+                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                  </svg>
+                  {isAr ? 'نسخ الإثنين' : 'Copy Mon'}
+                </button>
+
+                <button
+                  onClick={handleClearAll}
+                  className={[
+                    'flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs transition-colors min-h-[44px]',
+                    confirmClear
+                      ? 'border-red-400 bg-red-50 text-red-700 hover:bg-red-100'
+                      : 'border-[var(--color-neutral-300)] text-[var(--color-neutral-700)] hover:bg-[var(--color-neutral-100)]',
+                  ].join(' ')}
+                  title={isAr ? 'مسح جميع الأوقات' : 'Clear all availability'}
+                >
+                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14H6L5 6" /><path d="M10 11v6M14 11v6" /><path d="M9 6V4h6v2" />
+                  </svg>
+                  {confirmClear
+                    ? (isAr ? 'تأكيد المسح؟' : 'Confirm clear?')
+                    : (isAr ? 'مسح الكل' : 'Clear all')}
+                </button>
+              </div>
+            </div>
+
+            {/* Right: legend */}
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-1.5 text-xs text-[var(--color-neutral-600)]">
+                <span className="w-3.5 h-3.5 rounded-sm bg-[#22C55E] border border-[#16A34A] inline-block shrink-0" />
                 {isAr ? 'متاح' : 'Available'}
               </div>
-              <div className="flex items-center gap-1 text-xs text-[var(--color-neutral-500)]">
-                <span className="w-3 h-3 rounded-sm bg-[#3B82F6] inline-block" />
+              <div className="flex items-center gap-1.5 text-xs text-[var(--color-neutral-600)]">
+                <span className="w-3.5 h-3.5 rounded-sm bg-[#3B82F6] border border-[#2563EB] inline-block shrink-0" />
                 {isAr ? 'محجوز' : 'Booked'}
               </div>
-              <div className="flex items-center gap-1 text-xs text-[var(--color-neutral-500)]">
-                <span className="w-3 h-3 rounded-sm bg-[var(--color-neutral-200)] inline-block" />
+              <div className="flex items-center gap-1.5 text-xs text-[var(--color-neutral-600)]">
+                <span className="w-3.5 h-3.5 rounded-sm bg-[var(--color-neutral-100)] border border-[var(--color-neutral-300)] inline-block shrink-0" />
                 {isAr ? 'غير متاح' : 'Unavailable'}
               </div>
             </div>
@@ -480,11 +534,10 @@ export function ScheduleManager({ locale }: { locale: string }) {
                         <div
                           key={`cell-${d.value}-${slot}`}
                           className={[
-                            'transition-colors duration-75 cursor-pointer',
-                            cls === 'cell-available' && 'bg-[#22C55E] hover:bg-[#16A34A]',
-                            cls === 'cell-booked' && 'bg-[#3B82F6] cursor-not-allowed',
-                            cls === 'cell-empty' && 'bg-white hover:bg-[var(--color-neutral-100)]',
-                            bufferEnabled && cls === 'cell-available' && 'relative after:absolute after:inset-x-0 after:bottom-0 after:h-[3px] after:bg-[#F59E0B] after:opacity-60',
+                            'transition-colors duration-75',
+                            cls === 'cell-available' && 'bg-green-400 hover:bg-green-500 cursor-pointer',
+                            cls === 'cell-booked' && 'bg-blue-400 cursor-not-allowed',
+                            cls === 'cell-empty' && 'bg-white hover:bg-[var(--color-neutral-50)] cursor-pointer',
                           ].filter(Boolean).join(' ')}
                           style={{ height: 28 }}
                           onPointerDown={() => cls !== 'cell-booked' && handleCellPointerDown(d.value, slot)}
@@ -563,14 +616,6 @@ export function ScheduleManager({ locale }: { locale: string }) {
                 ? (isAr ? 'جاري الحفظ...' : 'Saving...')
                 : (isAr ? 'حفظ الجدول' : 'Save Schedule')}
             </Button>
-            {/* UX-Pro: toast-accessibility — aria-live for screen reader announcement */}
-            <span
-              role="status"
-              aria-live="polite"
-              className={`text-sm font-medium transition-opacity duration-300 ${saveMsg ? 'opacity-100' : 'opacity-0'} ${saveMsg?.type === 'success' ? 'text-green-600' : 'text-red-600'}`}
-            >
-              {saveMsg?.text ?? ''}
-            </span>
           </div>
 
           <p className="mt-3 text-xs text-[var(--color-neutral-400)]">
@@ -692,12 +737,8 @@ export function ScheduleManager({ locale }: { locale: string }) {
                       onClick={() => {
                         if (!t.id) return;
                         const id = t.id;
-                        void (async () => {
-                          const supabase = createBrowserClient();
-                          if (!supabase) return;
-                          await supabase.from('coach_time_off').delete().eq('id', id);
-                          setTimeOffs(prev => prev.filter(x => x.id !== id));
-                        })();
+                        void fetch(`/api/coach/schedule?time_off_id=${id}`, { method: 'DELETE' })
+                          .then(() => setTimeOffs(prev => prev.filter(x => x.id !== id)));
                       }}
                       className="text-red-500 hover:text-red-700 text-xs min-h-[44px] px-2"
                     >
@@ -710,6 +751,32 @@ export function ScheduleManager({ locale }: { locale: string }) {
           )}
         </div>
       )}
+
+      {/* ══════════════════ SAVE TOAST ══════════════════ */}
+      {/* UX-Pro: toast-accessibility — aria-live for screen reader announcement */}
+      <div
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        className={[
+          'fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-5 py-3 rounded-xl shadow-lg text-sm font-medium transition-all duration-300',
+          saveMsg ? 'opacity-100 translate-y-0 pointer-events-auto' : 'opacity-0 translate-y-4 pointer-events-none',
+          saveMsg?.type === 'success'
+            ? 'bg-green-600 text-white'
+            : 'bg-red-600 text-white',
+        ].join(' ')}
+      >
+        {saveMsg?.type === 'success' ? (
+          <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+        ) : (
+          <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+          </svg>
+        )}
+        {saveMsg?.text ?? ''}
+      </div>
 
       {/* ══════════════════ TIME-OFF POPOVER ══════════════════ */}
       {popoverDay && (

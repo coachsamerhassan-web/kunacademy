@@ -1,44 +1,32 @@
 'use server';
 
-import { createBrowserClient } from '@kunacademy/db';
-
-/** Send a magic link to the user's email */
-export async function signInWithMagicLink(email: string, redirectTo: string) {
-  const supabase = createBrowserClient();
-  const { error } = await supabase.auth.signInWithOtp({
-    email,
-    options: { emailRedirectTo: redirectTo },
-  });
-  if (error) throw new Error(error.message);
-  return { success: true };
-}
-
 /** Sign out the current user */
 export async function signOut() {
-  const supabase = createBrowserClient();
-  const { error } = await supabase.auth.signOut();
-  if (error) throw new Error(error.message);
+  // This is a client-side action wrapper
+  // Actual signOut is called from the client via next-auth/react
   return { success: true };
 }
 
-/** Get the current session */
+/** Get the current session — server-side */
 export async function getSession() {
-  const supabase = createBrowserClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  return session;
+  // Dynamic import to avoid edge runtime issues
+  const { auth } = await import('@/auth');
+  return auth();
 }
 
-/** Get the current user with profile data */
+/** Get the current user with profile data — server-side */
 export async function getUser() {
-  const supabase = createBrowserClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return null;
+  const { auth } = await import('@/auth');
+  const session = await auth();
+  if (!session?.user) return null;
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single();
+  const { withAdminContext, sql } = await import('@kunacademy/db');
+  const profile = await withAdminContext(async (adminDb) => {
+    const { rows } = await adminDb.execute(
+      sql`SELECT * FROM profiles WHERE id = ${session.user.id}`
+    );
+    return rows[0] || null;
+  });
 
-  return { ...user, profile };
+  return { ...session.user, profile };
 }

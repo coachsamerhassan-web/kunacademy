@@ -1,21 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createAdminClient } from '@kunacademy/db';
+import { db, withAdminContext } from '@kunacademy/db';
+import { uploadFile, getPublicUrl } from '@kunacademy/db/storage';
+import { getAuthUser } from '@kunacademy/auth/server';
+import { eq } from 'drizzle-orm';
+import { certificates, profiles, enrollments, courses } from '@kunacademy/db/schema';
 import { jsPDF } from 'jspdf';
 
 // POST /api/certificates/generate
 // Body: { certificate_id: string }
-// Auth: Bearer token required
+// Auth: session required
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createAdminClient();
-
-    // --- Auth check ---
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    const token = authHeader.slice(7);
-    const { data: { user } } = await supabase.auth.getUser(token);
+    const user = await getAuthUser();
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -28,54 +24,61 @@ export async function POST(request: NextRequest) {
     }
 
     // --- Fetch certificate ---
-    const { data: cert, error: certErr } = await supabase
-      .from('certificates')
-      .select('id, user_id, enrollment_id, verification_code, issued_at, pdf_url, credential_type')
-      .eq('id', certificate_id)
-      .single();
+    const certRows = await db
+      .select({
+        id: certificates.id,
+        user_id: certificates.user_id,
+        enrollment_id: certificates.enrollment_id,
+        verification_code: certificates.verification_code,
+        issued_at: certificates.issued_at,
+        pdf_url: certificates.pdf_url,
+        credential_type: certificates.credential_type,
+      })
+      .from(certificates)
+      .where(eq(certificates.id, certificate_id))
+      .limit(1);
 
-    if (certErr || !cert) {
+    const cert = certRows[0] ?? null;
+
+    if (!cert) {
       return NextResponse.json({ error: 'Certificate not found' }, { status: 404 });
     }
 
     // --- Authorization: must own the certificate or be admin ---
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single();
-
-    const isAdmin = profile?.role === 'admin' || profile?.role === 'super_admin';
+    const isAdmin = user.role === 'admin' || user.role === 'super_admin';
 
     if (cert.user_id !== user.id && !isAdmin) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     // --- Fetch user profile for name ---
-    const { data: ownerProfile } = await supabase
-      .from('profiles')
-      .select('full_name, full_name_ar')
-      .eq('id', cert.user_id)
-      .single() as unknown as { data: { full_name?: string; full_name_ar?: string } | null };
+    const ownerProfileRows = await db
+      .select({ full_name_en: profiles.full_name_en, full_name_ar: profiles.full_name_ar })
+      .from(profiles)
+      .where(eq(profiles.id, cert.user_id))
+      .limit(1);
 
-    const recipientName = ownerProfile?.full_name || ownerProfile?.full_name_ar || 'Participant';
+    const ownerProfile = ownerProfileRows[0] ?? null;
+    const recipientName = ownerProfile?.full_name_en || ownerProfile?.full_name_ar || 'Participant';
 
     // --- Fetch course name via enrollment ---
     let courseTitle = 'Coaching Program';
     if (cert.enrollment_id) {
-      const { data: enrollment } = await supabase
-        .from('enrollments')
-        .select('course_id')
-        .eq('id', cert.enrollment_id)
-        .single();
+      const enrollmentRows = await db
+        .select({ course_id: enrollments.course_id })
+        .from(enrollments)
+        .where(eq(enrollments.id, cert.enrollment_id))
+        .limit(1);
 
+      const enrollment = enrollmentRows[0] ?? null;
       if (enrollment?.course_id) {
-        const { data: course } = await supabase
-          .from('courses')
-          .select('title_en, title_ar')
-          .eq('id', enrollment.course_id)
-          .single();
+        const courseRows = await db
+          .select({ title_en: courses.title_en, title_ar: courses.title_ar })
+          .from(courses)
+          .where(eq(courses.id, enrollment.course_id))
+          .limit(1);
 
+        const course = courseRows[0] ?? null;
         courseTitle = course?.title_en || course?.title_ar || courseTitle;
       }
     }
@@ -88,52 +91,28 @@ export async function POST(request: NextRequest) {
       verificationCode: cert.verification_code ?? '',
     });
 
-    // --- Upload to Supabase Storage ---
+    // --- Upload to local filesystem storage ---
     const fileName = `cert_${certificate_id}.pdf`;
-    const { error: uploadError } = await supabase.storage
-      .from('certificates')
-      .upload(fileName, pdfBytes, {
+    let pdfUrl: string | null = null;
+
+    try {
+      await uploadFile('certificates', fileName, Buffer.from(pdfBytes), {
         contentType: 'application/pdf',
         upsert: true,
       });
-
-    if (uploadError) {
-      // Attempt to create bucket if it doesn't exist, then retry
-      if (uploadError.message?.includes('not found') || uploadError.message?.includes('does not exist')) {
-        await supabase.storage.createBucket('certificates', {
-          public: true,
-          fileSizeLimit: 10 * 1024 * 1024, // 10MB
-        });
-
-        const { error: retryError } = await supabase.storage
-          .from('certificates')
-          .upload(fileName, pdfBytes, {
-            contentType: 'application/pdf',
-            upsert: true,
-          });
-
-        if (retryError) {
-          console.error('[cert-generate] Storage upload failed after bucket create:', retryError);
-          return NextResponse.json({ error: 'Failed to store PDF' }, { status: 500 });
-        }
-      } else {
-        console.error('[cert-generate] Storage upload failed:', uploadError);
-        return NextResponse.json({ error: 'Failed to store PDF' }, { status: 500 });
-      }
+      pdfUrl = getPublicUrl('certificates', fileName);
+    } catch (storageErr) {
+      console.error('[cert-generate] Storage error:', storageErr);
+      return NextResponse.json({ error: 'Storage unavailable' }, { status: 500 });
     }
 
-    // --- Get public URL ---
-    const { data: urlData } = supabase.storage
-      .from('certificates')
-      .getPublicUrl(fileName);
-
-    const pdfUrl = urlData.publicUrl;
-
-    // --- Update certificate record ---
-    await supabase
-      .from('certificates')
-      .update({ pdf_url: pdfUrl })
-      .eq('id', certificate_id);
+    // --- Update certificate record with pdf_url ---
+    await withAdminContext(async (adminDb) => {
+      await adminDb
+        .update(certificates)
+        .set({ pdf_url: pdfUrl })
+        .where(eq(certificates.id, certificate_id));
+    });
 
     return NextResponse.json({ pdf_url: pdfUrl });
   } catch (err) {

@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { Button } from '@kunacademy/ui/button';
-import { createBrowserClient } from '@kunacademy/db';
 
 interface Enrollment {
   id: string;
@@ -24,50 +23,40 @@ export function EnrollmentManager({ locale }: { locale: string }) {
   const isAr = locale === 'ar';
 
   useEffect(() => {
-    const supabase = createBrowserClient();
-    if (!supabase) return;
-
     Promise.all([
-      supabase.from('enrollments')
-        .select('id, status, enrollment_type, enrolled_at, completed_at, user:profiles(full_name_ar, full_name_en, email), course:courses(title_ar, title_en)')
-        .order('enrolled_at', { ascending: false })
-        .limit(50),
-      supabase.from('profiles').select('id, full_name_ar, full_name_en, email').order('email'),
-      supabase.from('courses').select('id, title_ar, title_en').eq('is_published', true).order('title_en'),
-    ]).then(([enrRes, studRes, courseRes]) => {
-      setEnrollments((enrRes.data || []) as Enrollment[]);
-      setStudents(studRes.data || []);
-      setCourses(courseRes.data || []);
+      fetch('/api/admin/enrollments').then(r => r.ok ? r.json() : { enrollments: [] }),
+      fetch('/api/admin/students-list').then(r => r.ok ? r.json() : { students: [] }),
+      fetch('/api/admin/courses-data').then(r => r.ok ? r.json() : { courses: [] }),
+    ]).then(([enrData, studData, courseData]) => {
+      setEnrollments(enrData.enrollments || []);
+      setStudents(studData.students || []);
+      setCourses(courseData.courses || []);
       setLoading(false);
     });
   }, []);
 
   async function handleEnroll() {
     if (!formData.user_id || !formData.course_id) return;
-    const supabase = createBrowserClient();
-    if (!supabase) return;
 
-    const { data, error } = await supabase.from('enrollments').insert({
-      user_id: formData.user_id,
-      course_id: formData.course_id,
-      enrollment_type: formData.enrollment_type,
-      status: 'enrolled',
-    }).select('id, status, enrollment_type, enrolled_at, completed_at, user:profiles(full_name_ar, full_name_en, email), course:courses(title_ar, title_en)').single();
-
-    if (data) {
-      setEnrollments(prev => [data as Enrollment, ...prev]);
+    const res = await fetch('/api/admin/enrollments', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(formData),
+    });
+    const data = await res.json();
+    if (data.enrollment) {
+      setEnrollments(prev => [data.enrollment as Enrollment, ...prev]);
       setShowForm(false);
       setFormData({ user_id: '', course_id: '', enrollment_type: 'recorded' });
     }
   }
 
   async function markComplete(enrollmentId: string) {
-    const supabase = createBrowserClient();
-    if (!supabase) return;
-    await supabase.from('enrollments').update({
-      status: 'completed',
-      completed_at: new Date().toISOString(),
-    }).eq('id', enrollmentId);
+    await fetch('/api/admin/enrollments', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enrollment_id: enrollmentId }),
+    });
     setEnrollments(prev => prev.map(e => e.id === enrollmentId ? { ...e, status: 'completed', completed_at: new Date().toISOString() } : e));
   }
 

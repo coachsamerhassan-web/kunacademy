@@ -45,3 +45,24 @@ export function getGeoPrice(
       };
   }
 }
+
+/**
+ * Board tier rule: programs priced above 4,000 AED hide their price
+ * and show a CRM inquiry form instead.
+ * Returns true when the price should be displayed (≤ 4,000 AED or free).
+ */
+export function shouldShowPrice(priceAed: number): boolean {
+  return priceAed <= 4000;
+}
+
+/**
+ * Format a geo price amount as a locale-appropriate string.
+ * Always uses Western Arabic numerals (2,000 not ٢٬٠٠٠) per Kun convention.
+ */
+export function formatGeoPrice(geoPrice: GeoPrice, isAr: boolean): string {
+  const formatted = geoPrice.amount.toLocaleString('en-US'); // Western numerals always
+  if (geoPrice.currency === 'EUR') return `€${formatted}`;
+  if (geoPrice.currency === 'EGP') return isAr ? `${formatted} ج.م` : `${formatted} EGP`;
+  // AED
+  return isAr ? `${formatted} د.إ` : `${formatted} AED`;
+}

@@ -2,7 +2,7 @@ import { setRequestLocale } from 'next-intl/server';
 import { Section } from '@kunacademy/ui/section';
 import { GeometricPattern } from '@kunacademy/ui/patterns';
 import type { Metadata } from 'next';
-import { cms } from '@kunacademy/cms';
+import { cms } from '@kunacademy/cms/server';
 import { ArrowRight } from 'lucide-react';
 
 const FLAGSHIP_SLUGS = ['stce-level-1-stic', 'stce-level-2-staic', 'stce-level-3-stgc', 'stce-level-4-stoc', 'stce-level-5-stfc'];

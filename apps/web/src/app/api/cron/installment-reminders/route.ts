@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createAdminClient } from '@kunacademy/db';
+import { withAdminContext } from '@kunacademy/db';
 import { notify } from '@kunacademy/email';
+import { sql } from 'drizzle-orm';
 
 /**
  * Cron: Send installment reminders 3 days before due date.
@@ -14,25 +15,36 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const supabase = createAdminClient();
-
     // Find installments due in 3 days
     const now = new Date();
     const targetDate = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
     const dayStart = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate());
     const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
 
-    // payment_schedules schema doesn't match this query exactly — cast to any for runtime flexibility
-    const { data: schedules, error } = await (supabase as any)
-      .from('payment_schedules')
-      .select(`
-        id, total_amount, currency, schedule_type,
-        user:profiles!payment_schedules_user_id_fkey(id, full_name_ar, full_name_en, email),
-        payment:payments!payment_schedules_payment_id_fkey(id)
-      `)
-      .eq('schedule_type', 'installment') as { data: any[] | null; error: any };
+    // payment_schedules stores installments as JSONB — we query unpaid installments whose due_date is in the target window
+    // Since installments is a JSON array, we use a raw SQL lateral join to unnest and filter
+    const schedules = await withAdminContext(async (db) => {
+      const rows = await db.execute(
+        sql`
+          SELECT
+            ps.id, ps.total_amount, ps.currency, ps.schedule_type,
+            p.email AS user_email, p.full_name_ar AS user_full_name_ar, p.full_name_en AS user_full_name_en,
+            c.name_ar AS course_name_ar, c.name_en AS course_name_en,
+            inst.value AS installment_data
+          FROM payment_schedules ps
+          LEFT JOIN profiles p ON p.id = ps.user_id
+          LEFT JOIN payments pay ON pay.id = ps.payment_id
+          LEFT JOIN courses c ON c.id = pay.course_id
+          CROSS JOIN LATERAL jsonb_array_elements(ps.installments) AS inst(value)
+          WHERE ps.schedule_type = 'installment'
+            AND (inst.value->>'status') = 'pending'
+            AND (inst.value->>'due_date')::timestamptz >= ${dayStart.toISOString()}
+            AND (inst.value->>'due_date')::timestamptz < ${dayEnd.toISOString()}
+        `
+      );
+      return rows.rows as any[];
+    });
 
-    if (error) throw error;
     if (!schedules?.length) {
       return NextResponse.json({ sent: 0, message: 'No installments due in 3 days' });
     }
@@ -41,22 +53,21 @@ export async function GET(req: NextRequest) {
     const errors: string[] = [];
 
     for (const schedule of schedules) {
-      const user = schedule.user as any;
-      const course = schedule.course as any;
-      const locale = user?.preferred_locale || 'ar';
+      const locale = 'ar'; // default — profiles don't carry preferred_locale in schema
       const isAr = locale === 'ar';
+      const installment = schedule.installment_data;
 
       try {
         await notify({
           event: 'installment_due',
           locale,
-          email: user?.email,
+          email: schedule.user_email,
           data: {
-            name: user?.full_name || '',
-            program: isAr ? course?.name_ar : course?.name_en,
-            amount: ((schedule.amount || 0) / 100).toFixed(2),
+            name: (isAr ? schedule.user_full_name_ar : schedule.user_full_name_en) || '',
+            program: isAr ? schedule.course_name_ar : schedule.course_name_en,
+            amount: ((installment?.amount || schedule.total_amount || 0) / 100).toFixed(2),
             currency: schedule.currency || 'AED',
-            dueDate: new Date(schedule.due_date).toLocaleDateString(isAr ? 'ar-AE' : 'en-US'),
+            dueDate: new Date(installment?.due_date).toLocaleDateString(isAr ? 'ar-AE' : 'en-US'),
             paymentUrl: `https://kunacademy.com/${locale}/dashboard/payments`,
           },
         });

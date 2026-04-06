@@ -2,7 +2,6 @@
 
 import { useAuth } from '@kunacademy/auth';
 import { useEffect, useState } from 'react';
-import { createBrowserClient } from '@kunacademy/db';
 import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
 import { useParams } from 'next/navigation';
@@ -40,35 +39,13 @@ export default function CoachBookingsPage() {
 
   useEffect(() => {
     if (!user) return;
-    const supabase = createBrowserClient();
 
-    (async () => {
-      // Get provider_id for this coach
-      const { data: provider } = await supabase
-        .from('providers')
-        .select('id')
-        .eq('profile_id', user.id)
-        .single();
-
-      if (!provider) {
+    fetch('/api/coach/bookings')
+      .then((r) => r.json())
+      .then((data) => {
+        setBookings((data.bookings || []) as Booking[]);
         setLoading(false);
-        return;
-      }
-
-      const { data } = await supabase
-        .from('bookings')
-        .select(`
-          id, start_time, end_time, status, notes, meeting_url,
-          service:services(name_ar, name_en, duration_minutes),
-          customer:profiles!bookings_customer_id_fkey(full_name_ar, full_name_en, email)
-        `)
-        .eq('provider_id', provider.id)
-        .order('start_time', { ascending: false })
-        .limit(100);
-
-      setBookings((data as unknown as Booking[]) || []);
-      setLoading(false);
-    })();
+      });
   }, [user]);
 
   const today = new Date().toISOString().split('T')[0];

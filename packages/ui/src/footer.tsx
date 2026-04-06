@@ -4,9 +4,19 @@ import * as React from 'react';
 import { cn } from './utils';
 import { GeometricPattern } from './patterns';
 
+/** Bilingual daily quote passed from the server layout */
+export interface DailyQuoteData {
+  content_ar: string;
+  content_en: string;
+  author_ar: string;
+  author_en: string;
+}
+
 interface FooterProps {
   locale: string;
   className?: string;
+  /** Optional daily rotating Samer Hassan quote shown above the copyright bar */
+  dailyQuote?: DailyQuoteData | null;
 }
 
 const footerLinks = {
@@ -25,11 +35,12 @@ const footerLinks = {
     labelAr: 'البرامج',
     labelEn: 'Programs',
     items: [
-      { labelAr: 'الكوتشينج الفردي', labelEn: 'Individual Coaching', href: '/coaching/individual/' },
-      { labelAr: 'كوتشينج المؤسسات', labelEn: 'Corporate Coaching', href: '/coaching/corporate/' },
-      { labelAr: 'بذور SEEDS', labelEn: 'SEEDS', href: '/programs/family/seeds/' },
-      { labelAr: 'وِصال Wisal', labelEn: 'Wisal', href: '/programs/family/wisal/' },
-      { labelAr: 'يقظة Yaqatha', labelEn: 'Yaqatha', href: '/programs/yaqatha/' },
+      { labelAr: 'هندسة التأثير', labelEn: 'Impact Engineering', href: '/programs/impact-engineering/' },
+      { labelAr: 'GPS الحياة', labelEn: 'GPS of Life', href: '/programs/gps-of-life/' },
+      { labelAr: 'رحلات الإحياء', labelEn: 'Ihya Retreats', href: '/programs/retreats/' },
+      { labelAr: 'دورات مسجّلة', labelEn: 'Mini-Courses', href: '/programs/micro-courses/' },
+      { labelAr: 'كوتشينج المؤسسات', labelEn: 'Corporate', href: '/programs/corporate/' },
+      { labelAr: 'الأسرة والشباب', labelEn: 'Family & Youth', href: '/programs/family/' },
     ],
   },
   resources: {
@@ -64,7 +75,7 @@ const socialLinks = [
   { name: 'WhatsApp', href: 'https://wa.me/971501234567', icon: 'M17.5 14.4l-2-1c-.3-.1-.5-.2-.7.1l-1 1.2c-.2.2-.3.2-.6.1-.3-.2-1.2-.4-2.2-1.4-.8-.8-1.4-1.7-1.5-2 0-.3 0-.4.2-.5l.4-.5.3-.4v-.5l-1-2.3c-.3-.6-.5-.5-.7-.5h-.6c-.2 0-.6.1-.9.4-.3.3-1.2 1.2-1.2 2.8s1.2 3.3 1.4 3.5c.2.2 2.4 3.6 5.8 5.1.8.3 1.5.5 2 .7.8.3 1.6.2 2.2.1.7-.1 2-.8 2.3-1.6.3-.8.3-1.4.2-1.6-.1-.1-.3-.2-.6-.3zM12 21.8A9.9 9.9 0 012.2 12 9.9 9.9 0 0112 2.2 9.9 9.9 0 0121.8 12 9.9 9.9 0 0112 21.8zM12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.6 0 12 0z' },
 ];
 
-export function Footer({ locale, className }: FooterProps) {
+export function Footer({ locale, className, dailyQuote }: FooterProps) {
   const isAr = locale === 'ar';
   const t = (ar: string, en: string) => (isAr ? ar : en);
   const year = new Date().getFullYear();
@@ -146,6 +157,20 @@ export function Footer({ locale, className }: FooterProps) {
             ))}
           </div>
         </div>
+
+        {/* Daily Samer Hassan quote — above copyright bar */}
+        {dailyQuote && (
+          <div className="py-6 border-b border-white/10 text-center">
+            <p className="text-sm italic text-white/55 leading-relaxed max-w-2xl mx-auto">
+              <span className="text-[var(--color-accent)] opacity-50 text-lg leading-none align-top me-1">"</span>
+              {isAr ? dailyQuote.content_ar : dailyQuote.content_en}
+              <span className="text-[var(--color-accent)] opacity-50 text-lg leading-none align-bottom ms-1">"</span>
+            </p>
+            <p className="text-xs text-white/35 mt-2 font-medium">
+              — {isAr ? dailyQuote.author_ar : dailyQuote.author_en}
+            </p>
+          </div>
+        )}
 
         {/* Bottom bar */}
         <div className="flex flex-col md:flex-row items-center justify-between gap-4 pt-8">

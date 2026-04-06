@@ -1,7 +1,6 @@
 'use client';
 
 import { useAuth } from '@kunacademy/auth';
-import { createBrowserClient } from '@kunacademy/db';
 import { Section } from '@kunacademy/ui/section';
 import { Card } from '@kunacademy/ui/card';
 import { useState, useEffect, use } from 'react';
@@ -15,11 +14,12 @@ export default function CoachCreditsPage({ params }: { params: Promise<{ locale:
 
   useEffect(() => {
     if (!user) return;
-    const supabase = createBrowserClient();
-    supabase.from('credit_transactions').select('amount').eq('user_id', user.id).then(({ data }: { data: any }) => {
-      setBalance((data ?? []).reduce((sum: number, t: any) => sum + (t.amount ?? 0), 0));
-      setLoading(false);
-    });
+    fetch('/api/user/credits')
+      .then(r => r.ok ? r.json() : { balance: 0 })
+      .then(data => {
+        setBalance(data.balance ?? 0);
+        setLoading(false);
+      });
   }, [user]);
 
   return (

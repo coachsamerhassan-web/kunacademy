@@ -1,18 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
-async function getUser(request: NextRequest) {
-  const authHeader = request.headers.get('authorization');
-  if (!authHeader?.startsWith('Bearer ')) return null;
-  const token = authHeader.slice(7);
-  const { data: { user } } = await supabase.auth.getUser(token);
-  return user;
-}
+import { withAdminContext } from '@kunacademy/db';
+import { bookings } from '@kunacademy/db/schema';
+import { eq, and, lt, gt, ne } from 'drizzle-orm';
+import { getAuthUser } from '@kunacademy/auth/server';
 
 /**
  * POST /api/bookings/reschedule
@@ -25,7 +15,7 @@ async function getUser(request: NextRequest) {
  * - New slot must have no conflicts
  */
 export async function POST(request: NextRequest) {
-  const user = await getUser(request);
+  const user = await getAuthUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   let body: { booking_id?: string; new_start_time?: string; new_end_time?: string };
@@ -44,13 +34,22 @@ export async function POST(request: NextRequest) {
   }
 
   // Fetch the booking
-  const { data: booking, error: fetchError } = await supabase
-    .from('bookings')
-    .select('id, customer_id, provider_id, service_id, start_time, end_time, status')
-    .eq('id', booking_id)
-    .single() as { data: any; error: any };
+  const [booking] = await withAdminContext(async (db) => {
+    return db.select({
+      id: bookings.id,
+      customer_id: bookings.customer_id,
+      provider_id: bookings.provider_id,
+      service_id: bookings.service_id,
+      start_time: bookings.start_time,
+      end_time: bookings.end_time,
+      status: bookings.status,
+    })
+      .from(bookings)
+      .where(eq(bookings.id, booking_id))
+      .limit(1);
+  });
 
-  if (fetchError || !booking) {
+  if (!booking) {
     return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
   }
 
@@ -60,7 +59,7 @@ export async function POST(request: NextRequest) {
   }
 
   // Must be in a reschedulable status
-  if (!['confirmed', 'pending'].includes(booking.status)) {
+  if (!['confirmed', 'pending'].includes(booking.status || '')) {
     return NextResponse.json(
       { error: 'Only confirmed or pending bookings can be rescheduled' },
       { status: 400 }
@@ -78,16 +77,24 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Check for conflicts at the new time (excluding this booking)
-  const { data: conflicts } = await supabase
-    .from('bookings')
-    .select('id, status, held_until')
-    .eq('provider_id', booking.provider_id)
-    .neq('id', booking_id)
-    .lt('start_time', new_end_time)
-    .gt('end_time', new_start_time);
+  const parsedNewStart = new Date(new_start_time);
+  const parsedNewEnd = new Date(new_end_time);
 
-  const hasConflict = (conflicts || []).some(b => {
+  // Check for conflicts at the new time (excluding this booking)
+  const conflicts = await withAdminContext(async (db) => {
+    return db.select({ id: bookings.id, status: bookings.status, held_until: bookings.held_until })
+      .from(bookings)
+      .where(
+        and(
+          eq(bookings.provider_id, booking.provider_id!),
+          ne(bookings.id, booking_id),
+          lt(bookings.start_time, parsedNewEnd.toISOString()),
+          gt(bookings.end_time, parsedNewStart.toISOString())
+        )
+      );
+  });
+
+  const hasConflict = (conflicts || []).some((b: { id: string; status: string | null; held_until: string | null }) => {
     if (b.status === 'pending' || b.status === 'confirmed') return true;
     if (b.status === 'held' && b.held_until && b.held_until > now.toISOString()) return true;
     return false;
@@ -98,18 +105,14 @@ export async function POST(request: NextRequest) {
   }
 
   // Update the booking
-  const { error: updateError } = await supabase
-    .from('bookings')
-    .update({
-      start_time: new_start_time,
-      end_time: new_end_time,
-    })
-    .eq('id', booking_id);
-
-  if (updateError) {
-    console.error('[bookings/reschedule] update error:', updateError);
-    return NextResponse.json({ error: 'Failed to reschedule booking' }, { status: 500 });
-  }
+  await withAdminContext(async (db) => {
+    await db.update(bookings)
+      .set({
+        start_time: parsedNewStart.toISOString(),
+        end_time: parsedNewEnd.toISOString(),
+      })
+      .where(eq(bookings.id, booking_id));
+  });
 
   // Non-blocking notification
   try {

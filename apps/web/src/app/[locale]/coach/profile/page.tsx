@@ -1,7 +1,6 @@
 'use client';
 
 import { useAuth } from '@kunacademy/auth';
-import { createBrowserClient } from '@kunacademy/db';
 import { Section } from '@kunacademy/ui/section';
 import { Card } from '@kunacademy/ui/card';
 import { useState, useEffect, use } from 'react';
@@ -16,11 +15,12 @@ export default function CoachProfilePage({ params }: { params: Promise<{ locale:
 
   useEffect(() => {
     if (!user) return;
-    const supabase = createBrowserClient();
-    supabase.from('profiles').select('*').eq('id', user.id).single().then(({ data }: { data: any }) => {
-      setProfile(data as typeof profile);
-      setLoading(false);
-    });
+    fetch('/api/user/profile')
+      .then(r => r.ok ? r.json() : { profile: null })
+      .then(data => {
+        setProfile(data.profile);
+        setLoading(false);
+      });
   }, [user]);
 
   if (loading) return <Section variant="white"><div className="flex items-center justify-center py-16"><div className="h-8 w-8 animate-spin rounded-full border-4 border-[var(--color-primary)] border-t-transparent" /></div></Section>;

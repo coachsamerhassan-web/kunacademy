@@ -1,7 +1,6 @@
 'use client';
 
 import { useAuth } from '@kunacademy/auth';
-import { createBrowserClient } from '@kunacademy/db';
 import { Section } from '@kunacademy/ui/section';
 import { Card } from '@kunacademy/ui/card';
 import { useEffect, useState } from 'react';
@@ -64,8 +63,6 @@ export default function AdminCoursesPage() {
   const [editSection, setEditSection] = useState<Partial<SectionRow>>({});
   const [showSectionForm, setShowSectionForm] = useState(false);
 
-  const supabase = createBrowserClient();
-
   useEffect(() => {
     if (authLoading) return;
     if (!user || profile?.role !== 'admin') { router.push('/' + locale + '/auth/login'); return; }
@@ -74,40 +71,24 @@ export default function AdminCoursesPage() {
 
   async function loadCourses() {
     setLoading(true);
-    const { data } = await supabase
-      .from('courses')
-      .select('id, title_ar, title_en, slug, is_published, total_lessons, total_video_minutes, type, format, price_aed, created_at')
-      .order('created_at', { ascending: false });
-
-    setCourses(data ?? []);
-
-    // Get enrollment counts
-    if (data?.length) {
-      const counts: Record<string, number> = {};
-      for (const c of data) {
-        const { count } = await supabase
-          .from('enrollments')
-          .select('*', { count: 'exact', head: true })
-          .eq('course_id', c.id);
-        counts[c.id] = count ?? 0;
-      }
-      setEnrollmentCounts(counts);
+    const res = await fetch('/api/admin/courses-list?view=list');
+    const data = await res.json();
+    setCourses(data.courses ?? []);
+    const counts: Record<string, number> = {};
+    for (const c of (data.courses ?? [])) {
+      counts[c.id] = c.enrollment_count ?? 0;
     }
-
+    setEnrollmentCounts(counts);
     setLoading(false);
   }
 
   async function loadCourseDetail(course: CourseRow) {
     setSelectedCourse(course);
     setView('detail');
-
-    const [{ data: secData }, { data: lesData }] = await Promise.all([
-      supabase.from('course_sections').select('*').eq('course_id', course.id).order('order'),
-      supabase.from('lessons').select('*').eq('course_id', course.id).order('order'),
-    ]);
-
-    setSections(secData ?? []);
-    setLessons(lesData ?? []);
+    const res = await fetch(`/api/admin/courses-list?view=detail&course_id=${course.id}`);
+    const data = await res.json();
+    setSections(data.sections ?? []);
+    setLessons(data.lessons ?? []);
   }
 
   async function saveLesson() {
@@ -122,43 +103,44 @@ export default function AdminCoursesPage() {
     };
 
     if (editLesson.id) {
-      await supabase.from('lessons').update(base).eq('id', editLesson.id);
+      await fetch('/api/admin/courses-list', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'lesson', id: editLesson.id, course_id: selectedCourse!.id, ...base }),
+      });
     } else {
-      await supabase.from('lessons').insert({
-        ...base,
-        course_id: selectedCourse!.id,
-        order: lessons.length,
+      await fetch('/api/admin/courses-list', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'lesson', course_id: selectedCourse!.id, order: lessons.length, ...base }),
       });
     }
 
-    // Refresh
+    // Refresh — server already recalculates totals
     await loadCourseDetail(selectedCourse!);
-    await updateCourseTotals(selectedCourse!.id);
     setView('detail');
     setSaving(false);
   }
 
   async function deleteLesson(id: string) {
     if (!confirm(isAr ? 'حذف هذا الدرس؟' : 'Delete this lesson?')) return;
-    await supabase.from('lessons').delete().eq('id', id);
+    await fetch(`/api/admin/courses-list?type=lesson&id=${id}&course_id=${selectedCourse!.id}`, { method: 'DELETE' });
     await loadCourseDetail(selectedCourse!);
-    await updateCourseTotals(selectedCourse!.id);
   }
 
   async function saveSection() {
     setSaving(true);
-    const data = {
-      title_ar: editSection.title_ar!,
-      title_en: editSection.title_en!,
-    };
-
     if (editSection.id) {
-      await supabase.from('course_sections').update(data).eq('id', editSection.id);
+      await fetch('/api/admin/courses-list', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'section', id: editSection.id, title_ar: editSection.title_ar!, title_en: editSection.title_en! }),
+      });
     } else {
-      await supabase.from('course_sections').insert({
-        ...data,
-        course_id: selectedCourse!.id,
-        order: sections.length,
+      await fetch('/api/admin/courses-list', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'section', course_id: selectedCourse!.id, order: sections.length, title_ar: editSection.title_ar!, title_en: editSection.title_en! }),
       });
     }
 
@@ -169,22 +151,12 @@ export default function AdminCoursesPage() {
   }
 
   async function togglePublish(course: CourseRow) {
-    await supabase.from('courses').update({ is_published: !course.is_published }).eq('id', course.id);
+    await fetch('/api/admin/courses-list', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'course', id: course.id, is_published: !course.is_published }),
+    });
     await loadCourses();
-  }
-
-  async function updateCourseTotals(courseId: string) {
-    const { data: allLessons } = await supabase
-      .from('lessons')
-      .select('duration_minutes')
-      .eq('course_id', courseId);
-
-    if (allLessons) {
-      await supabase.from('courses').update({
-        total_lessons: allLessons.length,
-        total_video_minutes: allLessons.reduce((sum: number, l: { duration_minutes: number | null }) => sum + (l.duration_minutes ?? 0), 0),
-      }).eq('id', courseId);
-    }
   }
 
   if (authLoading || loading) {
@@ -487,7 +459,7 @@ export default function AdminCoursesPage() {
 
         {courses.length === 0 && (
           <div className="text-center py-12 text-[var(--color-neutral-500)]">
-            {isAr ? 'لا توجد دورات — أنشئ أول دورة من Supabase' : 'No courses — create your first course in Supabase'}
+            {isAr ? 'لا توجد دورات — أنشئ أول دورة من لوحة الإدارة' : 'No courses — create your first course from the admin panel'}
           </div>
         )}
       </div>

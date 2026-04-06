@@ -1,18 +1,18 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { withAdminContext } from '@kunacademy/db';
 import { captureTabbyPayment } from '@kunacademy/payments';
 import { createZohoInvoice } from '@/lib/zoho-books';
 import { randomUUID } from 'crypto';
 import { getBusinessConfig } from '@/lib/cms-config';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+import { alertWebhookFailure, alertPaymentMismatch } from '@kunacademy/email';
+import { sql } from 'drizzle-orm';
 
 // Unified payment webhook — handles Stripe, Tabby
 export async function POST(request: NextRequest) {
   const gateway = request.headers.get('x-gateway') || detectGateway(request);
+
+  let eventId: string | null = null;
+  let eventType: string = 'unknown';
 
   try {
     const body = await request.text();
@@ -20,6 +20,8 @@ export async function POST(request: NextRequest) {
     let paymentId: string | null = null;
     let status: 'completed' | 'failed' = 'completed';
     let tabbyPaymentIdForCapture: string | null = null;
+    // 6.5.8 — amount reported by the gateway, in minor units (cents/fils), for mismatch detection
+    let gatewayAmount: number | null = null;
 
     if (gateway === 'stripe') {
       // Verify Stripe webhook signature
@@ -41,8 +43,61 @@ export async function POST(request: NextRequest) {
         console.warn('[stripe-webhook] No webhook secret configured — skipping signature verification');
         event = JSON.parse(body);
       }
+
+      // --- IDEMPOTENCY CHECK (event-level, primary guard) ---
+      eventId = event.id; // Stripe: evt_xxx
+      eventType = event.type;
+
+      const existingEvent = await withAdminContext(async (db) => {
+        const rows = await db.execute(
+          sql`SELECT id, status FROM webhook_events WHERE event_id = ${eventId} LIMIT 1`
+        );
+        return rows.rows[0] as { id: string; status: string } | undefined;
+      });
+
+      if (existingEvent) {
+        console.log(`[stripe-webhook] Duplicate event ${eventId} (status: ${existingEvent.status}) — skipping`);
+        return NextResponse.json({ received: true, note: 'duplicate event' });
+      }
+
+      // Register event as processing (non-blocking — race condition handled by UNIQUE constraint)
+      try {
+        await withAdminContext(async (db) => {
+          await db.execute(
+            sql`INSERT INTO webhook_events (event_id, gateway, event_type, status) VALUES (${eventId}, 'stripe', ${eventType}, 'processing')`
+          );
+        });
+      } catch (insertErr: any) {
+        // UNIQUE violation means a concurrent request beat us here — safe to exit
+        console.warn(`[stripe-webhook] Concurrent insert for event ${eventId} — exiting`);
+        return NextResponse.json({ received: true, note: 'concurrent duplicate' });
+      }
+
       if (event.type === 'checkout.session.completed') {
-        paymentId = event.data.object.metadata?.payment_id;
+        const session = event.data.object;
+        paymentId = session.metadata?.payment_id;
+        // Capture gateway-reported amount in minor units for mismatch detection
+        if (typeof session.amount_total === 'number') {
+          gatewayAmount = session.amount_total;
+        }
+
+        // Secondary safety net: check if already completed by gateway_payment_id
+        const existingPayment = await withAdminContext(async (db) => {
+          const rows = await db.execute(
+            sql`SELECT id, status FROM payments WHERE gateway_payment_id = ${session.id} AND status = 'completed' LIMIT 1`
+          );
+          return rows.rows[0] as { id: string; status: string } | undefined;
+        });
+
+        if (existingPayment) {
+          // Mark the event record as completed too (keeps audit trail consistent)
+          await withAdminContext(async (db) => {
+            await db.execute(
+              sql`UPDATE webhook_events SET status = 'completed', completed_at = NOW() WHERE event_id = ${eventId}`
+            );
+          });
+          return NextResponse.json({ received: true, note: 'already processed' });
+        }
       } else if (event.type === 'checkout.session.expired') {
         paymentId = event.data.object.metadata?.payment_id;
         status = 'failed';
@@ -57,9 +112,39 @@ export async function POST(request: NextRequest) {
       }
 
       const data = JSON.parse(body);
-      // Tabby webhooks use lowercase status ("authorized"), API uses uppercase ("AUTHORIZED")
-      const tabbyStatus = (data.status || '').toLowerCase();
 
+      // Extract Tabby event ID — use dedicated event field, fall back to payment ID + status composite
+      eventId = data.event_id || data.id || `tabby-${data.payment?.id || randomUUID()}`;
+      const tabbyStatus = (data.status || '').toLowerCase();
+      eventType = `tabby.payment.${tabbyStatus}`;
+
+      // --- IDEMPOTENCY CHECK (event-level, primary guard) ---
+      const existingTabbyEvent = await withAdminContext(async (db) => {
+        const rows = await db.execute(
+          sql`SELECT id, status FROM webhook_events WHERE event_id = ${eventId} LIMIT 1`
+        );
+        return rows.rows[0] as { id: string; status: string } | undefined;
+      });
+
+      if (existingTabbyEvent) {
+        console.log(`[tabby-webhook] Duplicate event ${eventId} (status: ${existingTabbyEvent.status}) — skipping`);
+        return NextResponse.json({ received: true, note: 'duplicate event' });
+      }
+
+      // Register event as processing (non-blocking — race condition handled by UNIQUE constraint)
+      try {
+        await withAdminContext(async (db) => {
+          await db.execute(
+            sql`INSERT INTO webhook_events (event_id, gateway, event_type, status) VALUES (${eventId}, 'tabby', ${eventType}, 'processing')`
+          );
+        });
+      } catch (insertErr: any) {
+        // UNIQUE violation means a concurrent request beat us here — safe to exit
+        console.warn(`[tabby-webhook] Concurrent insert for event ${eventId} — exiting`);
+        return NextResponse.json({ received: true, note: 'concurrent duplicate' });
+      }
+
+      // Tabby webhooks use lowercase status ("authorized"), API uses uppercase ("AUTHORIZED")
       if (tabbyStatus === 'authorized') {
         // Find our payment by Tabby's reference_id (which is our payment.id)
         const referenceId = data.order?.reference_id || data.payment?.order?.reference_id;
@@ -67,6 +152,11 @@ export async function POST(request: NextRequest) {
           paymentId = referenceId;
           tabbyPaymentIdForCapture = data.id || data.payment?.id;
           status = 'completed';
+          // Capture gateway-reported amount — Tabby sends decimal string (e.g. "250.00"), convert to minor units
+          const rawAmount = data.payment?.amount ?? data.amount;
+          if (rawAmount !== undefined && rawAmount !== null) {
+            gatewayAmount = Math.round(parseFloat(String(rawAmount)) * 100);
+          }
         }
       } else if (tabbyStatus === 'rejected' || tabbyStatus === 'expired') {
         const referenceId = data.order?.reference_id || data.payment?.order?.reference_id;
@@ -78,6 +168,22 @@ export async function POST(request: NextRequest) {
     }
 
     if (!paymentId) {
+      const noPaymentIdError = 'No payment ID found in event payload';
+      // Mark event as failed if we registered it but couldn't extract a payment ID
+      if (eventId) {
+        await withAdminContext(async (db) => {
+          await db.execute(
+            sql`UPDATE webhook_events SET status = 'failed', error_message = ${noPaymentIdError} WHERE event_id = ${eventId}`
+          );
+        });
+        // Alert Samer + Amin — non-blocking
+        void alertWebhookFailure({
+          gateway,
+          eventType,
+          eventId,
+          error: noPaymentIdError,
+        });
+      }
       return NextResponse.json({ error: 'No payment ID found' }, { status: 400 });
     }
 
@@ -85,11 +191,12 @@ export async function POST(request: NextRequest) {
     if (gateway === 'tabby' && status === 'completed' && tabbyPaymentIdForCapture) {
       try {
         // Look up the payment to get amount and currency
-        const { data: pendingPayment } = await supabase
-          .from('payments')
-          .select('amount, currency')
-          .eq('id', paymentId)
-          .single();
+        const pendingPayment = await withAdminContext(async (db) => {
+          const rows = await db.execute(
+            sql`SELECT amount, currency FROM payments WHERE id = ${paymentId} LIMIT 1`
+          );
+          return rows.rows[0] as { amount: number; currency: string } | undefined;
+        });
 
         if (pendingPayment) {
           await captureTabbyPayment(
@@ -107,101 +214,106 @@ export async function POST(request: NextRequest) {
     }
 
     // Update payment status
-    const { data: payment } = await supabase
-      .from('payments')
-      .update({
-        status,
-      })
-      .eq('id', paymentId)
-      .select('*')
-      .single();
+    const payment = await withAdminContext(async (db) => {
+      const rows = await db.execute(
+        sql`UPDATE payments SET status = ${status} WHERE id = ${paymentId} RETURNING *`
+      );
+      return rows.rows[0] as any | undefined;
+    });
+
+    // 6.5.8 — Payment amount mismatch check (non-blocking: alert only, never prevents completion)
+    if (status === 'completed' && payment && gatewayAmount !== null && payment.amount !== gatewayAmount) {
+      console.warn(
+        `[payment-webhook] Amount mismatch for ${payment.id}: expected ${payment.amount}, got ${gatewayAmount} (gateway: ${gateway})`
+      );
+      void alertPaymentMismatch({
+        paymentId: payment.id,
+        expectedAmount: payment.amount,
+        actualAmount: gatewayAmount,
+        currency: payment.currency,
+        gateway,
+      });
+    }
 
     if (status === 'completed' && payment) {
       const meta = (payment.metadata || {}) as Record<string, any>;
 
       // Activate enrollment or confirm booking
       if (meta.item_type === 'course') {
-        await supabase.from('enrollments').insert({
-          user_id: meta.user_id,
-          course_id: meta.item_id,
-          status: 'enrolled',
-          enrollment_type: 'recorded',
+        await withAdminContext(async (db) => {
+          await db.execute(
+            sql`INSERT INTO enrollments (user_id, course_id, status, enrollment_type) VALUES (${meta.user_id}, ${meta.item_id}, 'enrolled', 'recorded')`
+          );
         });
       } else if (meta.item_type === 'booking') {
-        await supabase.from('bookings')
-          .update({ status: 'confirmed' })
-          .eq('id', meta.item_id);
+        await withAdminContext(async (db) => {
+          await db.execute(
+            sql`UPDATE bookings SET status = 'confirmed' WHERE id = ${meta.item_id}`
+          );
+        });
       } else if (meta.item_type === 'product' && meta.item_id && meta.user_id) {
         // Handle digital product purchases — generate download tokens
         try {
-          const { data: product } = await supabase
-            .from('products')
-            .select('id, product_type')
-            .eq('id', meta.item_id)
-            .single();
+          const product = await withAdminContext(async (db) => {
+            const rows = await db.execute(
+              sql`SELECT id, product_type FROM products WHERE id = ${meta.item_id} LIMIT 1`
+            );
+            return rows.rows[0] as { id: string; product_type: string } | undefined;
+          });
 
           if (product && (product.product_type === 'digital' || product.product_type === 'hybrid')) {
             // Find or create order for this product purchase
-            const { data: existingOrder } = await supabase
-              .from('orders')
-              .select('id')
-              .eq('payment_id', paymentId)
-              .single();
+            const existingOrder = await withAdminContext(async (db) => {
+              const rows = await db.execute(
+                sql`SELECT id FROM orders WHERE payment_id = ${paymentId} LIMIT 1`
+              );
+              return rows.rows[0] as { id: string } | undefined;
+            });
 
             let orderId = existingOrder?.id;
 
             if (!existingOrder) {
-              const { data: newOrder } = await supabase
-                .from('orders')
-                .insert({
-                  user_id: meta.user_id,
-                  status: 'paid',
-                  payment_id: paymentId,
-                  total_amount: payment.amount,
-                  currency: payment.currency,
-                } as any)
-                .select('id')
-                .single();
-
+              const newOrder = await withAdminContext(async (db) => {
+                const rows = await db.execute(
+                  sql`INSERT INTO orders (customer_id, status, payment_id, total_amount, currency) VALUES (${meta.user_id}, 'paid', ${paymentId}, ${payment.amount}, ${payment.currency}) RETURNING id`
+                );
+                return rows.rows[0] as { id: string } | undefined;
+              });
               orderId = newOrder?.id;
             }
 
             // Create order_item
             if (orderId) {
-              const { data: existingItem } = await supabase
-                .from('order_items')
-                .select('id')
-                .eq('order_id', orderId)
-                .eq('product_id', meta.item_id)
-                .single();
+              const existingItem = await withAdminContext(async (db) => {
+                const rows = await db.execute(
+                  sql`SELECT id FROM order_items WHERE order_id = ${orderId} AND product_id = ${meta.item_id} LIMIT 1`
+                );
+                return rows.rows[0] as { id: string } | undefined;
+              });
 
               if (!existingItem) {
-                await supabase
-                  .from('order_items')
-                  .insert({
-                    order_id: orderId,
-                    product_id: meta.item_id,
-                    quantity: 1,
-                    unit_price: payment.amount,
-                  } as any);
+                await withAdminContext(async (db) => {
+                  await db.execute(
+                    sql`INSERT INTO order_items (order_id, product_id, quantity, unit_price) VALUES (${orderId}, ${meta.item_id}, 1, ${payment.amount})`
+                  );
+                });
               }
 
               // Get order_item and create download token
-              const { data: orderItem } = await supabase
-                .from('order_items')
-                .select('id')
-                .eq('order_id', orderId)
-                .eq('product_id', meta.item_id)
-                .single();
+              const orderItem = await withAdminContext(async (db) => {
+                const rows = await db.execute(
+                  sql`SELECT id FROM order_items WHERE order_id = ${orderId} AND product_id = ${meta.item_id} LIMIT 1`
+                );
+                return rows.rows[0] as { id: string } | undefined;
+              });
 
               if (orderItem) {
-                const { data: asset } = await supabase
-                  .from('digital_assets')
-                  .select('id')
-                  .eq('product_id', meta.item_id)
-                  .order('created_at', { ascending: false })
-                  .limit(1)
-                  .single();
+                const asset = await withAdminContext(async (db) => {
+                  const rows = await db.execute(
+                    sql`SELECT id FROM digital_assets WHERE product_id = ${meta.item_id} ORDER BY created_at DESC LIMIT 1`
+                  );
+                  return rows.rows[0] as { id: string } | undefined;
+                });
 
                 if (asset) {
                   const config = await getBusinessConfig();
@@ -210,17 +322,11 @@ export async function POST(request: NextRequest) {
                     Date.now() + config.download_token_expiry_hours * 60 * 60 * 1000
                   ).toISOString();
 
-                  await supabase
-                    .from('download_tokens')
-                    .insert({
-                      order_item_id: orderItem.id,
-                      user_id: meta.user_id,
-                      asset_id: asset.id,
-                      token,
-                      expires_at: expiresAt,
-                      download_count: 0,
-                      max_downloads: config.download_max_count,
-                    } as any);
+                  await withAdminContext(async (db) => {
+                    await db.execute(
+                      sql`INSERT INTO download_tokens (order_item_id, user_id, asset_id, token, expires_at, download_count, max_downloads) VALUES (${orderItem.id}, ${meta.user_id}, ${asset.id}, ${token}, ${expiresAt}, 0, ${config.download_max_count})`
+                    );
+                  });
 
                   console.log(`[payment-webhook] Generated download token for product ${meta.item_id}`);
                 }
@@ -256,9 +362,35 @@ export async function POST(request: NextRequest) {
       await sendNotifications(payment);
     }
 
+    // Mark event as completed in the audit trail
+    if (eventId) {
+      await withAdminContext(async (db) => {
+        await db.execute(
+          sql`UPDATE webhook_events SET status = 'completed', completed_at = NOW(), payment_id = ${payment?.id ?? null} WHERE event_id = ${eventId}`
+        );
+      });
+    }
+
     return NextResponse.json({ received: true, payment_id: paymentId, status });
   } catch (err: any) {
     console.error('[payment-webhook] Error:', err);
+
+    // Best-effort: mark the event as failed and alert — both non-blocking
+    // eventId and eventType are declared before the try block so they are in scope here
+    if (eventId) {
+      void withAdminContext(async (db) => {
+        await db.execute(
+          sql`UPDATE webhook_events SET status = 'failed', error_message = ${err.message ?? 'Unknown error'} WHERE event_id = ${eventId}`
+        );
+      });
+    }
+    void alertWebhookFailure({
+      gateway,
+      eventType,
+      eventId: eventId ?? 'unknown',
+      error: err.message ?? 'Unknown error',
+    });
+
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
@@ -305,7 +437,7 @@ async function sendNotifications(payment: any) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           chat_id: aminChatId,
-          text: `💰 Payment received!\n${userName} — ${(payment.amount / 100).toFixed(2)} ${payment.currency}\nGateway: ${gatewayLabel}\nType: ${meta.item_type}`,
+          text: `Payment received!\n${userName} — ${(payment.amount / 100).toFixed(2)} ${payment.currency}\nGateway: ${gatewayLabel}\nType: ${meta.item_type}`,
         }),
       });
     } catch (e) { console.error('[notify] Telegram failed:', e); }

@@ -2,7 +2,6 @@
 
 import { useAuth } from '@kunacademy/auth';
 import { useEffect, useState } from 'react';
-import { createBrowserClient } from '@kunacademy/db';
 import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
 import { useParams, useRouter } from 'next/navigation';
@@ -10,14 +9,11 @@ import { ArrowLeft } from 'lucide-react';
 
 interface Payment {
   id: string;
-  user_id: string;
   amount: number;
   currency: string;
   status: string;
-  gateway: string;
+  gateway: string | null;
   gateway_payment_id: string | null;
-  item_type: string | null;
-  item_id: string | null;
   created_at: string;
   metadata?: { user_email?: string; user_id?: string; item_type?: string; item_name?: string; sender_name?: string };
 }
@@ -41,15 +37,14 @@ export default function AdminOrdersPage() {
   useEffect(() => {
     if (authLoading) return;
     if (!user || profile?.role !== 'admin') { router.push('/' + locale + '/auth/login'); return; }
-    const s = createBrowserClient();
-    s.from('payments')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(200)
-      .then(({ data }: any) => {
-        setPayments(data ?? []);
+
+    fetch('/api/admin/payments')
+      .then(r => r.json())
+      .then(({ payments }) => {
+        setPayments(payments ?? []);
         setLoading(false);
-      });
+      })
+      .catch(() => setLoading(false));
   }, [user, profile, authLoading]);
 
   const filtered = filter === 'all' ? payments : payments.filter(p => p.status === filter);

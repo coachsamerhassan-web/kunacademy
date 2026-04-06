@@ -1,7 +1,10 @@
-import { NextResponse, type NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 import createIntlMiddleware from 'next-intl/middleware';
-import { createServerClient } from '@supabase/ssr';
+import NextAuth from 'next-auth';
+import { authConfig } from '@/auth.config';
 import { routing } from './i18n/routing';
+
+const { auth } = NextAuth(authConfig);
 
 const intlMiddleware = createIntlMiddleware(routing);
 
@@ -36,9 +39,18 @@ function getPricingRegion(countryCode: string | null): 'EGP' | 'AED' | 'EUR' {
   return 'EUR';
 }
 
-export default async function middleware(request: NextRequest) {
+export default auth(async function middleware(request) {
   // Run i18n middleware first
   const response = intlMiddleware(request);
+
+  // ── Never protect auth routes — prevents redirect loops ─────────────
+  const withoutLocaleEarly = request.nextUrl.pathname.replace(/^\/(ar|en)/, '');
+  if (
+    withoutLocaleEarly.startsWith('/auth') ||
+    request.nextUrl.pathname.startsWith('/api/auth')
+  ) {
+    return response;
+  }
 
   // ── Set pricing region cookie from Vercel geo header ────────────────
   const country = request.headers.get('x-vercel-ip-country') || null;
@@ -54,33 +66,11 @@ export default async function middleware(request: NextRequest) {
     return response;
   }
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-  if (!supabaseUrl || !supabaseAnonKey) {
-    return response;
-  }
-
-  const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
-    cookies: {
-      getAll() {
-        return request.cookies.getAll();
-      },
-      setAll(cookiesToSet) {
-        for (const { name, value } of cookiesToSet) {
-          request.cookies.set(name, value);
-        }
-        for (const { name, value, options } of cookiesToSet) {
-          response.cookies.set(name, value, options);
-        }
-      },
-    },
-  });
-
-  const { data: { user } } = await supabase.auth.getUser();
+  // Auth.js v5 injects session into request via the auth() wrapper
+  const session = (request as any).auth;
   const locale = getLocaleFromPath(request.nextUrl.pathname);
 
-  if (!user) {
+  if (!session?.user) {
     const loginUrl = new URL(`/${locale}/auth/login`, request.url);
     loginUrl.searchParams.set('redirect', request.nextUrl.pathname);
     return NextResponse.redirect(loginUrl);
@@ -89,19 +79,15 @@ export default async function middleware(request: NextRequest) {
   // Admin route protection
   const withoutLocale = request.nextUrl.pathname.replace(/^\/(ar|en)/, '');
   if (withoutLocale.startsWith('/admin')) {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single();
-
-    if (profile?.role !== 'admin') {
+    const role = (session.user as any).role as string | undefined;
+    const adminConfirmed = role === 'admin' || role === 'super_admin';
+    if (!adminConfirmed) {
       return NextResponse.redirect(new URL(`/${locale}/dashboard`, request.url));
     }
   }
 
   return response;
-}
+}) as any;
 
 export const config = {
   matcher: ['/', '/(ar|en)/:path*'],

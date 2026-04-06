@@ -1,7 +1,6 @@
 'use client';
 
 import { useAuth } from '@kunacademy/auth';
-import { createBrowserClient } from '@kunacademy/db';
 import { useState, useEffect, useRef, useCallback, use } from 'react';
 
 interface LessonData {
@@ -53,7 +52,7 @@ export default function LessonPlayerPage({
 }) {
   const { locale, courseId, lessonId } = use(params);
   const isAr = locale === 'ar';
-  const { user, session } = useAuth();
+  const { user } = useAuth();
 
   const [lesson, setLesson] = useState<LessonData | null>(null);
   const [courseName, setCourseName] = useState('');
@@ -71,44 +70,37 @@ export default function LessonPlayerPage({
 
   // Save progress periodically
   const saveProgress = useCallback(async (playbackPos?: number, markComplete?: boolean) => {
-    if (!session?.access_token) return;
+    if (!user) return;
     const body: Record<string, unknown> = { lessonId, courseId };
     if (typeof playbackPos === 'number') body.playbackPosition = playbackPos;
     if (markComplete) body.completed = true;
 
     await fetch('/api/lms/progress', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${session.access_token}`,
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     });
-  }, [session, lessonId, courseId]);
+  }, [user, lessonId, courseId]);
 
   useEffect(() => {
-    if (!user || !session) return;
-    const supabase = createBrowserClient();
+    if (!user) return;
 
     async function load() {
-      const [lessonRes, courseRes, lessonsRes, sectionsRes] = await Promise.all([
-        supabase.from('lessons').select('*').eq('id', lessonId).single(),
-        supabase.from('courses').select('title_ar, title_en').eq('id', courseId).single(),
-        supabase.from('lessons').select('id, section_id, title_ar, title_en, order, duration_minutes').eq('course_id', courseId).order('order'),
-        supabase.from('course_sections').select('id, title_ar, title_en, order').eq('course_id', courseId).order('order'),
+      const [lessonDataRes, progressRes] = await Promise.all([
+        fetch(`/api/lms/lesson/${lessonId}?courseId=${courseId}`),
+        fetch(`/api/lms/progress?courseId=${courseId}`),
       ]);
 
-      if (lessonRes.data) setLesson(lessonRes.data as unknown as LessonData);
-      if (courseRes.data) setCourseName(isAr ? (courseRes.data as any).title_ar : (courseRes.data as any).title_en);
-      if (lessonsRes.data) setAllLessons(lessonsRes.data as NavLesson[]);
-      if (sectionsRes.data) setSections(sectionsRes.data as SectionData[]);
+      if (lessonDataRes.ok) {
+        const data = await lessonDataRes.json();
+        if (data.lesson) setLesson(data.lesson as LessonData);
+        if (data.courseName) setCourseName(isAr ? data.courseName.title_ar : data.courseName.title_en);
+        if (data.allLessons) setAllLessons(data.allLessons as NavLesson[]);
+        if (data.sections) setSections(data.sections as SectionData[]);
+      }
 
-      // Fetch all progress for this course
-      const res = await fetch(`/api/lms/progress?courseId=${courseId}`, {
-        headers: { Authorization: `Bearer ${session?.access_token}` },
-      });
-      if (res.ok) {
-        const data = await res.json();
+      if (progressRes.ok) {
+        const data = await progressRes.json();
         const progressList = data.progress ?? [];
         setAllProgress(progressList);
         const lessonProgress = progressList.find(
@@ -130,7 +122,7 @@ export default function LessonPlayerPage({
     return () => {
       if (progressTimer.current) clearInterval(progressTimer.current);
     };
-  }, [user, session, lessonId, courseId, isAr]);
+  }, [user, lessonId, courseId, isAr]);
 
   // Set up periodic progress saving when video plays
   useEffect(() => {

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { withAdminContext, withUserContext } from '@kunacademy/db';
+import { isAdminRole, getAuthUser } from '@kunacademy/auth/server';
+import { sql } from 'drizzle-orm';
 import type {
   PayoutRequest,
   PayoutRequestPayload,
@@ -8,97 +10,66 @@ import type {
   PayoutResponse,
 } from '@/types/commission-system';
 
-// TODO: Regenerate Supabase types once earnings/commission_rates/payout_requests tables exist
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-) as any;
-
-async function getUser(request: NextRequest) {
-  const authHeader = request.headers.get('authorization');
-  if (!authHeader?.startsWith('Bearer ')) return null;
-  const token = authHeader.slice(7);
-  const { data: { user } } = await supabase.auth.getUser(token);
-  return user;
-}
-
-async function getUserRole(userId: string): Promise<string | null> {
-  const { data } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', userId)
-    .single();
-  const profile = data as Record<string, unknown> | null;
-  return (profile?.role as string | undefined) ?? null;
-}
-
 /** Calculate available balance for a coach (in minor units) */
 async function getAvailableBalance(userId: string): Promise<number> {
   // Sum of available earnings (status='available' and available_at ≤ now)
-  const { data: availableEarnings } = await supabase
-    .from('earnings')
-    .select('net_amount')
-    .eq('user_id', userId)
-    .eq('status', 'available')
-    .lte('available_at', new Date().toISOString());
-
-  const availableTotal = (availableEarnings ?? []).reduce(
-    (sum: number, e: Record<string, number>) => sum + (e.net_amount ?? 0),
-    0
-  );
+  const earningsResult = await withAdminContext(async (db) => {
+    const rows = await db.execute(
+      sql`SELECT COALESCE(SUM(net_amount), 0) AS total FROM earnings WHERE user_id = ${userId} AND status = 'available' AND available_at <= NOW()`
+    );
+    return rows.rows[0] as { total: number } | undefined;
+  });
+  const availableTotal = Number(earningsResult?.total ?? 0);
 
   // Subtract pending payout requests (status='requested' or 'approved')
-  const { data: activePayout } = await supabase
-    .from('payout_requests')
-    .select('amount')
-    .eq('user_id', userId)
-    .in('status', ['requested', 'approved']);
-
-  const payoutTotal = (activePayout ?? []).reduce(
-    (sum: number, p: Record<string, number>) => sum + (p.amount ?? 0),
-    0
-  );
+  const payoutResult = await withAdminContext(async (db) => {
+    const rows = await db.execute(
+      sql`SELECT COALESCE(SUM(amount), 0) AS total FROM payout_requests WHERE user_id = ${userId} AND status IN ('requested', 'approved')`
+    );
+    return rows.rows[0] as { total: number } | undefined;
+  });
+  const payoutTotal = Number(payoutResult?.total ?? 0);
 
   return Math.max(0, availableTotal - payoutTotal);
 }
 
 /** GET /api/payouts — List payout requests (admin sees all, user sees own) */
 export async function GET(request: NextRequest): Promise<NextResponse<PayoutsResponse | { error: string }>> {
-  const user = await getUser(request);
+  const user = await getAuthUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const role = await getUserRole(user.id);
-
-  if (role === 'admin') {
+  if (isAdminRole(user.role)) {
     // Admin sees all payouts with coach names
-    const { data, error } = await supabase
-      .from('payout_requests')
-      .select('*, profiles:user_id(full_name)')
-      .order('requested_at', { ascending: false })
-      .limit(200);
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    const payouts = (data as unknown as PayoutRequest[]) ?? [];
-    return NextResponse.json({ payouts, available_balance: 0 });
+    const data = await withAdminContext(async (db) => {
+      const rows = await db.execute(
+        sql`
+          SELECT pr.*, p.full_name_en AS profiles_full_name, p.full_name_ar AS profiles_full_name_ar, p.email AS profiles_email
+          FROM payout_requests pr
+          LEFT JOIN profiles p ON p.id = pr.user_id
+          ORDER BY pr.created_at DESC
+          LIMIT 200
+        `
+      );
+      return rows.rows as unknown as PayoutRequest[];
+    });
+    return NextResponse.json({ payouts: data ?? [], available_balance: 0 });
   }
 
   // Coach sees own payouts
-  const { data, error } = await supabase
-    .from('payout_requests')
-    .select('*')
-    .eq('user_id', user.id)
-    .order('requested_at', { ascending: false })
-    .limit(100);
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  const data = await withUserContext(user.id, async (db) => {
+    const rows = await db.execute(
+      sql`SELECT * FROM payout_requests WHERE user_id = ${user.id} ORDER BY created_at DESC LIMIT 100`
+    );
+    return rows.rows as unknown as PayoutRequest[];
+  });
 
   const balance = await getAvailableBalance(user.id);
-  const payouts = (data as unknown as PayoutRequest[]) ?? [];
-  return NextResponse.json({ payouts, available_balance: balance });
+  return NextResponse.json({ payouts: data ?? [], available_balance: balance });
 }
 
 /** POST /api/payouts — Coach requests a payout */
 export async function POST(request: NextRequest): Promise<NextResponse<PayoutResponse | { error: string; available_balance?: number; requested?: number }>> {
-  const user = await getUser(request);
+  const user = await getAuthUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const body = (await request.json()) as PayoutRequestPayload;
@@ -128,32 +99,28 @@ export async function POST(request: NextRequest): Promise<NextResponse<PayoutRes
     );
   }
 
-  const { data: payoutData, error } = await supabase
-    .from('payout_requests')
-    .insert({
-      user_id: user.id,
-      amount,
-      currency,
-      status: 'requested',
-      bank_details,
-      requested_at: new Date().toISOString(),
-      created_at: new Date().toISOString(),
-    })
-    .select()
-    .single();
+  const now = new Date().toISOString();
+  const payout = await withAdminContext(async (db) => {
+    const rows = await db.execute(
+      sql`
+        INSERT INTO payout_requests (user_id, amount, currency, status, bank_details, created_at)
+        VALUES (${user.id}, ${amount}, ${currency}, 'requested', ${JSON.stringify(bank_details)}, ${now})
+        RETURNING *
+      `
+    );
+    return rows.rows[0] as unknown as PayoutRequest | undefined;
+  });
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  const payout = payoutData as unknown as PayoutRequest;
+  if (!payout) return NextResponse.json({ error: 'Failed to create payout request' }, { status: 500 });
   return NextResponse.json({ payout }, { status: 201 });
 }
 
 /** PATCH /api/payouts — Admin action on payout (approve/reject/complete) */
 export async function PATCH(request: NextRequest): Promise<NextResponse<PayoutResponse | { error: string }>> {
-  const user = await getUser(request);
+  const user = await getAuthUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const role = await getUserRole(user.id);
-  if (role !== 'admin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  if (!isAdminRole(user.role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   const body = (await request.json()) as PayoutActionPayload;
   const { payout_id, action, admin_note } = body;
@@ -167,17 +134,18 @@ export async function PATCH(request: NextRequest): Promise<NextResponse<PayoutRe
   }
 
   // Get the payout
-  const { data: payoutData, error: fetchError } = await supabase
-    .from('payout_requests')
-    .select('*')
-    .eq('id', payout_id)
-    .single();
+  const payoutData = await withAdminContext(async (db) => {
+    const rows = await db.execute(
+      sql`SELECT * FROM payout_requests WHERE id = ${payout_id} LIMIT 1`
+    );
+    return rows.rows[0] as unknown as PayoutRequest | undefined;
+  });
 
-  if (fetchError || !payoutData) {
+  if (!payoutData) {
     return NextResponse.json({ error: 'Payout not found' }, { status: 404 });
   }
 
-  const payout = payoutData as unknown as PayoutRequest;
+  const payout = payoutData;
 
   // Map actions to status values
   const statusMap: Record<string, 'approved' | 'rejected' | 'processed'> = {
@@ -186,40 +154,41 @@ export async function PATCH(request: NextRequest): Promise<NextResponse<PayoutRe
     complete: 'processed', // DB schema uses 'processed' for completed payouts
   };
 
-  const updateData: Record<string, unknown> = {
-    status: statusMap[action],
-    admin_note: admin_note || payout.admin_note || null,
-    processed_by: user.id,
-  };
+  const newStatus = statusMap[action];
+  const processedAt = (action === 'complete' || action === 'reject') ? new Date().toISOString() : null;
 
-  // Set processed_at timestamp for terminal states
-  if (action === 'complete' || action === 'reject') {
-    updateData.processed_at = new Date().toISOString();
-  }
+  const updated = await withAdminContext(async (db) => {
+    const rows = await db.execute(
+      sql`
+        UPDATE payout_requests
+        SET
+          status = ${newStatus},
+          admin_note = ${admin_note || payout.admin_note || null},
+          processed_by = ${user.id},
+          processed_at = ${processedAt}
+        WHERE id = ${payout_id}
+        RETURNING *
+      `
+    );
+    return rows.rows[0] as unknown as PayoutRequest | undefined;
+  });
 
-  const { data: updatedData, error } = await supabase
-    .from('payout_requests')
-    .update(updateData)
-    .eq('id', payout_id)
-    .select()
-    .single();
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
-  const updated = updatedData as unknown as PayoutRequest;
+  if (!updated) return NextResponse.json({ error: 'Update failed' }, { status: 500 });
 
   // On complete: mark associated earnings as paid_out
   if (action === 'complete') {
     // Accumulate available earnings until we've covered the payout amount
-    const { data: availableEarningsData } = await supabase
-      .from('earnings')
-      .select('id, net_amount')
-      .eq('user_id', payout.user_id)
-      .eq('status', 'available')
-      .lte('available_at', new Date().toISOString())
-      .order('created_at', { ascending: true });
+    const availableEarnings = await withAdminContext(async (db) => {
+      const rows = await db.execute(
+        sql`
+          SELECT id, net_amount FROM earnings
+          WHERE user_id = ${payout.user_id} AND status = 'available' AND available_at <= NOW()
+          ORDER BY created_at ASC
+        `
+      );
+      return rows.rows as Array<{ id: string; net_amount: number }>;
+    });
 
-    const availableEarnings = availableEarningsData as unknown as Array<Record<string, unknown>> | null;
     let remaining = payout.amount;
     const earningIds: string[] = [];
 
@@ -230,10 +199,11 @@ export async function PATCH(request: NextRequest): Promise<NextResponse<PayoutRe
     }
 
     if (earningIds.length > 0) {
-      await supabase
-        .from('earnings')
-        .update({ status: 'paid_out' })
-        .in('id', earningIds);
+      await withAdminContext(async (db) => {
+        await db.execute(
+          sql`UPDATE earnings SET status = 'paid_out' WHERE id = ANY(${earningIds}::uuid[])`
+        );
+      });
     }
   }
 

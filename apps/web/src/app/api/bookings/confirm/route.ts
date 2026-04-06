@@ -1,19 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { withAdminContext } from '@kunacademy/db';
+import { bookings, services } from '@kunacademy/db/schema';
+import { eq } from 'drizzle-orm';
+import { getAuthUser } from '@kunacademy/auth/server';
 import { createCheckoutSession } from '@kunacademy/payments';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
-async function getUser(request: NextRequest) {
-  const authHeader = request.headers.get('authorization');
-  if (!authHeader?.startsWith('Bearer ')) return null;
-  const token = authHeader.slice(7);
-  const { data: { user } } = await supabase.auth.getUser(token);
-  return user;
-}
 
 /**
  * POST /api/bookings/confirm
@@ -24,7 +14,7 @@ async function getUser(request: NextRequest) {
  * - Paid service → status='pending', returns Stripe checkout URL
  */
 export async function POST(request: NextRequest) {
-  const user = await getUser(request);
+  const user = await getAuthUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   let body: { hold_id?: string; payment_method?: string };
@@ -40,13 +30,24 @@ export async function POST(request: NextRequest) {
   }
 
   // Fetch the hold
-  const { data: booking, error: fetchError } = await supabase
-    .from('bookings')
-    .select('id, status, held_until, held_by, customer_id, provider_id, service_id, start_time, end_time')
-    .eq('id', hold_id)
-    .single() as { data: any; error: any };
+  const [booking] = await withAdminContext(async (db) => {
+    return db.select({
+      id: bookings.id,
+      status: bookings.status,
+      held_until: bookings.held_until,
+      held_by: bookings.held_by,
+      customer_id: bookings.customer_id,
+      provider_id: bookings.provider_id,
+      service_id: bookings.service_id,
+      start_time: bookings.start_time,
+      end_time: bookings.end_time,
+    })
+      .from(bookings)
+      .where(eq(bookings.id, hold_id))
+      .limit(1);
+  });
 
-  if (fetchError || !booking) {
+  if (!booking) {
     return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
   }
 
@@ -64,34 +65,42 @@ export async function POST(request: NextRequest) {
   const now = new Date();
   if (booking.held_until && new Date(booking.held_until) < now) {
     // Mark as cancelled
-    await supabase.from('bookings').update({ status: 'cancelled' }).eq('id', hold_id);
+    await withAdminContext(async (db) => {
+      await db.update(bookings).set({ status: 'cancelled' }).where(eq(bookings.id, hold_id));
+    });
     return NextResponse.json({ error: 'Hold expired' }, { status: 409 });
   }
 
   // Fetch service to determine price
-  const { data: service } = await supabase
-    .from('services')
-    .select('id, name_en, name_ar, price_aed')
-    .eq('id', booking.service_id)
-    .single() as { data: any; error: any };
+  let service: { id: string; name_en: string; name_ar: string; price_aed: number | null } | undefined;
+  if (booking.service_id) {
+    const [svc] = await withAdminContext(async (db) => {
+      return db.select({
+        id: services.id,
+        name_en: services.name_en,
+        name_ar: services.name_ar,
+        price_aed: services.price_aed,
+      })
+        .from(services)
+        .where(eq(services.id, booking.service_id!))
+        .limit(1);
+    });
+    service = svc;
+  }
 
   const isFree = !service?.price_aed || service.price_aed === 0;
 
   if (isFree || payment_method === 'free') {
     // Confirm immediately
-    const { error: updateError } = await supabase
-      .from('bookings')
-      .update({
-        status: 'confirmed',
-        held_until: null,
-        held_by: null,
-      } as any)
-      .eq('id', hold_id);
-
-    if (updateError) {
-      console.error('[bookings/confirm] update error:', updateError);
-      return NextResponse.json({ error: 'Failed to confirm booking' }, { status: 500 });
-    }
+    await withAdminContext(async (db) => {
+      await db.update(bookings)
+        .set({
+          status: 'confirmed',
+          held_until: null,
+          held_by: null,
+        })
+        .where(eq(bookings.id, hold_id));
+    });
 
     // Non-blocking notification
     try {
@@ -113,9 +122,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Payment not configured' }, { status: 503 });
   }
 
-  // Fetch user email
-  const { data: { user: authUser } } = await supabase.auth.admin.getUserById(user.id);
-  const userEmail = authUser?.email || '';
+  const userEmail = user.email || '';
   const origin = request.headers.get('origin') || '';
   const locale = request.headers.get('accept-language')?.split(',')[0]?.includes('ar') ? 'ar' : 'en';
 
@@ -123,12 +130,12 @@ export async function POST(request: NextRequest) {
     const session = await createCheckoutSession({
       lineItems: [{
         name: service?.name_en || 'Coaching Session',
-        amount: service.price_aed,
+        amount: service!.price_aed!,
         currency: 'AED',
         quantity: 1,
       }],
       customerEmail: userEmail,
-      successUrl: `${origin}/${locale}/checkout/success?payment_id=${hold_id}`,
+      successUrl: `${origin}/${locale}/coaching/book/success?booking_id=${hold_id}`,
       cancelUrl: `${origin}/${locale}/coaching/book`,
       metadata: {
         booking_id: hold_id,
@@ -139,13 +146,11 @@ export async function POST(request: NextRequest) {
     });
 
     // Mark as pending (awaiting payment)
-    await supabase
-      .from('bookings')
-      .update({
-        status: 'pending',
-        held_until: null,
-      } as any)
-      .eq('id', hold_id);
+    await withAdminContext(async (db) => {
+      await db.update(bookings)
+        .set({ status: 'pending', held_until: null })
+        .where(eq(bookings.id, hold_id));
+    });
 
     return NextResponse.json({ booking_id: hold_id, status: 'pending', payment_url: session.url });
   } catch (e) {

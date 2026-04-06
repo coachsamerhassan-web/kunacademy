@@ -5,7 +5,8 @@ import { FAQSection } from '@kunacademy/ui/faq-section';
 import { faqJsonLd } from '@kunacademy/ui/faq-jsonld';
 import { shopFaqs } from '@/data/faqs';
 import type { Metadata } from 'next';
-import { cms, contentGetter } from '@kunacademy/cms';
+import { cms } from '@kunacademy/cms/server';
+import { contentGetter } from '@kunacademy/cms';
 import { ShopGrid } from './shop-grid';
 
 interface Props { params: Promise<{ locale: string }> }

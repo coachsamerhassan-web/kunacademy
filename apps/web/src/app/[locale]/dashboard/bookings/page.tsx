@@ -1,7 +1,6 @@
 'use client';
 
 import { useAuth } from '@kunacademy/auth';
-import { createBrowserClient } from '@kunacademy/db';
 import { Section } from '@kunacademy/ui/section';
 import { Card } from '@kunacademy/ui/card';
 import { useState, useEffect, use, useCallback } from 'react';
@@ -189,35 +188,23 @@ export default function BookingsPage({ params }: { params: Promise<{ locale: str
 
   useEffect(() => {
     if (!user) return;
-    const supabase = createBrowserClient();
-    supabase
-      .from('bookings')
-      .select(`
-        id, start_time, end_time, status, notes, provider_id,
-        coach:providers(profile:profiles(full_name_ar, full_name_en)),
-        service:services(name_ar, name_en, duration_minutes, price_aed)
-      `)
-      .eq('customer_id', user.id)
-      .order('start_time', { ascending: false })
-      .then(({ data }: { data: any }) => {
-        setBookings((data ?? []) as Booking[]);
+
+    fetch('/api/user/bookings')
+      .then((r) => r.json())
+      .then((data) => {
+        setBookings((data.bookings ?? []) as Booking[]);
         setLoading(false);
       });
   }, [user]);
 
   async function cancelBooking(id: string) {
     setCancelling(id);
-    const supabase = createBrowserClient();
-    // Defense-in-depth: filter by both id AND customer_id (the authenticated user).
-    // RLS also enforces customer_id = auth.uid(), but explicit filter prevents any
-    // horizontal privilege escalation if RLS is misconfigured.
-    if (user) {
-      await supabase
-        .from('bookings')
-        .update({ status: 'cancelled' })
-        .eq('id', id)
-        .eq('customer_id', user.id);
-    }
+    // The API route enforces ownership server-side (customer_id = auth user).
+    await fetch('/api/user/bookings', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ booking_id: id, status: 'cancelled' }),
+    });
     setBookings(prev => prev.map(b => b.id === id ? { ...b, status: 'cancelled' } : b));
     setCancelling(null);
   }
@@ -227,15 +214,9 @@ export default function BookingsPage({ params }: { params: Promise<{ locale: str
     setRescheduleError(prev => ({ ...prev, [bookingId]: '' }));
 
     try {
-      const supabase = createBrowserClient();
-      const { data: { session } } = await supabase!.auth.getSession();
-
       const res = await fetch('/api/bookings/reschedule', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${session?.access_token}`,
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           booking_id: bookingId,
           new_start_time: `${slot.date}T${slot.start_time}:00`,

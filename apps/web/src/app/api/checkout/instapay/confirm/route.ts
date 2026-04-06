@@ -1,12 +1,8 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-import type { Database } from '@kunacademy/db';
+import { withAdminContext } from '@kunacademy/db';
+import { payments } from '@kunacademy/db/schema';
+import { eq } from 'drizzle-orm';
 import { sendTelegramAlert } from '@kunacademy/email';
-
-const supabase = createClient<Database>(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 /** Customer confirms they've sent the InstaPay transfer */
 export async function POST(request: NextRequest) {
@@ -17,14 +13,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing payment_id' }, { status: 400 });
     }
 
-    // Update payment metadata with customer confirmation
-    const { data: payment, error: fetchError } = await supabase
-      .from('payments')
-      .select('*')
-      .eq('id', payment_id)
-      .single();
+    // Fetch payment to verify it exists and is pending
+    const [payment] = await withAdminContext(async (db) => {
+      return db.select()
+        .from(payments)
+        .where(eq(payments.id, payment_id))
+        .limit(1);
+    });
 
-    if (fetchError || !payment) {
+    if (!payment) {
       return NextResponse.json({ error: 'Payment not found' }, { status: 404 });
     }
 
@@ -34,22 +31,19 @@ export async function POST(request: NextRequest) {
 
     const metadata = (payment.metadata || {}) as Record<string, unknown>;
 
-    const { error } = await supabase
-      .from('payments')
-      .update({
-        metadata: {
-          ...metadata,
-          verification_status: 'customer_confirmed',
-          sender_name: sender_name || null,
-          transaction_ref: transaction_ref || null,
-          confirmed_at: new Date().toISOString(),
-        },
-      })
-      .eq('id', payment_id);
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
+    await withAdminContext(async (db) => {
+      await db.update(payments)
+        .set({
+          metadata: {
+            ...metadata,
+            verification_status: 'customer_confirmed',
+            sender_name: sender_name || null,
+            transaction_ref: transaction_ref || null,
+            confirmed_at: new Date().toISOString(),
+          },
+        })
+        .where(eq(payments.id, payment_id));
+    });
 
     // Telegram alert to Samer for manual verification
     const displayAmount = ((payment.amount as number) / 100).toFixed(2);

@@ -2,18 +2,33 @@ import type { Metadata } from 'next';
 import { setRequestLocale } from 'next-intl/server';
 import { GeometricPattern } from '@kunacademy/ui/patterns';
 import { Section } from '@kunacademy/ui/section';
-import { createClient } from '@supabase/supabase-js';
+import { db } from '@kunacademy/db';
+import { profiles, instructors } from '@kunacademy/db/schema';
+import { eq } from 'drizzle-orm';
 
 async function getProfile(userId: string) {
-  const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
-  const { data: profile } = await supabase.from('profiles').select('*').eq('id', userId).single();
+  const [profile] = await db
+    .select()
+    .from(profiles)
+    .where(eq(profiles.id, userId))
+    .limit(1);
+
   if (!profile) return null;
 
-  const { data: instructor } = await supabase.from('instructors')
-    .select('bio_ar, bio_en, credentials, coach_level, specialties, coaching_styles')
-    .eq('profile_id', userId).single();
+  const [instructor] = await db
+    .select({
+      bio_ar: instructors.bio_ar,
+      bio_en: instructors.bio_en,
+      credentials: instructors.credentials,
+      coach_level: instructors.coach_level,
+      specialties: instructors.specialties,
+      coaching_styles: instructors.coaching_styles,
+    })
+    .from(instructors)
+    .where(eq(instructors.profile_id, userId))
+    .limit(1);
 
-  return { ...profile, instructor };
+  return { ...profile, instructor: instructor || null };
 }
 
 interface Props { params: Promise<{ locale: string; slug: string }> }
@@ -74,7 +89,7 @@ export default async function CommunityProfilePage({ params }: { params: Promise
                   </p>
                 </div>
               )}
-              {profile.instructor.specialties?.length > 0 && (
+              {profile.instructor.specialties && profile.instructor.specialties.length > 0 && (
                 <div className="rounded-lg border border-[var(--color-neutral-200)] p-4">
                   <h2 className="font-medium mb-2">{isAr ? 'التخصصات' : 'Specialties'}</h2>
                   <div className="flex flex-wrap gap-1">

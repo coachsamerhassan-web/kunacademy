@@ -1,1 +1,1 @@
-{"root":["./src/index.ts","./src/stripe.ts"],"version":"5.9.3"}
+{"root":["./src/index.ts","./src/stripe.ts","./src/tabby.ts"],"version":"5.9.3"}

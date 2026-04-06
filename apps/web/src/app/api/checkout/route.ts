@@ -1,12 +1,8 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { withAdminContext } from '@kunacademy/db';
+import { payments } from '@kunacademy/db/schema';
+import { eq, and, gte, lte } from 'drizzle-orm';
 import { createCheckoutSession, createTabbySession } from '@kunacademy/payments';
-import type { Database } from '@kunacademy/db';
-
-const supabase = createClient<Database>(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 // KUN Egypt coaching — CIB InstaPay
 const INSTAPAY_CONFIG = {
@@ -22,15 +18,20 @@ const TABBY_MINIMUM = 250_000; // 2,500 AED/SAR in minor units
 
 async function generateUniqueInstapayAmount(baseAmount: number): Promise<number> {
   const today = new Date().toISOString().split('T')[0];
-  const { data: existing } = await supabase
-    .from('payments')
-    .select('amount')
-    .eq('gateway', 'instapay' as any)
-    .eq('status', 'pending')
-    .gte('created_at', today + 'T00:00:00Z')
-    .lte('created_at', today + 'T23:59:59Z');
+  const existing = await withAdminContext(async (db) => {
+    return db.select({ amount: payments.amount })
+      .from(payments)
+      .where(
+        and(
+          eq(payments.gateway, 'instapay'),
+          eq(payments.status, 'pending'),
+          gte(payments.created_at, today + 'T00:00:00Z'),
+          lte(payments.created_at, today + 'T23:59:59Z')
+        )
+      );
+  });
 
-  const usedSuffixes = new Set((existing || []).map((p) => p.amount % 100));
+  const usedSuffixes = new Set((existing || []).map((p: { amount: number }) => p.amount % 100));
   let suffix: number;
   let attempts = 0;
   do {
@@ -92,21 +93,23 @@ export async function POST(request: NextRequest) {
     if (gateway === 'instapay') {
       const uniqueAmount = await generateUniqueInstapayAmount(amount);
 
-      const { data: payment, error } = await supabase.from('payments').insert({
-        amount: uniqueAmount,
-        currency: 'EGP',
-        gateway: 'instapay' as any,
-        status: 'pending',
-        metadata: {
-          item_type, item_id, item_name, user_id, user_email,
-          base_amount: amount,
-          unique_suffix: uniqueAmount % 100,
-          verification_status: 'awaiting_transfer',
-          country,
-        },
-      }).select().single();
+      const [payment] = await withAdminContext(async (db) => {
+        return db.insert(payments).values({
+          amount: uniqueAmount,
+          currency: 'EGP',
+          gateway: 'instapay',
+          status: 'pending',
+          metadata: {
+            item_type, item_id, item_name, user_id, user_email,
+            base_amount: amount,
+            unique_suffix: uniqueAmount % 100,
+            verification_status: 'awaiting_transfer',
+            country,
+          },
+        }).returning();
+      });
 
-      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      if (!payment) return NextResponse.json({ error: 'Failed to create payment' }, { status: 500 });
 
       return NextResponse.json({
         payment_id: payment.id,
@@ -125,14 +128,16 @@ export async function POST(request: NextRequest) {
 
     // ── Stripe (International) ────────────────────────────────────────
     if (gateway === 'stripe') {
-      const { data: payment, error } = await supabase.from('payments').insert({
-        amount, currency,
-        gateway: 'stripe',
-        status: 'pending',
-        metadata: { item_type, item_id, item_name, user_id, user_email, country },
-      }).select().single();
+      const [payment] = await withAdminContext(async (db) => {
+        return db.insert(payments).values({
+          amount, currency,
+          gateway: 'stripe',
+          status: 'pending',
+          metadata: { item_type, item_id, item_name, user_id, user_email, country },
+        }).returning();
+      });
 
-      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      if (!payment) return NextResponse.json({ error: 'Failed to create payment' }, { status: 500 });
 
       if (!process.env.STRIPE_SECRET_KEY) {
         return NextResponse.json({ error: 'Stripe not configured' }, { status: 503 });
@@ -151,9 +156,11 @@ export async function POST(request: NextRequest) {
         metadata: { payment_id: payment.id, item_type, item_id, user_id },
       });
 
-      await supabase.from('payments').update({
-        gateway_payment_id: session.id,
-      }).eq('id', payment.id);
+      await withAdminContext(async (db) => {
+        await db.update(payments)
+          .set({ gateway_payment_id: session.id })
+          .where(eq(payments.id, payment.id));
+      });
 
       return NextResponse.json({ checkout_url: session.url, payment_id: payment.id, gateway: 'stripe' });
     }
@@ -164,14 +171,16 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Tabby not configured' }, { status: 503 });
       }
 
-      const { data: payment, error } = await supabase.from('payments').insert({
-        amount, currency,
-        gateway: 'tabby' as any,
-        status: 'pending',
-        metadata: { item_type, item_id, item_name, user_id, user_email, country },
-      }).select().single();
+      const [payment] = await withAdminContext(async (db) => {
+        return db.insert(payments).values({
+          amount, currency,
+          gateway: 'tabby',
+          status: 'pending',
+          metadata: { item_type, item_id, item_name, user_id, user_email, country },
+        }).returning();
+      });
 
-      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      if (!payment) return NextResponse.json({ error: 'Failed to create payment' }, { status: 500 });
 
       const successUrl = `${origin}/${locale || 'ar'}/checkout/success?payment_id=${payment.id}`;
       const cancelUrl = `${origin}/${locale || 'ar'}/checkout?type=${item_type}&id=${item_id}`;
@@ -198,17 +207,28 @@ export async function POST(request: NextRequest) {
       });
 
       if ('rejected' in result) {
-        await supabase.from('payments').update({ status: 'failed', metadata: { ...(payment.metadata as Record<string, unknown> ?? {}), tabby_rejection: result.reason } }).eq('id', payment.id);
+        await withAdminContext(async (db) => {
+          await db.update(payments)
+            .set({
+              status: 'failed',
+              metadata: { ...(payment.metadata as Record<string, unknown> ?? {}), tabby_rejection: result.reason },
+            })
+            .where(eq(payments.id, payment.id));
+        });
         return NextResponse.json({
           error: locale === 'ar' ? 'عذرًا، التقسيط غير متاح لهذا الطلب' : 'Sorry, installments are not available for this order',
           rejection_reason: result.reason,
         }, { status: 422 });
       }
 
-      await supabase.from('payments').update({
-        gateway_payment_id: result.paymentId,
-        metadata: { ...(payment.metadata as Record<string, unknown> ?? {}), tabby_session_id: result.sessionId },
-      }).eq('id', payment.id);
+      await withAdminContext(async (db) => {
+        await db.update(payments)
+          .set({
+            gateway_payment_id: result.paymentId,
+            metadata: { ...(payment.metadata as Record<string, unknown> ?? {}), tabby_session_id: result.sessionId },
+          })
+          .where(eq(payments.id, payment.id));
+      });
 
       return NextResponse.json({ checkout_url: result.checkoutUrl, payment_id: payment.id, gateway: 'tabby' });
     }

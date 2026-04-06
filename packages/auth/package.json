@@ -4,6 +4,10 @@
   "private": true,
   "main": "src/index.ts",
   "types": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./server": "./src/server.ts"
+  },
   "scripts": {
     "build": "tsc --build",
     "typecheck": "tsc --noEmit",
@@ -11,11 +15,13 @@
     "clean": "rm -rf dist .turbo"
   },
   "dependencies": {
+    "@auth/drizzle-adapter": "^1.11.1",
     "@kunacademy/db": "workspace:*",
-    "@supabase/ssr": "^0.9.0",
-    "@supabase/supabase-js": "*"
+    "bcryptjs": "^3.0.3",
+    "next-auth": "5.0.0-beta.30"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^3.0.0",
     "@types/node": "^25.5.0",
     "@types/react": "^19.2.14",
     "next": "16.2.1",

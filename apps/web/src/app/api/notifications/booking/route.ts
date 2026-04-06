@@ -1,11 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { withAdminContext } from '@kunacademy/db';
 import { notify } from '@kunacademy/email';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+import { isAdminRole, getAuthUser } from '@kunacademy/auth/server';
+import { sql } from 'drizzle-orm';
 
 /**
  * POST /api/notifications/booking
@@ -13,13 +10,8 @@ const supabase = createClient(
  * Sends booking confirmation via email + WhatsApp + Telegram.
  */
 export async function POST(request: NextRequest) {
-  const authHeader = request.headers.get('authorization');
-  if (!authHeader?.startsWith('Bearer ')) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  const token = authHeader.slice(7);
-  const { data: { user } } = await supabase.auth.getUser(token);
+  // Auth via Auth.js session (cookie-based)
+  const user = await getAuthUser();
   if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
@@ -31,49 +23,48 @@ export async function POST(request: NextRequest) {
   }
 
   // Fetch the booking with relations
-  const { data: booking, error } = await supabase
-    .from('bookings')
-    .select(`
-      *,
-      customer:profiles!bookings_customer_id_fkey(full_name_ar, full_name_en, email, phone),
-      coach:providers(profile:profiles(full_name_ar, full_name_en)),
-      service:services(name_en, name_ar)
-    `)
-    .eq('id', bookingId)
-    .single();
+  const booking = await withAdminContext(async (db) => {
+    const rows = await db.execute(
+      sql`
+        SELECT
+          b.*,
+          cp.full_name_ar AS customer_full_name_ar, cp.full_name_en AS customer_full_name_en,
+          cp.email AS customer_email, cp.phone AS customer_phone,
+          coach_p.full_name_ar AS coach_full_name_ar, coach_p.full_name_en AS coach_full_name_en,
+          s.name_en AS service_name_en, s.name_ar AS service_name_ar
+        FROM bookings b
+        LEFT JOIN profiles cp ON cp.id = b.customer_id
+        LEFT JOIN profiles coach_p ON coach_p.id = b.coach_id
+        LEFT JOIN services s ON s.id = b.service_id
+        WHERE b.id = ${bookingId}
+        LIMIT 1
+      `
+    );
+    return rows.rows[0] as any | undefined;
+  });
 
-  if (error || !booking) {
+  if (!booking) {
     return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
   }
 
   // Only the booking owner or an admin can trigger this notification
-  if (booking.customer_id !== user.id) {
-    const { data: callerProfile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single();
-    if (callerProfile?.role !== 'admin') {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
+  if (booking.customer_id !== user.id && !isAdminRole(user.role)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  const locale = (user.user_metadata?.locale as string) || 'ar';
-  const customer = booking.customer as any;
-  const coach = booking.coach as any;
-  const service = booking.service as any;
+  const locale = 'ar'; // default locale — client can pass locale in body if needed
 
   const results = await notify({
     event: 'booking_confirmed',
     locale,
-    email: customer?.email,
-    phone: customer?.phone,
+    email: booking.customer_email,
+    phone: booking.customer_phone,
     data: {
-      name: (locale === 'ar' ? customer?.full_name_ar : customer?.full_name_en) || customer?.email || '',
-      service: locale === 'ar' ? (service?.name_ar || '') : (service?.name_en || ''),
+      name: (locale === 'ar' ? booking.customer_full_name_ar : booking.customer_full_name_en) || booking.customer_email || '',
+      service: locale === 'ar' ? (booking.service_name_ar || '') : (booking.service_name_en || ''),
       date: booking.start_time ? booking.start_time.slice(0, 10) : '',
       time: booking.start_time?.slice(0, 5) || '',
-      coach: (locale === 'ar' ? coach?.profile?.full_name_ar : coach?.profile?.full_name_en) || '',
+      coach: (locale === 'ar' ? booking.coach_full_name_ar : booking.coach_full_name_en) || '',
       startTime: booking.start_time || '',
       endTime: booking.end_time || '',
     },

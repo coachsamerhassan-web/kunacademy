@@ -1,4 +1,9 @@
-// @kunacademy/auth — Auth logic (login, session, guards)
-export { signInWithMagicLink, signOut, getSession, getUser } from './actions';
+/**
+ * @kunacademy/auth — client-safe exports only.
+ * For server-only functions (requireAuth, requireAdmin, getAuthUser, etc.)
+ * import from '@kunacademy/auth/server'.
+ */
+export { signOut, getSession, getUser } from './actions';
 export { AuthProvider, useAuth } from './context';
-export { requireAuth, requireAdmin } from './guards';
+// isAdminRole is a pure function (no imports) — safe for client, server, and edge
+export { isAdminRole } from './roles';

@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { createBrowserClient } from '@kunacademy/db';
 
 interface Instructor {
   id: string;
@@ -20,22 +19,20 @@ export function InstructorsList({ locale }: { locale: string }) {
   const isAr = locale === 'ar';
 
   useEffect(() => {
-    const supabase = createBrowserClient();
-    if (!supabase) return;
-    supabase
-      .from('instructors')
-      .select('id, slug, title_ar, title_en, coach_level, is_visible, photo_url, profile_id')
-      .order('title_en')
-      .then(({ data }: { data: any }) => {
-        setInstructors(data || []);
+    fetch('/api/admin/instructors')
+      .then(r => r.ok ? r.json() : { instructors: [] })
+      .then(data => {
+        setInstructors(data.instructors || []);
         setLoading(false);
       });
   }, []);
 
   async function toggleVisibility(id: string, currentState: boolean) {
-    const supabase = createBrowserClient();
-    if (!supabase) return;
-    await supabase.from('instructors').update({ is_visible: !currentState }).eq('id', id);
+    await fetch('/api/admin/instructors', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, is_visible: !currentState }),
+    });
     setInstructors(prev => prev.map(i => i.id === id ? { ...i, is_visible: !currentState } : i));
   }
 

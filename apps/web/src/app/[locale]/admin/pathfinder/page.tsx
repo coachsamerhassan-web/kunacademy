@@ -2,7 +2,6 @@
 
 import { useAuth } from '@kunacademy/auth';
 import { useEffect, useState } from 'react';
-import { createBrowserClient } from '@kunacademy/db';
 import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
 import { useParams, useRouter } from 'next/navigation';
@@ -55,14 +54,11 @@ export default function AdminPathfinderPage() {
       router.push('/' + locale + '/auth/login');
       return;
     }
-    const supabase = createBrowserClient() as any;
-    (supabase
-      .from('pathfinder_responses')
-      .select('id, name, email, phone, type, journey_stage, locale, created_at, recommendations')
-      .order('created_at', { ascending: false })
-      .limit(500) as Promise<{ data: PathfinderResponse[] | null; error: unknown }>)
-      .then(({ data }) => {
-        setResponses(data ?? []);
+
+    fetch('/api/admin/pathfinder-responses')
+      .then((r) => r.json())
+      .then((data) => {
+        setResponses(data.responses ?? []);
         setLoading(false);
       })
       .catch(() => setLoading(false));

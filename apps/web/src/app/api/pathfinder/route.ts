@@ -1,11 +1,8 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-import { cms, scoreAnswers } from '@kunacademy/cms';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+import { db } from '@kunacademy/db';
+import { pathfinder_responses } from '@kunacademy/db/schema';
+import { cms } from '@kunacademy/cms/server';
+import { scoreAnswers } from '@kunacademy/cms';
 
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 const RATE_LIMIT_MAX = 20;
@@ -105,10 +102,10 @@ export async function POST(request: NextRequest) {
     // Determine journey stage from answers
     const journeyStage = determineJourneyStage(answers);
 
-    // Store in Supabase
-    const { data, error } = await supabase
-      .from('pathfinder_responses')
-      .insert({
+    // Store in DB using Drizzle
+    const [data] = await db
+      .insert(pathfinder_responses)
+      .values({
         name: sanitize(contact.name),
         email: sanitize(contact.email),
         phone: contact.phone ? sanitize(contact.phone) : null,
@@ -119,11 +116,10 @@ export async function POST(request: NextRequest) {
         journey_stage: journeyStage,
         locale,
       })
-      .select('id')
-      .single();
+      .returning({ id: pathfinder_responses.id });
 
-    if (error) {
-      console.error('[api/pathfinder] Insert error:', error);
+    if (!data) {
+      console.error('[api/pathfinder] Insert returned no data');
       return NextResponse.json({ error: 'Failed to save response' }, { status: 500 });
     }
 

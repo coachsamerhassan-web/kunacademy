@@ -11,13 +11,14 @@ export {
   sendBookingReminder,
   sendInstallmentReminder,
   sendPayoutNotification,
+  sendProposalEmail,
 } from './sender';
 
 // Calendar invites
 export { generateICS } from './ics';
 
 // Internal alerts (Telegram)
-export { sendTelegramAlert, alertPaymentReceived, alertNewEnrollment, alertNewBooking } from './telegram';
+export { sendTelegramAlert, alertPaymentReceived, alertNewEnrollment, alertNewBooking, alertNewProposal, alertCriticalError, alertWebhookFailure, alertPaymentMismatch } from './telegram';
 
 // Customer messaging (WhatsApp)
 export { sendWhatsApp, whatsappBookingConfirmation, whatsappBookingReminder, whatsappPaymentConfirmation } from './whatsapp';

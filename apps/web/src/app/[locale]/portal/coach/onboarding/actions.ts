@@ -1,6 +1,8 @@
 'use server';
 
-import { createAdminClient } from '@kunacademy/db';
+import { withAdminContext } from '@kunacademy/db';
+import { uploadFile, getPublicUrl } from '@kunacademy/db/storage';
+import { sql } from 'drizzle-orm';
 
 export async function updateCoachProfile(instructorId: string, data: {
   bio_ar?: string;
@@ -10,32 +12,61 @@ export async function updateCoachProfile(instructorId: string, data: {
   specialties?: string[];
   coaching_styles?: string[];
 }) {
-  const supabase = createAdminClient();
-  const { error } = await supabase
-    .from('instructors')
-    .update(data as any)
-    .eq('id', instructorId);
-  if (error) return { success: false, error: error.message };
-  return { success: true };
+  try {
+    await withAdminContext(async (db) => {
+      // Issue individual updates for each provided field — simple, safe, no dynamic SQL
+      if (data.bio_ar !== undefined) {
+        await db.execute(sql`UPDATE instructors SET bio_ar = ${data.bio_ar} WHERE id = ${instructorId}`);
+      }
+      if (data.bio_en !== undefined) {
+        await db.execute(sql`UPDATE instructors SET bio_en = ${data.bio_en} WHERE id = ${instructorId}`);
+      }
+      if (data.credentials !== undefined) {
+        await db.execute(sql`UPDATE instructors SET credentials = ${data.credentials} WHERE id = ${instructorId}`);
+      }
+      if (data.coach_level !== undefined) {
+        await db.execute(sql`UPDATE instructors SET coach_level = ${data.coach_level} WHERE id = ${instructorId}`);
+      }
+      if (data.specialties !== undefined) {
+        await db.execute(sql`UPDATE instructors SET specialties = ${JSON.stringify(data.specialties)} WHERE id = ${instructorId}`);
+      }
+      if (data.coaching_styles !== undefined) {
+        await db.execute(sql`UPDATE instructors SET coaching_styles = ${JSON.stringify(data.coaching_styles)} WHERE id = ${instructorId}`);
+      }
+    });
+    return { success: true };
+  } catch (e: any) {
+    return { success: false, error: e.message };
+  }
 }
 
 export async function uploadAvatar(instructorId: string, profileId: string, formData: FormData) {
-  const supabase = createAdminClient();
   const file = formData.get('avatar') as File;
   if (!file) return { success: false, error: 'No file provided' };
 
   const ext = file.name.split('.').pop();
-  const path = `avatars/${profileId}.${ext}`;
+  const filePath = `${profileId}.${ext}`;
+  const contentType = file.type || 'application/octet-stream';
 
-  const { error: uploadError } = await supabase.storage
-    .from('avatars')
-    .upload(path, file, { upsert: true });
-  if (uploadError) return { success: false, error: uploadError.message };
+  let publicUrl: string;
+  try {
+    const ab = await file.arrayBuffer();
+    const buffer = Buffer.from(ab);
+    await uploadFile('avatars', filePath, buffer, { contentType, upsert: true });
+    publicUrl = getPublicUrl('avatars', filePath);
+  } catch (err: any) {
+    return { success: false, error: err.message ?? 'Upload failed' };
+  }
 
-  const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path);
-
-  await supabase.from('instructors').update({ photo_url: publicUrl } as any).eq('id', instructorId);
-  await supabase.from('profiles').update({ avatar_url: publicUrl } as any).eq('id', profileId);
+  // Update DB via Drizzle after getting public URL from local storage
+  await withAdminContext(async (db) => {
+    await db.execute(
+      sql`UPDATE instructors SET photo_url = ${publicUrl} WHERE id = ${instructorId}`
+    );
+    await db.execute(
+      sql`UPDATE profiles SET avatar_url = ${publicUrl} WHERE id = ${profileId}`
+    );
+  });
 
   return { success: true, url: publicUrl };
 }
@@ -46,31 +77,40 @@ export async function saveSchedule(coachId: string, schedule: Array<{
   end_time: string;
   timezone: string;
 }>) {
-  const supabase = createAdminClient();
-  await supabase.from('coach_schedules').delete().eq('coach_id', coachId);
+  await withAdminContext(async (db) => {
+    await db.execute(
+      sql`DELETE FROM coach_schedules WHERE coach_id = ${coachId}`
+    );
+  });
 
   if (schedule.length === 0) return { success: true };
 
-  const rows = schedule.map(s => ({
-    coach_id: coachId,
-    day_of_week: s.day_of_week,
-    start_time: s.start_time,
-    end_time: s.end_time,
-    timezone: s.timezone,
-    is_active: true,
-  }));
-
-  const { error } = await supabase.from('coach_schedules').insert(rows as any);
-  if (error) return { success: false, error: error.message };
-  return { success: true };
+  try {
+    await withAdminContext(async (db) => {
+      for (const s of schedule) {
+        await db.execute(
+          sql`
+            INSERT INTO coach_schedules (coach_id, day_of_week, start_time, end_time, timezone, is_active)
+            VALUES (${coachId}, ${s.day_of_week}, ${s.start_time}, ${s.end_time}, ${s.timezone}, true)
+          `
+        );
+      }
+    });
+    return { success: true };
+  } catch (e: any) {
+    return { success: false, error: e.message };
+  }
 }
 
 export async function submitForApproval(instructorId: string) {
-  const supabase = createAdminClient();
-  const { error } = await supabase
-    .from('instructors')
-    .update({ is_visible: false } as any)
-    .eq('id', instructorId);
-  if (error) return { success: false, error: error.message };
-  return { success: true };
+  try {
+    await withAdminContext(async (db) => {
+      await db.execute(
+        sql`UPDATE instructors SET is_visible = false WHERE id = ${instructorId}`
+      );
+    });
+    return { success: true };
+  } catch (e: any) {
+    return { success: false, error: e.message };
+  }
 }

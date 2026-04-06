@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { createBrowserClient } from '@kunacademy/db';
 
 interface Member {
   id: string;
@@ -24,12 +23,13 @@ export function CommunityMembers({ locale }: { locale: string }) {
   const isAr = locale === 'ar';
 
   useEffect(() => {
-    const supabase = createBrowserClient();
-    if (!supabase) return;
-    supabase.from('profiles').select('id, full_name_ar, full_name_en, avatar_url, role, country')
-      .order('created_at', { ascending: false })
-      .limit(50)
-      .then(({ data }) => { setMembers(data || []); setLoading(false); });
+    fetch('/api/community/members')
+      .then((r) => r.json())
+      .then((data) => {
+        setMembers(data.members || []);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
   }, []);
 
   if (loading) return <div className="py-8 text-center text-[var(--color-neutral-500)]">{isAr ? 'جاري التحميل...' : 'Loading...'}</div>;

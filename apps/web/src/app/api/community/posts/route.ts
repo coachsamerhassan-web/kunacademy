@@ -1,5 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createAdminClient } from '@kunacademy/db';
+import { db, withAdminContext } from '@kunacademy/db';
+import { getAuthUser } from '@kunacademy/auth/server';
+import {
+  community_posts,
+  community_reactions,
+} from '@kunacademy/db/schema';
+import { eq, isNull, inArray, desc, sql } from 'drizzle-orm';
+import { profiles } from '@kunacademy/db/schema';
 
 /**
  * Community Posts API
@@ -8,59 +15,103 @@ import { createAdminClient } from '@kunacademy/db';
  */
 export async function GET(req: NextRequest) {
   try {
-    const supabase = createAdminClient();
     const { searchParams } = new URL(req.url);
     const boardId = searchParams.get('board_id');
     const page = parseInt(searchParams.get('page') || '1');
     const limit = 20;
+    const offset = (page - 1) * limit;
 
     if (!boardId) {
       return NextResponse.json({ error: 'board_id required' }, { status: 400 });
     }
 
-    // Get top-level posts (not replies)
-    const { data: posts, error, count } = await supabase
-      .from('community_posts')
-      .select(`
-        id, content, is_pinned, created_at, updated_at,
-        author:profiles!community_posts_author_id_fkey(id, full_name, avatar_url, role),
-        reactions:community_reactions(id, reaction, user_id)
-      `, { count: 'exact' })
-      .eq('board_id', boardId)
-      .is('parent_id', null)
-      .order('is_pinned', { ascending: false })
-      .order('created_at', { ascending: false })
-      .range((page - 1) * limit, page * limit - 1);
+    // Get top-level posts (not replies) with author and reactions
+    const postsRaw = await db
+      .select({
+        id: community_posts.id,
+        content: community_posts.content,
+        is_pinned: community_posts.is_pinned,
+        created_at: community_posts.created_at,
+        updated_at: community_posts.updated_at,
+        author_id: community_posts.author_id,
+        author_full_name_ar: profiles.full_name_ar,
+        author_full_name_en: profiles.full_name_en,
+        author_avatar_url: profiles.avatar_url,
+        author_role: profiles.role,
+      })
+      .from(community_posts)
+      .leftJoin(profiles, eq(community_posts.author_id, profiles.id))
+      .where(
+        sql`${community_posts.board_id} = ${boardId} AND ${community_posts.parent_id} IS NULL`
+      )
+      .orderBy(desc(community_posts.is_pinned), desc(community_posts.created_at))
+      .limit(limit)
+      .offset(offset);
 
-    if (error) throw error;
+    // Count total top-level posts for pagination
+    const countResult = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(community_posts)
+      .where(
+        sql`${community_posts.board_id} = ${boardId} AND ${community_posts.parent_id} IS NULL`
+      );
+    const total = Number(countResult[0]?.count ?? 0);
 
     // Get reply counts for each post
-    const postIds = (posts || []).map((p) => p.id);
+    const postIds = postsRaw.map((p) => p.id);
     let replyCounts: Record<string, number> = {};
     if (postIds.length) {
-      const { data: counts } = await supabase
-        .from('community_posts')
-        .select('parent_id')
-        .in('parent_id', postIds);
+      const repliesRaw = await db
+        .select({ parent_id: community_posts.parent_id })
+        .from(community_posts)
+        .where(inArray(community_posts.parent_id, postIds));
 
-      for (const c of counts || []) {
-        if (c.parent_id) {
-          replyCounts[c.parent_id] = (replyCounts[c.parent_id] || 0) + 1;
+      for (const r of repliesRaw) {
+        if (r.parent_id) {
+          replyCounts[r.parent_id] = (replyCounts[r.parent_id] || 0) + 1;
         }
       }
     }
 
-    const enrichedPosts = (posts || []).map((p) => ({
-      ...p,
+    // Get reactions for each post
+    let reactionsByPost: Record<string, Array<{ reaction: string; user_id: string }>> = {};
+    if (postIds.length) {
+      const reactionsRaw = await db
+        .select({
+          post_id: community_reactions.post_id,
+          reaction: community_reactions.reaction,
+          user_id: community_reactions.user_id,
+        })
+        .from(community_reactions)
+        .where(inArray(community_reactions.post_id, postIds));
+
+      for (const r of reactionsRaw) {
+        if (!reactionsByPost[r.post_id]) reactionsByPost[r.post_id] = [];
+        reactionsByPost[r.post_id].push({ reaction: r.reaction, user_id: r.user_id });
+      }
+    }
+
+    const enrichedPosts = postsRaw.map((p) => ({
+      id: p.id,
+      content: p.content,
+      is_pinned: p.is_pinned,
+      created_at: p.created_at,
+      updated_at: p.updated_at,
+      author: {
+        id: p.author_id,
+        full_name: p.author_full_name_en,
+        avatar_url: p.author_avatar_url,
+        role: p.author_role,
+      },
       reply_count: replyCounts[p.id] || 0,
-      reaction_summary: summarizeReactions(p.reactions || []),
+      reaction_summary: summarizeReactions(reactionsByPost[p.id] || []),
     }));
 
     return NextResponse.json({
       posts: enrichedPosts,
-      total: count || 0,
+      total,
       page,
-      has_more: (count || 0) > page * limit,
+      has_more: total > page * limit,
     });
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 });
@@ -69,11 +120,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const supabase = createAdminClient();
-    const authHeader = req.headers.get('authorization');
-    if (!authHeader) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
-    const { data: { user } } = await supabase.auth.getUser(authHeader.replace('Bearer ', ''));
+    const user = await getAuthUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await req.json();
@@ -83,18 +130,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'board_id and content required' }, { status: 400 });
     }
 
-    const { data: post, error } = await supabase
-      .from('community_posts')
-      .insert({
+    const [post] = await db
+      .insert(community_posts)
+      .values({
         board_id,
         author_id: user.id,
         content: content.trim(),
         parent_id: parent_id || null,
       })
-      .select('id, content, created_at')
-      .single();
-
-    if (error) throw error;
+      .returning({
+        id: community_posts.id,
+        content: community_posts.content,
+        created_at: community_posts.created_at,
+      });
 
     return NextResponse.json({ post }, { status: 201 });
   } catch (e) {

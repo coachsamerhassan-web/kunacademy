@@ -1,66 +1,64 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-import type { Database } from '@kunacademy/db';
-
-const supabase = createClient<Database>(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
-async function getUser(request: NextRequest) {
-  const authHeader = request.headers.get('authorization');
-  if (!authHeader?.startsWith('Bearer ')) return null;
-  const token = authHeader.slice(7);
-  const { data: { user } } = await supabase.auth.getUser(token);
-  return user;
-}
+import { db, withAdminContext } from '@kunacademy/db';
+import { getAuthUser } from '@kunacademy/auth/server';
+import { eq, and, inArray } from 'drizzle-orm';
+import { lessons, enrollments, lesson_progress, certificates } from '@kunacademy/db/schema';
 
 // GET /api/lms/progress?courseId=xxx — get all lesson progress for a course
 export async function GET(request: NextRequest) {
-  const user = await getUser(request);
+  const user = await getAuthUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const courseId = request.nextUrl.searchParams.get('courseId');
   if (!courseId) return NextResponse.json({ error: 'courseId required' }, { status: 400 });
 
   // Verify enrollment
-  const { data: enrollment } = await supabase
-    .from('enrollments')
-    .select('id, status')
-    .eq('user_id', user.id)
-    .eq('course_id', courseId)
-    .in('status', ['enrolled', 'in_progress', 'completed'])
-    .single();
+  const enrollmentRows = await db
+    .select({ id: enrollments.id, status: enrollments.status })
+    .from(enrollments)
+    .where(
+      and(
+        eq(enrollments.user_id, user.id),
+        eq(enrollments.course_id, courseId)
+      )
+    )
+    .limit(1);
 
-  if (!enrollment) {
+  const enrollment = enrollmentRows[0] ?? null;
+
+  if (!enrollment || !['enrolled', 'in_progress', 'completed'].includes(enrollment.status ?? '')) {
     return NextResponse.json({ error: 'Not enrolled' }, { status: 403 });
   }
 
   // Get all lesson IDs for this course
-  const { data: lessons } = await supabase
-    .from('lessons')
-    .select('id')
-    .eq('course_id', courseId);
+  const lessonRows = await db
+    .select({ id: lessons.id })
+    .from(lessons)
+    .where(eq(lessons.course_id, courseId));
 
-  if (!lessons?.length) {
+  if (!lessonRows.length) {
     return NextResponse.json({ progress: [], enrollment });
   }
 
-  const lessonIds = lessons.map((l: { id: string }) => l.id);
+  const lessonIds = lessonRows.map((l) => l.id);
 
   // Get progress for all lessons
-  const { data: progress } = await supabase
-    .from('lesson_progress')
-    .select('*')
-    .eq('user_id', user.id)
-    .in('lesson_id', lessonIds);
+  const progress = await db
+    .select()
+    .from(lesson_progress)
+    .where(
+      and(
+        eq(lesson_progress.user_id, user.id),
+        inArray(lesson_progress.lesson_id, lessonIds)
+      )
+    );
 
-  return NextResponse.json({ progress: progress ?? [], enrollment });
+  return NextResponse.json({ progress, enrollment });
 }
 
 // POST /api/lms/progress — update lesson progress
 export async function POST(request: NextRequest) {
-  const user = await getUser(request);
+  const user = await getAuthUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const body = await request.json();
@@ -71,99 +69,130 @@ export async function POST(request: NextRequest) {
   }
 
   // Verify enrollment
-  const { data: enrollment } = await supabase
-    .from('enrollments')
-    .select('id, status')
-    .eq('user_id', user.id)
-    .eq('course_id', courseId)
-    .in('status', ['enrolled', 'in_progress', 'completed'])
-    .single();
+  const enrollmentRows = await db
+    .select({ id: enrollments.id, status: enrollments.status })
+    .from(enrollments)
+    .where(
+      and(
+        eq(enrollments.user_id, user.id),
+        eq(enrollments.course_id, courseId)
+      )
+    )
+    .limit(1);
 
-  if (!enrollment) {
+  const enrollment = enrollmentRows[0] ?? null;
+
+  if (!enrollment || !['enrolled', 'in_progress', 'completed'].includes(enrollment.status ?? '')) {
     return NextResponse.json({ error: 'Not enrolled' }, { status: 403 });
   }
 
   // Update enrollment status to in_progress if still 'enrolled'
   if (enrollment.status === 'enrolled') {
-    await supabase
-      .from('enrollments')
-      .update({ status: 'in_progress' })
-      .eq('id', enrollment.id);
+    await withAdminContext(async (adminDb) => {
+      await adminDb
+        .update(enrollments)
+        .set({ status: 'in_progress' })
+        .where(eq(enrollments.id, enrollment.id));
+    });
   }
 
   // Upsert lesson progress
-  const updateData = {
+  const now = new Date();
+  const updateValues: Partial<typeof lesson_progress.$inferInsert> = {
     user_id: user.id,
     lesson_id: lessonId as string,
-    updated_at: new Date().toISOString(),
-    ...(typeof playbackPosition === 'number' ? { playback_position_seconds: Math.floor(playbackPosition) } : {}),
-    ...(completed === true ? { completed: true, completed_at: new Date().toISOString() } : {}),
+    updated_at: now.toISOString(),
   };
 
-  const { data: progress, error } = await supabase
-    .from('lesson_progress')
-    .upsert(updateData, { onConflict: 'user_id,lesson_id' })
-    .select()
-    .single();
+  if (typeof playbackPosition === 'number') {
+    updateValues.playback_position_seconds = Math.floor(playbackPosition);
+  }
+  if (completed === true) {
+    updateValues.completed = true;
+    updateValues.completed_at = now.toISOString();
+  }
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  let progressRow: typeof lesson_progress.$inferSelect | null = null;
+  try {
+    await withAdminContext(async (adminDb) => {
+      const rows = await adminDb
+        .insert(lesson_progress)
+        .values(updateValues as typeof lesson_progress.$inferInsert)
+        .onConflictDoUpdate({
+          target: [lesson_progress.user_id, lesson_progress.lesson_id],
+          set: updateValues,
+        })
+        .returning();
+      progressRow = rows[0] ?? null;
+    });
+  } catch (e: any) {
+    return NextResponse.json({ error: e?.message ?? 'Progress update failed' }, { status: 500 });
   }
 
   // Check if ALL lessons are completed → mark enrollment as completed
   if (completed) {
-    const { data: allLessons } = await supabase
-      .from('lessons')
-      .select('id')
-      .eq('course_id', courseId);
+    const allLessons = await db
+      .select({ id: lessons.id })
+      .from(lessons)
+      .where(eq(lessons.course_id, courseId));
 
-    const { data: completedLessons } = await supabase
-      .from('lesson_progress')
-      .select('lesson_id')
-      .eq('user_id', user.id)
-      .eq('completed', true)
-      .in('lesson_id', (allLessons ?? []).map((l: { id: string }) => l.id));
+    const allLessonIds = allLessons.map((l) => l.id);
 
-    if (allLessons && completedLessons && completedLessons.length >= allLessons.length) {
-      await supabase
-        .from('enrollments')
-        .update({
-          status: 'completed',
-          completed_at: new Date().toISOString(),
-        })
-        .eq('id', enrollment.id);
+    const completedLessons = await db
+      .select({ lesson_id: lesson_progress.lesson_id })
+      .from(lesson_progress)
+      .where(
+        and(
+          eq(lesson_progress.user_id, user.id),
+          eq(lesson_progress.completed, true),
+          inArray(lesson_progress.lesson_id, allLessonIds)
+        )
+      );
 
-      // Auto-generate certificate
-      const { data: existingCert } = await supabase
-        .from('certificates')
-        .select('id')
-        .eq('enrollment_id', enrollment.id)
-        .single();
+    if (allLessons.length > 0 && completedLessons.length >= allLessons.length) {
+      const completedAt = new Date();
+      await withAdminContext(async (adminDb) => {
+        await adminDb
+          .update(enrollments)
+          .set({ status: 'completed', completed_at: completedAt })
+          .where(eq(enrollments.id, enrollment.id));
+      });
 
-      if (!existingCert) {
-        const { data: newCert } = await supabase
-          .from('certificates')
-          .insert({
-            user_id: user.id,
-            enrollment_id: enrollment.id,
-            credential_type: 'completion',
-            issued_at: new Date().toISOString(),
-          })
-          .select('id')
-          .single();
+      // Auto-generate certificate if not already existing
+      const existingCert = await db
+        .select({ id: certificates.id })
+        .from(certificates)
+        .where(eq(certificates.enrollment_id, enrollment.id))
+        .limit(1);
+
+      if (!existingCert.length) {
+        let newCertId: string | null = null;
+        await withAdminContext(async (adminDb) => {
+          const rows = await adminDb
+            .insert(certificates)
+            .values({
+              user_id: user.id,
+              enrollment_id: enrollment.id,
+              credential_type: 'completion',
+              issued_at: completedAt,
+            })
+            .returning({ id: certificates.id });
+          newCertId = rows[0]?.id ?? null;
+        });
 
         // Trigger PDF generation asynchronously — non-blocking
-        if (newCert?.id) {
+        if (newCertId) {
           const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://kunacademy.com';
-          const authToken = request.headers.get('authorization')?.slice(7);
-          if (authToken) {
+          // Use internal service token or skip if no Bearer token mechanism available
+          const authHeader = request.headers.get('authorization');
+          if (authHeader) {
             fetch(`${appUrl}/api/certificates/generate`, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
-                Authorization: `Bearer ${authToken}`,
+                Authorization: authHeader,
               },
-              body: JSON.stringify({ certificate_id: newCert.id }),
+              body: JSON.stringify({ certificate_id: newCertId }),
             }).catch((e) => console.error('[lms/progress] Certificate PDF generation failed:', e));
           }
         }
@@ -171,5 +200,5 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  return NextResponse.json({ progress });
+  return NextResponse.json({ progress: progressRow });
 }

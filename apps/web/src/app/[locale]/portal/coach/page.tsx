@@ -2,7 +2,6 @@
 
 import { useAuth } from '@kunacademy/auth';
 import { useEffect, useState } from 'react';
-import { createBrowserClient } from '@kunacademy/db';
 import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
 import { Button } from '@kunacademy/ui/button';
@@ -20,30 +19,14 @@ export default function CoachDashboard() {
 
   useEffect(() => {
     if (!user) return;
-    const supabase = createBrowserClient();
-
-    supabase.from('instructors').select('id, title_ar, title_en, is_visible').eq('profile_id', user.id).single().then(({ data }) => {
-      if (!data) return;
-      setInstructor(data);
-
-      supabase.from('providers').select('id').eq('profile_id', user.id).single().then(async ({ data: provider }) => {
-        if (!provider) return;
-        const [upcoming, total, drafts, bookingsData] = await Promise.all([
-          supabase.from('bookings').select('id', { count: 'exact', head: true }).eq('provider_id', provider.id).eq('status', 'confirmed'),
-          supabase.from('bookings').select('id', { count: 'exact', head: true }).eq('provider_id', provider.id).eq('status', 'completed'),
-          supabase.from('instructor_drafts').select('id', { count: 'exact', head: true }).eq('instructor_id', data.id).eq('status', 'pending'),
-          supabase.from('bookings').select('id, start_time, status, service:services(name_ar, name_en), customer:profiles(full_name_ar, full_name_en, email)')
-            .eq('provider_id', provider.id).order('start_time', { ascending: false }).limit(5),
-        ]);
-        setStats({
-          upcomingBookings: upcoming.count ?? 0,
-          totalSessions: total.count ?? 0,
-          pendingDrafts: drafts.count ?? 0,
-          totalEarnings: 0, // Wave D
-        });
-        setRecentBookings(bookingsData.data || []);
+    fetch('/api/coach/dashboard')
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (!data) return;
+        if (data.instructor) setInstructor(data.instructor);
+        if (data.stats) setStats(data.stats);
+        if (data.recentBookings) setRecentBookings(data.recentBookings);
       });
-    });
   }, [user]);
 
   if (authLoading) return <Section><p className="text-center py-12">{isAr ? 'جاري التحميل...' : 'Loading...'}</p></Section>;

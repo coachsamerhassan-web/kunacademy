@@ -84,3 +84,80 @@ export async function alertNewBooking(details: {
     message: `📅 <b>New Booking</b>\nStudent: ${details.studentName}\nCoach: ${details.coachName}\nService: ${details.service}\nDate: ${details.date}`,
   });
 }
+
+/** Shorthand: alert Samer about a critical application error. Non-blocking — never throws. */
+export async function alertCriticalError(params: {
+  error: string;
+  context: string;
+  route?: string;
+}) {
+  try {
+    await sendTelegramAlert({
+      to: 'samer',
+      message: `🚨 <b>CRITICAL ERROR</b>\n\n<b>Context:</b> ${params.context}\n<b>Route:</b> ${params.route ?? 'unknown'}\n<b>Error:</b> ${params.error}`,
+    });
+  } catch (err) {
+    console.error('[telegram] alertCriticalError failed silently:', err);
+  }
+}
+
+/** 6.5.7 — Alert Samer + Amin when a webhook event fails processing. Non-blocking — never throws. */
+export async function alertWebhookFailure(params: {
+  gateway: string;
+  eventType: string;
+  eventId: string;
+  error: string;
+}) {
+  const message =
+    `⚠️ <b>Webhook Processing Failed</b>\n\n` +
+    `<b>Gateway:</b> ${params.gateway}\n` +
+    `<b>Event:</b> ${params.eventType}\n` +
+    `<b>Event ID:</b> ${params.eventId}\n` +
+    `<b>Error:</b> ${params.error}`;
+  try {
+    await Promise.allSettled([
+      sendTelegramAlert({ to: 'samer', message }),
+      sendTelegramAlert({ to: 'amin', message }),
+    ]);
+  } catch (err) {
+    console.error('[telegram] alertWebhookFailure failed silently:', err);
+  }
+}
+
+/** 6.5.8 — Alert Amin when a payment amount doesn't match the expected value. Non-blocking — never throws. */
+export async function alertPaymentMismatch(params: {
+  paymentId: string;
+  expectedAmount: number;
+  actualAmount: number;
+  currency: string;
+  gateway: string;
+}) {
+  const message =
+    `🔴 <b>Payment Amount Mismatch!</b>\n\n` +
+    `<b>Payment ID:</b> ${params.paymentId}\n` +
+    `<b>Expected:</b> ${params.expectedAmount} ${params.currency}\n` +
+    `<b>Received:</b> ${params.actualAmount} ${params.currency}\n` +
+    `<b>Gateway:</b> ${params.gateway}\n\n` +
+    `⚡ Manual verification required.`;
+  try {
+    await sendTelegramAlert({ to: 'amin', message });
+  } catch (err) {
+    console.error('[telegram] alertPaymentMismatch failed silently:', err);
+  }
+}
+
+/** Shorthand: alert Samer about a new corporate proposal */
+export async function alertNewProposal(details: {
+  name: string;
+  email: string;
+  jobTitle: string;
+  direction: string;
+  totalSavings: number;
+  roiMultiple: number;
+}) {
+  const formattedSavings = details.totalSavings.toLocaleString('en-AE');
+  return sendTelegramAlert({
+    to: 'samer',
+    message: `🏢 <b>New Corporate Proposal</b>\nName: ${details.name}\nEmail: ${details.email}\nTitle: ${details.jobTitle}\nDirection: ${details.direction}\nProjected Savings: AED ${formattedSavings}\nROI: ${details.roiMultiple}×`,
+  });
+}

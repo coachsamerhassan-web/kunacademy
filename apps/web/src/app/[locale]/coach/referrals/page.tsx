@@ -1,7 +1,6 @@
 'use client';
 
 import { useAuth } from '@kunacademy/auth';
-import { createBrowserClient } from '@kunacademy/db';
 import { Section } from '@kunacademy/ui/section';
 import { Card } from '@kunacademy/ui/card';
 import { useState, useEffect, use, useCallback } from 'react';
@@ -25,15 +24,19 @@ export default function CoachReferralsPage({ params }: { params: Promise<{ local
 
   useEffect(() => {
     if (!user) return;
-    const supabase = createBrowserClient();
+
     Promise.all([
-      supabase.from('referral_codes').select('code').eq('user_id', user.id).single(),
-      (supabase as any).from('referral_uses').select('id', { count: 'exact', head: true }).eq('referrer_id', user.id),
-    ]).then(([codeRes, usesRes]) => {
-      setReferralCode(codeRes.data?.code ?? null);
-      setReferralCount(usesRes.count ?? 0);
+      fetch('/api/referrals'),
+      // Note: referral_uses table referenced in original code does not exist in schema.
+      // Using the referral count from /api/referrals instead.
+    ]).then(async ([codeRes]) => {
+      if (codeRes.ok) {
+        const data = await codeRes.json();
+        setReferralCode(data.code ?? null);
+        setReferralCount(data.total_referrals ?? 0);
+      }
       setLoading(false);
-    });
+    }).catch(() => setLoading(false));
   }, [user]);
 
   return (

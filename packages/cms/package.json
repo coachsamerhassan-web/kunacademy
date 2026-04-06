@@ -4,14 +4,26 @@
   "private": true,
   "main": "src/index.ts",
   "types": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./server": "./src/server.ts"
+  },
   "scripts": {
     "build": "tsc --build",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src/",
     "clean": "rm -rf dist .turbo"
   },
+  "peerDependencies": {
+    "react": ">=18"
+  },
   "devDependencies": {
     "@types/node": "^20.19.37",
+    "@types/react": "^19.2.14",
+    "react": "*",
     "typescript": "*"
+  },
+  "dependencies": {
+    "isomorphic-dompurify": "^3.7.1"
   }
 }

@@ -1,7 +1,6 @@
 'use client';
 
 import { useAuth } from '@kunacademy/auth';
-import { createBrowserClient } from '@kunacademy/db';
 import { Section } from '@kunacademy/ui/section';
 import { Card } from '@kunacademy/ui/card';
 import { useState, useEffect, use } from 'react';
@@ -24,14 +23,10 @@ export default function ProfilePage({ params }: { params: Promise<{ locale: stri
 
   useEffect(() => {
     if (!user) return;
-    const supabase = createBrowserClient();
-    supabase
-      .from('profiles')
-      .select('full_name_ar, full_name_en, email, phone, country, avatar_url')
-      .eq('id', user.id)
-      .single()
-      .then(({ data }: { data: any }) => {
-        setProfile(data as Profile | null);
+    fetch('/api/user/profile')
+      .then(r => r.ok ? r.json() : { profile: null })
+      .then(data => {
+        setProfile(data.profile as Profile | null);
         setLoading(false);
       });
   }, [user]);

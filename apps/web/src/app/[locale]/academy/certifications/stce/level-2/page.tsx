@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { setRequestLocale } from 'next-intl/server';
-import { cms } from '@kunacademy/cms';
+import { cms } from '@kunacademy/cms/server';
 import { ProgramDetail } from '@/components/program-detail';
 import { notFound } from 'next/navigation';
 

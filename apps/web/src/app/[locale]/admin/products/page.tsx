@@ -2,7 +2,6 @@
 
 import { useAuth } from '@kunacademy/auth';
 import { useEffect, useState } from 'react';
-import { createBrowserClient } from '@kunacademy/db';
 import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
 import { useParams, useRouter } from 'next/navigation';
@@ -13,13 +12,10 @@ interface Product {
   name_ar: string;
   name_en: string;
   slug: string;
-  product_type: string;
-  price_aed: number;
+  product_type: string | null;
+  price_aed: number | null;
   price_egp: number | null;
-  price_eur: number | null;
-  published: boolean;
-  created_at: string;
-  thumbnail_url: string | null;
+  is_active: boolean | null;
 }
 
 const typeLabels: Record<string, { ar: string; en: string; className: string }> = {
@@ -39,15 +35,14 @@ export default function AdminProductsPage() {
   useEffect(() => {
     if (authLoading) return;
     if (!user || profile?.role !== 'admin') { router.push('/' + locale + '/auth/login'); return; }
-    const s = createBrowserClient();
-    s.from('products')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(200)
-      .then(({ data }: any) => {
-        setProducts(data ?? []);
+
+    fetch('/api/admin/products')
+      .then(r => r.json())
+      .then(({ products }) => {
+        setProducts(products ?? []);
         setLoading(false);
-      });
+      })
+      .catch(() => setLoading(false));
   }, [user, profile, authLoading]);
 
   if (authLoading || loading) return <Section><p className="text-center py-12">Loading...</p></Section>;
@@ -61,7 +56,7 @@ export default function AdminProductsPage() {
             <p className="mt-1 text-sm text-[var(--color-neutral-500)]">
               {products.length} {isAr ? 'منتج' : 'products'}
               {' · '}
-              {products.filter(p => p.published).length} {isAr ? 'منشور' : 'published'}
+              {products.filter(p => p.is_active).length} {isAr ? 'نشط' : 'active'}
             </p>
           </div>
           <a href={'/' + locale + '/admin'} className="text-[var(--color-primary)] text-sm hover:underline flex items-center gap-1">
@@ -78,32 +73,21 @@ export default function AdminProductsPage() {
                 <th className="px-4 py-3 text-start font-medium text-[var(--color-neutral-500)]">{isAr ? 'النوع' : 'Type'}</th>
                 <th className="px-4 py-3 text-start font-medium text-[var(--color-neutral-500)]">{isAr ? 'السعر' : 'Price'}</th>
                 <th className="px-4 py-3 text-start font-medium text-[var(--color-neutral-500)]">{isAr ? 'الحالة' : 'Status'}</th>
-                <th className="px-4 py-3 text-start font-medium text-[var(--color-neutral-500)]">{isAr ? 'التاريخ' : 'Created'}</th>
               </tr>
             </thead>
             <tbody>
               {products.length === 0 ? (
-                <tr><td colSpan={5} className="px-4 py-8 text-center text-[var(--color-neutral-400)]">{isAr ? 'لا توجد منتجات' : 'No products yet'}</td></tr>
+                <tr><td colSpan={4} className="px-4 py-8 text-center text-[var(--color-neutral-400)]">{isAr ? 'لا توجد منتجات' : 'No products yet'}</td></tr>
               ) : products.map(product => {
                 const name = isAr ? product.name_ar : product.name_en;
-                const typeMeta = typeLabels[product.product_type] || { ar: product.product_type, en: product.product_type, className: 'bg-gray-100 text-gray-600' };
-                const dateStr = product.created_at
-                  ? new Date(product.created_at).toLocaleDateString(isAr ? 'ar-SA' : 'en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-                  : '-';
+                const typeMeta = typeLabels[product.product_type || ''] || { ar: product.product_type || '', en: product.product_type || '', className: 'bg-gray-100 text-gray-600' };
 
                 return (
                   <tr key={product.id} className="border-b border-[var(--color-neutral-100)] hover:bg-[var(--color-neutral-50)]">
                     <td className="px-4 py-3">
-                      <div className="flex items-center gap-3">
-                        {product.thumbnail_url && (
-                          <div className="w-10 h-10 rounded-lg overflow-hidden bg-[var(--color-neutral-100)] shrink-0">
-                            <img src={product.thumbnail_url} alt="" className="w-full h-full object-cover" />
-                          </div>
-                        )}
-                        <div>
-                          <div className="font-medium text-[var(--text-primary)]">{name || product.slug}</div>
-                          <div className="text-xs text-[var(--color-neutral-400)]">/{product.slug}</div>
-                        </div>
+                      <div>
+                        <div className="font-medium text-[var(--text-primary)]">{name || product.slug}</div>
+                        <div className="text-xs text-[var(--color-neutral-400)]">/{product.slug}</div>
                       </div>
                     </td>
                     <td className="px-4 py-3">
@@ -115,11 +99,10 @@ export default function AdminProductsPage() {
                       {product.price_aed ? `${product.price_aed} AED` : '-'}
                     </td>
                     <td className="px-4 py-3">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${product.published ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
-                        {product.published ? (isAr ? 'منشور' : 'Published') : (isAr ? 'مسودة' : 'Draft')}
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${product.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
+                        {product.is_active ? (isAr ? 'نشط' : 'Active') : (isAr ? 'معطّل' : 'Inactive')}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-[var(--color-neutral-500)] text-xs">{dateStr}</td>
                   </tr>
                 );
               })}

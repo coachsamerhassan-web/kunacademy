@@ -1,7 +1,9 @@
 import { setRequestLocale } from 'next-intl/server';
 import { redirect } from 'next/navigation';
-import { createServerClient } from '@kunacademy/db';
+import { withAdminContext } from '@kunacademy/db';
+import { getAuthUser } from '@kunacademy/auth/server';
 import { BookReader } from './book-reader';
+import { sql } from 'drizzle-orm';
 
 // Book metadata (hardcoded for now — will move to CMS/DB)
 const BOOKS: Record<string, {
@@ -39,22 +41,17 @@ export default async function ReaderPage({
 
   const isAr = locale === 'ar';
   let hasAccess = false;
-  let userId: string | null = null;
 
   // Check auth + book access
-  const supabase = createServerClient();
-  if (supabase) {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      userId = user.id;
-      const { data: access } = await supabase
-        .from('book_access')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('book_slug', slug)
-        .single();
-      hasAccess = !!access;
-    }
+  const user = await getAuthUser();
+  if (user) {
+    const access = await withAdminContext(async (db) => {
+      const rows = await db.execute(
+        sql`SELECT id FROM book_access WHERE user_id = ${user.id} AND book_slug = ${slug} LIMIT 1`
+      );
+      return rows.rows[0] as { id: string } | undefined;
+    });
+    hasAccess = !!access;
   }
 
   // If paid book and no access, allow sample reading

@@ -1,23 +1,34 @@
+interface Attachment {
+  filename: string;
+  content: string; // base64 encoded
+}
+
 interface EmailParams {
   to: string;
   subject: string;
   html: string;
+  attachments?: Attachment[];
 }
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
 const FROM_EMAIL = 'Kun Academy <noreply@kunacademy.com>';
 
 /** Send an email via Resend */
-export async function sendEmail({ to, subject, html }: EmailParams) {
+export async function sendEmail({ to, subject, html, attachments }: EmailParams) {
   if (!RESEND_API_KEY) {
     console.warn('[email] RESEND_API_KEY not set, skipping email to:', to);
     return { id: 'mock', success: true };
   }
 
+  const payload: Record<string, unknown> = { from: FROM_EMAIL, to, subject, html };
+  if (attachments && attachments.length > 0) {
+    payload.attachments = attachments;
+  }
+
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${RESEND_API_KEY}` },
-    body: JSON.stringify({ from: FROM_EMAIL, to, subject, html }),
+    body: JSON.stringify(payload),
   });
 
   if (!res.ok) throw new Error(`Email failed: ${res.statusText}`);
@@ -171,6 +182,114 @@ export async function sendInstallmentReminder(
         </a>
       </div>
     `,
+  });
+}
+
+/** Corporate proposal email with attached PDF */
+export async function sendProposalEmail(
+  to: string,
+  details: {
+    name: string;
+    direction: string;
+    directionAr: string;
+    totalSavings: number;
+    roiMultiple: number;
+  },
+  pdfBase64: string,
+  locale: string = 'ar'
+): Promise<ReturnType<typeof sendEmail>> {
+  const isAr = locale === 'ar';
+  const formattedSavings = details.totalSavings.toLocaleString('en-AE');
+
+  const html = `
+    <div dir="${isAr ? 'rtl' : 'ltr'}" style="font-family: system-ui, Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #FFFDF9; border-radius: 12px; overflow: hidden;">
+      <!-- Header -->
+      <div style="background: #474099; padding: 32px 40px; text-align: ${isAr ? 'right' : 'left'};">
+        <p style="color: rgba(255,255,255,0.7); font-size: 13px; margin: 0 0 6px;">
+          ${isAr ? 'أكاديمية كُن للكوتشينج' : 'Kun Coaching Academy'}
+        </p>
+        <h1 style="color: #ffffff; font-size: 26px; margin: 0; font-weight: 700; line-height: 1.3;">
+          ${isAr ? `${details.name}، عرضك جاهز` : `${details.name}, Your Proposal is Ready`}
+        </h1>
+      </div>
+
+      <!-- Body -->
+      <div style="padding: 36px 40px;">
+        <p style="color: #444; font-size: 16px; line-height: 1.8; margin: 0 0 24px;">
+          ${isAr
+            ? `شكرًا لاستكشافك مسار <strong style="color: #474099;">${details.directionAr}</strong> مع أكاديمية كُن. بناءً على بياناتك، أعددنا لك عرضًا مخصصًا يوضح الأثر المتوقع.`
+            : `Thank you for exploring <strong style="color: #474099;">${details.direction}</strong> with Kun Coaching Academy. Based on your inputs, we've prepared a personalized proposal showing the projected impact.`
+          }
+        </p>
+
+        <!-- Key numbers -->
+        <div style="display: flex; gap: 16px; margin: 0 0 28px; flex-wrap: wrap;">
+          <div style="flex: 1; min-width: 200px; background: #F3F2FB; border-radius: 10px; padding: 20px 24px; text-align: center;">
+            <p style="color: #474099; font-size: 13px; font-weight: 600; margin: 0 0 6px; text-transform: uppercase; letter-spacing: 0.5px;">
+              ${isAr ? 'التوفير المتوقع' : 'Projected Savings'}
+            </p>
+            <p style="color: #474099; font-size: 28px; font-weight: 800; margin: 0;">
+              AED ${formattedSavings}
+            </p>
+          </div>
+          <div style="flex: 1; min-width: 200px; background: #FFF3EE; border-radius: 10px; padding: 20px 24px; text-align: center; border: 2px solid #E4601E;">
+            <p style="color: #E4601E; font-size: 13px; font-weight: 600; margin: 0 0 6px; text-transform: uppercase; letter-spacing: 0.5px;">
+              ${isAr ? 'معدل العائد' : 'ROI Multiple'}
+            </p>
+            <p style="color: #E4601E; font-size: 28px; font-weight: 800; margin: 0;">
+              ${details.roiMultiple}×
+            </p>
+          </div>
+        </div>
+
+        <!-- Direction -->
+        <div style="background: #f5f3ef; border-radius: 8px; padding: 18px 24px; margin: 0 0 28px;">
+          <p style="color: #666; font-size: 13px; margin: 0 0 4px; font-weight: 600;">
+            ${isAr ? 'المسار المستكشف' : 'Direction Explored'}
+          </p>
+          <p style="color: #474099; font-size: 17px; font-weight: 700; margin: 0;">
+            ${isAr ? details.directionAr : details.direction}
+          </p>
+        </div>
+
+        <p style="color: #555; font-size: 15px; line-height: 1.7; margin: 0 0 28px;">
+          ${isAr
+            ? 'العرض الكامل مرفق بهذا البريد. يتضمن التفاصيل المالية الكاملة، والمراحل، وخطة الاستثمار المقترحة.'
+            : 'The full proposal is attached to this email. It includes the complete financial breakdown, phases, and recommended investment plan.'
+          }
+        </p>
+
+        <!-- CTA -->
+        <div style="text-align: ${isAr ? 'right' : 'left'};">
+          <a href="https://kunacademy.com/${locale}/pathfinder/results"
+             style="display: inline-block; padding: 14px 32px; background: #474099; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 15px;">
+            ${isAr ? 'اعرض نتائجك كاملة' : 'View Your Full Proposal'}
+          </a>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div style="background: #2D2860; padding: 24px 40px; text-align: center;">
+        <p style="color: rgba(255,255,255,0.6); font-size: 12px; margin: 0 0 4px;">
+          ${isAr ? 'أكاديمية كُن للكوتشينج' : 'Kun Coaching Academy'}
+        </p>
+        <p style="color: rgba(255,255,255,0.4); font-size: 11px; margin: 0;">
+          ${isAr
+            ? 'هذا البريد أُرسل لأنك أكملت تقييم Pathfinder على موقعنا.'
+            : 'You received this because you completed the Pathfinder assessment on our site.'
+          }
+        </p>
+      </div>
+    </div>
+  `;
+
+  return sendEmail({
+    to,
+    subject: isAr
+      ? `${details.name}، عرض كُن الخاص بك — وفورات متوقعة ${formattedSavings} AED`
+      : `${details.name}, Your Kun Proposal — AED ${formattedSavings} Projected Savings`,
+    html,
+    attachments: [{ filename: 'Kun-Proposal.pdf', content: pdfBase64 }],
   });
 }
 

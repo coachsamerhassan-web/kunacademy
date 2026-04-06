@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
-import { createBrowserClient } from '@kunacademy/db';
 
 interface Stats {
   students: number;
@@ -21,23 +20,21 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const supabase = createBrowserClient();
-    Promise.all([
-      supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'student'),
-      supabase.from('instructors').select('id', { count: 'exact', head: true }),
-      supabase.from('enrollments').select('id', { count: 'exact', head: true }),
-      supabase.from('bookings').select('id', { count: 'exact', head: true }),
-      supabase.from('payments').select('id', { count: 'exact', head: true }).eq('status', 'completed'),
-    ]).then(([students, coaches, enrollments, bookings, payments]) => {
-      setStats({
-        students: students.count ?? 0,
-        coaches: coaches.count ?? 0,
-        enrollments: enrollments.count ?? 0,
-        bookings: bookings.count ?? 0,
-        payments: payments.count ?? 0,
-      });
-      setLoading(false);
-    }).catch(() => setLoading(false));
+    fetch('/api/admin/stats')
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data) {
+          setStats({
+            students: data.students ?? 0,
+            coaches: data.coaches ?? 0,
+            enrollments: data.enrollments ?? 0,
+            bookings: data.bookings ?? 0,
+            payments: data.payments ?? 0,
+          });
+        }
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
   }, []);
 
   const sections = [

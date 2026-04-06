@@ -1,7 +1,6 @@
 'use client';
 
 import { useAuth } from '@kunacademy/auth';
-import { createBrowserClient } from '@kunacademy/db';
 import { Card } from '@kunacademy/ui/card';
 import { useState, useEffect, use } from 'react';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
@@ -56,7 +55,7 @@ export default function CourseLearningPage({
 }) {
   const { locale, courseId } = use(params);
   const isAr = locale === 'ar';
-  const { user, session } = useAuth();
+  const { user } = useAuth();
 
   const [course, setCourse] = useState<CourseRow | null>(null);
   const [sections, setSections] = useState<Section[]>([]);
@@ -66,43 +65,23 @@ export default function CourseLearningPage({
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!user || !session) return;
-    const supabase = createBrowserClient();
+    if (!user) return;
 
     async function load() {
-      // Fetch course details
-      const { data: courseData } = await supabase
-        .from('courses')
-        .select('id, title_ar, title_en, description_ar, description_en, thumbnail_url, total_lessons, total_video_minutes, instructor_id')
-        .eq('id', courseId)
-        .single();
+      const [curriculumRes, progressRes] = await Promise.all([
+        fetch(`/api/lms/course/${courseId}`),
+        fetch(`/api/lms/progress?courseId=${courseId}`),
+      ]);
 
-      if (courseData) setCourse(courseData as CourseRow);
+      if (curriculumRes.ok) {
+        const data = await curriculumRes.json();
+        if (data.course) setCourse(data.course as CourseRow);
+        if (data.sections) setSections(data.sections as Section[]);
+        if (data.lessons) setLessons(data.lessons as LessonRow[]);
+      }
 
-      // Fetch sections
-      const { data: sectionData } = await supabase
-        .from('course_sections')
-        .select('*')
-        .eq('course_id', courseId)
-        .order('order');
-
-      if (sectionData) setSections(sectionData as Section[]);
-
-      // Fetch lessons (RLS will only return if enrolled or preview)
-      const { data: lessonData } = await supabase
-        .from('lessons')
-        .select('id, course_id, section_id, title_ar, title_en, order, duration_minutes, is_preview, video_url')
-        .eq('course_id', courseId)
-        .order('order');
-
-      if (lessonData) setLessons(lessonData as LessonRow[]);
-
-      // Fetch progress via API (bypasses RLS complexity)
-      const res = await fetch(`/api/lms/progress?courseId=${courseId}`, {
-        headers: { Authorization: `Bearer ${session?.access_token}` },
-      });
-      if (res.ok) {
-        const data = await res.json();
+      if (progressRes.ok) {
+        const data = await progressRes.json();
         setProgress(data.progress ?? []);
         if (data.enrollment) setEnrollment(data.enrollment);
       }
@@ -111,7 +90,7 @@ export default function CourseLearningPage({
     }
 
     load();
-  }, [user, session, courseId]);
+  }, [user, courseId]);
 
   if (loading) {
     return (

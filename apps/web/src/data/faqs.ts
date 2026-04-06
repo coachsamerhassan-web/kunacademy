@@ -54,6 +54,18 @@ export const methodologyFaqs: FAQItem[] = [
     ar: { q: 'هل أحتاج خلفية في علم النفس لدراسة التفكير الحسّي؟', a: 'لا. المنهجية مصمّمة لتكون تجريبية — تبدأ من خبرة الجسد لا من النظرية. نرحّب بالمهنيين من جميع الخلفيات.' },
     en: { q: 'Do I need a psychology background to study Somatic Thinking?', a: 'No. The methodology is designed to be experiential — it starts from bodily experience, not theory. We welcome professionals from all backgrounds.' },
   },
+  {
+    ar: { q: 'هل التفكير الحسّي نوع من العلاج النفسي؟', a: 'لا. التفكير الحسّي® منهجية كوتشينج معتمدة من ICF — وليست علاجاً نفسياً. الفرق الجوهري: الكوتشينج يتعامل مع أشخاص أصحاء يريدون التطوّر، لا مع اضطرابات تحتاج تدخّلاً علاجياً.' },
+    en: { q: 'Is Somatic Thinking a form of therapy?', a: 'No. Somatic Thinking® is an ICF-accredited coaching methodology — not therapy. The key distinction: coaching works with healthy individuals who want to grow, not with disorders that require clinical intervention.' },
+  },
+  {
+    ar: { q: 'هل أحتاج أن أكون كوتشاً لأستفيد من التفكير الحسّي؟', a: 'لا. المنهجية تُفيد القادة والمدراء والأفراد الذين يريدون فهم أنفسهم بعمق. لكن إذا كنت كوتشاً، فستُضيف طبقة حسّية كاملة لأدواتك.' },
+    en: { q: 'Do I need to be a coach to benefit from Somatic Thinking?', a: 'No. The methodology benefits leaders, managers, and individuals who want to understand themselves more deeply. But if you\'re a coach, it will add a complete somatic layer to your toolkit.' },
+  },
+  {
+    ar: { q: 'ما معنى الاعتماد من ICF وكيف يتعلق بالتفكير الحسّي؟', a: 'ICF (الاتحاد الدولي للكوتشينج) هو أعلى جهة اعتماد لمنهجيات الكوتشينج في العالم. برنامج STCE المبني على التفكير الحسّي® معتمد منه — يعني أن ساعاتك التدريبية تُحتسب رسمياً نحو شهادتي ACC وPCC.' },
+    en: { q: 'What is ICF accreditation and how does it relate to Somatic Thinking?', a: 'ICF (International Coaching Federation) is the world\'s highest coaching accreditation body. The STCE program built on Somatic Thinking® is ICF-accredited — meaning your training hours officially count toward ACC and PCC credentials.' },
+  },
 ];
 
 /** Corporate */

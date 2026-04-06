@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@kunacademy/auth';
 import { Button } from '@kunacademy/ui/button';
-import { createBrowserClient } from '@kunacademy/db';
 import { ArrowLeft } from 'lucide-react';
 
 interface Post {
@@ -17,7 +16,7 @@ interface Post {
 }
 
 export function BoardDetail({ locale, boardId }: { locale: string; boardId: string }) {
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   const [posts, setPosts] = useState<Post[]>([]);
   const [boardName, setBoardName] = useState('');
   const [loading, setLoading] = useState(true);
@@ -26,108 +25,115 @@ export function BoardDetail({ locale, boardId }: { locale: string; boardId: stri
   const [replyContent, setReplyContent] = useState('');
   const [posting, setPosting] = useState(false);
   const isAr = locale === 'ar';
-  const supabaseRef = useRef(createBrowserClient());
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // Load board info on mount
   useEffect(() => {
-    const supabase = supabaseRef.current;
-    if (!supabase) return;
+    fetch(`/api/community/boards?boardId=${boardId}`)
+      .then((r) => r.json())
+      .then((data) => {
+        const board = data.boards?.find((b: { id: string; name_ar: string; name_en: string }) => b.id === boardId);
+        if (board) setBoardName(isAr ? board.name_ar : board.name_en);
+      })
+      .catch(() => {});
+  }, [boardId, isAr]);
 
-    // Load board info
-    supabase.from('community_boards').select('name_ar, name_en').eq('id', boardId).single()
-      .then(({ data }) => { if (data) setBoardName(isAr ? data.name_ar : data.name_en); });
-
-    // Load posts
+  // Load posts initially and set up polling every 8 seconds
+  // Note: replaces Supabase realtime subscription per Wave 6.75d plan
+  useEffect(() => {
     loadPosts();
 
-    // Realtime subscription
-    const channel = supabase.channel(`board-${boardId}`)
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'community_posts',
-        filter: `board_id=eq.${boardId}`,
-      }, () => { loadPosts(); })
-      .subscribe();
+    pollIntervalRef.current = setInterval(() => {
+      loadPosts();
+    }, 8000);
 
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = null;
+      }
+    };
   }, [boardId]);
 
   async function loadPosts() {
-    const supabase = supabaseRef.current;
-    if (!supabase) return;
+    try {
+      const res = await fetch(`/api/community/posts?board_id=${boardId}&page=1`);
+      if (!res.ok) return;
+      const data = await res.json();
 
-    const { data } = await supabase
-      .from('community_posts')
-      .select('id, content, is_pinned, created_at, parent_id, author:profiles(full_name_ar, full_name_en, avatar_url)')
-      .eq('board_id', boardId)
-      .is('parent_id', null)
-      .order('is_pinned', { ascending: false })
-      .order('created_at', { ascending: false })
-      .limit(50);
+      if (data.posts) {
+        // Load replies for each top-level post
+        const postIds = data.posts.map((p: Post) => p.id);
+        const repliesRes = await fetch(`/api/community/posts/replies?post_ids=${postIds.join(',')}`);
+        let replies: Post[] = [];
+        if (repliesRes.ok) {
+          const repliesData = await repliesRes.json();
+          replies = repliesData.replies || [];
+        }
 
-    if (data) {
-      // Load replies for each post
-      const postIds = data.map(p => p.id);
-      const { data: replies } = await supabase
-        .from('community_posts')
-        .select('id, content, created_at, parent_id, author:profiles(full_name_ar, full_name_en, avatar_url)')
-        .in('parent_id', postIds)
-        .order('created_at');
+        const postsWithReplies = data.posts.map((post: Post) => ({
+          ...post,
+          replies: replies.filter((r: Post & { parent_id?: string }) => (r as any).parent_id === post.id),
+        }));
 
-      const postsWithReplies = data.map(post => ({
-        ...post,
-        replies: (replies || []).filter(r => r.parent_id === post.id),
-      }));
-
-      setPosts(postsWithReplies as unknown as Post[]);
+        setPosts(postsWithReplies);
+      }
+    } catch {
+      // non-fatal polling error
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }
 
   async function handlePost() {
     if (!newPost.trim() || !user) return;
     setPosting(true);
-    const supabase = supabaseRef.current;
-    if (!supabase) return;
 
-    await supabase.from('community_posts').insert({
-      board_id: boardId,
-      author_id: user.id,
-      content: newPost.trim(),
+    await fetch('/api/community/posts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        board_id: boardId,
+        content: newPost.trim(),
+      }),
     });
 
     setNewPost('');
     setPosting(false);
+    await loadPosts();
   }
 
   async function handleReply(parentId: string) {
     if (!replyContent.trim() || !user) return;
     setPosting(true);
-    const supabase = supabaseRef.current;
-    if (!supabase) return;
 
-    await supabase.from('community_posts').insert({
-      board_id: boardId,
-      author_id: user.id,
-      parent_id: parentId,
-      content: replyContent.trim(),
+    await fetch('/api/community/posts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        board_id: boardId,
+        parent_id: parentId,
+        content: replyContent.trim(),
+      }),
     });
 
     setReplyContent('');
     setReplyTo(null);
     setPosting(false);
-    loadPosts();
+    await loadPosts();
   }
 
   async function handleReaction(postId: string, emoji: string) {
     if (!user) return;
-    const supabase = supabaseRef.current;
-    if (!supabase) return;
-    await supabase.from('community_reactions').upsert({
-      post_id: postId,
-      user_id: user.id,
-      reaction: emoji,
-    }, { onConflict: 'post_id,user_id,reaction' });
+
+    await fetch('/api/community/reactions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        post_id: postId,
+        reaction: emoji,
+      }),
+    });
   }
 
   if (loading) return <div className="py-8 text-center text-[var(--color-neutral-500)]">{isAr ? 'جاري التحميل...' : 'Loading...'}</div>;

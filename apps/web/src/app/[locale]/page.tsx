@@ -5,7 +5,8 @@ import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
 import { Button } from '@kunacademy/ui/button';
 import { TrustBar } from '@kunacademy/ui/trust-bar';
-import { cms, contentGetter } from '@kunacademy/cms';
+import { cms } from '@kunacademy/cms/server';
+import { contentGetter } from '@kunacademy/cms';
 import dynamic from 'next/dynamic';
 import { TreePhase } from '@/components/tree-phase';
 

@@ -1,5 +1,5 @@
 import { setRequestLocale } from 'next-intl/server';
-import { cms } from '@kunacademy/cms';
+import { cms } from '@kunacademy/cms/server';
 import { Section } from '@kunacademy/ui/section';
 import { GeometricPattern } from '@kunacademy/ui/patterns';
 import { Card } from '@kunacademy/ui/card';

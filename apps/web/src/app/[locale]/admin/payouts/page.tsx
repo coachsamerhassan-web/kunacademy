@@ -2,7 +2,6 @@
 
 import { useAuth } from '@kunacademy/auth';
 import { useEffect, useState } from 'react';
-import { createBrowserClient } from '@kunacademy/db';
 import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
 import { useParams, useRouter } from 'next/navigation';
@@ -45,16 +44,13 @@ export default function AdminPayoutsPage() {
   const [updating, setUpdating] = useState<string | null>(null);
   const isAr = locale === 'ar';
 
-  const supabase = createBrowserClient();
-
   async function fetchPayouts() {
-    const { data } = await supabase
-      .from('payout_requests')
-      .select('*, requester:profiles!payout_requests_user_id_fkey(full_name_ar, full_name_en, email)')
-      .order('created_at', { ascending: false })
-      .limit(200);
-    setPayouts((data as any) ?? []);
-    setLoading(false);
+    fetch('/api/admin/payout-requests')
+      .then(r => r.ok ? r.json() : { payouts: [] })
+      .then(data => {
+        setPayouts(data.payouts ?? []);
+        setLoading(false);
+      });
   }
 
   useEffect(() => {
@@ -65,23 +61,20 @@ export default function AdminPayoutsPage() {
 
   async function updateStatus(id: string, newStatus: string) {
     setUpdating(id);
-    const updates: Record<string, any> = { status: newStatus, processed_by: user?.id };
-    if (newStatus === 'processed' || newStatus === 'rejected') {
-      updates.processed_at = new Date().toISOString();
-    }
-    await supabase.from('payout_requests').update(updates).eq('id', id);
-    setPayouts(prev => prev.map(p => p.id === id ? { ...p, status: newStatus, processed_at: updates.processed_at || p.processed_at } : p));
+    const res = await fetch('/api/admin/payout-requests', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, status: newStatus }),
+    });
+    const result = await res.json();
+    setPayouts(prev => prev.map(p => p.id === id ? { ...p, status: newStatus, processed_at: result.processed_at || p.processed_at } : p));
 
     // Notify coach of payout status change (non-blocking)
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.access_token) {
-        fetch('/api/notifications/payout', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
-          body: JSON.stringify({ payoutId: id, newStatus }),
-        }).catch(() => {});
-      }
-    });
+    fetch('/api/notifications/payout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ payoutId: id, newStatus }),
+    }).catch(() => {});
 
     setUpdating(null);
   }

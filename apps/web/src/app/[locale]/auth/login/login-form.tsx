@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Button } from '@kunacademy/ui/button';
-import { createBrowserClient } from '@kunacademy/db';
+import { signIn } from 'next-auth/react';
 
 function GoogleIcon() {
   return (
@@ -30,23 +30,26 @@ export function LoginForm({ locale, mode = 'login' }: { locale: string; mode?: '
     setStatus('loading');
     setErrorMessage('');
     try {
-      const supabase = createBrowserClient();
-      if (!supabase) throw new Error('Supabase not configured');
-
       if (mode === 'signup') {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: { locale },
-            emailRedirectTo: `${window.location.origin}/${locale}/auth/callback`,
-          },
+        // Auth.js has no built-in signup — call our API route
+        const res = await fetch('/api/auth/signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password, locale }),
         });
-        if (error) throw error;
-        setStatus('sent');
+        const body = await res.json();
+        if (!res.ok) {
+          throw new Error(body.error || 'signup_failed');
+        }
+        // Auto sign-in after successful signup
+        const result = await signIn('credentials', { email, password, redirect: false });
+        if (result?.error) throw new Error('Invalid login credentials');
+        const params = new URLSearchParams(window.location.search);
+        const redirect = params.get('redirect') || `/${locale}/dashboard`;
+        window.location.href = redirect;
       } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
+        const result = await signIn('credentials', { email, password, redirect: false });
+        if (result?.error) throw new Error('Invalid login credentials');
         // Full page reload so middleware picks up the new auth cookies
         const params = new URLSearchParams(window.location.search);
         const redirect = params.get('redirect') || `/${locale}/dashboard`;
@@ -55,9 +58,9 @@ export function LoginForm({ locale, mode = 'login' }: { locale: string; mode?: '
     } catch (err: any) {
       setStatus('error');
       const msg = err?.message || '';
-      if (msg.includes('Invalid login')) {
+      if (msg.includes('Invalid login') || msg.includes('CredentialsSignin')) {
         setErrorMessage(isAr ? 'البريد أو كلمة المرور غير صحيحة' : 'Invalid email or password');
-      } else if (msg.includes('already registered')) {
+      } else if (msg.includes('already registered') || msg.includes('409')) {
         setErrorMessage(isAr ? 'هذا البريد مسجّل بالفعل' : 'This email is already registered');
       } else {
         setErrorMessage(isAr ? 'حدث خطأ. حاول مرة أخرى.' : 'An error occurred. Please try again.');
@@ -70,13 +73,8 @@ export function LoginForm({ locale, mode = 'login' }: { locale: string; mode?: '
     setStatus('loading');
     setErrorMessage('');
     try {
-      const supabase = createBrowserClient();
-      if (!supabase) throw new Error('Supabase not configured');
-      const { error } = await supabase.auth.signInWithOtp({
-        email,
-        options: { emailRedirectTo: `${window.location.origin}/${locale}/auth/callback` },
-      });
-      if (error) throw error;
+      const result = await signIn('email', { email, redirect: false });
+      if (result?.error) throw new Error(result.error);
       setStatus('sent');
     } catch {
       setStatus('error');
@@ -86,15 +84,9 @@ export function LoginForm({ locale, mode = 'login' }: { locale: string; mode?: '
 
   async function handleGoogleLogin() {
     try {
-      const supabase = createBrowserClient();
-      if (!supabase) throw new Error('Supabase not configured');
-      await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/${locale}/auth/callback`,
-          queryParams: { access_type: 'offline', prompt: 'consent' },
-        },
-      });
+      const params = new URLSearchParams(window.location.search);
+      const redirectUrl = params.get('redirect') || `/${locale}/dashboard`;
+      await signIn('google', { callbackUrl: redirectUrl });
     } catch {
       setStatus('error');
     }

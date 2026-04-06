@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@kunacademy/auth';
-import { createBrowserClient } from '@kunacademy/db';
 import type { OrderStatus } from '@kunacademy/db';
 import { Download } from 'lucide-react';
 
@@ -23,30 +22,20 @@ interface OrderRow {
 interface DownloadItem {
   id: string;
   token: string;
-  expires_at: string;
-  download_count: number;
-  max_downloads: number;
-  created_at: string;
-  asset: {
+  expiresAt: string;
+  downloadCount: number;
+  maxDownloads: number;
+  createdAt: string;
+  isExpired: boolean;
+  isExhausted: boolean;
+  product: {
     id: string;
-    display_name: string | null;
-    file_type: string;
-    file_size_bytes: number | null;
+    name_ar: string;
+    name_en: string;
+    slug: string;
+    type: string;
   } | null;
-}
-
-interface OrderWithItems extends OrderRow {
-  order_items?: {
-    id: string;
-    product_id: string;
-    quantity: number;
-    unit_price: number;
-    product?: {
-      name_ar: string;
-      name_en: string;
-      slug: string;
-    };
-  }[];
+  downloadLink: string;
 }
 
 interface OrdersDashboardProps {
@@ -57,7 +46,7 @@ export function OrdersDashboard({ locale }: OrdersDashboardProps) {
   const isAr = locale === 'ar';
   const { user, loading: authLoading } = useAuth();
   const [tab, setTab] = useState<TabKey>('orders');
-  const [orders, setOrders] = useState<OrderWithItems[]>([]);
+  const [orders, setOrders] = useState<OrderRow[]>([]);
   const [downloads, setDownloads] = useState<DownloadItem[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -65,50 +54,19 @@ export function OrdersDashboard({ locale }: OrdersDashboardProps) {
     if (authLoading || !user) return;
 
     async function fetchData() {
-      const supabase = createBrowserClient();
-      if (!supabase) {
-        setLoading(false);
-        return;
-      }
-
       try {
-        // Fetch orders
-        const { data: ordersData } = await supabase
-          .from('orders')
-          .select('*')
-          .eq('customer_id', user!.id)
-          .order('created_at', { ascending: false });
-
-        if (ordersData) {
-          setOrders(ordersData as OrderWithItems[]);
+        // Fetch orders via API route
+        const ordersRes = await fetch('/api/user/orders');
+        if (ordersRes.ok) {
+          const ordersJson = await ordersRes.json();
+          setOrders(ordersJson.orders ?? []);
         }
 
-        // Fetch download tokens
-        const { data: tokensData } = await supabase
-          .from('download_tokens')
-          .select('*, digital_assets(*)')
-          .eq('user_id', user!.id)
-          .order('created_at', { ascending: false });
-
-        if (tokensData) {
-          setDownloads(
-            (tokensData as any[]).map((t) => ({
-              id: t.id,
-              token: t.token,
-              expires_at: t.expires_at,
-              download_count: t.download_count,
-              max_downloads: t.max_downloads,
-              created_at: t.created_at,
-              asset: t.digital_assets
-                ? {
-                    id: t.digital_assets.id,
-                    display_name: t.digital_assets.display_name,
-                    file_type: t.digital_assets.file_type,
-                    file_size_bytes: t.digital_assets.file_size_bytes,
-                  }
-                : null,
-            }))
-          );
+        // Fetch downloads via existing API route
+        const downloadsRes = await fetch('/api/user/downloads');
+        if (downloadsRes.ok) {
+          const downloadsJson = await downloadsRes.json();
+          setDownloads(downloadsJson.downloads ?? []);
         }
       } catch (err) {
         console.error('[orders-dashboard]', err);
@@ -192,7 +150,7 @@ export function OrdersDashboard({ locale }: OrdersDashboardProps) {
 
 // ── Orders Tab ──────────────────────────────────────────────────────────
 
-function OrdersTab({ orders, isAr }: { orders: OrderWithItems[]; isAr: boolean }) {
+function OrdersTab({ orders, isAr }: { orders: OrderRow[]; isAr: boolean }) {
   if (orders.length === 0) {
     return (
       <div className="rounded-2xl bg-[var(--color-surface-container)] p-12 text-center min-h-[300px] flex flex-col items-center justify-center">
@@ -290,21 +248,15 @@ function DownloadsTab({ downloads, isAr }: { downloads: DownloadItem[]; isAr: bo
   return (
     <div className="space-y-4">
       {downloads.map((dl) => {
-        const expired = new Date(dl.expires_at) < new Date();
-        const exhausted = dl.download_count >= dl.max_downloads;
+        const expired = dl.isExpired;
+        const exhausted = dl.isExhausted;
         const disabled = expired || exhausted;
-        const remaining = dl.max_downloads - dl.download_count;
+        const remaining = dl.maxDownloads - dl.downloadCount;
 
-        const expiresDate = new Date(dl.expires_at).toLocaleDateString(
+        const expiresDate = new Date(dl.expiresAt).toLocaleDateString(
           isAr ? 'ar-AE' : 'en-AE',
           { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }
         );
-
-        const fileSize = dl.asset?.file_size_bytes
-          ? dl.asset.file_size_bytes > 1024 * 1024
-            ? `${(dl.asset.file_size_bytes / (1024 * 1024)).toFixed(1)} MB`
-            : `${(dl.asset.file_size_bytes / 1024).toFixed(0)} KB`
-          : null;
 
         return (
           <div
@@ -318,13 +270,9 @@ function DownloadsTab({ downloads, isAr }: { downloads: DownloadItem[]; isAr: bo
             <div className="flex items-start justify-between gap-4 flex-wrap">
               <div className="flex-1 min-w-0">
                 <h3 className="font-medium text-[var(--color-neutral-900)] truncate">
-                  {dl.asset?.display_name || (isAr ? 'ملف رقمي' : 'Digital file')}
+                  {isAr ? (dl.product?.name_ar || 'ملف رقمي') : (dl.product?.name_en || 'Digital file')}
                 </h3>
                 <div className="mt-1 flex items-center gap-3 text-xs text-[var(--color-neutral-500)]">
-                  {dl.asset?.file_type && (
-                    <span className="uppercase">{dl.asset.file_type}</span>
-                  )}
-                  {fileSize && <span>{fileSize}</span>}
                   <span>
                     {isAr ? `${remaining} تحميلات متبقية` : `${remaining} downloads remaining`}
                   </span>
@@ -338,7 +286,7 @@ function DownloadsTab({ downloads, isAr }: { downloads: DownloadItem[]; isAr: bo
               </div>
 
               <a
-                href={disabled ? undefined : `/api/downloads/${dl.token}`}
+                href={disabled ? undefined : dl.downloadLink}
                 className={`
                   inline-flex min-h-[44px] items-center px-5 py-2 rounded-xl text-sm font-medium transition-colors
                   ${disabled

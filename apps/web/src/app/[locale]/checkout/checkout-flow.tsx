@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@kunacademy/auth';
 import { Button } from '@kunacademy/ui/button';
-import { createBrowserClient } from '@kunacademy/db';
 
 type Currency = 'AED' | 'SAR' | 'EGP' | 'USD' | 'EUR';
 
@@ -125,81 +124,51 @@ export function CheckoutFlow({ locale }: { locale: string }) {
       });
   }, []);
 
-  // Fetch credit balance
+  // Fetch credit balance via API (no direct Supabase needed — auth handled server-side)
   useEffect(() => {
     if (!user) return;
-    const supabase = createBrowserClient();
-    if (!supabase) return;
-    supabase.auth.getSession().then(({ data: session }) => {
-      const token = session?.session?.access_token;
-      if (!token) return;
-      fetch('/api/referrals', { headers: { Authorization: `Bearer ${token}` } })
-        .then(r => r.json())
-        .then(d => { if (d.balance > 0) setCreditBalance(d.balance); })
-        .catch(() => {});
-    });
+    fetch('/api/referrals')
+      .then(r => r.json())
+      .then(d => { if (d.balance > 0) setCreditBalance(d.balance); })
+      .catch(() => {});
   }, [user]);
 
-  // Fetch item data
+  // Fetch item data via API route
   useEffect(() => {
-    const supabase = createBrowserClient();
-    if (!supabase) return;
-
     // ?program=slug — look up course by slug
     if (programSlug && !itemType && !itemId) {
-      supabase
-        .from('courses')
-        .select('id, title_ar, title_en, price_aed, price_sar, price_egp, price_usd, price_eur')
-        .eq('slug', programSlug)
-        .eq('is_published', true)
-        .single()
-        .then(({ data }) => {
-          if (data) {
-            setItem({
-              type: 'course',
-              id: data.id,
-              name_ar: data.title_ar,
-              name_en: data.title_en,
-              price_aed: data.price_aed,
-              price_sar: data.price_sar,
-              price_egp: data.price_egp,
-              price_usd: data.price_usd,
-              price_eur: data.price_eur,
-            });
+      fetch(`/api/checkout/item?type=course&slug=${encodeURIComponent(programSlug)}`)
+        .then(r => r.json())
+        .then(data => {
+          if (data && !data.error) {
+            setItem({ ...data });
           }
           setLoading(false);
-        });
+        })
+        .catch(() => setLoading(false));
       return;
     }
 
     if (!itemId || !itemType) { setLoading(false); return; }
 
     if (itemType === 'course') {
-      supabase.from('courses').select('id, title_ar, title_en, price_aed, price_sar, price_egp, price_usd, price_eur')
-        .eq('id', itemId).single()
-        .then(({ data }) => {
-          if (data) setItem({ ...data, type: 'course', id: data.id, name_ar: data.title_ar, name_en: data.title_en });
+      fetch(`/api/checkout/item?type=course&id=${encodeURIComponent(itemId)}`)
+        .then(r => r.json())
+        .then(data => {
+          if (data && !data.error) setItem({ ...data });
           setLoading(false);
-        });
+        })
+        .catch(() => setLoading(false));
     } else if (itemType === 'booking') {
-      supabase.from('bookings').select('id, service:services(id, name_ar, name_en, price_aed, price_sar, price_egp, price_usd)')
-        .eq('id', itemId).single()
-        .then(({ data }) => {
-          if (data?.service) {
-            setItem({
-              type: 'booking', id: data.id,
-              name_ar: data.service.name_ar, name_en: data.service.name_en,
-              price_aed: data.service.price_aed,
-              price_sar: data.service.price_sar || 0,
-              price_egp: data.service.price_egp || 0,
-              price_usd: data.service.price_usd || 0,
-              price_eur: 0,
-            });
-          }
+      fetch(`/api/checkout/item?type=booking&id=${encodeURIComponent(itemId)}`)
+        .then(r => r.json())
+        .then(data => {
+          if (data && !data.error) setItem({ ...data });
           setLoading(false);
-        });
+        })
+        .catch(() => setLoading(false));
     } else if (itemType === 'event') {
-      // Event registration — item data comes from query params (CMS event, not in Supabase)
+      // Event registration — item data comes from query params (CMS event, not in DB)
       const name = searchParams.get('name') || 'Event';
       setItem({
         type: 'event' as any,
@@ -260,21 +229,16 @@ export function CheckoutFlow({ locale }: { locale: string }) {
     try {
       // Apply credits first if toggled
       if (creditsApplied > 0) {
-        const supabase = createBrowserClient();
-        const { data: session } = await supabase.auth.getSession();
-        const token = session?.session?.access_token;
-        if (token) {
-          const creditRes = await fetch('/api/referrals/apply', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-            body: JSON.stringify({ amount: creditsApplied, payment_id: `${item.type}-${item.id}` }),
-          });
-          if (!creditRes.ok) {
-            const err = await creditRes.json();
-            alert(err.error || 'Failed to apply credits');
-            setProcessing(false);
-            return;
-          }
+        const creditRes = await fetch('/api/referrals/apply', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ amount: creditsApplied, payment_id: `${item.type}-${item.id}` }),
+        });
+        if (!creditRes.ok) {
+          const err = await creditRes.json();
+          alert(err.error || 'Failed to apply credits');
+          setProcessing(false);
+          return;
         }
       }
 

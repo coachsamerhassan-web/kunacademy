@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@kunacademy/auth';
-import { createBrowserClient } from '@kunacademy/db';
 import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
 import { Button } from '@kunacademy/ui/button';
@@ -45,17 +44,9 @@ export default function PaymentsPage() {
   }, [user]);
 
   async function fetchSchedules() {
-    const supabase = createBrowserClient();
-    if (!supabase) { setLoading(false); return; }
-
-    const { data: session } = await supabase.auth.getSession();
-    const token = session?.session?.access_token;
-    if (!token) { setLoading(false); return; }
-
     try {
-      const res = await fetch('/api/payment-schedules', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await fetch('/api/payment-schedules');
+      if (!res.ok) { setLoading(false); return; }
       const json = await res.json();
       const parsed = (json.schedules || []).map((s: any) => ({
         ...s,
@@ -70,16 +61,10 @@ export default function PaymentsPage() {
 
   async function handlePayInstallment(scheduleId: string, index: number) {
     setPaying(`${scheduleId}-${index}`);
-    const supabase = createBrowserClient();
-    if (!supabase) return;
-
-    const { data: session } = await supabase.auth.getSession();
-    const token = session?.session?.access_token;
-
     try {
       await fetch('/api/payment-schedules', {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ schedule_id: scheduleId, installment_index: index }),
       });
       await fetchSchedules();

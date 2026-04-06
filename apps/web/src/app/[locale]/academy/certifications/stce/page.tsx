@@ -6,7 +6,7 @@ import { courseJsonLd, breadcrumbJsonLd } from '@kunacademy/ui/structured-data';
 import { stceFaqs } from '@/data/faqs';
 import { GeometricPattern } from '@kunacademy/ui/patterns';
 import type { Metadata } from 'next';
-import { cms } from '@kunacademy/cms';
+import { cms } from '@kunacademy/cms/server';
 import { ArrowRight } from 'lucide-react';
 
 const STCE_SLUGS = [

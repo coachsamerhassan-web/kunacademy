@@ -37,10 +37,7 @@ export default function EnrollPage({
         // First find the course ID from slug
         const res = await fetch(`/api/lms/enroll`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${session!.access_token}`,
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ courseSlug: slug }),
         });
 

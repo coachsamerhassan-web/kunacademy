@@ -7,7 +7,7 @@
 //   const config = await getBusinessConfig();
 //   console.log(config.referral_reward_amount); // 5000 (minor units)
 
-import { cms } from '@kunacademy/cms';
+import { cms } from '@kunacademy/cms/server';
 
 export interface BusinessConfig {
   /** Referral reward in minor units (default: 5000 = 50 AED) */

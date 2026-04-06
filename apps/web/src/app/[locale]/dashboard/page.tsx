@@ -1,7 +1,6 @@
 'use client';
 
 import { useAuth } from '@kunacademy/auth';
-import { createBrowserClient } from '@kunacademy/db';
 import { Section } from '@kunacademy/ui/section';
 import { Card } from '@kunacademy/ui/card';
 import { useState, useEffect, use } from 'react';
@@ -21,21 +20,17 @@ export default function DashboardPage({ params }: { params: Promise<{ locale: st
 
   useEffect(() => {
     if (!user) return;
-    const supabase = createBrowserClient();
-
-    Promise.all([
-      supabase.from('profiles').select('full_name_ar, full_name_en').eq('id', user.id).single(),
-      supabase.from('enrollments').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
-      supabase.from('bookings').select('id', { count: 'exact', head: true }).eq('customer_id', user.id),
-      supabase.from('certificates').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
-    ]).then(([profileRes, enrollRes, bookingRes, certRes]) => {
-      if (profileRes.data) setProfile(profileRes.data);
-      setStats({
-        enrollments: enrollRes.count ?? 0,
-        bookings: bookingRes.count ?? 0,
-        certificates: certRes.count ?? 0,
+    fetch('/api/user/stats')
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (!data) return;
+        if (data.profile) setProfile(data.profile);
+        setStats({
+          enrollments: data.enrollments ?? 0,
+          bookings: data.bookings ?? 0,
+          certificates: data.certificates ?? 0,
+        });
       });
-    });
   }, [user]);
 
   const name = profile ? (isAr ? profile.full_name_ar : profile.full_name_en) : '';

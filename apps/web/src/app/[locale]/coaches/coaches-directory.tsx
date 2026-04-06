@@ -4,126 +4,298 @@ import Image from 'next/image';
 import { useState, useMemo } from 'react';
 import type { TeamMember } from '@kunacademy/cms';
 import { Card } from '@kunacademy/ui/card';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, ChevronDown } from 'lucide-react';
 
 interface Props {
   coaches: TeamMember[];
   locale: string;
 }
 
-const credentialColors: Record<string, string> = {
-  MCC: 'bg-amber-100 text-amber-800',
-  PCC: 'bg-blue-100 text-blue-800',
-  ACC: 'bg-green-100 text-green-800',
-  instructor: 'bg-purple-100 text-purple-800',
-  facilitator: 'bg-teal-100 text-teal-800',
+// ── Kun Level display map ─────────────────────────────────────────────────────
+
+// ── Kun Level (new: from kun_level field in Sheets column V) ────────────────
+const KUN_LEVELS = [
+  { value: 'basic',        ar: 'كوتش أساسي',       en: 'Basic Coach'          },
+  { value: 'professional', ar: 'كوتش محترف',        en: 'Professional Coach'   },
+  { value: 'expert',       ar: 'كوتش خبير',         en: 'Expert Coach'         },
+  { value: 'master',       ar: 'كوتش ماستر',        en: 'Master Coach'         },
+];
+
+// ── ICF Credential (from coach_level field — shown as badge, not filter) ────
+const ICF_CREDENTIALS: Record<string, { ar: string; en: string }> = {
+  ACC: { ar: 'ACC', en: 'ACC' },
+  PCC: { ar: 'PCC', en: 'PCC' },
+  MCC: { ar: 'MCC', en: 'MCC' },
 };
 
-export function CoachesDirectory({ coaches, locale }: Props) {
-  const isAr = locale === 'ar';
-  const [specialty, setSpecialty] = useState('');
-  const [language, setLanguage] = useState('');
-  const [level, setLevel] = useState('');
+const KUN_LEVEL_COLORS: Record<string, string> = {
+  basic:        'bg-green-100 text-green-800',
+  professional: 'bg-blue-100 text-blue-800',
+  expert:       'bg-purple-100 text-purple-800',
+  master:       'bg-amber-100 text-amber-800',
+};
 
-  // Extract unique filter values
-  const allSpecialties = useMemo(() => {
-    const set = new Set<string>();
-    coaches.forEach((c) => c.specialties?.forEach((s) => set.add(s)));
-    return [...set].sort();
-  }, [coaches]);
+function getLevelLabel(level: string, isAr: boolean): string {
+  const entry = KUN_LEVELS.find((l) => l.value === level);
+  if (!entry) return level;
+  return isAr ? entry.ar : entry.en;
+}
 
-  const allLanguages = useMemo(() => {
-    const set = new Set<string>();
-    coaches.forEach((c) => c.languages?.forEach((l) => set.add(l)));
-    return [...set].sort();
-  }, [coaches]);
+// ── Fixed development types (spec-defined, not derived from data) ─────────────
 
-  const allLevels = useMemo(() => {
-    const set = new Set<string>();
-    coaches.forEach((c) => { if (c.coach_level) set.add(c.coach_level); });
-    return [...set];
-  }, [coaches]);
+const DEV_TYPES = [
+  { value: 'تنمية ذاتية',    ar: 'تنمية ذاتية',    en: 'Self Development'     },
+  { value: 'استكشاف طريقك',  ar: 'استكشاف طريقك',  en: 'Career Exploration'   },
+  { value: 'تنمية علاقات',   ar: 'تنمية علاقات',   en: 'Relationship Growth'  },
+  { value: 'تنمية عائلية',   ar: 'تنمية عائلية',   en: 'Family Development'   },
+  { value: 'تنمية مهنية',    ar: 'تنمية مهنية',    en: 'Professional Growth'  },
+] as const;
 
-  // Filter coaches
-  const filtered = useMemo(() => {
-    return coaches.filter((c) => {
-      if (specialty && !c.specialties?.includes(specialty)) return false;
-      if (language && !c.languages?.includes(language)) return false;
-      if (level && c.coach_level !== level) return false;
-      return true;
-    });
-  }, [coaches, specialty, language, level]);
+// ── Fixed coaching styles (spec-defined) ──────────────────────────────────────
 
-  const hasFilters = specialty || language || level;
+const COACHING_STYLES = [
+  { value: 'داعم',    ar: 'داعم',    en: 'Supportive'     },
+  { value: 'حسّي',    ar: 'حسّي',    en: 'Somatic'        },
+  { value: 'عميق',    ar: 'عميق',    en: 'Deep'           },
+  { value: 'مواجه',   ar: 'مواجه',   en: 'Confrontational'},
+  { value: 'عملي',    ar: 'عملي',    en: 'Practical'      },
+  // Also match English variants stored in coaching_styles
+  { value: 'Somatic Thinking', ar: 'حسّي', en: 'Somatic' },
+] as const;
+
+// Normalise a raw coaching_style value to a canonical spec key for display
+function normaliseStyle(raw: string): string {
+  const lower = raw.toLowerCase();
+  if (lower.includes('somatic') || lower.includes('حسّي') || lower.includes('حسي')) return 'حسّي';
+  if (lower === 'داعم' || lower === 'supportive') return 'داعم';
+  if (lower === 'عميق' || lower === 'deep') return 'عميق';
+  if (lower === 'مواجه' || lower === 'confrontational') return 'مواجه';
+  if (lower === 'عملي' || lower === 'practical') return 'عملي';
+  return raw;
+}
+
+// ── Chip component ─────────────────────────────────────────────────────────────
+
+function Chip({
+  label,
+  active,
+  onClick,
+}: {
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`
+        inline-flex items-center px-3.5 py-1.5 rounded-full text-sm font-medium transition-all duration-200
+        min-h-[36px] whitespace-nowrap
+        ${active
+          ? 'bg-[var(--color-primary)] text-white shadow-sm'
+          : 'bg-white border border-[var(--color-neutral-200)] text-[var(--text-primary)] hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]'
+        }
+      `}
+    >
+      {label}
+    </button>
+  );
+}
+
+// ── Filter section with collapsible behaviour on mobile ───────────────────────
+
+function FilterRow({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(true);
 
   return (
     <div>
-      {/* Filters */}
-      {(allSpecialties.length > 0 || allLanguages.length > 0 || allLevels.length > 0) && (
-        <div className="flex flex-wrap items-center gap-3 mb-8">
-          {allSpecialties.length > 0 && (
-            <select
-              value={specialty}
-              onChange={(e) => setSpecialty(e.target.value)}
-              className="rounded-xl border border-[var(--color-neutral-200)] bg-white px-4 py-2.5 text-sm text-[var(--text-primary)] min-h-[44px] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)]"
-            >
-              <option value="">{isAr ? 'كل التخصصات' : 'All Specialties'}</option>
-              {allSpecialties.map((s) => (
-                <option key={s} value={s}>{s}</option>
+      {/* Mobile toggle */}
+      <button
+        className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-neutral-500)] mb-2 md:cursor-default"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+      >
+        {label}
+        <ChevronDown
+          className={`w-3.5 h-3.5 transition-transform duration-200 md:hidden ${open ? 'rotate-180' : ''}`}
+          aria-hidden="true"
+        />
+      </button>
+      <div
+        className={`flex flex-wrap gap-2 overflow-hidden transition-all duration-200 ${open ? 'max-h-[200px] opacity-100' : 'max-h-0 opacity-0 md:max-h-[200px] md:opacity-100'}`}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
+// ── Main component ────────────────────────────────────────────────────────────
+
+export function CoachesDirectory({ coaches, locale }: Props) {
+  const isAr = locale === 'ar';
+
+  // Filter state
+  const [level, setLevel]   = useState('');
+  const [devType, setDevType] = useState('');
+  const [style, setStyle]   = useState('');
+
+  // Determine which Kun levels actually exist in the data
+  const availableLevels = useMemo(() => {
+    const set = new Set<string>();
+    coaches.forEach((c) => { if (c.kun_level) set.add(c.kun_level); });
+    // If no coaches have kun_level yet, fall back to coach_level for backward compat
+    if (set.size === 0) {
+      coaches.forEach((c) => { if (c.coach_level) set.add(c.coach_level); });
+      return KUN_LEVELS.filter((l) => set.has(l.value))
+        .concat(set.size > 0 && !KUN_LEVELS.some(l => set.has(l.value))
+          ? Array.from(set).map(v => ({ value: v, ar: v, en: v }))
+          : []);
+    }
+    return KUN_LEVELS.filter((l) => set.has(l.value));
+  }, [coaches]);
+
+  // Determine which dev types have at least one coach
+  const availableDevTypes = useMemo(() => {
+    const coachSpecialties = new Set<string>();
+    coaches.forEach((c) => c.specialties?.forEach((s) => coachSpecialties.add(s)));
+    return DEV_TYPES.filter((dt) => coachSpecialties.has(dt.value));
+  }, [coaches]);
+
+  // Determine which coaching styles have at least one coach
+  const availableStyles = useMemo(() => {
+    const normalised = new Set<string>();
+    coaches.forEach((c) =>
+      c.coaching_styles?.forEach((s) => normalised.add(normaliseStyle(s)))
+    );
+    // Only show the 5 canonical spec styles that actually appear
+    return COACHING_STYLES.filter(
+      (cs, idx, arr) =>
+        // deduplicate canonical values (Somatic Thinking merges into حسّي)
+        arr.findIndex((x) => x.ar === cs.ar) === idx &&
+        normalised.has(cs.value)
+    );
+  }, [coaches]);
+
+  // Filter coaches with AND logic
+  const filtered = useMemo(() => {
+    return coaches.filter((c) => {
+      if (level && c.kun_level !== level && c.coach_level !== level) return false;
+      if (devType && !c.specialties?.includes(devType)) return false;
+      if (style) {
+        const normalisedStyles = c.coaching_styles?.map(normaliseStyle) ?? [];
+        if (!normalisedStyles.includes(style)) return false;
+      }
+      return true;
+    });
+  }, [coaches, level, devType, style]);
+
+  const hasFilters = !!(level || devType || style);
+
+  const clearAll = () => { setLevel(''); setDevType(''); setStyle(''); };
+
+  const showLevelFilter    = availableLevels.length > 0;
+  const showDevTypeFilter  = availableDevTypes.length > 0;
+  const showStyleFilter    = availableStyles.length > 0;
+  const showFilters        = showLevelFilter || showDevTypeFilter || showStyleFilter;
+
+  return (
+    <div>
+      {/* ── Filter panel ──────────────────────────────────────────────────── */}
+      {showFilters && (
+        <div className="mb-8 rounded-2xl border border-[var(--color-neutral-100)] bg-[var(--color-surface-low)] p-5 space-y-5">
+
+          {/* Kun Level */}
+          {showLevelFilter && (
+            <FilterRow label={isAr ? 'المستوى' : 'Level'}>
+              <Chip
+                label={isAr ? 'الكل' : 'All'}
+                active={level === ''}
+                onClick={() => setLevel('')}
+              />
+              {availableLevels.map((l) => (
+                <Chip
+                  key={l.value}
+                  label={isAr ? l.ar : l.en}
+                  active={level === l.value}
+                  onClick={() => setLevel(level === l.value ? '' : l.value)}
+                />
               ))}
-            </select>
+            </FilterRow>
           )}
-          {allLanguages.length > 0 && (
-            <select
-              value={language}
-              onChange={(e) => setLanguage(e.target.value)}
-              className="rounded-xl border border-[var(--color-neutral-200)] bg-white px-4 py-2.5 text-sm text-[var(--text-primary)] min-h-[44px] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)]"
-            >
-              <option value="">{isAr ? 'كل اللغات' : 'All Languages'}</option>
-              {allLanguages.map((l) => (
-                <option key={l} value={l}>{l}</option>
+
+          {/* Development Type */}
+          {showDevTypeFilter && (
+            <FilterRow label={isAr ? 'نوع التطوّر' : 'Focus Area'}>
+              <Chip
+                label={isAr ? 'الكل' : 'All'}
+                active={devType === ''}
+                onClick={() => setDevType('')}
+              />
+              {availableDevTypes.map((dt) => (
+                <Chip
+                  key={dt.value}
+                  label={isAr ? dt.ar : dt.en}
+                  active={devType === dt.value}
+                  onClick={() => setDevType(devType === dt.value ? '' : dt.value)}
+                />
               ))}
-            </select>
+            </FilterRow>
           )}
-          {allLevels.length > 0 && (
-            <select
-              value={level}
-              onChange={(e) => setLevel(e.target.value)}
-              className="rounded-xl border border-[var(--color-neutral-200)] bg-white px-4 py-2.5 text-sm text-[var(--text-primary)] min-h-[44px] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)]"
-            >
-              <option value="">{isAr ? 'كل المستويات' : 'All Levels'}</option>
-              {allLevels.map((l) => (
-                <option key={l} value={l}>
-                  {l === 'instructor' ? (isAr ? 'مدرّب' : 'Instructor')
-                    : l === 'facilitator' ? (isAr ? 'ميسّر' : 'Facilitator')
-                    : `ICF ${l}`}
-                </option>
+
+          {/* Coaching Style */}
+          {showStyleFilter && (
+            <FilterRow label={isAr ? 'أسلوب الكوتشينج' : 'Coaching Style'}>
+              <Chip
+                label={isAr ? 'الكل' : 'All'}
+                active={style === ''}
+                onClick={() => setStyle('')}
+              />
+              {availableStyles.map((cs) => (
+                <Chip
+                  key={cs.value}
+                  label={isAr ? cs.ar : cs.en}
+                  active={style === cs.value}
+                  onClick={() => setStyle(style === cs.value ? '' : cs.value)}
+                />
               ))}
-            </select>
+            </FilterRow>
           )}
+
+          {/* Clear filters */}
           {hasFilters && (
-            <button
-              onClick={() => { setSpecialty(''); setLanguage(''); setLevel(''); }}
-              className="text-sm text-[var(--color-primary)] hover:underline min-h-[44px]"
-            >
-              {isAr ? 'مسح الفلاتر' : 'Clear filters'}
-            </button>
+            <div className="pt-1 border-t border-[var(--color-neutral-100)]">
+              <button
+                onClick={clearAll}
+                className="text-sm text-[var(--color-primary)] hover:underline min-h-[36px]"
+              >
+                {isAr ? 'مسح الفلاتر' : 'Clear all filters'}
+              </button>
+            </div>
           )}
         </div>
       )}
 
-      {/* Results count */}
+      {/* ── Results count ────────────────────────────────────────────────── */}
       {hasFilters && (
         <p className="text-sm text-[var(--color-neutral-500)] mb-4">
-          {isAr ? `${filtered.length} كوتش` : `${filtered.length} coach${filtered.length !== 1 ? 'es' : ''}`}
+          {isAr
+            ? `${filtered.length} كوتش`
+            : `${filtered.length} coach${filtered.length !== 1 ? 'es' : ''}`}
         </p>
       )}
 
-      {/* Grid */}
+      {/* ── Grid ─────────────────────────────────────────────────────────── */}
       {filtered.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {filtered.map((coach) => {
-            const name = isAr ? coach.name_ar : coach.name_en;
+            const name  = isAr ? coach.name_ar : coach.name_en;
             const title = isAr ? coach.title_ar : coach.title_en;
 
             return (
@@ -131,15 +303,22 @@ export function CoachesDirectory({ coaches, locale }: Props) {
                 <Card accent className="p-6 h-full transition-all duration-300 group-hover:shadow-[0_12px_40px_rgba(71,64,153,0.12)] group-hover:-translate-y-1">
                   <div className="flex items-start gap-4">
                     {/* Avatar */}
-                    <div className="shrink-0 h-16 w-16 rounded-full overflow-hidden bg-[var(--color-neutral-100)]">
+                    <div className="relative shrink-0 h-16 w-16 rounded-full overflow-hidden bg-[var(--color-neutral-100)]">
                       {coach.photo_url ? (
-                        <Image src={coach.photo_url} alt={name} fill className="object-cover" sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw" />
+                        <Image
+                          src={coach.photo_url}
+                          alt={name}
+                          fill
+                          className="object-cover"
+                          sizes="64px"
+                        />
                       ) : (
                         <div className="h-full w-full flex items-center justify-center text-2xl font-bold text-[var(--color-neutral-400)]">
                           {name.charAt(0)}
                         </div>
                       )}
                     </div>
+
                     {/* Info */}
                     <div className="flex-1 min-w-0">
                       <h3 className="font-bold text-lg text-[var(--text-primary)] group-hover:text-[var(--color-primary)] transition-colors">
@@ -148,11 +327,17 @@ export function CoachesDirectory({ coaches, locale }: Props) {
                       {title && (
                         <p className="text-sm text-[var(--color-neutral-600)] mt-0.5 line-clamp-1">{title}</p>
                       )}
-                      {coach.coach_level && (
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold mt-2 ${credentialColors[coach.coach_level] || 'bg-[var(--color-neutral-100)] text-[var(--color-neutral-600)]'}`}>
-                          {coach.coach_level === 'instructor' ? (isAr ? 'مدرّب' : 'Instructor')
-                            : coach.coach_level === 'facilitator' ? (isAr ? 'ميسّر' : 'Facilitator')
-                            : `ICF ${coach.coach_level}`}
+                      {(coach.kun_level || coach.coach_level) && (
+                        <span
+                          className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold mt-2 ${KUN_LEVEL_COLORS[coach.kun_level ?? ''] ?? KUN_LEVEL_COLORS[coach.coach_level ?? ''] ?? 'bg-[var(--color-neutral-100)] text-[var(--color-neutral-600)]'}`}
+                        >
+                          {getLevelLabel(coach.kun_level ?? coach.coach_level ?? '', isAr)}
+                        </span>
+                      )}
+                      {/* ICF credential badge (separate from Kun level) */}
+                      {coach.coach_level && ICF_CREDENTIALS[coach.coach_level] && (
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-medium ml-1">
+                          {isAr ? ICF_CREDENTIALS[coach.coach_level].ar : ICF_CREDENTIALS[coach.coach_level].en}
                         </span>
                       )}
                     </div>
@@ -174,10 +359,21 @@ export function CoachesDirectory({ coaches, locale }: Props) {
                     </div>
                   )}
 
+                  {/* Coaching styles (if any) */}
+                  {coach.coaching_styles?.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mt-2">
+                      {coach.coaching_styles.slice(0, 2).map((cs) => (
+                        <span key={cs} className="text-xs px-2 py-0.5 rounded-full bg-[var(--color-secondary-50)] text-[var(--color-secondary-600)] font-medium">
+                          {cs}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
                   {/* Languages */}
                   {coach.languages?.length > 0 && (
                     <div className="flex items-center gap-2 mt-3 text-xs text-[var(--color-neutral-500)]">
-                      <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                      <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                         <path d="M12 21a9 9 0 100-18 9 9 0 000 18z" />
                         <path d="M3.6 9h16.8M3.6 15h16.8" />
                       </svg>
@@ -188,7 +384,8 @@ export function CoachesDirectory({ coaches, locale }: Props) {
                   {/* CTA */}
                   <div className="mt-4 pt-4 border-t border-[var(--color-neutral-100)]">
                     <span className="text-sm font-medium text-[var(--color-accent)] group-hover:text-[var(--color-accent-500)] transition-colors">
-                      {isAr ? 'عرض الملف الشخصي' : 'View Profile'} <ArrowRight className="w-4 h-4 inline-block rtl:rotate-180" aria-hidden="true" />
+                      {isAr ? 'عرض الملف الشخصي' : 'View Profile'}{' '}
+                      <ArrowRight className="w-4 h-4 inline-block rtl:rotate-180" aria-hidden="true" />
                     </span>
                   </div>
                 </Card>
@@ -202,7 +399,7 @@ export function CoachesDirectory({ coaches, locale }: Props) {
             {isAr ? 'لا يوجد كوتشز بهذه المعايير' : 'No coaches match these filters'}
           </p>
           <button
-            onClick={() => { setSpecialty(''); setLanguage(''); setLevel(''); }}
+            onClick={clearAll}
             className="mt-3 text-sm text-[var(--color-primary)] hover:underline"
           >
             {isAr ? 'مسح الفلاتر' : 'Clear filters'}

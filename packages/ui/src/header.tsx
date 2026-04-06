@@ -28,60 +28,50 @@ const primaryNav: NavItem[] = [
     labelEn: 'Programs',
     href: '/programs/',
     groups: [
+      // Column 1: Start Here
       {
-        groupLabelAr: 'ابدأ من هنا',
+        groupLabelAr: 'ابدأ هنا',
         groupLabelEn: 'Start Here',
         items: [
-          { labelAr: 'مدخل التفكير الحسّي (STI)', labelEn: 'Somatic Thinking Intro (STI)', href: '/academy/intro/' },
-          { labelAr: 'اكتشف مسارك', labelEn: 'Find Your Path', href: '/pathfinder/' },
+          { labelAr: 'GPS الحياة', labelEn: 'GPS of Life', href: '/programs/gps-of-life/' },
+          { labelAr: 'هندسة التأثير', labelEn: 'Impact Engineering', href: '/programs/impact-engineering/' },
+          { labelAr: 'دورات مسجّلة', labelEn: 'Mini-Courses', href: '/programs/micro-courses/' },
+          { labelAr: 'موارد مجانية', labelEn: 'Free Resources', href: '/programs/free/' },
+          { labelAr: 'ويبينارات قادمة', labelEn: 'Upcoming Webinars', href: '/events/' },
         ],
       },
+      // Column 2: Certifications
       {
-        groupLabelAr: 'الشهادات المعتمدة',
+        groupLabelAr: 'شهادات الكوتشينج',
         groupLabelEn: 'Certifications',
         items: [
-          { labelAr: 'المستوى ١ — أساسيات الأفراد (STIC)', labelEn: 'Level 1 — Individual Fundamentals (STIC)', href: '/academy/certifications/stce/level-1/' },
-          { labelAr: 'المستوى ٢ — متقدّم (STAIC)', labelEn: 'Level 2 — Advanced (STAIC)', href: '/academy/certifications/stce/level-2/' },
-          { labelAr: 'المستوى ٣ — المجموعات (STGC)', labelEn: 'Level 3 — Group (STGC)', href: '/academy/certifications/stce/level-3/' },
-          { labelAr: 'المستوى ٤ — المؤسسات (STOC)', labelEn: 'Level 4 — Organizational (STOC)', href: '/academy/certifications/stce/level-4/' },
-          { labelAr: 'المستوى ٥ — العائلات والأزواج (STFC)', labelEn: 'Level 5 — Family & Couples (STFC)', href: '/academy/certifications/stce/level-5/' },
-          { labelAr: 'الكوتشينج للأطباء (STDC)', labelEn: 'Coaching for Doctors (STDC)', href: '/academy/certifications/doctors/' },
-          { labelAr: 'الكوتشينج للمديرين (STCM)', labelEn: 'Coaching for Managers (STCM)', href: '/academy/certifications/managers/' },
+          { labelAr: 'STIC — كوتش فردي', labelEn: 'STIC — Individual Coach', href: '/academy/certifications/stce/level-1/' },
+          { labelAr: 'STAIC — كوتش متقدم', labelEn: 'STAIC — Advanced Coach', href: '/academy/certifications/stce/level-2/' },
+          { labelAr: 'STGC — كوتش جمعي', labelEn: 'STGC — Group Coach', href: '/academy/certifications/stce/level-3/' },
+          { labelAr: 'STOC — كوتش مؤسسات', labelEn: 'STOC — Organisational Coach', href: '/academy/certifications/stce/level-4/' },
+          { labelAr: 'STFC — كوتش أسري', labelEn: 'STFC — Family Coach', href: '/academy/certifications/stce/level-5/' },
         ],
       },
+      // Column 3: Pathway Packages (منهجك)
       {
-        groupLabelAr: 'الباقات',
-        groupLabelEn: 'Packages',
+        groupLabelAr: 'منهجك — الباقات',
+        groupLabelEn: 'Pathway Packages',
         items: [
-          { labelAr: 'منهجك التدريبي', labelEn: 'Training Methodology', href: '/academy/packages/training/' },
-          { labelAr: 'منهجك المؤسسي', labelEn: 'Organizational Methodology', href: '/academy/packages/organizational/' },
-          { labelAr: 'منهجك القيادي', labelEn: 'Leadership Methodology', href: '/academy/packages/leadership/' },
+          { labelAr: 'منهجك التدريبي', labelEn: 'Training Package', href: '/academy/packages/training/' },
+          { labelAr: 'منهجك المؤسسي', labelEn: 'Organizational Package', href: '/academy/packages/organizational/' },
+          { labelAr: 'منهجك القيادي', labelEn: 'Leadership Package', href: '/academy/packages/leadership/' },
         ],
       },
+      // Column 4: Other Experiences
       {
-        groupLabelAr: 'الدورات والورش',
-        groupLabelEn: 'Courses & Workshops',
+        groupLabelAr: 'تجارب أخرى',
+        groupLabelEn: 'Other Experiences',
         items: [
+          { labelAr: 'رحلات الإحياء', labelEn: 'Ihya Retreats', href: '/programs/retreats/' },
           { labelAr: 'هويّتك (YPI)', labelEn: 'Your Identity (YPI)', href: '/academy/courses/your-identity/' },
-          { labelAr: 'هندسة التأثير', labelEn: 'Impact Engineering', href: '/events/' },
-          { labelAr: 'الدورات المسجّلة', labelEn: 'Recorded Courses', href: '/academy/recorded/' },
-        ],
-      },
-      {
-        groupLabelAr: 'حلول المؤسسات',
-        groupLabelEn: 'Corporate',
-        items: [
-          { labelAr: 'GM Playbook', labelEn: 'GM Playbook', href: '/programs/corporate/gm-playbook/' },
-          { labelAr: 'التسهيل التنفيذي', labelEn: 'Executive Facilitation', href: '/programs/corporate/facilitation/' },
-        ],
-      },
-      {
-        groupLabelAr: 'الأسرة والشباب',
-        groupLabelEn: 'Family & Youth',
-        items: [
-          { labelAr: 'SEEDS بذور', labelEn: 'SEEDS', href: '/programs/family/seeds/' },
-          { labelAr: 'وِصال Wisal', labelEn: 'Wisal', href: '/programs/family/wisal/' },
-          { labelAr: 'يقظة Yaqatha', labelEn: 'Yaqatha', href: '/programs/yaqatha/' },
+          { labelAr: 'مدخل التفكير الحسّي (STI)', labelEn: 'Somatic Thinking Intro (STI)', href: '/academy/intro/' },
+          { labelAr: 'حلول المؤسسات', labelEn: 'Corporate', href: '/programs/corporate/' },
+          { labelAr: 'الأسرة والشباب', labelEn: 'Family & Youth', href: '/programs/family/' },
         ],
       },
     ],
@@ -134,12 +124,22 @@ export interface HeaderUser {
   avatar_url?: string | null;
 }
 
+/** Bilingual daily quote passed from the server layout */
+export interface DailyQuoteData {
+  content_ar: string;
+  content_en: string;
+  author_ar: string;
+  author_en: string;
+}
+
 interface HeaderProps {
   locale: string;
   user?: HeaderUser | null;
+  /** Optional daily rotating Samer Hassan quote shown as Row 0 in the mega-menu */
+  dailyQuote?: DailyQuoteData | null;
 }
 
-export function Header({ locale, user }: HeaderProps) {
+export function Header({ locale, user, dailyQuote }: HeaderProps) {
   const [menuOpen, setMenuOpen] = React.useState(false);
   const [activeDropdown, setActiveDropdown] = React.useState<string | null>(null);
   const [mobileExpanded, setMobileExpanded] = React.useState<string | null>(null);
@@ -235,76 +235,102 @@ export function Header({ locale, user }: HeaderProps) {
                 {item.groups && activeDropdown === item.key && (
                   <div
                     className="absolute top-full start-0 mt-2 bg-white rounded-2xl shadow-[0_12px_48px_rgba(71,64,153,0.12)] border border-[var(--color-neutral-100)] py-6 px-8 z-50"
-                    style={{ animation: 'fade-in-item 0.2s ease-out', width: 'max(680px, 56vw)', maxWidth: '820px' }}
+                    style={{ animation: 'fade-in-item 0.2s ease-out', width: 'max(860px, 68vw)', maxWidth: '1020px' }}
                   >
-                    <div className="grid grid-cols-3 gap-6 mb-6">
-                      {/* Column 1: Start Here + Certifications */}
-                      <div className="space-y-6">
-                        {[item.groups[0], item.groups[1]].map((group) => (
-                          <div key={group.groupLabelEn}>
-                            <h3 className="text-[10px] uppercase font-semibold tracking-wider text-[var(--color-neutral-400)] mb-3">
-                              {isAr ? group.groupLabelAr : group.groupLabelEn}
-                            </h3>
-                            <ul className="space-y-2">
-                              {group.items.map((link) => (
-                                <li key={link.href}>
-                                  <a
-                                    href={`/${locale}${link.href}`}
-                                    className="text-sm text-[var(--color-neutral-700)] hover:text-[var(--color-primary)] transition-colors duration-200"
-                                  >
-                                    {isAr ? link.labelAr : link.labelEn}
-                                  </a>
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        ))}
+                    {/* Row 0 — Daily Samer Hassan quote */}
+                    {dailyQuote && (
+                      <div className="mb-5 pb-5 border-b border-[var(--color-neutral-100)]">
+                        <p className="text-sm italic text-[var(--color-neutral-600)] leading-relaxed text-center">
+                          <span className="text-[var(--color-accent)] opacity-60 text-lg leading-none align-top me-1">"</span>
+                          {isAr ? dailyQuote.content_ar : dailyQuote.content_en}
+                          <span className="text-[var(--color-accent)] opacity-60 text-lg leading-none align-bottom ms-1">"</span>
+                        </p>
+                        <p className="text-xs text-[var(--color-neutral-400)] text-center mt-1.5 font-medium">
+                          — {isAr ? dailyQuote.author_ar : dailyQuote.author_en}
+                        </p>
+                      </div>
+                    )}
+                    <div className="grid grid-cols-4 gap-6 mb-6">
+                      {/* Column 1: Start Here */}
+                      <div className="space-y-3">
+                        <h3 className="text-[10px] uppercase font-semibold tracking-wider text-[var(--color-neutral-400)] mb-3">
+                          {isAr ? item.groups[0].groupLabelAr : item.groups[0].groupLabelEn}
+                        </h3>
+                        <ul className="space-y-2">
+                          {item.groups[0].items.map((link) => (
+                            <li key={link.href}>
+                              <a
+                                href={`/${locale}${link.href}`}
+                                className="text-sm text-[var(--color-neutral-700)] hover:text-[var(--color-primary)] transition-colors duration-200"
+                              >
+                                {isAr ? link.labelAr : link.labelEn}
+                              </a>
+                            </li>
+                          ))}
+                        </ul>
+                        {/* Authority signal */}
+                        <p className="text-[10px] leading-snug text-[var(--color-neutral-400)] mt-4 pt-3 border-t border-[var(--color-neutral-100)]">
+                          {isAr
+                            ? 'انضم لـ ٥٠٠+ كوتش مدرَّب عبر ٤ قارات'
+                            : 'Join 500+ coaches trained across 4 continents'}
+                        </p>
                       </div>
 
-                      {/* Column 2: Packages + Courses */}
-                      <div className="space-y-6">
-                        {[item.groups[2], item.groups[3]].map((group) => (
-                          <div key={group.groupLabelEn}>
-                            <h3 className="text-[10px] uppercase font-semibold tracking-wider text-[var(--color-neutral-400)] mb-3">
-                              {isAr ? group.groupLabelAr : group.groupLabelEn}
-                            </h3>
-                            <ul className="space-y-2">
-                              {group.items.map((link) => (
-                                <li key={link.href}>
-                                  <a
-                                    href={`/${locale}${link.href}`}
-                                    className="text-sm text-[var(--color-neutral-700)] hover:text-[var(--color-primary)] transition-colors duration-200"
-                                  >
-                                    {isAr ? link.labelAr : link.labelEn}
-                                  </a>
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        ))}
+                      {/* Column 2: Certifications */}
+                      <div className="space-y-3">
+                        <h3 className="text-[10px] uppercase font-semibold tracking-wider text-[var(--color-neutral-400)] mb-3">
+                          {isAr ? item.groups[1].groupLabelAr : item.groups[1].groupLabelEn}
+                        </h3>
+                        <ul className="space-y-2">
+                          {item.groups[1].items.map((link) => (
+                            <li key={link.href}>
+                              <a
+                                href={`/${locale}${link.href}`}
+                                className="text-sm text-[var(--color-neutral-700)] hover:text-[var(--color-primary)] transition-colors duration-200"
+                              >
+                                {isAr ? link.labelAr : link.labelEn}
+                              </a>
+                            </li>
+                          ))}
+                        </ul>
                       </div>
 
-                      {/* Column 3: Corporate + Family */}
-                      <div className="space-y-6">
-                        {[item.groups[4], item.groups[5]].map((group) => (
-                          <div key={group.groupLabelEn}>
-                            <h3 className="text-[10px] uppercase font-semibold tracking-wider text-[var(--color-neutral-400)] mb-3">
-                              {isAr ? group.groupLabelAr : group.groupLabelEn}
-                            </h3>
-                            <ul className="space-y-2">
-                              {group.items.map((link) => (
-                                <li key={link.href}>
-                                  <a
-                                    href={`/${locale}${link.href}`}
-                                    className="text-sm text-[var(--color-neutral-700)] hover:text-[var(--color-primary)] transition-colors duration-200"
-                                  >
-                                    {isAr ? link.labelAr : link.labelEn}
-                                  </a>
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        ))}
+                      {/* Column 3: Pathway Packages */}
+                      <div className="space-y-3">
+                        <h3 className="text-[10px] uppercase font-semibold tracking-wider text-[var(--color-neutral-400)] mb-3">
+                          {isAr ? item.groups[2].groupLabelAr : item.groups[2].groupLabelEn}
+                        </h3>
+                        <ul className="space-y-2">
+                          {item.groups[2].items.map((link) => (
+                            <li key={link.href}>
+                              <a
+                                href={`/${locale}${link.href}`}
+                                className="text-sm text-[var(--color-neutral-700)] hover:text-[var(--color-primary)] transition-colors duration-200"
+                              >
+                                {isAr ? link.labelAr : link.labelEn}
+                              </a>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+
+                      {/* Column 4: Other Experiences */}
+                      <div className="space-y-3">
+                        <h3 className="text-[10px] uppercase font-semibold tracking-wider text-[var(--color-neutral-400)] mb-3">
+                          {isAr ? item.groups[3].groupLabelAr : item.groups[3].groupLabelEn}
+                        </h3>
+                        <ul className="space-y-2">
+                          {item.groups[3].items.map((link) => (
+                            <li key={link.href}>
+                              <a
+                                href={`/${locale}${link.href}`}
+                                className="text-sm text-[var(--color-neutral-700)] hover:text-[var(--color-primary)] transition-colors duration-200"
+                              >
+                                {isAr ? link.labelAr : link.labelEn}
+                              </a>
+                            </li>
+                          ))}
+                        </ul>
                       </div>
                     </div>
 

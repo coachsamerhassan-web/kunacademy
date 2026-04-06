@@ -1,7 +1,7 @@
 import { setRequestLocale } from 'next-intl/server';
 import { GeometricPattern } from '@kunacademy/ui/patterns';
 import type { Metadata } from 'next';
-import { cms } from '@kunacademy/cms';
+import { cms } from '@kunacademy/cms/server';
 import { TestimonialsGrid } from './testimonials-grid';
 
 interface Props { params: Promise<{ locale: string }> }

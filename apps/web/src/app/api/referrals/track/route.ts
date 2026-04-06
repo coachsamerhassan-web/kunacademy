@@ -1,12 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-import type { Database } from '@kunacademy/db';
-
-const supabase = createClient<Database>(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
+import { db, withAdminContext } from '@kunacademy/db';
+import { referral_codes, credit_transactions } from '@kunacademy/db/schema';
+import { eq, and } from 'drizzle-orm';
 import { getBusinessConfig } from '@/lib/cms-config';
 
 export async function POST(request: NextRequest) {
@@ -18,11 +13,15 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate code exists and is active
-    const { data: codeRow } = await supabase
-      .from('referral_codes')
-      .select('id, user_id, is_active')
-      .eq('code', referral_code)
-      .single();
+    const [codeRow] = await db
+      .select({
+        id: referral_codes.id,
+        user_id: referral_codes.user_id,
+        is_active: referral_codes.is_active,
+      })
+      .from(referral_codes)
+      .where(eq(referral_codes.code, referral_code))
+      .limit(1);
 
     if (!codeRow) {
       return NextResponse.json({ error: 'Invalid referral code' }, { status: 404 });
@@ -38,13 +37,17 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if this new_user has already been tracked for this referrer (prevent double-credit)
-    const { data: existingTxn } = await supabase
-      .from('credit_transactions')
-      .select('id')
-      .eq('user_id', codeRow.user_id)
-      .eq('source_type', 'referral')
-      .eq('source_id', new_user_id)
-      .single();
+    const [existingTxn] = await db
+      .select({ id: credit_transactions.id })
+      .from(credit_transactions)
+      .where(
+        and(
+          eq(credit_transactions.user_id, codeRow.user_id),
+          eq(credit_transactions.source_type, 'referral'),
+          eq(credit_transactions.source_id, new_user_id)
+        )
+      )
+      .limit(1);
 
     if (existingTxn) {
       return NextResponse.json({ error: 'Referral already tracked' }, { status: 409 });
@@ -55,35 +58,34 @@ export async function POST(request: NextRequest) {
     const REFERRAL_CREDIT_AMOUNT = config.referral_reward_amount;
 
     // Calculate balance_after from previous transactions
-    const { data: prevTxns } = await supabase
-      .from('credit_transactions')
-      .select('amount, type')
-      .eq('user_id', codeRow.user_id);
+    const prevTxns = await db
+      .select({
+        amount: credit_transactions.amount,
+        type: credit_transactions.type,
+      })
+      .from(credit_transactions)
+      .where(eq(credit_transactions.user_id, codeRow.user_id));
 
     let currentBalance = 0;
-    if (prevTxns) {
-      for (const t of prevTxns) {
-        if (t.type === 'earn') currentBalance += t.amount;
-        if (t.type === 'spend' || t.type === 'payout') currentBalance -= t.amount;
-      }
+    for (const t of prevTxns) {
+      if (t.type === 'earn') currentBalance += t.amount;
+      if (t.type === 'spend' || t.type === 'payout') currentBalance -= t.amount;
     }
 
     const balanceAfter = currentBalance + REFERRAL_CREDIT_AMOUNT;
 
-    // Create earn transaction
-    const { error: txnError } = await supabase.from('credit_transactions').insert({
-      user_id: codeRow.user_id,
-      amount: REFERRAL_CREDIT_AMOUNT,
-      type: 'earn',
-      source_type: 'referral',
-      source_id: new_user_id,
-      balance_after: balanceAfter,
-      note: `Referral credit for new user signup`,
+    // Create earn transaction using admin context (bypasses RLS)
+    await withAdminContext(async (adminDb) => {
+      await adminDb.insert(credit_transactions).values({
+        user_id: codeRow.user_id,
+        amount: REFERRAL_CREDIT_AMOUNT,
+        type: 'earn',
+        source_type: 'referral',
+        source_id: new_user_id,
+        balance_after: balanceAfter,
+        note: 'Referral credit for new user signup',
+      });
     });
-
-    if (txnError) {
-      return NextResponse.json({ error: txnError.message }, { status: 500 });
-    }
 
     return NextResponse.json({ success: true, credited: REFERRAL_CREDIT_AMOUNT, balance_after: balanceAfter });
   } catch (err: any) {

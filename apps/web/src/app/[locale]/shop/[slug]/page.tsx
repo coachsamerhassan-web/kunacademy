@@ -1,17 +1,24 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { setRequestLocale } from 'next-intl/server';
-import { createServerClient } from '@kunacademy/db';
-import type { Product } from '@kunacademy/db';
+import { db } from '@kunacademy/db';
+import { products } from '@kunacademy/db/schema';
+import { eq, and } from 'drizzle-orm';
 import { Section } from '@kunacademy/ui/section';
 import { ProductDetail } from './product-detail';
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string; slug: string }> }): Promise<Metadata> {
   const { locale, slug } = await params;
   const isAr = locale === 'ar';
-  const supabase = createServerClient();
-  if (!supabase) return {};
-  const { data } = await supabase.from('products').select('name_ar, name_en, description_ar, description_en').eq('slug', slug).eq('is_active', true).single();
+  const [data] = await db.select({
+    name_ar: products.name_ar,
+    name_en: products.name_en,
+    description_ar: products.description_ar,
+    description_en: products.description_en,
+  })
+    .from(products)
+    .where(and(eq(products.slug, slug), eq(products.is_active, true)))
+    .limit(1);
   if (!data) return {};
   return {
     title: `${isAr ? data.name_ar : data.name_en} | ${isAr ? 'أكاديمية كُن' : 'Kun Academy'}`,
@@ -27,19 +34,10 @@ export default async function ProductPage({
   const { locale, slug } = await params;
   setRequestLocale(locale);
 
-  const supabase = createServerClient();
-  let product: Product | null = null;
-
-  if (supabase) {
-    const { data } = await supabase
-      .from('products')
-      .select('*')
-      .eq('slug', slug)
-      .eq('is_active', true)
-      .single();
-
-    product = data as Product | null;
-  }
+  const [product] = await db.select()
+    .from(products)
+    .where(and(eq(products.slug, slug), eq(products.is_active, true)))
+    .limit(1);
 
   if (!product) {
     notFound();

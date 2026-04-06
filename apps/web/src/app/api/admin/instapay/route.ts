@@ -1,25 +1,24 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-import type { Database } from '@kunacademy/db';
+import { withAdminContext } from '@kunacademy/db';
+import { payments, bookings, orders, profiles } from '@kunacademy/db/schema';
+import { eq, and, sql } from 'drizzle-orm';
 import { notify } from '@kunacademy/email';
-
-const supabase = createClient<Database>(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 /** GET: List pending InstaPay payments awaiting verification */
 export async function GET() {
-  const { data, error } = await supabase
-    .from('payments')
-    .select('*')
-    .eq('gateway', 'instapay' as any)
-    .eq('status', 'pending')
-    .order('created_at', { ascending: false });
+  const allPayments = await withAdminContext(async (db) => {
+    return db.select()
+      .from(payments)
+      .where(
+        and(
+          eq(payments.gateway, 'instapay'),
+          eq(payments.status, 'pending')
+        )
+      )
+      .orderBy(sql`${payments.created_at} DESC`);
+  });
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
-  const payments = (data || []).map((p) => {
+  const result = (allPayments || [] as Array<typeof payments.$inferSelect>).map((p: typeof payments.$inferSelect) => {
     const meta = (p.metadata || {}) as Record<string, unknown>;
     return {
       id: p.id,
@@ -39,7 +38,7 @@ export async function GET() {
     };
   });
 
-  return NextResponse.json({ payments });
+  return NextResponse.json({ payments: result });
 }
 
 /** POST: Admin verifies or rejects an InstaPay payment */
@@ -55,13 +54,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Action must be verify or reject' }, { status: 400 });
     }
 
-    const { data: payment, error: fetchError } = await supabase
-      .from('payments')
-      .select('*')
-      .eq('id', payment_id)
-      .single();
+    const [payment] = await withAdminContext(async (db) => {
+      return db.select()
+        .from(payments)
+        .where(eq(payments.id, payment_id))
+        .limit(1);
+    });
 
-    if (fetchError || !payment) {
+    if (!payment) {
       return NextResponse.json({ error: 'Payment not found' }, { status: 404 });
     }
 
@@ -69,22 +69,19 @@ export async function POST(request: NextRequest) {
     const newStatus = action === 'verify' ? 'completed' : 'failed';
 
     // Update payment
-    const { error: updateError } = await supabase
-      .from('payments')
-      .update({
-        status: newStatus as any,
-        metadata: {
-          ...metadata,
-          verification_status: action === 'verify' ? 'verified' : 'rejected',
-          verified_at: new Date().toISOString(),
-          admin_note: admin_note || null,
-        },
-      })
-      .eq('id', payment_id);
-
-    if (updateError) {
-      return NextResponse.json({ error: updateError.message }, { status: 500 });
-    }
+    await withAdminContext(async (db) => {
+      await db.update(payments)
+        .set({
+          status: newStatus,
+          metadata: {
+            ...metadata,
+            verification_status: action === 'verify' ? 'verified' : 'rejected',
+            verified_at: new Date().toISOString(),
+            admin_note: admin_note || null,
+          },
+        })
+        .where(eq(payments.id, payment_id));
+    });
 
     // On verification: fulfill the purchase
     if (action === 'verify') {
@@ -93,37 +90,43 @@ export async function POST(request: NextRequest) {
       const userId = metadata.user_id as string;
 
       if (itemType === 'course' && itemId && userId) {
-        await supabase.from('enrollments').upsert({
-          user_id: userId,
-          course_id: itemId,
-          status: 'enrolled',
-          enrollment_type: 'recorded',
-        }, { onConflict: 'user_id,course_id' });
+        // Upsert enrollment using raw SQL ON CONFLICT for portability
+        await withAdminContext(async (db) => {
+          await db.execute(sql`
+            INSERT INTO enrollments (user_id, course_id, status, enrollment_type)
+            VALUES (${userId}, ${itemId}, 'enrolled', 'recorded')
+            ON CONFLICT (user_id, course_id) DO UPDATE
+              SET status = 'enrolled'
+          `);
+        });
       }
 
       if (itemType === 'booking' && itemId) {
-        await supabase.from('bookings').update({
-          status: 'confirmed',
-          payment_id: payment_id,
-        }).eq('id', itemId);
+        await withAdminContext(async (db) => {
+          await db.update(bookings)
+            .set({ status: 'confirmed', payment_id })
+            .where(eq(bookings.id, itemId));
+        });
       }
 
       if (itemType === 'order' && itemId) {
-        await supabase.from('orders').update({
-          status: 'paid',
-          payment_id: payment_id,
-        }).eq('id', itemId);
+        await withAdminContext(async (db) => {
+          await db.update(orders)
+            .set({ status: 'paid', payment_id })
+            .where(eq(orders.id, itemId));
+        });
       }
 
       // Send payment confirmation to customer (non-blocking)
       const userEmail = metadata.user_email as string;
       const itemName = metadata.item_name as string;
-      if (userEmail) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('full_name_ar, full_name_en')
-          .eq('id', userId)
-          .single();
+      if (userEmail && userId) {
+        const [profile] = await withAdminContext(async (db) => {
+          return db.select({ full_name_ar: profiles.full_name_ar, full_name_en: profiles.full_name_en })
+            .from(profiles)
+            .where(eq(profiles.id, userId))
+            .limit(1);
+        });
         const name = profile?.full_name_ar || profile?.full_name_en || userEmail;
         notify({
           event: 'payment_received',

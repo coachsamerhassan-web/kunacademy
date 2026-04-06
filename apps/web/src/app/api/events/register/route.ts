@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+import { db, withAdminContext } from '@kunacademy/db';
+import { eq, and, inArray } from 'drizzle-orm';
+import { event_registrations } from '@kunacademy/db/schema';
 
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 const RATE_LIMIT_MAX = 5;
@@ -40,7 +39,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { event_slug, name, email, phone, is_free, price_amount, price_currency, event_name, locale, user_id } = body;
+    const { event_slug, name, email, phone, is_free, price_amount, price_currency, event_name, locale, user_id, capacity } = body;
 
     // Validate required fields
     if (!event_slug || !name || !email) {
@@ -52,85 +51,85 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid email format' }, { status: 400 });
     }
 
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
     // Check for duplicate registration (same email + event)
-    const { data: existing } = await supabase
-      .from('event_registrations')
-      .select('id, status')
-      .eq('event_slug', event_slug)
-      .eq('email', sanitize(email))
-      .in('status', ['registered', 'confirmed', 'pending_payment'])
-      .maybeSingle();
+    const existingRows = await db
+      .select({ id: event_registrations.id, status: event_registrations.status })
+      .from(event_registrations)
+      .where(
+        and(
+          eq(event_registrations.event_slug, sanitize(event_slug)),
+          eq(event_registrations.email, sanitize(email)),
+          inArray(event_registrations.status, ['registered', 'confirmed', 'pending_payment'])
+        )
+      )
+      .limit(1);
+
+    const existing = existingRows[0] ?? null;
 
     if (existing) {
       return NextResponse.json({
         error: locale === 'ar' ? 'أنت مسجّل بالفعل في هذه الفعالية' : 'You are already registered for this event',
         registration_id: existing.id,
-        status: existing.status
+        status: existing.status,
       }, { status: 409 });
     }
 
-    // Check capacity (count current registrations for this event)
-    // capacity check is optional — CMS event has capacity field, but we pass it from client
-    // We'll do a count check server-side
-
-    if (is_free) {
-      // FREE event — register immediately
-      const { data: registration, error } = await supabase
-        .from('event_registrations')
-        .insert({
-          event_slug: sanitize(event_slug),
-          name: sanitize(name),
-          email: sanitize(email),
-          phone: phone ? sanitize(phone) : null,
-          user_id: user_id || null,
-          status: 'registered',
-        })
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Event registration error:', error);
-        return NextResponse.json({ error: 'Failed to register' }, { status: 500 });
-      }
-
-      return NextResponse.json({
-        success: true,
-        registration_id: registration.id,
-        status: 'registered',
-        message: locale === 'ar' ? 'تم تسجيلك بنجاح!' : 'Registration successful!'
+    // Atomic capacity check + insert via DB function — eliminates TOCTOU race condition.
+    // The function locks all registrations for the event, counts, then either registers
+    // or waitlists in a single transaction. capacity=null means unlimited.
+    let rpcRows: Array<{ result_status: string; registration_id: string }>;
+    try {
+      const result = await withAdminContext(async (db) => {
+        const { sql } = await import('drizzle-orm');
+        return db.execute(
+          sql`SELECT * FROM register_for_event(
+            ${sanitize(event_slug)},
+            ${user_id || null}::uuid,
+            ${sanitize(name)},
+            ${sanitize(email)},
+            ${phone ? sanitize(phone) : null},
+            ${capacity ?? null}::integer,
+            ${!is_free}
+          )`
+        );
       });
-    } else {
-      // PAID event — create pending registration + redirect to checkout
-      const { data: registration, error } = await supabase
-        .from('event_registrations')
-        .insert({
-          event_slug: sanitize(event_slug),
-          name: sanitize(name),
-          email: sanitize(email),
-          phone: phone ? sanitize(phone) : null,
-          user_id: user_id || null,
-          status: 'pending_payment',
-        })
-        .select()
-        .single();
+      rpcRows = (result.rows ?? []) as Array<{ result_status: string; registration_id: string }>;
+    } catch (rpcErr) {
+      console.error('Event registration DB function error:', rpcErr);
+      return NextResponse.json({ error: 'Failed to register' }, { status: 500 });
+    }
 
-      if (error) {
-        console.error('Event registration error:', error);
-        return NextResponse.json({ error: 'Failed to register' }, { status: 500 });
-      }
+    const { result_status: regStatus, registration_id: regId } = rpcRows[0] ?? {};
 
-      // Return checkout URL — client will redirect
-      const checkoutUrl = `/${locale || 'ar'}/checkout?type=event&id=${registration.id}&name=${encodeURIComponent(event_name || event_slug)}`;
+    if (regStatus === 'waitlisted') {
+      return NextResponse.json({
+        status: 'waitlisted',
+        registration_id: regId,
+        message: locale === 'ar'
+          ? 'الفعالية ممتلئة. تم إضافتك إلى قائمة الانتظار وسنخبرك عند توفر مقعد.'
+          : 'This event is full. You have been added to the waitlist and will be notified if a spot opens.',
+      });
+    }
+
+    if (regStatus === 'pending_payment') {
+      // PAID event — redirect to checkout
+      const checkoutUrl = `/${locale || 'ar'}/checkout?type=event&id=${regId}&name=${encodeURIComponent(event_name || event_slug)}`;
 
       return NextResponse.json({
         success: true,
-        registration_id: registration.id,
+        registration_id: regId,
         status: 'pending_payment',
         checkout_url: checkoutUrl,
       });
     }
+
+    // FREE event — registered immediately
+    return NextResponse.json({
+      success: true,
+      registration_id: regId,
+      status: 'registered',
+      message: locale === 'ar' ? 'تم تسجيلك بنجاح!' : 'Registration successful!',
+    });
   } catch (err: any) {
     console.error('Event registration error:', err);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
@@ -147,14 +146,19 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ registered: false });
   }
 
-  const supabase = createClient(supabaseUrl, supabaseServiceKey);
-  const { data } = await supabase
-    .from('event_registrations')
-    .select('id, status')
-    .eq('event_slug', sanitize(event_slug))
-    .eq('email', sanitize(email))
-    .in('status', ['registered', 'confirmed'])
-    .maybeSingle();
+  const rows = await db
+    .select({ id: event_registrations.id, status: event_registrations.status })
+    .from(event_registrations)
+    .where(
+      and(
+        eq(event_registrations.event_slug, sanitize(event_slug)),
+        eq(event_registrations.email, sanitize(email)),
+        inArray(event_registrations.status, ['registered', 'confirmed'])
+      )
+    )
+    .limit(1);
+
+  const data = rows[0] ?? null;
 
   return NextResponse.json({ registered: !!data, status: data?.status || null });
 }

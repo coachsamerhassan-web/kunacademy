@@ -2,20 +2,21 @@
 
 import { useAuth } from '@kunacademy/auth';
 import { useEffect, useState } from 'react';
-import { createBrowserClient } from '@kunacademy/db';
 import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 
+// Schema uses: name_ar, name_en, is_admin_only (NOT title_ar/title_en/is_public)
 interface Board {
   id: string;
-  title_ar: string;
-  title_en: string;
+  name_ar: string;
+  name_en: string;
   slug: string;
   description_ar: string | null;
   description_en: string | null;
-  is_public: boolean;
+  is_admin_only: boolean;
+  type: string;
   created_at: string;
 }
 
@@ -31,15 +32,21 @@ export default function AdminCommunityPage() {
   useEffect(() => {
     if (authLoading) return;
     if (!user || profile?.role !== 'admin') { router.push('/' + locale + '/auth/login'); return; }
-    const s = createBrowserClient();
+
     Promise.all([
-      s.from('community_boards').select('*').order('created_at', { ascending: false }),
-      s.from('community_posts').select('id', { count: 'exact', head: true }),
-    ]).then(([boardsRes, postsRes]) => {
-      setBoards((boardsRes.data as any) ?? []);
-      setPostCount(postsRes.count ?? 0);
+      fetch('/api/admin/community-boards'),
+      fetch('/api/admin/community-post-count'),
+    ]).then(async ([boardsRes, postsRes]) => {
+      if (boardsRes.ok) {
+        const data = await boardsRes.json();
+        setBoards(data.boards ?? []);
+      }
+      if (postsRes.ok) {
+        const data = await postsRes.json();
+        setPostCount(data.count ?? 0);
+      }
       setLoading(false);
-    });
+    }).catch(() => setLoading(false));
   }, [user, profile, authLoading]);
 
   if (authLoading || loading) return <Section><p className="text-center py-12">Loading...</p></Section>;
@@ -75,15 +82,16 @@ export default function AdminCommunityPage() {
               ) : boards.map(board => (
                 <tr key={board.id} className="border-b border-[var(--color-neutral-100)] hover:bg-[var(--color-neutral-50)]">
                   <td className="px-4 py-3">
-                    <div className="font-medium text-[var(--text-primary)]">{isAr ? board.title_ar : board.title_en}</div>
+                    <div className="font-medium text-[var(--text-primary)]">{isAr ? board.name_ar : board.name_en}</div>
                     <div className="text-xs text-[var(--color-neutral-400)]">/{board.slug}</div>
                   </td>
                   <td className="px-4 py-3 text-[var(--color-neutral-600)] text-sm max-w-xs truncate">
                     {(isAr ? board.description_ar : board.description_en) || '-'}
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${board.is_public ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                      {board.is_public ? (isAr ? 'عام' : 'Public') : (isAr ? 'خاص' : 'Private')}
+                    {/* is_admin_only=false means public; true means admin/members only */}
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${!board.is_admin_only ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                      {!board.is_admin_only ? (isAr ? 'عام' : 'Public') : (isAr ? 'خاص' : 'Private')}
                     </span>
                   </td>
                 </tr>

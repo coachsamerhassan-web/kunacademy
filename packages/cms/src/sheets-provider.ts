@@ -20,6 +20,7 @@ import type {
   Testimonial,
   Event,
   BlogPost,
+  Quote,
 } from './types';
 
 // ── Config ──────────────────────────────────────────────────────────────────
@@ -40,6 +41,7 @@ interface SheetConfig {
     testimonials: string;
     events: string;
     blog: string;
+    quotes: string;
   };
   /** Cache TTL in milliseconds (default: 5 minutes for ISR alignment) */
   cacheTtlMs?: number;
@@ -124,7 +126,7 @@ function isNumericColumn(header: string): boolean {
 }
 
 function isArrayColumn(header: string): boolean {
-  return /^(specialties|coaching_styles|languages|speaker_slugs|tags|prerequisite_codes|pathway_codes)$/.test(header);
+  return /^(specialties|coaching_styles|languages|speaker_slugs|tags|prerequisite_codes|pathway_codes|service_roles)$/.test(header);
 }
 
 // ── Program Logo Defaults (code assets, not CMS content) ────────────────────
@@ -362,6 +364,18 @@ export class GoogleSheetsProvider implements ContentProvider {
   async getFeaturedTestimonials(): Promise<Testimonial[]> {
     const all = await this.getAllTestimonials();
     return all.filter((t) => t.is_featured);
+  }
+
+  // ── Quotes ─────────────────────────────────────────────────────────
+
+  async getAllQuotes(): Promise<Quote[]> {
+    const rows = await this.loadSheet<Quote>('quotes');
+    return this.published(rows).sort((a, b) => a.display_order - b.display_order);
+  }
+
+  async getQuotesByCategory(category: string): Promise<Quote[]> {
+    const all = await this.getAllQuotes();
+    return all.filter((q) => q.category === category);
   }
 
   // ── Sheet 8: Events ─────────────────────────────────────────────────

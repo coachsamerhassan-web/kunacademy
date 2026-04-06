@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef, useCallback, Suspense } from 'react';
 import { useAuth } from '@kunacademy/auth';
 import { Button } from '@kunacademy/ui/button';
-import { createBrowserClient } from '@kunacademy/db';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 
@@ -21,6 +20,7 @@ interface Service {
 
 interface Coach {
   id: string;           // instructors.id
+  slug: string;         // for URL pre-selection
   provider_id: string;  // providers.id (needed for availability)
   title_ar: string;
   title_en: string;
@@ -307,6 +307,7 @@ function BookingFlowInner({ locale }: { locale: string }) {
   const isAr = locale === 'ar';
   const searchParams = useSearchParams();
   const preSelectSlug = searchParams.get('service');
+  const preSelectCoachSlug = searchParams.get('coach');
 
   const [step, setStep] = useState<Step>(1);
   const [isMobile, setIsMobile] = useState(false);
@@ -348,14 +349,10 @@ function BookingFlowInner({ locale }: { locale: string }) {
 
   // Load services on mount
   useEffect(() => {
-    const supabase = createBrowserClient();
-    if (!supabase) { setServicesLoading(false); return; }
-    supabase
-      .from('services')
-      .select('*')
-      .eq('is_active', true)
-      .then(({ data }) => {
-        const loaded = (data as Service[]) || [];
+    fetch('/api/booking/services')
+      .then((r) => r.json())
+      .then((data) => {
+        const loaded = (data.services as Service[]) || [];
         setServices(loaded);
         setServicesLoading(false);
 
@@ -372,51 +369,40 @@ function BookingFlowInner({ locale }: { locale: string }) {
             setStep(2);
           }
         }
-      });
+      })
+      .catch(() => setServicesLoading(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Load coaches when service selected (Step 2)
+  // If ?coach=slug is in the URL, filter to that coach and auto-advance to step 3
   useEffect(() => {
     if (!selectedService) return;
     setCoachesLoading(true);
-    const supabase = createBrowserClient();
-    if (!supabase) { setCoachesLoading(false); return; }
 
-    // Two-step: fetch visible providers, then fetch matching instructors by profile_id
-    supabase
-      .from('providers')
-      .select('id, profile_id')
-      .eq('is_visible', true)
-      .then(async ({ data: providers }) => {
-        if (!providers || providers.length === 0) {
-          setCoaches([]);
-          setCoachesLoading(false);
-          return;
-        }
-        const profileIds = providers.map((p: any) => p.profile_id).filter(Boolean);
-        const { data: instructors } = await supabase
-          .from('instructors')
-          .select('id, profile_id, title_ar, title_en, photo_url, coach_level, specialties')
-          .in('profile_id', profileIds);
+    const coachUrl = preSelectCoachSlug
+      ? `/api/booking/coaches?slug=${encodeURIComponent(preSelectCoachSlug)}`
+      : '/api/booking/coaches';
 
-        const result: Coach[] = [];
-        for (const p of providers) {
-          const inst = (instructors || []).find((i: any) => i.profile_id === p.profile_id);
-          if (!inst) continue;
-          result.push({
-            id: inst.id,
-            provider_id: p.id,
-            title_ar: inst.title_ar || '',
-            title_en: inst.title_en || '',
-            photo_url: inst.photo_url,
-            coach_level: inst.coach_level,
-            specialties: inst.specialties,
-          });
-        }
-        setCoaches(result);
+    fetch(coachUrl)
+      .then((r) => r.json())
+      .then((data) => {
+        const loaded = (data.coaches as Coach[]) || [];
+        setCoaches(loaded);
         setCoachesLoading(false);
-      });
+
+        // Auto-select coach from ?coach= param and jump to step 3
+        if (preSelectCoachSlug && loaded.length === 1 && !selectedCoach) {
+          const match = loaded[0];
+          if (match) {
+            setSelectedCoach(match);
+            if (selectedService) loadSlots(match, selectedService);
+            setStep(3);
+          }
+        }
+      })
+      .catch(() => setCoachesLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedService]);
 
   // Load slots when coach selected (Step 3)
@@ -470,17 +456,12 @@ function BookingFlowInner({ locale }: { locale: string }) {
 
     // Optimistic hold
     try {
-      const supabase = createBrowserClient();
-      const { data: { session } } = await supabase!.auth.getSession();
       const startISO = `${slot.date}T${slot.start_time}:00`;
       const endISO = `${slot.date}T${slot.end_time}:00`;
 
       const res = await fetch('/api/bookings/hold', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${session?.access_token}`,
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           coach_id: selectedCoach!.provider_id,
           start_time: startISO,
@@ -510,17 +491,11 @@ function BookingFlowInner({ locale }: { locale: string }) {
     setConfirming(true);
 
     try {
-      const supabase = createBrowserClient();
-      const { data: { session } } = await supabase!.auth.getSession();
-
       if (holdId) {
-        // Confirm via hold API
+        // Confirm via hold API — uses session cookie auth
         const res = await fetch('/api/bookings/confirm', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${session?.access_token}`,
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             hold_id: holdId,
             payment_method: selectedService.price_aed === 0 ? 'free' : 'stripe',
@@ -546,22 +521,21 @@ function BookingFlowInner({ locale }: { locale: string }) {
           return;
         }
       } else {
-        // Fallback: direct insert (no hold path — user not authenticated earlier)
-        const { data: inserted } = await supabase!.from('bookings').insert({
-          customer_id: user.id,
-          provider_id: selectedCoach.provider_id,
-          service_id: selectedService.id,
-          start_time: `${selectedSlot.date}T${selectedSlot.start_time}:00`,
-          end_time: `${selectedSlot.date}T${selectedSlot.end_time}:00`,
-          status: selectedService.price_aed === 0 ? 'confirmed' : 'pending',
-        }).select('id').single();
-
-        if (inserted?.id) {
-          fetch('/api/notifications/booking', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
-            body: JSON.stringify({ bookingId: inserted.id }),
-          }).catch(() => {});
+        // Fallback: direct insert via API (no hold — user authenticated at confirm step)
+        const createRes = await fetch('/api/bookings/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            provider_id: selectedCoach.provider_id,
+            service_id: selectedService.id,
+            start_time: `${selectedSlot.date}T${selectedSlot.start_time}:00`,
+            end_time: `${selectedSlot.date}T${selectedSlot.end_time}:00`,
+            price_aed: selectedService.price_aed,
+          }),
+        });
+        if (!createRes.ok) {
+          const { error } = await createRes.json();
+          throw new Error(error || 'Booking failed');
         }
       }
 

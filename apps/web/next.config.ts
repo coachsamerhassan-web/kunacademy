@@ -4,8 +4,10 @@ import type { NextConfig } from "next";
 const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
 
 const nextConfig: NextConfig = {
+  output: 'standalone',
+  // TypeScript strict checking enabled — 0 errors as of Wave 6.75d
   transpilePackages: ['@kunacademy/ui', '@kunacademy/brand', '@kunacademy/db', '@kunacademy/auth', '@kunacademy/payments', '@kunacademy/i18n', '@kunacademy/seo', '@kunacademy/email'],
-  serverExternalPackages: ['pdfjs-dist', 'sharp'],
+  serverExternalPackages: ['pdfjs-dist', 'sharp', 'pg', 'bcryptjs', 'nodemailer', 'googleapis', 'google-auth-library'],
 
   async redirects() {
     return [
@@ -41,9 +43,7 @@ const nextConfig: NextConfig = {
       // About subpages
       { source: '/:locale/about/founder', destination: '/:locale/about/samer', permanent: true },
       { source: '/:locale/about/coaches', destination: '/:locale/coaches', permanent: true },
-      // Programs without dedicated pages → academy hub
-      { source: '/:locale/programs/retreats', destination: '/:locale/academy/certifications', permanent: false },
-      { source: '/:locale/programs/retreats/:path*', destination: '/:locale/academy/certifications', permanent: false },
+      // Programs/retreats now has a real page (Wave 10, 2026-04-05) — redirect removed
       // Legal consolidation
       { source: '/:locale/privacy', destination: '/:locale/legal/privacy', permanent: true },
       { source: '/:locale/terms', destination: '/:locale/legal/terms', permanent: true },
@@ -86,10 +86,10 @@ const nextConfig: NextConfig = {
       { protocol: 'https', hostname: 'lh3.googleusercontent.com' },
       // Google Sheets image cells
       { protocol: 'https', hostname: '*.googleusercontent.com' },
-      // Supabase Storage
-      { protocol: 'https', hostname: '*.supabase.co' },
-      // WordPress legacy (migration period)
+      // VPS storage
+      { protocol: 'https', hostname: 'kuncoaching.me' },
       { protocol: 'https', hostname: 'kunacademy.com' },
+      // WordPress legacy (migration period)
       { protocol: 'https', hostname: 'old.kunacademy.com' },
       // Unsplash (event images)
       { protocol: 'https', hostname: 'images.unsplash.com' },

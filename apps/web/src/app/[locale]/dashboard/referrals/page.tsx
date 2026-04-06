@@ -2,7 +2,6 @@
 
 import { useState, useEffect, use } from 'react';
 import { useAuth } from '@kunacademy/auth';
-import { createBrowserClient } from '@kunacademy/db';
 
 interface ReferralData {
   code: string | null;
@@ -33,34 +32,19 @@ export default function Page({ params }: { params: Promise<{ locale: string }> }
   const [generating, setGenerating] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  async function getAuthToken() {
-    const supabase = createBrowserClient();
-    if (!supabase) return null;
-    const { data: session } = await supabase.auth.getSession();
-    return session?.session?.access_token || null;
-  }
-
   async function fetchData() {
-    const token = await getAuthToken();
-    if (!token) { setLoading(false); return; }
+    const [referralRes, txRes] = await Promise.all([
+      fetch('/api/referrals'),
+      fetch('/api/user/credit-transactions'),
+    ]);
 
-    const res = await fetch('/api/referrals', {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (res.ok) {
-      setData(await res.json());
+    if (referralRes.ok) {
+      setData(await referralRes.json());
     }
 
-    // Fetch transactions
-    const supabase = createBrowserClient();
-    if (supabase && user) {
-      const { data: txns } = await supabase
-        .from('credit_transactions')
-        .select('id, amount, type, source_type, balance_after, note, created_at')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(50);
-      if (txns) setTransactions(txns as Transaction[]);
+    if (txRes.ok) {
+      const txData = await txRes.json();
+      setTransactions(txData.transactions || []);
     }
 
     setLoading(false);
@@ -73,12 +57,9 @@ export default function Page({ params }: { params: Promise<{ locale: string }> }
 
   async function generateCode() {
     setGenerating(true);
-    const token = await getAuthToken();
-    if (!token) { setGenerating(false); return; }
 
     const res = await fetch('/api/referrals', {
       method: 'POST',
-      headers: { Authorization: `Bearer ${token}` },
     });
     if (res.ok) {
       const result = await res.json();

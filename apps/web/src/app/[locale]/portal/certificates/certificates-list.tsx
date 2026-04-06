@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@kunacademy/auth';
 import { Button } from '@kunacademy/ui/button';
-import { createBrowserClient } from '@kunacademy/db';
 
 interface Certificate {
   id: string;
@@ -25,16 +24,11 @@ export function CertificatesList({ locale }: { locale: string }) {
 
   useEffect(() => {
     if (!user) return;
-    const supabase = createBrowserClient();
-    if (!supabase) return;
 
-    supabase
-      .from('certificates')
-      .select('id, credential_type, issued_at, pdf_url, verification_code, enrollment:enrollments(course:courses(title_ar, title_en))')
-      .eq('user_id', user.id)
-      .order('issued_at', { ascending: false })
-      .then(({ data }) => {
-        setCerts((data || []) as Certificate[]);
+    fetch('/api/user/certificates')
+      .then((r) => r.json())
+      .then((data) => {
+        setCerts((data.certificates || []) as Certificate[]);
         setLoading(false);
       });
   }, [user]);
@@ -68,7 +62,7 @@ export function CertificatesList({ locale }: { locale: string }) {
       // Student name
       doc.setFontSize(22);
       doc.setTextColor(44, 44, 45);
-      const name = user?.user_metadata?.full_name || user?.email || '';
+      const name = user?.name || user?.email || '';
       doc.text(name, 148.5, 82, { align: 'center' });
 
       // Course name

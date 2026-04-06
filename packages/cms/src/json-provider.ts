@@ -17,6 +17,7 @@ import type {
   ServiceCategory,
   PathfinderQuestion,
   Testimonial,
+  Quote,
 } from './types';
 
 /** Parse comma-separated string into string[] (for specialties, languages, etc.) */
@@ -278,6 +279,18 @@ export class JsonFileProvider implements ContentProvider {
 
   async getFeaturedTestimonials(): Promise<Testimonial[]> {
     return [];
+  }
+
+  async getAllQuotes(): Promise<Quote[]> {
+    const rows = await this.loadSheet<Quote>('quotes');
+    return rows
+      .filter((q) => q.published !== false)
+      .sort((a, b) => a.display_order - b.display_order);
+  }
+
+  async getQuotesByCategory(category: string): Promise<Quote[]> {
+    const all = await this.getAllQuotes();
+    return all.filter((q) => q.category === category);
   }
 
   async getAllEvents(): Promise<import('./types').Event[]> {

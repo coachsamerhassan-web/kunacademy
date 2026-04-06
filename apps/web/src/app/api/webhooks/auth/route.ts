@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
 import { sendWelcomeEmail, sendTelegramAlert, createZohoCrmContact } from '@kunacademy/email';
-import { createClient } from '@supabase/supabase-js';
+import { withAdminContext } from '@kunacademy/db';
+import { sql } from 'drizzle-orm';
 
-// Supabase Auth webhook — fires on new user signup
-// Supabase sends database webhook payloads with { type: 'INSERT', record: {...}, ... }
+// Auth webhook — fires on new user signup (triggered by database event or direct POST)
+// Payload format: { type: 'INSERT', record: {...}, ... }
 export async function POST(request: Request) {
   try {
     const payload = await request.json();
@@ -52,22 +53,15 @@ export async function POST(request: Request) {
 
       // 4. Link any prior pathfinder_responses by email → new user_id (non-blocking)
       if (email && record.id) {
-        const supabaseAdmin = createClient(
-          process.env.NEXT_PUBLIC_SUPABASE_URL!,
-          process.env.SUPABASE_SERVICE_ROLE_KEY!
-        );
-        supabaseAdmin
-          .from('pathfinder_responses')
-          .update({ user_id: record.id as string })
-          .eq('email', email)
-          .is('user_id', null)
-          .then(({ error }) => {
-            if (error) {
-              console.error('[auth-webhook] Pathfinder linking failed:', error);
-            } else {
-              console.log('[auth-webhook] Pathfinder responses linked for:', email);
-            }
-          });
+        withAdminContext(async (db) => {
+          await db.execute(
+            sql`UPDATE pathfinder_responses SET user_id = ${record.id as string} WHERE email = ${email} AND user_id IS NULL`
+          );
+        }).then(() => {
+          console.log('[auth-webhook] Pathfinder responses linked for:', email);
+        }).catch((error) => {
+          console.error('[auth-webhook] Pathfinder linking failed:', error);
+        });
       }
     }
 

@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@kunacademy/auth';
 import { Button } from '@kunacademy/ui/button';
-import { createBrowserClient } from '@kunacademy/db';
 import {
   updateCoachProfile,
   uploadAvatar,
@@ -93,24 +92,19 @@ export function OnboardingWizard({ locale }: { locale: string }) {
 
   useEffect(() => {
     if (!user) return;
-    const supabase = createBrowserClient();
-    if (!supabase) return;
-
-    supabase
-      .from('instructors')
-      .select('*')
-      .eq('profile_id', user.id)
-      .single()
-      .then(({ data }) => {
-        if (data) {
-          setCoach(data as unknown as CoachData);
-          setBioAr(data.bio_ar || '');
-          setBioEn(data.bio_en || '');
-          setCredentials(data.credentials || '');
-          setCoachLevel(data.coach_level || '');
-          setSelectedSpecialties(data.specialties || []);
-          setSelectedStyles(data.coaching_styles || []);
-          setAvatarPreview(data.photo_url || null);
+    fetch('/api/coach/profile')
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data?.instructor) {
+          const inst = data.instructor;
+          setCoach(inst as CoachData);
+          setBioAr(inst.bio_ar || '');
+          setBioEn(inst.bio_en || '');
+          setCredentials(inst.credentials || '');
+          setCoachLevel(inst.coach_level || '');
+          setSelectedSpecialties(inst.specialties || []);
+          setSelectedStyles(inst.coaching_styles || []);
+          setAvatarPreview(inst.photo_url || null);
         }
         setLoading(false);
       });

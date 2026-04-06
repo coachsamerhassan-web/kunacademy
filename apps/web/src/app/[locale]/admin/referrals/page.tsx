@@ -2,7 +2,6 @@
 
 import { useAuth } from '@kunacademy/auth';
 import { useEffect, useState } from 'react';
-import { createBrowserClient } from '@kunacademy/db';
 import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
 import { useParams, useRouter } from 'next/navigation';
@@ -51,23 +50,20 @@ export default function AdminReferralsPage() {
   const [tab, setTab] = useState<'codes' | 'transactions'>('codes');
   const isAr = locale === 'ar';
 
-  const supabase = createBrowserClient();
-
   async function fetchData() {
     const [codesRes, txRes] = await Promise.all([
-      supabase
-        .from('referral_codes')
-        .select('*, owner:profiles!referral_codes_user_id_fkey(full_name_ar, full_name_en, email)')
-        .order('created_at', { ascending: false })
-        .limit(200),
-      supabase
-        .from('credit_transactions')
-        .select('*, user:profiles!credit_transactions_user_id_fkey(full_name_ar, full_name_en, email)')
-        .order('created_at', { ascending: false })
-        .limit(200),
+      fetch('/api/admin/referral-codes'),
+      fetch('/api/admin/credit-transactions'),
     ]);
-    setCodes((codesRes.data as any) ?? []);
-    setTransactions((txRes.data as any) ?? []);
+
+    if (codesRes.ok) {
+      const data = await codesRes.json();
+      setCodes(data.codes ?? []);
+    }
+    if (txRes.ok) {
+      const data = await txRes.json();
+      setTransactions(data.transactions ?? []);
+    }
     setLoading(false);
   }
 
@@ -78,7 +74,11 @@ export default function AdminReferralsPage() {
   }, [user, profile, authLoading]);
 
   async function toggleCode(id: string, currentActive: boolean) {
-    await supabase.from('referral_codes').update({ is_active: !currentActive }).eq('id', id);
+    await fetch(`/api/admin/referral-codes/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ is_active: !currentActive }),
+    });
     setCodes(prev => prev.map(c => c.id === id ? { ...c, is_active: !currentActive } : c));
   }
 

@@ -1,11 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-import type { Database } from '@kunacademy/db';
-
-const supabase = createClient<Database>(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+import { db } from '@kunacademy/db';
+import { getAuthUser } from '@kunacademy/auth/server';
+import { referral_codes, credit_transactions } from '@kunacademy/db/schema';
+import { eq, and } from 'drizzle-orm';
 
 function generateCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no I/O/0/1
@@ -16,87 +13,97 @@ function generateCode(): string {
   return code;
 }
 
-async function getUser(request: NextRequest) {
-  const authHeader = request.headers.get('authorization');
-  if (!authHeader?.startsWith('Bearer ')) return null;
-  const token = authHeader.slice(7);
-  const { data: { user } } = await supabase.auth.getUser(token);
-  return user;
-}
-
 export async function GET(request: NextRequest) {
-  const user = await getUser(request);
+  const user = await getAuthUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   // Get referral code
-  const { data: codeRow } = await supabase
-    .from('referral_codes')
-    .select('id, code, is_active, created_at')
-    .eq('user_id', user.id)
-    .single();
+  const [codeRow] = await db
+    .select({
+      id: referral_codes.id,
+      code: referral_codes.code,
+      is_active: referral_codes.is_active,
+      created_at: referral_codes.created_at,
+    })
+    .from(referral_codes)
+    .where(eq(referral_codes.user_id, user.id))
+    .limit(1);
 
-  // Get credit stats
-  const { data: transactions } = await supabase
-    .from('credit_transactions')
-    .select('amount, type')
-    .eq('user_id', user.id);
+  // Get all credit transactions for this user
+  const transactions = await db
+    .select({
+      amount: credit_transactions.amount,
+      type: credit_transactions.type,
+    })
+    .from(credit_transactions)
+    .where(eq(credit_transactions.user_id, user.id));
 
   let totalEarned = 0;
   let totalSpent = 0;
-  if (transactions) {
-    for (const t of transactions) {
-      if (t.type === 'earn') totalEarned += t.amount;
-      if (t.type === 'spend' || t.type === 'payout') totalSpent += t.amount;
-    }
+  for (const t of transactions) {
+    if (t.type === 'earn') totalEarned += t.amount;
+    if (t.type === 'spend' || t.type === 'payout') totalSpent += t.amount;
   }
 
   // Count referrals (earn transactions from referrals)
-  const { count: totalReferrals } = await supabase
-    .from('credit_transactions')
-    .select('id', { count: 'exact', head: true })
-    .eq('user_id', user.id)
-    .eq('type', 'earn')
-    .eq('source_type', 'referral');
+  const referralTransactions = transactions.filter(
+    (t) => t.type === 'earn'
+  );
+  // Re-query with source_type filter for accurate referral count
+  const referralCount = await db
+    .select({ id: credit_transactions.id })
+    .from(credit_transactions)
+    .where(
+      and(
+        eq(credit_transactions.user_id, user.id),
+        eq(credit_transactions.type, 'earn'),
+        eq(credit_transactions.source_type, 'referral')
+      )
+    );
 
   return NextResponse.json({
     code: codeRow?.code || null,
     is_active: codeRow?.is_active ?? false,
-    total_referrals: totalReferrals || 0,
+    total_referrals: referralCount.length,
     total_earned: totalEarned,
     balance: totalEarned - totalSpent,
   });
 }
 
 export async function POST(request: NextRequest) {
-  const user = await getUser(request);
+  const user = await getAuthUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   // Check if user already has a code
-  const { data: existing } = await supabase
-    .from('referral_codes')
-    .select('code')
-    .eq('user_id', user.id)
-    .single();
+  const [existing] = await db
+    .select({ code: referral_codes.code })
+    .from(referral_codes)
+    .where(eq(referral_codes.user_id, user.id))
+    .limit(1);
 
   if (existing) {
     return NextResponse.json({ code: existing.code });
   }
 
   // Generate unique code with retry
-  let code = '';
   for (let attempt = 0; attempt < 5; attempt++) {
-    code = generateCode();
-    const { error } = await supabase.from('referral_codes').insert({
-      user_id: user.id,
-      code,
-      is_active: true,
-    });
-    if (!error) {
+    const code = generateCode();
+    try {
+      await db.insert(referral_codes).values({
+        user_id: user.id,
+        code,
+        is_active: true,
+      });
       return NextResponse.json({ code });
-    }
-    // If unique constraint violation, retry
-    if (!error.message.includes('unique') && !error.message.includes('duplicate')) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (err: any) {
+      // If unique constraint violation, retry
+      if (
+        !err.message?.includes('unique') &&
+        !err.message?.includes('duplicate') &&
+        !err.message?.includes('23505')
+      ) {
+        return NextResponse.json({ error: err.message }, { status: 500 });
+      }
     }
   }
 

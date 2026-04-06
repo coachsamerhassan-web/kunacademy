@@ -1,24 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-import type { Database } from '@kunacademy/db';
+import { db, withAdminContext } from '@kunacademy/db';
+import { getAuthUser } from '@kunacademy/auth/server';
+import { eq, and } from 'drizzle-orm';
+import { courses, enrollments, profiles } from '@kunacademy/db/schema';
 import { notify } from '@kunacademy/email';
-
-const supabase = createClient<Database>(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
-async function getUser(request: NextRequest) {
-  const authHeader = request.headers.get('authorization');
-  if (!authHeader?.startsWith('Bearer ')) return null;
-  const token = authHeader.slice(7);
-  const { data: { user } } = await supabase.auth.getUser(token);
-  return user;
-}
 
 // POST /api/lms/enroll — self-enroll in a free course
 export async function POST(request: NextRequest) {
-  const user = await getUser(request);
+  const user = await getAuthUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const body = await request.json();
@@ -28,19 +17,21 @@ export async function POST(request: NextRequest) {
   }
 
   // Verify the course exists, is published, and is free
-  let query = supabase
-    .from('courses')
-    .select('id, is_published, is_free, price_aed');
+  const courseRows = courseId
+    ? await db
+        .select({ id: courses.id, is_published: courses.is_published, is_free: courses.is_free, price_aed: courses.price_aed })
+        .from(courses)
+        .where(eq(courses.id, courseId))
+        .limit(1)
+    : await db
+        .select({ id: courses.id, is_published: courses.is_published, is_free: courses.is_free, price_aed: courses.price_aed })
+        .from(courses)
+        .where(eq(courses.slug, courseSlug))
+        .limit(1);
 
-  if (courseId) {
-    query = query.eq('id', courseId);
-  } else {
-    query = query.eq('slug', courseSlug);
-  }
+  const course = courseRows[0] ?? null;
 
-  const { data: course, error: courseError } = await query.single();
-
-  if (courseError || !course) {
+  if (!course) {
     return NextResponse.json({ error: 'Course not found' }, { status: 404 });
   }
 
@@ -53,49 +44,56 @@ export async function POST(request: NextRequest) {
   }
 
   // Check if already enrolled
-  const { data: existing } = await supabase
-    .from('enrollments')
-    .select('id, status, course_id')
-    .eq('user_id', user.id)
-    .eq('course_id', course.id)
-    .single();
+  const existingRows = await db
+    .select({ id: enrollments.id, status: enrollments.status, course_id: enrollments.course_id })
+    .from(enrollments)
+    .where(and(eq(enrollments.user_id, user.id), eq(enrollments.course_id, course.id)))
+    .limit(1);
+
+  const existing = existingRows[0] ?? null;
 
   if (existing) {
     return NextResponse.json({ enrollment: existing, message: 'Already enrolled' });
   }
 
   // Create enrollment
-  const { data: enrollment, error: enrollError } = await supabase
-    .from('enrollments')
-    .insert({
-      user_id: user.id,
-      course_id: course.id,
-      status: 'enrolled',
-      enrollment_type: 'recorded',
-    })
-    .select()
-    .single();
-
-  if (enrollError) {
-    return NextResponse.json({ error: enrollError.message }, { status: 500 });
+  let enrollment: typeof enrollments.$inferSelect | null = null;
+  try {
+    await withAdminContext(async (adminDb) => {
+      const rows = await adminDb
+        .insert(enrollments)
+        .values({
+          user_id: user.id,
+          course_id: course.id,
+          status: 'enrolled',
+          enrollment_type: 'recorded',
+        })
+        .returning();
+      enrollment = rows[0] ?? null;
+    });
+  } catch (e: any) {
+    return NextResponse.json({ error: e?.message ?? 'Enrollment failed' }, { status: 500 });
   }
 
   // Send enrollment notification (non-blocking)
   try {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('full_name_ar, full_name_en, email')
-      .eq('id', user.id)
-      .single();
+    const profileRows = await db
+      .select({ full_name_ar: profiles.full_name_ar, full_name_en: profiles.full_name_en, email: profiles.email })
+      .from(profiles)
+      .where(eq(profiles.id, user.id))
+      .limit(1);
 
-    const { data: courseData } = await supabase
-      .from('courses')
-      .select('title_ar, title_en')
-      .eq('id', course.id)
-      .single();
+    const courseDataRows = await db
+      .select({ title_ar: courses.title_ar, title_en: courses.title_en })
+      .from(courses)
+      .where(eq(courses.id, course.id))
+      .limit(1);
+
+    const profile = profileRows[0] ?? null;
+    const courseData = courseDataRows[0] ?? null;
 
     if (profile?.email) {
-      const locale = (user.user_metadata?.locale as string) || 'ar';
+      const locale = 'ar'; // default locale; user metadata locale not available in Auth.js user
       const name = (locale === 'ar' ? profile.full_name_ar : profile.full_name_en) || profile.email;
       await notify({
         event: 'enrollment_confirmed',

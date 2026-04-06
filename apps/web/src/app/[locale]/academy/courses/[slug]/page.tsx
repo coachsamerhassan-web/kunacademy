@@ -1,44 +1,51 @@
 import { setRequestLocale } from 'next-intl/server';
-import { cms } from '@kunacademy/cms';
+import { cms } from '@kunacademy/cms/server';
 import { GeometricPattern } from '@kunacademy/ui/patterns';
 import { Section } from '@kunacademy/ui/section';
 import { Card } from '@kunacademy/ui/card';
 import { PriceDisplay } from '@kunacademy/ui/price-display';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { createClient } from '@supabase/supabase-js';
+import { db } from '@kunacademy/db';
+import { eq, and } from 'drizzle-orm';
+import { courses, course_sections } from '@kunacademy/db/schema';
 import { ArrowLeft } from 'lucide-react';
 
 interface Props {
   params: Promise<{ locale: string; slug: string }>;
 }
 
-// Fetch syllabus from Supabase (public view — no video URLs)
+// Fetch syllabus from DB (public view — no video URLs)
 async function getSyllabus(courseSlug: string) {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !key) return { sections: [], lessons: [] };
-
-  const supabase = createClient(url, key);
-
   // Find course by slug
-  const { data: course } = await supabase
-    .from('courses')
-    .select('id')
-    .eq('slug', courseSlug)
-    .eq('is_published', true)
-    .single();
+  const courseRows = await db
+    .select({ id: courses.id })
+    .from(courses)
+    .where(and(eq(courses.slug, courseSlug), eq(courses.is_published, true)))
+    .limit(1);
 
+  const course = courseRows[0] ?? null;
   if (!course) return { sections: [], lessons: [] };
 
-  const [{ data: sections }, { data: lessons }] = await Promise.all([
-    supabase.from('course_sections').select('*').eq('course_id', course.id).order('order'),
-    supabase.from('lesson_syllabus').select('*').eq('course_id', course.id).order('order'),
+  // lesson_syllabus is a separate schema table — use db.select
+  const { lesson_syllabus } = await import('@kunacademy/db/schema');
+
+  const [sections, lessons] = await Promise.all([
+    db
+      .select()
+      .from(course_sections)
+      .where(eq(course_sections.course_id, course.id))
+      .orderBy(course_sections.order),
+    db
+      .select()
+      .from(lesson_syllabus)
+      .where(eq(lesson_syllabus.course_id, course.id))
+      .orderBy(lesson_syllabus.order),
   ]);
 
   return {
-    sections: sections ?? [],
-    lessons: lessons ?? [],
+    sections,
+    lessons,
   };
 }
 

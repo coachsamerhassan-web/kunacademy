@@ -1,8 +1,10 @@
 import { setRequestLocale } from 'next-intl/server';
-import { createServerClient } from '@kunacademy/db';
+import { withAdminContext } from '@kunacademy/db';
+import { getAuthUser } from '@kunacademy/auth/server';
 import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
 import { BookshelfGrid } from './bookshelf-grid';
+import { sql } from 'drizzle-orm';
 
 // Book catalog (hardcoded — will move to CMS/DB)
 const BOOK_CATALOG: Record<string, {
@@ -33,30 +35,28 @@ export default async function BookshelfPage({
   // Fetch user's book access
   let ownedBooks: { slug: string; title: string; author: string; coverImage: string }[] = [];
 
-  const supabase = createServerClient();
-  if (supabase) {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      const { data: access } = await supabase
-        .from('book_access')
-        .select('book_slug, granted_at')
-        .eq('user_id', user.id)
-        .order('granted_at', { ascending: false });
+  const user = await getAuthUser();
+  if (user) {
+    const access = await withAdminContext(async (db) => {
+      const rows = await db.execute(
+        sql`SELECT book_slug, granted_at FROM book_access WHERE user_id = ${user.id} ORDER BY granted_at DESC`
+      );
+      return rows.rows as Array<{ book_slug: string; granted_at: string }>;
+    });
 
-      if (access) {
-        ownedBooks = access
-          .map((a: { book_slug: string }) => {
-            const book = BOOK_CATALOG[a.book_slug];
-            if (!book) return null;
-            return {
-              slug: a.book_slug,
-              title: isAr ? book.title_ar : book.title_en,
-              author: isAr ? book.author_ar : book.author_en,
-              coverImage: book.coverImage,
-            };
-          })
-          .filter(Boolean) as typeof ownedBooks;
-      }
+    if (access) {
+      ownedBooks = access
+        .map((a) => {
+          const book = BOOK_CATALOG[a.book_slug];
+          if (!book) return null;
+          return {
+            slug: a.book_slug,
+            title: isAr ? book.title_ar : book.title_en,
+            author: isAr ? book.author_ar : book.author_en,
+            coverImage: book.coverImage,
+          };
+        })
+        .filter(Boolean) as typeof ownedBooks;
     }
   }
 

@@ -2,7 +2,6 @@
 
 import { useState, useEffect, use } from 'react';
 import { useAuth } from '@kunacademy/auth';
-import { createBrowserClient } from '@kunacademy/db';
 import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
 import type { PayoutRequest } from '@/types/commission-system';
@@ -61,20 +60,8 @@ export default function Page({ params }: { params: Promise<{ locale: string }> }
     iban.trim() !== '' &&
     accountName.trim() !== '';
 
-  async function getAuthToken() {
-    const supabase = createBrowserClient();
-    if (!supabase) return null;
-    const { data: session } = await supabase.auth.getSession();
-    return session?.session?.access_token || null;
-  }
-
   async function fetchData() {
-    const token = await getAuthToken();
-    if (!token) { setLoading(false); return; }
-
-    const res = await fetch('/api/payouts', {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    const res = await fetch('/api/payouts');
     if (res.ok) {
       const data = await res.json();
       setPayouts(data.payouts ?? []);
@@ -89,15 +76,9 @@ export default function Page({ params }: { params: Promise<{ locale: string }> }
     setError('');
     setSuccess(false);
 
-    const token = await getAuthToken();
-    if (!token) { setError(isAr ? 'يرجى تسجيل الدخول' : 'Please sign in'); setSubmitting(false); return; }
-
     const res = await fetch('/api/payouts', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         amount: amountMinor,
         currency: 'AED',

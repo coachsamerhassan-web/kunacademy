@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-import type { Database } from '@kunacademy/db';
+import { withAdminContext } from '@kunacademy/db';
+import { isAdminRole, getAuthUser } from '@kunacademy/auth/server';
+import { sql } from 'drizzle-orm';
 import type {
   CommissionRate,
   CommissionRatePayload,
@@ -9,63 +10,52 @@ import type {
   EarningResponse,
 } from '@/types/commission-system';
 
-// TODO: Regenerate Supabase types once earnings/commission_rates tables exist
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-) as any;
-
-async function getUser(request: NextRequest) {
-  const authHeader = request.headers.get('authorization');
-  if (!authHeader?.startsWith('Bearer ')) return null;
-  const token = authHeader.slice(7);
-  const { data: { user } } = await supabase.auth.getUser(token);
-  return user;
-}
-
-async function getUserRole(userId: string): Promise<string | null> {
-  const { data } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', userId)
-    .single();
-  const profile = data as Record<string, unknown> | null;
-  return (profile?.role as string | undefined) ?? null;
+async function getUserRole(userId: string): Promise<string | undefined> {
+  const profile = await withAdminContext(async (db) => {
+    const rows = await db.execute(
+      sql`SELECT role FROM profiles WHERE id = ${userId} LIMIT 1`
+    );
+    return rows.rows[0] as { role: string } | undefined;
+  });
+  return profile?.role ?? undefined;
 }
 
 /** GET /api/commissions — Return commission rates */
 export async function GET(request: NextRequest): Promise<NextResponse<CommissionsResponse | { error: string }>> {
-  const user = await getUser(request);
+  const user = await getAuthUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const role = await getUserRole(user.id);
 
-  if (role === 'admin') {
+  if (isAdminRole(role)) {
     // Admin sees all rates
-    const { data: rates, error } = await supabase
-      .from('commission_rates')
-      .select('*')
-      .order('scope', { ascending: true });
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    return NextResponse.json({ rates: (rates as CommissionRate[]) ?? [] });
+    const rates = await withAdminContext(async (db) => {
+      const rows = await db.execute(
+        sql`SELECT * FROM commission_rates ORDER BY scope ASC`
+      );
+      return rows.rows as unknown as CommissionRate[];
+    });
+    return NextResponse.json({ rates: rates ?? [] });
   }
 
   // Coach sees global rates + their own overrides
-  const { data: globalRates } = await supabase
-    .from('commission_rates')
-    .select('*')
-    .eq('scope', 'global');
+  const globalRates = await withAdminContext(async (db) => {
+    const rows = await db.execute(
+      sql`SELECT * FROM commission_rates WHERE scope = 'global'`
+    );
+    return rows.rows as unknown as CommissionRate[];
+  });
 
-  const { data: coachOverrides } = await supabase
-    .from('commission_rates')
-    .select('*')
-    .eq('scope', 'coach')
-    .eq('scope_id', user.id);
+  const coachOverrides = await withAdminContext(async (db) => {
+    const rows = await db.execute(
+      sql`SELECT * FROM commission_rates WHERE scope = 'coach' AND scope_id = ${user.id}`
+    );
+    return rows.rows as unknown as CommissionRate[];
+  });
 
   const rates: CommissionRate[] = [
-    ...(globalRates as CommissionRate[] ?? []),
-    ...(coachOverrides as CommissionRate[] ?? []),
+    ...(globalRates ?? []),
+    ...(coachOverrides ?? []),
   ];
 
   return NextResponse.json({ rates });
@@ -73,11 +63,11 @@ export async function GET(request: NextRequest): Promise<NextResponse<Commission
 
 /** POST /api/commissions — Record a new earning (admin only) */
 export async function POST(request: NextRequest): Promise<NextResponse<EarningResponse | { error: string }>> {
-  const user = await getUser(request);
+  const user = await getAuthUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const role = await getUserRole(user.id);
-  if (role !== 'admin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  if (!isAdminRole(role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   const body = (await request.json()) as EarningPayload;
   const { source_type, source_id, coach_id, gross_amount, currency = 'AED' } = body;
@@ -90,45 +80,41 @@ export async function POST(request: NextRequest): Promise<NextResponse<EarningRe
   let rate: number | null = null;
 
   // 1. Coach-specific override
-  const { data: coachRateData } = await supabase
-    .from('commission_rates')
-    .select('rate_pct')
-    .eq('scope', 'coach')
-    .eq('scope_id', coach_id)
-    .single();
+  const coachRateData = await withAdminContext(async (db) => {
+    const rows = await db.execute(
+      sql`SELECT rate_pct FROM commission_rates WHERE scope = 'coach' AND scope_id = ${coach_id} LIMIT 1`
+    );
+    return rows.rows[0] as { rate_pct: number } | undefined;
+  });
   if (coachRateData) {
-    const rateRow = coachRateData as Record<string, unknown>;
-    rate = Number(rateRow.rate_pct);
+    rate = Number(coachRateData.rate_pct);
   }
 
   // 2. Product/service-specific (item-level rate)
   if (rate === null) {
     const targetScope = source_type === 'service_booking' ? 'service' : 'product';
-    const { data: itemRateData } = await supabase
-      .from('commission_rates')
-      .select('rate_pct')
-      .eq('scope', targetScope)
-      .eq('scope_id', source_id)
-      .single();
+    const itemRateData = await withAdminContext(async (db) => {
+      const rows = await db.execute(
+        sql`SELECT rate_pct FROM commission_rates WHERE scope = ${targetScope} AND scope_id = ${source_id} LIMIT 1`
+      );
+      return rows.rows[0] as { rate_pct: number } | undefined;
+    });
     if (itemRateData) {
-      const rateRow = itemRateData as Record<string, unknown>;
-      rate = Number(rateRow.rate_pct);
+      rate = Number(itemRateData.rate_pct);
     }
   }
 
   // 3. Global fallback (category-aware)
   if (rate === null) {
     const category = source_type === 'service_booking' ? 'services' : 'products';
-    const { data: globalRateData } = await supabase
-      .from('commission_rates')
-      .select('rate_pct')
-      .eq('scope', 'global')
-      .eq('category', category)
-      .is('scope_id', null)
-      .single();
+    const globalRateData = await withAdminContext(async (db) => {
+      const rows = await db.execute(
+        sql`SELECT rate_pct FROM commission_rates WHERE scope = 'global' AND category = ${category} AND scope_id IS NULL LIMIT 1`
+      );
+      return rows.rows[0] as { rate_pct: number } | undefined;
+    });
     if (globalRateData) {
-      const rateRow = globalRateData as Record<string, unknown>;
-      rate = Number(rateRow.rate_pct);
+      rate = Number(globalRateData.rate_pct);
     }
   }
 
@@ -145,24 +131,18 @@ export async function POST(request: NextRequest): Promise<NextResponse<EarningRe
   const net_amount = commission_amount;
   const available_at = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
-  const { data: earning, error } = await supabase
-    .from('earnings')
-    .insert({
-      user_id: coach_id,
-      source_type,
-      source_id,
-      gross_amount,
-      commission_pct: rate,
-      commission_amount,
-      net_amount,
-      currency,
-      status: 'pending',
-      available_at,
-    })
-    .select()
-    .single();
+  const earning = await withAdminContext(async (db) => {
+    const rows = await db.execute(
+      sql`
+        INSERT INTO earnings (user_id, source_type, source_id, gross_amount, commission_pct, commission_amount, net_amount, currency, status, available_at)
+        VALUES (${coach_id}, ${source_type}, ${source_id}, ${gross_amount}, ${rate}, ${commission_amount}, ${net_amount}, ${currency}, 'pending', ${available_at})
+        RETURNING *
+      `
+    );
+    return rows.rows[0] as any | undefined;
+  });
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (!earning) return NextResponse.json({ error: 'Failed to insert earning' }, { status: 500 });
   return NextResponse.json({ earning }, { status: 201 });
 }
 
@@ -170,11 +150,11 @@ export async function POST(request: NextRequest): Promise<NextResponse<EarningRe
 export async function PATCH(
   request: NextRequest
 ): Promise<NextResponse<{ rate: CommissionRate } | { error: string }>> {
-  const user = await getUser(request);
+  const user = await getAuthUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const role = await getUserRole(user.id);
-  if (role !== 'admin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  if (!isAdminRole(role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   const body = (await request.json()) as CommissionRatePayload;
   const { scope, scope_id, rate_pct, category = 'services' } = body;
@@ -188,50 +168,62 @@ export async function PATCH(
   }
 
   // Upsert: find existing rate for this scope+scope_id+category
-  let query = supabase
-    .from('commission_rates')
-    .select('id')
-    .eq('scope', scope)
-    .eq('category', category);
-
-  if (scope_id) {
-    query = query.eq('scope_id', scope_id);
-  } else {
-    query = query.is('scope_id', null);
-  }
-
-  const { data: existingArr, error: findError } = await query;
-  if (findError) {
-    return NextResponse.json({ error: findError.message }, { status: 500 });
-  }
-
-  const existingData = existingArr as unknown as Array<Record<string, unknown>> | null;
-  const existing = existingData && existingData.length > 0 ? existingData[0] : null;
+  const existing = await withAdminContext(async (db) => {
+    let rows;
+    if (scope_id) {
+      rows = await db.execute(
+        sql`SELECT id FROM commission_rates WHERE scope = ${scope} AND category = ${category} AND scope_id = ${scope_id} LIMIT 1`
+      );
+    } else {
+      rows = await db.execute(
+        sql`SELECT id FROM commission_rates WHERE scope = ${scope} AND category = ${category} AND scope_id IS NULL LIMIT 1`
+      );
+    }
+    return rows.rows[0] as { id: string } | undefined;
+  });
 
   if (existing) {
     // Update existing rate
-    const { data: updated, error } = await supabase
-      .from('commission_rates')
-      .update({ rate_pct, updated_at: new Date().toISOString() })
-      .eq('id', existing.id)
-      .select()
-      .single();
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    return NextResponse.json({ rate: updated as CommissionRate });
+    const updated = await withAdminContext(async (db) => {
+      const rows = await db.execute(
+        sql`UPDATE commission_rates SET rate_pct = ${rate_pct} WHERE id = ${existing.id} RETURNING *`
+      );
+      return rows.rows[0] as unknown as CommissionRate | undefined;
+    });
+    if (!updated) return NextResponse.json({ error: 'Update failed' }, { status: 500 });
+    return NextResponse.json({ rate: updated });
   }
 
   // Insert new rate
-  const { data: inserted, error } = await supabase
-    .from('commission_rates')
-    .insert({
-      scope,
-      scope_id: scope_id ?? null,
-      rate_pct,
-      category,
-      created_at: new Date().toISOString(),
-    })
-    .select()
-    .single();
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ rate: inserted as CommissionRate }, { status: 201 });
+  const inserted = await withAdminContext(async (db) => {
+    const rows = await db.execute(
+      sql`
+        INSERT INTO commission_rates (scope, scope_id, rate_pct, category)
+        VALUES (${scope}, ${scope_id ?? null}, ${rate_pct}, ${category})
+        RETURNING *
+      `
+    );
+    return rows.rows[0] as unknown as CommissionRate | undefined;
+  });
+  if (!inserted) return NextResponse.json({ error: 'Insert failed' }, { status: 500 });
+  return NextResponse.json({ rate: inserted }, { status: 201 });
+}
+
+/** DELETE /api/commissions?id=xxx — Remove a commission rate by ID (admin only) */
+export async function DELETE(request: NextRequest): Promise<NextResponse<{ success: boolean } | { error: string }>> {
+  const user = await getAuthUser();
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const role = await getUserRole(user.id);
+  if (!isAdminRole(role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+
+  const { searchParams } = new URL(request.url);
+  const id = searchParams.get('id');
+  if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 });
+
+  await withAdminContext(async (db) => {
+    await db.execute(sql`DELETE FROM commission_rates WHERE id = ${id}`);
+  });
+
+  return NextResponse.json({ success: true });
 }

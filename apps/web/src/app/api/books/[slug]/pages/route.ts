@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@kunacademy/db';
+import { withAdminContext } from '@kunacademy/db';
+import { sql } from 'drizzle-orm';
 import path from 'path';
 import fs from 'fs/promises';
 
@@ -54,11 +55,9 @@ export async function GET(
 
     // For paid books (non-sample), require authentication
     if (book.isPaid && !isSample) {
-      const supabase = createServerClient();
-      if (!supabase) {
-        return NextResponse.json({ error: 'Auth not configured' }, { status: 500 });
-      }
-      const { data: { user } } = await supabase.auth.getUser();
+      // Cookie-based auth via Auth.js session
+      const { getAuthUser } = await import('@kunacademy/auth/server');
+      const user = await getAuthUser();
 
       if (!user) {
         return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
@@ -66,13 +65,13 @@ export async function GET(
 
       userId = user.id;
 
-      // Check book access
-      const { data: access } = await supabase
-        .from('book_access')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('book_slug', slug)
-        .single();
+      // Check book access via Drizzle
+      const access = await withAdminContext(async (db) => {
+        const rows = await db.execute(
+          sql`SELECT id FROM book_access WHERE user_id = ${user.id} AND book_slug = ${slug} LIMIT 1`
+        );
+        return rows.rows[0] as { id: string } | undefined;
+      });
 
       if (!access) {
         return NextResponse.json({ error: 'Book access not granted' }, { status: 403 });

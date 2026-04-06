@@ -1,1 +1,1 @@
-{"root":["./src/index.ts","./src/sender.ts"],"version":"5.9.3"}
+{"root":["./src/dispatcher.ts","./src/ics.ts","./src/index.ts","./src/sender.ts","./src/telegram.ts","./src/whatsapp.ts","./src/zoho-crm.ts"],"version":"5.9.3"}

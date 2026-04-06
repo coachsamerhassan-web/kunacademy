@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+import { withAdminContext, withUserContext } from '@kunacademy/db';
+import { isAdminRole, getAuthUser } from '@kunacademy/auth/server';
+import { sql } from 'drizzle-orm';
 
 /**
  * Payment Schedules API
@@ -14,36 +11,48 @@ const supabase = createClient(
  */
 export async function GET(req: NextRequest) {
   try {
-    const token = req.headers.get('authorization')?.replace('Bearer ', '');
-    if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
-    const { data: { user } } = await supabase.auth.getUser(token);
+    const user = await getAuthUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single();
+    const profile = await withAdminContext(async (db) => {
+      const rows = await db.execute(
+        sql`SELECT role FROM profiles WHERE id = ${user.id} LIMIT 1`
+      );
+      return rows.rows[0] as { role: string } | undefined;
+    });
 
-    const isAdmin = profile?.role === 'admin';
+    const isAdmin = isAdminRole(profile?.role);
 
-    let query = supabase
-      .from('payment_schedules')
-      .select(`
-        id, payment_id, total_amount, paid_amount, remaining_amount,
-        schedule_type, installments, currency, created_at,
-        payment:payments(id, course_id, status),
-        user:profiles!payment_schedules_user_id_fkey(id, full_name, email)
-      `)
-      .order('created_at', { ascending: false });
-
-    if (!isAdmin) {
-      query = query.eq('user_id', user.id);
-    }
-
-    const { data, error } = await query;
-    if (error) throw error;
+    const data = await withAdminContext(async (db) => {
+      if (isAdmin) {
+        const rows = await db.execute(
+          sql`
+            SELECT
+              ps.id, ps.payment_id, ps.total_amount, ps.paid_amount, ps.remaining_amount,
+              ps.schedule_type, ps.installments, ps.currency, ps.created_at,
+              pay.id AS payment_payment_id, pay.course_id AS payment_course_id, pay.status AS payment_status,
+              p.id AS user_id, p.full_name_en AS user_full_name, p.email AS user_email
+            FROM payment_schedules ps
+            LEFT JOIN payments pay ON pay.id = ps.payment_id
+            LEFT JOIN profiles p ON p.id = ps.user_id
+            ORDER BY ps.created_at DESC
+          `
+        );
+        return rows.rows;
+      } else {
+        const rows = await db.execute(
+          sql`
+            SELECT
+              ps.id, ps.payment_id, ps.total_amount, ps.paid_amount, ps.remaining_amount,
+              ps.schedule_type, ps.installments, ps.currency, ps.created_at
+            FROM payment_schedules ps
+            WHERE ps.user_id = ${user.id}
+            ORDER BY ps.created_at DESC
+          `
+        );
+        return rows.rows;
+      }
+    });
 
     return NextResponse.json({ schedules: data || [] });
   } catch (e) {
@@ -53,10 +62,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const token = req.headers.get('authorization')?.replace('Bearer ', '');
-    if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
-    const { data: { user } } = await supabase.auth.getUser(token);
+    const user = await getAuthUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await req.json();
@@ -67,11 +73,12 @@ export async function POST(req: NextRequest) {
     }
 
     // Get payment details
-    const { data: payment } = await supabase
-      .from('payments')
-      .select('id, amount, currency, user_id')
-      .eq('id', payment_id)
-      .single();
+    const payment = await withAdminContext(async (db) => {
+      const rows = await db.execute(
+        sql`SELECT id, amount, currency, user_id FROM payments WHERE id = ${payment_id} LIMIT 1`
+      );
+      return rows.rows[0] as { id: string; amount: number; currency: string; user_id: string } | undefined;
+    });
 
     if (!payment) {
       return NextResponse.json({ error: 'Payment not found' }, { status: 404 });
@@ -111,24 +118,20 @@ export async function POST(req: NextRequest) {
 
     const paidAmount = installments.filter(i => i.status === 'paid').reduce((s, i) => s + i.amount, 0);
 
-    const { data: schedule, error } = await supabase
-      .from('payment_schedules')
-      .insert({
-        payment_id,
-        user_id: payment.user_id,
-        total_amount: totalAmount,
-        paid_amount: paidAmount,
-        remaining_amount: totalAmount - paidAmount,
-        schedule_type,
-        installments: JSON.stringify(installments),
-        currency,
-      })
-      .select('id')
-      .single();
+    const schedule = await withAdminContext(async (db) => {
+      const rows = await db.execute(
+        sql`
+          INSERT INTO payment_schedules (payment_id, user_id, total_amount, paid_amount, remaining_amount, schedule_type, installments, currency)
+          VALUES (${payment_id}, ${payment.user_id}, ${totalAmount}, ${paidAmount}, ${totalAmount - paidAmount}, ${schedule_type}, ${JSON.stringify(installments)}, ${currency})
+          RETURNING id
+        `
+      );
+      return rows.rows[0] as { id: string } | undefined;
+    });
 
-    if (error) throw error;
+    if (!schedule) throw new Error('Failed to insert schedule');
 
-    return NextResponse.json({ schedule_id: schedule!.id, installments }, { status: 201 });
+    return NextResponse.json({ schedule_id: schedule.id, installments }, { status: 201 });
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 });
   }
@@ -136,10 +139,7 @@ export async function POST(req: NextRequest) {
 
 export async function PATCH(req: NextRequest) {
   try {
-    const token = req.headers.get('authorization')?.replace('Bearer ', '');
-    if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
-    const { data: { user } } = await supabase.auth.getUser(token);
+    const user = await getAuthUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await req.json();
@@ -150,11 +150,12 @@ export async function PATCH(req: NextRequest) {
     }
 
     // Get current schedule
-    const { data: schedule } = await supabase
-      .from('payment_schedules')
-      .select('*')
-      .eq('id', schedule_id)
-      .single();
+    const schedule = await withAdminContext(async (db) => {
+      const rows = await db.execute(
+        sql`SELECT * FROM payment_schedules WHERE id = ${schedule_id} LIMIT 1`
+      );
+      return rows.rows[0] as any | undefined;
+    });
 
     if (!schedule) {
       return NextResponse.json({ error: 'Schedule not found' }, { status: 404 });
@@ -174,16 +175,15 @@ export async function PATCH(req: NextRequest) {
 
     const paidAmount = installments.filter((i: any) => i.status === 'paid').reduce((s: number, i: any) => s + i.amount, 0);
 
-    const { error } = await supabase
-      .from('payment_schedules')
-      .update({
-        installments: JSON.stringify(installments),
-        paid_amount: paidAmount,
-        remaining_amount: schedule.total_amount - paidAmount,
-      })
-      .eq('id', schedule_id);
-
-    if (error) throw error;
+    await withAdminContext(async (db) => {
+      await db.execute(
+        sql`
+          UPDATE payment_schedules
+          SET installments = ${JSON.stringify(installments)}, paid_amount = ${paidAmount}, remaining_amount = ${schedule.total_amount - paidAmount}
+          WHERE id = ${schedule_id}
+        `
+      );
+    });
 
     return NextResponse.json({ success: true, paid_amount: paidAmount, remaining: schedule.total_amount - paidAmount });
   } catch (e) {

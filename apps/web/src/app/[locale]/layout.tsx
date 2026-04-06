@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import type { Metadata } from "next";
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages, setRequestLocale } from 'next-intl/server';
@@ -5,12 +7,14 @@ import { routing } from '@/i18n/routing';
 import { notFound } from 'next/navigation';
 import { Footer } from '@kunacademy/ui/footer';
 import { AuthHeader } from '@/components/auth-header';
+import { AuthProvider } from '@kunacademy/auth';
 import { ScrollObserver } from '@kunacademy/ui/scroll-observer';
 import { fontVariables } from '@/lib/fonts';
 import { NextImageProvider } from '@/components/image-provider';
 import { ScrollRestore } from '@/components/scroll-restore';
 import { Analytics } from '@/components/analytics';
 import { organizationJsonLd, websiteJsonLd } from '@kunacademy/ui/structured-data';
+import { getDailyQuotes } from '@/components/samer-quote';
 import "../globals.css";
 
 export function generateStaticParams() {
@@ -65,6 +69,9 @@ export default async function LocaleLayout({
   const messages = await getMessages();
   const dir = locale === 'ar' ? 'rtl' : 'ltr';
 
+  // Fetch daily rotating quotes — never throws, returns null on failure
+  const { header: headerQuote, footer: footerQuote } = await getDailyQuotes();
+
   return (
     <html lang={locale} dir={dir} className={fontVariables}>
       <head>
@@ -81,6 +88,7 @@ export default async function LocaleLayout({
       </head>
       <body className="flex flex-col min-h-screen">
         <NextIntlClientProvider messages={messages}>
+          <AuthProvider>
           <NextImageProvider>
             <a
               href="#main-content"
@@ -88,15 +96,16 @@ export default async function LocaleLayout({
             >
               {locale === 'ar' ? 'تخطي إلى المحتوى الرئيسي' : 'Skip to main content'}
             </a>
-            <AuthHeader locale={locale} />
+            <AuthHeader locale={locale} dailyQuote={headerQuote} />
             <main id="main-content" className="flex-1">
               {children}
             </main>
-            <Footer locale={locale} />
+            <Footer locale={locale} dailyQuote={footerQuote} />
             <ScrollObserver />
             <ScrollRestore />
             <Analytics />
           </NextImageProvider>
+          </AuthProvider>
         </NextIntlClientProvider>
       </body>
     </html>

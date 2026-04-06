@@ -2,7 +2,8 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import type { PathfinderQuestion, PathfinderAnswer } from '@kunacademy/cms';
+import type { PathfinderQuestion, PathfinderAnswer, LightReport } from '@kunacademy/cms';
+import { scoreAnswersLight } from '@kunacademy/cms';
 import {
   DirectionSelectStep,
   SelfAssessmentStep,
@@ -22,7 +23,8 @@ type Step =
   | 'benefits_quiz'         // corporate: pick priority benefits
   | 'roi_inputs'            // shared: individual ROI / corporate team data
   | 'savings_analysis'      // corporate only (Wave 2 placeholder)
-  | 'lead_capture'
+  | 'light_results'         // TIER 1: instant light report (individual path, no gate)
+  | 'lead_capture'          // TIER 2 opt-in: extended report (after Tier 1)
   | 'processing';
 
 interface AnswerRecord {
@@ -66,6 +68,7 @@ export function PathfinderEngine({ locale, questions, corporateBenefits }: Props
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
   const [roiCollected, setRoiCollected] = useState(false);
+  const [lightReport, setLightReport] = useState<LightReport | null>(null);
 
   // Corporate-path state
   const [direction, setDirection] = useState<string | null>(null);
@@ -74,6 +77,17 @@ export function PathfinderEngine({ locale, questions, corporateBenefits }: Props
   const [customBenefitText, setCustomBenefitText] = useState('');
 
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // ── Auto-initialize on mount (fixes cache/hydration: no hard refresh needed) ──
+  useEffect(() => {
+    if (questions && questions.length > 0 && !currentQuestion) {
+      const roots = questions.filter(q => !q.parent_answer_id);
+      if (roots.length > 0) {
+        setCurrentQuestion(roots[0]);
+        setQuestionHistory([roots[0]]);
+      }
+    }
+  }, [questions]);
 
   // Filter questions by type
   const getRoots = useCallback((type: 'individual' | 'corporate') => {
@@ -158,8 +172,13 @@ export function PathfinderEngine({ locale, questions, corporateBenefits }: Props
       } else if (assessmentType === 'corporate' && !roiCollected) {
         // Corporate path: collect ROI inputs before lead capture (once)
         setStep('roi_inputs');
+      } else if (assessmentType === 'individual') {
+        // Individual path: compute Tier 1 light report instantly, no gate
+        const report = scoreAnswersLight(newTrail, 'individual');
+        setLightReport(report);
+        setStep('light_results');
       } else {
-        // End of questions → lead capture
+        // Fallback (corporate without ROI already collected) → lead capture
         setStep('lead_capture');
       }
     });
@@ -204,15 +223,24 @@ export function PathfinderEngine({ locale, questions, corporateBenefits }: Props
   }, []);
 
   const handleBack = useCallback(() => {
+    // Tier 2 opt-in form → back to Tier 1 light results (individual) or savings (corporate)
     if (step === 'lead_capture') {
       if (assessmentType === 'corporate') {
         animateTransition(() => setStep('savings_analysis'));
-      } else if (questionHistory.length > 0) {
-        animateTransition(() => {
-          setStep('questions');
-          setCurrentQuestion(questionHistory[questionHistory.length - 1]);
-        });
+      } else {
+        animateTransition(() => setStep('light_results'));
       }
+      return;
+    }
+
+    // Tier 1 light results → back to last question
+    if (step === 'light_results') {
+      animateTransition(() => {
+        setStep('questions');
+        if (questionHistory.length > 0) {
+          setCurrentQuestion(questionHistory[questionHistory.length - 1]);
+        }
+      });
       return;
     }
 
@@ -270,6 +298,9 @@ export function PathfinderEngine({ locale, questions, corporateBenefits }: Props
     if (!contact.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact.email)) {
       newErrors.email = isAr ? 'البريد الإلكتروني غير صالح' : 'Invalid email address';
     }
+    if (assessmentType === 'corporate' && !contact.job_title.trim()) {
+      newErrors.job_title = isAr ? 'المسمى الوظيفي مطلوب' : 'Job title is required';
+    }
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       // UX-Pro: focus-management — auto-focus first invalid field after submit error
@@ -284,21 +315,51 @@ export function PathfinderEngine({ locale, questions, corporateBenefits }: Props
     setStep('processing');
 
     try {
-      const res = await fetch('/api/pathfinder', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          answers: answerTrail,
-          contact,
-          type: assessmentType,
-          roi_inputs: assessmentType === 'corporate' ? roiInputs : undefined,
-          locale,
-        }),
-      });
+      if (assessmentType === 'corporate') {
+        const res = await fetch('/api/pathfinder/proposal', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contact: {
+              name: contact.name,
+              email: contact.email,
+              job_title: contact.job_title,
+            },
+            direction: direction,
+            direction_label_ar: corporateBenefits?.directions.find(d => d.id === direction)?.title_ar ?? '',
+            direction_label_en: corporateBenefits?.directions.find(d => d.id === direction)?.title_en ?? '',
+            selected_benefits: getSelectedBenefitObjects(),
+            self_assessment: Array.from(selfAssessment.entries()).map(([id, rating]) => ({
+              benefit_id: id,
+              current: rating.current,
+              target_3m: rating.target_3m,
+              target_6m: rating.target_6m,
+            })),
+            roi_inputs: roiInputs,
+            custom_benefit_text: customBenefitText || undefined,
+            locale,
+          }),
+        });
 
-      if (!res.ok) throw new Error('Failed to submit');
-      const data = await res.json();
-      router.push(`/${locale}/pathfinder/results?id=${data.id}`);
+        if (!res.ok) throw new Error('Failed to submit');
+        const data = await res.json();
+        router.push(`/${locale}/pathfinder/results?id=${data.id}&pdf=${encodeURIComponent(data.proposal_pdf_url)}`);
+      } else {
+        const res = await fetch('/api/pathfinder', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            answers: answerTrail,
+            contact,
+            type: assessmentType,
+            locale,
+          }),
+        });
+
+        if (!res.ok) throw new Error('Failed to submit');
+        const data = await res.json();
+        router.push(`/${locale}/pathfinder/results?id=${data.id}`);
+      }
     } catch {
       // UX-Pro: error-recovery — return to form AND show clear error message
       setStep('lead_capture');
@@ -307,7 +368,7 @@ export function PathfinderEngine({ locale, questions, corporateBenefits }: Props
         : 'Something went wrong. Check your connection and try again.'
       );
     }
-  }, [contact, answerTrail, assessmentType, roiInputs, locale, router, isAr]);
+  }, [contact, answerTrail, assessmentType, roiInputs, locale, router, isAr, direction, corporateBenefits, getSelectedBenefitObjects, selfAssessment, customBenefitText]);
 
   // ── Progress calculation ───────────────────────────────────────────────────
 
@@ -323,7 +384,9 @@ export function PathfinderEngine({ locale, questions, corporateBenefits }: Props
     // Shared
     if (step === 'roi_inputs') return 60;
     if (step === 'savings_analysis') return 75;
-    if (step === 'lead_capture') return 90;
+    // Two-tier flow
+    if (step === 'light_results') return 85;  // Tier 1 done
+    if (step === 'lead_capture') return 92;   // Tier 2 opt-in
     return 100;
   })();
 
@@ -520,7 +583,10 @@ export function PathfinderEngine({ locale, questions, corporateBenefits }: Props
                       if (assessmentType === 'corporate') {
                         animateTransition(() => setStep('roi_inputs'));
                       } else {
-                        animateTransition(() => setStep('lead_capture'));
+                        // Compute Tier 1 light report instantly for individual path
+                        const report = scoreAnswersLight(answerTrail, 'individual');
+                        setLightReport(report);
+                        animateTransition(() => setStep('light_results'));
                       }
                     }}
                     className="rounded-2xl px-10 py-4 text-lg font-bold text-white min-h-[56px] transition-all duration-300 hover:scale-105"
@@ -558,7 +624,10 @@ export function PathfinderEngine({ locale, questions, corporateBenefits }: Props
                   if (assessmentType === 'corporate') {
                     animateTransition(() => setStep('savings_analysis'));
                   } else {
-                    animateTransition(() => setStep('lead_capture'));
+                    // Individual path: go to Tier 1 light results
+                    const report = scoreAnswersLight(answerTrail, 'individual');
+                    setLightReport(report);
+                    animateTransition(() => setStep('light_results'));
                   }
                 }}
                 className="mt-8 w-full rounded-2xl px-8 py-4 text-lg font-bold text-white min-h-[56px] transition-all duration-300 hover:scale-[1.02]"
@@ -569,18 +638,60 @@ export function PathfinderEngine({ locale, questions, corporateBenefits }: Props
             </div>
           )}
 
-          {/* ── Lead Capture ───────────────────────────────────────────── */}
+          {/* ── Tier 1: Light Results (instant, no gate) ──────────────── */}
+          {step === 'light_results' && lightReport && (
+            <LightResultsStep
+              report={lightReport}
+              isAr={isAr}
+              locale={locale}
+              onGetExtended={() => animateTransition(() => setStep('lead_capture'))}
+            />
+          )}
+
+          {/* ── Lead Capture (Tier 2 Opt-In) ──────────────────────────── */}
           {step === 'lead_capture' && (
             <div className="animate-fade-up is-visible">
-              <h2
-                className="text-2xl md:text-3xl font-bold text-[var(--text-primary)] text-center mb-3"
-                style={{ fontFamily: isAr ? 'var(--font-arabic-heading)' : 'var(--font-english-heading)' }}
-              >
-                {isAr ? 'وين أرسلّك خارطة الطريق؟' : 'Where Should I Send Your Roadmap?'}
-              </h2>
-              <p className="text-[var(--color-neutral-500)] text-center mb-8">
-                {isAr ? 'سأُعدّ لك تقريرًا شخصيًا يمكنك تحميله ومشاركته' : "I'll prepare a personalized report you can download and share"}
-              </p>
+              {/* Tier 2 header — emphasises the upgrade, not a gate */}
+              <div className="text-center mb-8">
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider mb-4" style={{ background: 'rgba(228,96,30,.1)', color: '#E4601E' }}>
+                  <span>✦</span>
+                  {isAr ? 'التقرير الشامل' : 'Extended Report'}
+                </div>
+                <h2
+                  className="text-2xl md:text-3xl font-bold text-[var(--text-primary)] mb-3"
+                  style={{ fontFamily: isAr ? 'var(--font-arabic-heading)' : 'var(--font-english-heading)' }}
+                >
+                  {isAr ? 'احصل على الصورة الكاملة' : 'Get the Full Picture'}
+                </h2>
+                <p className="text-[var(--color-neutral-500)] max-w-sm mx-auto">
+                  {isAr
+                    ? 'وصف تفصيلي للبرامج، مسار التعلّم الكامل، ونظرة على الاستثمار — كل ذلك في تقرير خاص بك'
+                    : 'Full program details, complete learning pathway, and investment overview — all in your personalized report'}
+                </p>
+              </div>
+              {/* What you unlock */}
+              <ul className="space-y-2 mb-6 rounded-2xl p-5 border" style={{ borderColor: '#E8E3DC', background: '#FFF5E9' }}>
+                {(isAr ? [
+                  'وصف تفصيلي للبرامج مع أبرز المحتوى',
+                  'لماذا يناسبك هذا المدرب — تفاصيل كاملة',
+                  'شهادات المتدربين (٢–٣ تجارب)',
+                  'مسار التعلّم الكامل بصري',
+                  'نظرة على الاستثمار مع خيارات الدفع',
+                  'روابط حجز مباشرة للخطوة التالية',
+                ] : [
+                  'Full program descriptions with curriculum highlights',
+                  'Why this coach — detailed match reasoning',
+                  'Coach testimonials (2–3 real reviews)',
+                  'Complete visual learning pathway',
+                  'Investment overview with geo-based pricing',
+                  'Direct booking CTAs for next steps',
+                ]).map((item, i) => (
+                  <li key={i} className="flex items-baseline gap-2 text-sm" style={{ color: '#6B6560' }}>
+                    <span className="font-bold shrink-0 text-xs" style={{ color: '#E4601E' }}>✓</span>
+                    {item}
+                  </li>
+                ))}
+              </ul>
               <div className="space-y-4">
                 <InputField
                   label={isAr ? 'الاسم' : 'Name'}
@@ -601,7 +712,8 @@ export function PathfinderEngine({ locale, questions, corporateBenefits }: Props
                   <InputField
                     label={isAr ? 'المسمى الوظيفي' : 'Job Title'}
                     value={contact.job_title}
-                    onChange={v => setContact(p => ({ ...p, job_title: v }))}
+                    onChange={v => { setContact(p => ({ ...p, job_title: v })); setErrors(e => ({ ...e, job_title: '' })); }}
+                    error={errors.job_title}
                     placeholder={isAr ? 'مثال: مدير الموارد البشرية' : 'e.g. VP of People & Culture'}
                   />
                 ) : (
@@ -626,8 +738,13 @@ export function PathfinderEngine({ locale, questions, corporateBenefits }: Props
                 className="mt-6 w-full rounded-2xl px-8 py-4 text-lg font-bold text-white min-h-[56px] transition-all duration-300 hover:scale-[1.02]"
                 style={{ background: 'linear-gradient(135deg, var(--color-accent) 0%, #C44D12 100%)' }}
               >
-                {isAr ? 'اكشف عن خارطة طريقي' : 'Reveal My Roadmap'}
+                {isAr ? 'أرسل لي التقرير الشامل' : 'Send My Extended Report'}
               </button>
+              <p className="mt-3 text-center text-xs" style={{ color: '#9B9591' }}>
+                {isAr
+                  ? 'لن نرسل إشعارات مزعجة — فقط تقريرك المخصص'
+                  : "No spam — just your personalized report"}
+              </p>
             </div>
           )}
 
@@ -739,6 +856,188 @@ function RoiSlider({ label, value, min, max, step, unit, onChange }: {
         className="w-full h-2 rounded-full appearance-none cursor-pointer accent-[var(--color-primary)]"
         style={{ background: `linear-gradient(to right, var(--color-primary) 0%, var(--color-primary) ${((value - min) / (max - min)) * 100}%, var(--color-neutral-200) ${((value - min) / (max - min)) * 100}%, var(--color-neutral-200) 100%)` }}
       />
+    </div>
+  );
+}
+
+// ── Tier 1: Light Results Component ────────────────────────────────────────────
+
+const STAGE_LABELS: Record<string, { en: string; ar: string }> = {
+  explorer:     { en: 'Explorer',     ar: 'مستكشف' },
+  seeker:       { en: 'Seeker',       ar: 'باحث' },
+  practitioner: { en: 'Practitioner', ar: 'ممارس' },
+  master:       { en: 'Master',       ar: 'متمكّن' },
+};
+
+const CATEGORY_LABELS: Record<string, { en: string; ar: string }> = {
+  certification: { en: 'Professional Certification', ar: 'شهادة احترافية' },
+  course:        { en: 'Manhajak Program',            ar: 'برنامج منهجك' },
+  retreat:       { en: 'Transformational Retreat',    ar: 'ريتريت التحوّل' },
+  corporate:     { en: 'Impact Engineering',          ar: 'هندسة الأثر' },
+  coaching:      { en: 'Personal Coaching',           ar: 'كوتشينج شخصي' },
+  family:        { en: 'Family Coaching',             ar: 'كوتشينج الأسرة' },
+  free:          { en: 'Free Intro Program',          ar: 'برنامج تعريفي مجاني' },
+};
+
+function LightResultsStep({
+  report,
+  isAr,
+  locale,
+  onGetExtended,
+}: {
+  report: LightReport;
+  isAr: boolean;
+  locale: string;
+  onGetExtended: () => void;
+}) {
+  const stageLabel = isAr
+    ? (STAGE_LABELS[report.journey_stage]?.ar ?? report.journey_stage)
+    : (STAGE_LABELS[report.journey_stage]?.en ?? report.journey_stage);
+
+  const [primary, ...alts] = report.top_categories;
+  const primaryLabel = isAr
+    ? (CATEGORY_LABELS[primary.category]?.ar ?? primary.category)
+    : (CATEGORY_LABELS[primary.category]?.en ?? primary.category);
+
+  return (
+    <div className="animate-fade-up is-visible space-y-5 w-full max-w-xl" dir={isAr ? 'rtl' : 'ltr'}>
+
+      {/* Header */}
+      <div className="text-center">
+        <div
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-full border-2 mb-3"
+          style={{ borderColor: '#E4601E', background: 'rgba(228,96,30,.08)' }}
+        >
+          <span className="w-2 h-2 rounded-full" style={{ background: '#E4601E' }} />
+          <span className="text-sm font-bold" style={{ color: '#E4601E' }}>{stageLabel}</span>
+        </div>
+        <h2
+          className="text-2xl md:text-3xl font-bold text-[var(--text-primary)] leading-tight"
+          style={{ fontFamily: isAr ? 'var(--font-arabic-heading)' : 'var(--font-english-heading)' }}
+        >
+          {isAr ? 'إليك خارطة طريقك الأولية' : 'Your Initial Roadmap'}
+        </h2>
+        <p className="text-sm mt-2" style={{ color: '#9B9591' }}>
+          {isAr ? 'نتائج فورية — لا تسجيل مطلوب' : 'Instant results — no sign-up required'}
+        </p>
+      </div>
+
+      {/* Top recommendation card */}
+      <div className="rounded-2xl p-5 border-2" style={{ borderColor: '#E4601E', background: 'rgba(228,96,30,.03)' }}>
+        <div className="flex items-start justify-between gap-3 flex-wrap mb-2">
+          <div>
+            <span className="text-xs font-bold uppercase tracking-wider px-2.5 py-1 rounded-full" style={{ background: '#E4601E', color: 'white' }}>
+              {isAr ? 'الأنسب لك' : 'Best Match'}
+            </span>
+            <h3 className="text-xl font-bold mt-2" style={{ color: '#1F1B14' }}>{primaryLabel}</h3>
+          </div>
+          <span className="text-3xl font-black shrink-0" style={{ color: '#474099' }}>{primary.match_pct}%</span>
+        </div>
+
+        {/* Key benefits */}
+        <ul className="space-y-1.5 mt-3">
+          {report.key_benefits.map((b, i) => (
+            <li key={i} className="flex items-baseline gap-2 text-sm" style={{ color: '#6B6560' }}>
+              <span className="font-bold shrink-0" style={{ color: '#E4601E' }}>✓</span>
+              {isAr ? b.ar : b.en}
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      {/* Alternative matches */}
+      {alts.length > 0 && (
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#9B9591' }}>
+            {isAr ? 'احتمالات أخرى' : 'Other Matches'}
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            {alts.map((alt) => (
+              <div
+                key={alt.category}
+                className="rounded-xl p-3 border"
+                style={{ borderColor: '#E8E3DC', background: 'white' }}
+              >
+                <div className="flex items-start justify-between gap-1">
+                  <p className="text-sm font-semibold" style={{ color: '#1F1B14' }}>
+                    {isAr ? (CATEGORY_LABELS[alt.category]?.ar ?? alt.category) : (CATEGORY_LABELS[alt.category]?.en ?? alt.category)}
+                  </p>
+                  <span className="text-sm font-black shrink-0" style={{ color: '#474099' }}>{alt.match_pct}%</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Transformation timeline */}
+      <div className="rounded-2xl p-5" style={{ background: 'white', border: '1px solid #E8E3DC' }}>
+        <h3 className="text-sm font-bold mb-3" style={{ color: '#474099' }}>
+          {isAr ? 'خارطة التحوّل' : 'Transformation Timeline'}
+        </h3>
+        <div className="space-y-3">
+          {report.timeline.map((t, i) => (
+            <div key={i} className="flex gap-3 items-start">
+              <div
+                className="shrink-0 mt-0.5 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white"
+                style={{ background: i === 0 ? '#474099' : i === 1 ? '#E4601E' : '#22C55E' }}
+              >
+                {i + 1}
+              </div>
+              <div>
+                <p className="text-xs font-bold" style={{ color: '#474099' }}>
+                  {isAr ? t.period_ar : t.period}
+                </p>
+                <p className="text-sm" style={{ color: '#6B6560' }}>
+                  {isAr ? t.milestone_ar : t.milestone}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Tier 2 CTA */}
+      <div
+        className="rounded-2xl p-6 text-center"
+        style={{ background: 'linear-gradient(135deg, #474099 0%, #1D1A3D 100%)' }}
+      >
+        <p className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: '#E4601E' }}>
+          {isAr ? 'هل تريد الصورة الكاملة؟' : 'Want the full picture?'}
+        </p>
+        <h3 className="text-lg font-bold text-white mb-1">
+          {isAr ? 'احصل على تقريرك الشامل' : 'Get Your Detailed Report'}
+        </h3>
+        <p className="text-white/65 text-sm mb-5">
+          {isAr
+            ? 'تفاصيل البرامج، مسار التعلم الكامل، ونظرة على الاستثمار'
+            : 'Program details, full learning pathway, and investment overview'}
+        </p>
+        <button
+          onClick={onGetExtended}
+          className="inline-flex items-center justify-center gap-2 rounded-full font-bold px-8 py-3.5 min-h-[44px] transition-all duration-300 hover:scale-105 hover:shadow-[0_8px_24px_rgba(228,96,30,.4)]"
+          style={{ background: '#E4601E', color: 'white' }}
+        >
+          {isAr ? 'احصل على التقرير الشامل' : 'Get My Extended Report'}
+          <svg className="w-4 h-4 rtl:rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M5 12h14M12 5l7 7-7 7" />
+          </svg>
+        </button>
+      </div>
+
+      {/* Secondary CTA: skip to WhatsApp */}
+      <p className="text-center text-sm" style={{ color: '#9B9591' }}>
+        {isAr ? 'تفضّل تتكلّم مع شخص؟' : 'Prefer to talk to someone?'}{' '}
+        <a
+          href="https://wa.me/971502587895"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-semibold underline"
+          style={{ color: '#25D366' }}
+        >
+          {isAr ? 'تواصل عبر واتساب' : 'Chat on WhatsApp'}
+        </a>
+      </p>
     </div>
   );
 }

@@ -1,7 +1,6 @@
 'use client';
 
 import { useAuth } from '@kunacademy/auth';
-import { createBrowserClient } from '@kunacademy/db';
 import { Section } from '@kunacademy/ui/section';
 import { Card } from '@kunacademy/ui/card';
 import { useState, useEffect, use } from 'react';
@@ -20,12 +19,10 @@ interface EnrollmentWithCourse {
     total_video_minutes: number;
     slug: string;
   } | null;
-}
-
-interface LessonProgressCount {
-  course_id: string;
-  completed_count: number;
-  total_count: number;
+  progress: {
+    completed_count: number;
+    total_count: number;
+  };
 }
 
 export default function MyCoursesPage({ params }: { params: Promise<{ locale: string }> }) {
@@ -33,67 +30,15 @@ export default function MyCoursesPage({ params }: { params: Promise<{ locale: st
   const isAr = locale === 'ar';
   const { user } = useAuth();
   const [enrollments, setEnrollments] = useState<EnrollmentWithCourse[]>([]);
-  const [progressMap, setProgressMap] = useState<Record<string, LessonProgressCount>>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!user) return;
-    const supabase = createBrowserClient();
 
     async function load() {
-      // Fetch enrollments with course data
-      const { data } = await supabase
-        .from('enrollments')
-        .select('id, course_id, enrolled_at, completed_at, status, courses(title_ar, title_en, thumbnail_url, total_lessons, total_video_minutes, slug)')
-        .eq('user_id', user!.id)
-        .in('status', ['enrolled', 'in_progress', 'completed'])
-        .order('enrolled_at', { ascending: false });
-
-      const enrollmentData = (data ?? []).map((e: any) => ({
-        ...e,
-        course: e.courses ?? null,
-      }));
-
-      setEnrollments(enrollmentData);
-
-      // Fetch lesson progress counts per course
-      if (enrollmentData.length > 0) {
-        const courseIds = enrollmentData.map((e: EnrollmentWithCourse) => e.course_id);
-        const { data: progressData } = await supabase
-          .from('lesson_progress')
-          .select('lesson_id, completed, lessons!inner(course_id)')
-          .eq('user_id', user!.id)
-          .eq('completed', true);
-
-        // Count completed lessons per course
-        const counts: Record<string, number> = {};
-        (progressData ?? []).forEach((p: any) => {
-          const cid = p.lessons?.course_id;
-          if (cid) counts[cid] = (counts[cid] ?? 0) + 1;
-        });
-
-        // Get total lessons per course
-        const { data: lessonCounts } = await supabase
-          .from('lessons')
-          .select('course_id')
-          .in('course_id', courseIds);
-
-        const totals: Record<string, number> = {};
-        (lessonCounts ?? []).forEach((l: any) => {
-          totals[l.course_id] = (totals[l.course_id] ?? 0) + 1;
-        });
-
-        const map: Record<string, LessonProgressCount> = {};
-        courseIds.forEach((cid: string) => {
-          map[cid] = {
-            course_id: cid,
-            completed_count: counts[cid] ?? 0,
-            total_count: totals[cid] ?? 0,
-          };
-        });
-        setProgressMap(map);
-      }
-
+      const res = await fetch('/api/user/enrollments');
+      const data = await res.json();
+      setEnrollments(data.enrollments ?? []);
       setLoading(false);
     }
 
@@ -117,7 +62,7 @@ export default function MyCoursesPage({ params }: { params: Promise<{ locale: st
             if (!course) return null;
 
             const title = isAr ? course.title_ar : course.title_en;
-            const prog = progressMap[e.course_id];
+            const prog = e.progress;
             const percent = prog && prog.total_count > 0
               ? Math.round((prog.completed_count / prog.total_count) * 100)
               : 0;

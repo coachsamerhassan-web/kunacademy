@@ -1,7 +1,6 @@
 'use client';
 
 import { useAuth } from '@kunacademy/auth';
-import { createBrowserClient } from '@kunacademy/db';
 import { Section } from '@kunacademy/ui/section';
 import { Card } from '@kunacademy/ui/card';
 import { useState, useEffect, use } from 'react';
@@ -15,18 +14,13 @@ export default function CoachDashboardPage({ params }: { params: Promise<{ local
 
   useEffect(() => {
     if (!user) return;
-    const supabase = createBrowserClient();
-    (async () => {
-      const [profileRes, providerRes] = await Promise.all([
-        supabase.from('profiles').select('full_name_ar, full_name_en').eq('id', user.id).single(),
-        supabase.from('providers').select('id').eq('profile_id', user.id).single(),
-      ]);
-      if (profileRes.data) setProfile(profileRes.data);
-      if (providerRes.data) {
-        const { count } = await supabase.from('bookings').select('id', { count: 'exact', head: true }).eq('provider_id', providerRes.data.id);
-        setStats({ bookings: count ?? 0, totalEarnings: 0 });
-      }
-    })();
+    Promise.all([
+      fetch('/api/user/profile').then(r => r.ok ? r.json() : { profile: null }),
+      fetch('/api/coach/dashboard').then(r => r.ok ? r.json() : null),
+    ]).then(([profileData, dashData]) => {
+      if (profileData.profile) setProfile(profileData.profile);
+      if (dashData?.stats) setStats({ bookings: dashData.stats.upcomingBookings ?? 0, totalEarnings: 0 });
+    });
   }, [user]);
 
   const name = profile ? (isAr ? profile.full_name_ar : profile.full_name_en) : '';

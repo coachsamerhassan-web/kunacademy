@@ -1,34 +1,22 @@
 'use client';
 
-import { Header, type HeaderUser } from '@kunacademy/ui/header';
-import { useEffect, useState } from 'react';
-import { createBrowserClient } from '@kunacademy/db';
+import { Header, type HeaderUser, type DailyQuoteData } from '@kunacademy/ui/header';
+import { useAuth } from '@kunacademy/auth';
 
-export function AuthHeader({ locale }: { locale: string }) {
-  const [headerUser, setHeaderUser] = useState<HeaderUser | null>(null);
+interface AuthHeaderProps {
+  locale: string;
+  dailyQuote?: DailyQuoteData | null;
+}
 
-  useEffect(() => {
-    const supabase = createBrowserClient();
-    if (!supabase) return;
+export function AuthHeader({ locale, dailyQuote }: AuthHeaderProps) {
+  const { user, loading } = useAuth();
 
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) return;
-      supabase
-        .from('profiles')
-        .select('full_name_ar, full_name_en, avatar_url')
-        .eq('id', user.id)
-        .single()
-        .then(({ data: p }) => {
-          const name =
-            (locale === 'ar'
-              ? (p?.full_name_ar || p?.full_name_en)
-              : (p?.full_name_en || p?.full_name_ar)) ||
-            user.email ||
-            null;
-          setHeaderUser({ name, avatar_url: p?.avatar_url ?? null });
-        });
-    });
-  }, [locale]);
+  const headerUser: HeaderUser | null = user
+    ? {
+        name: user.name || user.email || null,
+        avatar_url: user.image ?? null,
+      }
+    : null;
 
-  return <Header locale={locale} user={headerUser} />;
+  return <Header locale={locale} user={headerUser} dailyQuote={dailyQuote} />;
 }

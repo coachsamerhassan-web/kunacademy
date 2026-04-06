@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+import { withAdminContext } from '@kunacademy/db';
+import { bookings } from '@kunacademy/db/schema';
+import { eq, and, lt, gt } from 'drizzle-orm';
+import { getAuthUser } from '@kunacademy/auth/server';
 
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 const RATE_LIMIT_MAX = 10;
@@ -29,14 +27,6 @@ setInterval(() => {
   }
 }, 10 * 60 * 1000);
 
-async function getUser(request: NextRequest) {
-  const authHeader = request.headers.get('authorization');
-  if (!authHeader?.startsWith('Bearer ')) return null;
-  const token = authHeader.slice(7);
-  const { data: { user } } = await supabase.auth.getUser(token);
-  return user;
-}
-
 /**
  * POST /api/bookings/hold
  * Body: { coach_id, start_time, end_time, service_id }
@@ -49,7 +39,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Too many requests. Please try again later.', error_ar: 'طلبات كثيرة. يرجى المحاولة لاحقًا.' }, { status: 429 });
   }
 
-  const user = await getUser(request);
+  const user = await getAuthUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   let body: { coach_id?: string; start_time?: string; end_time?: string; service_id?: string };
@@ -90,14 +80,19 @@ export async function POST(request: NextRequest) {
   const heldUntil = new Date(now.getTime() + 5 * 60 * 1000); // 5 min hold
 
   // Check for existing active bookings (confirmed, pending) or active holds at this slot
-  const { data: conflicts } = await supabase
-    .from('bookings')
-    .select('id, status, held_until')
-    .eq('provider_id', coach_id)
-    .lt('start_time', end_time)
-    .gt('end_time', start_time);
+  const conflicts = await withAdminContext(async (db) => {
+    return db.select({ id: bookings.id, status: bookings.status, held_until: bookings.held_until })
+      .from(bookings)
+      .where(
+        and(
+          eq(bookings.provider_id, coach_id),
+          lt(bookings.start_time, parsedEnd.toISOString()),
+          gt(bookings.end_time, parsedStart.toISOString())
+        )
+      );
+  });
 
-  const hasConflict = (conflicts || []).some(b => {
+  const hasConflict = (conflicts || []).some((b: { id: string; status: string | null; held_until: string | null }) => {
     if (b.status === 'pending' || b.status === 'confirmed') return true;
     if (b.status === 'held' && b.held_until && b.held_until > now.toISOString()) return true;
     return false;
@@ -111,28 +106,26 @@ export async function POST(request: NextRequest) {
   }
 
   // Insert hold record
-  const { data: inserted, error: insertError } = await supabase
-    .from('bookings')
-    .insert({
+  const [inserted] = await withAdminContext(async (db) => {
+    return db.insert(bookings).values({
       customer_id: user.id,
       provider_id: coach_id,
       service_id,
-      start_time,
-      end_time,
+      start_time: parsedStart.toISOString(),
+      end_time: parsedEnd.toISOString(),
       status: 'held',
       held_until: heldUntil.toISOString(),
       held_by: user.id,
-    } as any)
-    .select('id, held_until')
-    .single();
+    }).returning({ id: bookings.id, held_until: bookings.held_until });
+  });
 
-  if (insertError || !inserted) {
-    console.error('[bookings/hold] insert error:', insertError?.message);
+  if (!inserted) {
+    console.error('[bookings/hold] insert failed');
     return NextResponse.json({ error: 'Failed to hold slot' }, { status: 500 });
   }
 
   return NextResponse.json({
     hold_id: inserted.id,
-    held_until: (inserted as any).held_until,
+    held_until: inserted.held_until,
   });
 }

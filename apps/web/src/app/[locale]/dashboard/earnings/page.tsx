@@ -2,7 +2,6 @@
 
 import { useState, useEffect, use } from 'react';
 import { useAuth } from '@kunacademy/auth';
-import { createBrowserClient } from '@kunacademy/db';
 import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
 import type { Earning, PayoutRequest } from '@/types/commission-system';
@@ -62,37 +61,24 @@ export default function Page({ params }: { params: Promise<{ locale: string }> }
     .filter((e) => e.status === 'paid_out')
     .reduce((s, e) => s + e.net_amount, 0);
 
-  async function getAuthToken() {
-    const supabase = createBrowserClient();
-    if (!supabase) return null;
-    const { data: session } = await supabase.auth.getSession();
-    return session?.session?.access_token || null;
-  }
-
   async function fetchData() {
-    const token = await getAuthToken();
-    if (!token) { setLoading(false); return; }
-
-    // Fetch earnings
-    const supabase = createBrowserClient();
-    if (supabase && user) {
-      const { data: earningsData } = await supabase
-        .from('earnings')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(200);
-      setEarnings(earningsData ?? []);
+    // Fetch earnings via session-cookie-authenticated route
+    const earningsRes = await fetch('/api/coach/earnings');
+    if (earningsRes.ok) {
+      const data = await earningsRes.json();
+      setEarnings(data.earnings ?? []);
     }
 
-    // Fetch payouts + available balance
-    const res = await fetch('/api/payouts', {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (res.ok) {
-      const data = await res.json();
-      setPayouts(data.payouts ?? []);
-      setAvailableBalance(data.available_balance ?? 0);
+    // Payouts API — session cookie sent automatically
+    try {
+      const payoutsRes = await fetch('/api/payouts');
+      if (payoutsRes.ok) {
+        const data = await payoutsRes.json();
+        setPayouts(data.payouts ?? []);
+        setAvailableBalance(data.available_balance ?? 0);
+      }
+    } catch {
+      // Payouts unavailable — non-critical
     }
 
     setLoading(false);

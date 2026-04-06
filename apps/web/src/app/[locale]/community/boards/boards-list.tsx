@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { createBrowserClient } from '@kunacademy/db';
 
 interface Board {
   id: string;
@@ -18,10 +17,13 @@ export function BoardsList({ locale }: { locale: string }) {
   const isAr = locale === 'ar';
 
   useEffect(() => {
-    const supabase = createBrowserClient();
-    if (!supabase) return;
-    supabase.from('community_boards').select('*').order('created_at')
-      .then(({ data }) => { setBoards(data || []); setLoading(false); });
+    fetch('/api/community/boards')
+      .then((r) => r.json())
+      .then((data) => {
+        setBoards(data.boards || []);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
   }, []);
 
   if (loading) return <div className="py-8 text-center text-[var(--color-neutral-500)]">{isAr ? 'جاري التحميل...' : 'Loading...'}</div>;

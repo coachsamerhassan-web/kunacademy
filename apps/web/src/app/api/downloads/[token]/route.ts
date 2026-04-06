@@ -1,11 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-import type { Database } from '@kunacademy/db';
-
-const supabase = createClient<Database>(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+import { withAdminContext } from '@kunacademy/db';
+import { download_tokens, digital_assets } from '@kunacademy/db/schema';
+import { eq } from 'drizzle-orm';
 
 export async function GET(
   _request: NextRequest,
@@ -15,13 +11,14 @@ export async function GET(
     const { token } = await params;
 
     // Look up the download token
-    const { data: downloadToken, error } = await supabase
-      .from('download_tokens')
-      .select('*')
-      .eq('token', token)
-      .single();
+    const [downloadToken] = await withAdminContext(async (db) => {
+      return db.select()
+        .from(download_tokens)
+        .where(eq(download_tokens.token, token))
+        .limit(1);
+    });
 
-    if (error || !downloadToken) {
+    if (!downloadToken) {
       return NextResponse.json(
         {
           error: 'Invalid download link',
@@ -54,13 +51,14 @@ export async function GET(
     }
 
     // Get the digital asset
-    const { data: asset, error: assetError } = await supabase
-      .from('digital_assets')
-      .select('*')
-      .eq('id', downloadToken.asset_id)
-      .single();
+    const [asset] = await withAdminContext(async (db) => {
+      return db.select()
+        .from(digital_assets)
+        .where(eq(digital_assets.id, downloadToken.asset_id))
+        .limit(1);
+    });
 
-    if (assetError || !asset) {
+    if (!asset) {
       return NextResponse.json(
         {
           error: 'Digital asset not found',
@@ -71,10 +69,11 @@ export async function GET(
     }
 
     // Increment download count
-    await supabase
-      .from('download_tokens')
-      .update({ download_count: (downloadToken.download_count ?? 0) + 1 })
-      .eq('id', downloadToken.id);
+    await withAdminContext(async (db) => {
+      await db.update(download_tokens)
+        .set({ download_count: (downloadToken.download_count ?? 0) + 1 })
+        .where(eq(download_tokens.id, downloadToken.id));
+    });
 
     // Redirect to the actual file URL
     return NextResponse.redirect(asset.file_url);

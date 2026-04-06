@@ -4,7 +4,6 @@ import { useAuth } from '@kunacademy/auth';
 import { Button } from '@kunacademy/ui/button';
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { createBrowserClient } from '@kunacademy/db';
 
 interface Enrollment {
   id: string;
@@ -46,30 +45,18 @@ export function DashboardContent({ locale }: { locale: string }) {
 
   useEffect(() => {
     if (!user) return;
-    const supabase = createBrowserClient();
-    if (!supabase) return;
-
     Promise.all([
-      supabase
-        .from('enrollments')
-        .select('id, status, enrollment_type, enrolled_at, completed_at, course:courses(title_ar, title_en, slug, thumbnail_url)')
-        .eq('user_id', user.id)
-        .order('enrolled_at', { ascending: false })
-        .limit(10),
-      supabase
-        .from('bookings')
-        .select('id, status, start_time, service:services(name_ar, name_en)')
-        .eq('customer_id', user.id)
-        .order('start_time', { ascending: false })
-        .limit(5),
-    ]).then(([enrollRes, bookingRes]) => {
-      const enrs = enrollRes.data || [];
-      setEnrollments(enrs as unknown as Enrollment[]);
-      setBookings((bookingRes.data || []) as unknown as Booking[]);
+      fetch('/api/user/enrollments').then(r => r.ok ? r.json() : { enrollments: [] }),
+      fetch('/api/user/bookings').then(r => r.ok ? r.json() : { bookings: [] }),
+    ]).then(([enrollData, bookingData]) => {
+      const enrs = (enrollData.enrollments || []) as Enrollment[];
+      setEnrollments(enrs);
+      const bkgs = (bookingData.bookings || []) as Booking[];
+      setBookings(bkgs);
       setStats({
         enrollments: enrs.length,
-        completedCourses: enrs.filter((e: any) => e.completed_at).length,
-        upcomingBookings: (bookingRes.data || []).filter((b: any) => b.status === 'confirmed').length,
+        completedCourses: enrs.filter((e) => e.completed_at).length,
+        upcomingBookings: bkgs.filter((b) => b.status === 'confirmed').length,
       });
       setDataLoading(false);
     });

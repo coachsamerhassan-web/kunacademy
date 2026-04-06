@@ -2,7 +2,6 @@
 
 import { useAuth } from '@kunacademy/auth';
 import { useEffect, useState } from 'react';
-import { createBrowserClient } from '@kunacademy/db';
 import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
 import { useParams, useRouter } from 'next/navigation';
@@ -82,29 +81,13 @@ export default function AdminCommissionsPage() {
   // Payout action state
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
-  async function getAuthToken() {
-    // TODO: Regenerate Supabase types once earnings/commission_rates/payout_requests tables exist
-    const supabase = createBrowserClient();
-    if (!supabase) return null;
-    const { data: session } = await supabase.auth.getSession();
-    return session?.session?.access_token || null;
-  }
-
   async function fetchAll() {
-    const token = await getAuthToken();
-    if (!token) { setLoading(false); return; }
-    const supabase = createBrowserClient();
-
-    // Rates
-    const ratesRes = await fetch('/api/commissions', {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    // All routes now use session-cookie auth — no Bearer token needed
+    const ratesRes = await fetch('/api/commissions');
     if (ratesRes.ok) {
       const data = await ratesRes.json();
       setRates(data.rates ?? []);
-      // Set global rate inputs
       const globals = (data.rates ?? []).filter((r: CommissionRate) => r.scope === 'global');
-      // Convention: higher = service, lower = product
       const sorted = globals.sort((a: CommissionRate, b: CommissionRate) => Number(b.rate_pct) - Number(a.rate_pct));
       if (sorted.length >= 2) {
         setServiceRate(String(sorted[0].rate_pct));
@@ -114,33 +97,22 @@ export default function AdminCommissionsPage() {
       }
     }
 
-    // Earnings with coach names
-    if (supabase) {
-      const { data: earningsData } = await supabase
-        .from('earnings')
-        .select('*, profiles:user_id(full_name)')
-        .order('created_at', { ascending: false })
-        .limit(200);
-      setEarnings((earningsData as unknown as EarningWithCoach[]) ?? []);
+    const earningsRes = await fetch('/api/admin/earnings-list');
+    if (earningsRes.ok) {
+      const data = await earningsRes.json();
+      setEarnings((data.earnings as EarningWithCoach[]) ?? []);
     }
 
-    // Payouts
-    const payoutsRes = await fetch('/api/payouts', {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    const payoutsRes = await fetch('/api/payouts');
     if (payoutsRes.ok) {
       const data = await payoutsRes.json();
       setPayouts(data.payouts ?? []);
     }
 
-    // Coaches list for override dropdown
-    if (supabase) {
-      const { data: coachData } = await supabase
-        .from('profiles')
-        .select('id, full_name')
-        .eq('role', 'provider')
-        .order('full_name');
-      setCoaches((coachData as unknown as CoachProfile[]) ?? []);
+    const coachesRes = await fetch('/api/admin/coaches-list');
+    if (coachesRes.ok) {
+      const data = await coachesRes.json();
+      setCoaches((data.coaches as CoachProfile[]) ?? []);
     }
 
     setLoading(false);
@@ -148,22 +120,15 @@ export default function AdminCommissionsPage() {
 
   async function saveGlobalRate(scope: 'service' | 'product', newRate: string) {
     setSavingRates(true);
-    const token = await getAuthToken();
-    if (!token) { setSavingRates(false); return; }
 
-    // Find existing global rate for this scope type
     const globals = rates.filter((r) => r.scope === 'global');
     const sorted = globals.sort((a, b) => Number(b.rate_pct) - Number(a.rate_pct));
     const target = scope === 'service' ? sorted[0] : sorted[sorted.length - 1];
 
     if (target) {
-      // Update existing
       await fetch('/api/commissions', {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ scope: 'global', scope_id: null, rate: parseFloat(newRate) }),
       });
     }
@@ -174,15 +139,10 @@ export default function AdminCommissionsPage() {
 
   async function addCoachOverride() {
     if (!overrideCoachId || !overrideRate) return;
-    const token = await getAuthToken();
-    if (!token) return;
 
     await fetch('/api/commissions', {
       method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         scope: 'coach',
         scope_id: overrideCoachId,
@@ -197,23 +157,16 @@ export default function AdminCommissionsPage() {
   }
 
   async function deleteCoachOverride(rateId: string) {
-    const supabase = createBrowserClient();
-    if (!supabase) return;
-    await supabase.from('commission_rates').delete().eq('id', rateId);
+    await fetch(`/api/commissions?id=${rateId}`, { method: 'DELETE' });
     fetchAll();
   }
 
   async function handlePayoutAction(payoutId: string, action: 'approve' | 'reject' | 'complete') {
     setActionLoading(payoutId);
-    const token = await getAuthToken();
-    if (!token) { setActionLoading(null); return; }
 
     await fetch('/api/payouts', {
       method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ payout_id: payoutId, action }),
     });
 

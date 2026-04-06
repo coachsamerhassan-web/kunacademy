@@ -2,13 +2,24 @@
 
 import { useState, useEffect, type ReactNode } from 'react';
 import Link from 'next/link';
-import { createBrowserClient } from '@kunacademy/db';
-import type { Product, ProductType } from '@kunacademy/db';
+import type { ProductType } from '@kunacademy/db';
 import { Download, Package, RefreshCw } from 'lucide-react';
 
 type FilterTab = 'all' | 'physical' | 'digital';
 
-const SAMPLE_PRODUCTS: Pick<Product, 'id' | 'name_ar' | 'name_en' | 'slug' | 'description_ar' | 'description_en' | 'price_aed' | 'product_type' | 'images'>[] = [
+interface Product {
+  id: string;
+  name_ar: string;
+  name_en: string;
+  slug: string;
+  description_ar: string | null;
+  description_en: string | null;
+  price_aed: number | null;
+  product_type: string | null;
+  images: unknown;
+}
+
+const SAMPLE_PRODUCTS: Product[] = [
   {
     id: '1',
     name_ar: 'دليل التفكير الحسّي',
@@ -56,7 +67,7 @@ interface ShopGridProps {
 
 export function ShopGrid({ locale }: ShopGridProps) {
   const isAr = locale === 'ar';
-  const [products, setProducts] = useState<typeof SAMPLE_PRODUCTS>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [filter, setFilter] = useState<FilterTab>('all');
   const [loading, setLoading] = useState(true);
   const [usingSample, setUsingSample] = useState(false);
@@ -64,25 +75,15 @@ export function ShopGrid({ locale }: ShopGridProps) {
   useEffect(() => {
     async function fetchProducts() {
       try {
-        const supabase = createBrowserClient();
-        if (!supabase) {
-          setProducts(SAMPLE_PRODUCTS);
-          setUsingSample(true);
-          setLoading(false);
-          return;
-        }
+        const res = await fetch('/api/products');
+        if (!res.ok) throw new Error('Failed to fetch products');
+        const json = await res.json();
 
-        const { data, error } = await supabase
-          .from('products')
-          .select('*')
-          .eq('is_active', true)
-          .order('created_at' as any, { ascending: false });
-
-        if (error || !data || data.length === 0) {
+        if (!json.products || json.products.length === 0) {
           setProducts(SAMPLE_PRODUCTS);
           setUsingSample(true);
         } else {
-          setProducts(data as typeof SAMPLE_PRODUCTS);
+          setProducts(json.products as Product[]);
         }
       } catch {
         setProducts(SAMPLE_PRODUCTS);
@@ -167,7 +168,7 @@ function ProductCard({
   locale,
   usingSample,
 }: {
-  product: typeof SAMPLE_PRODUCTS[number];
+  product: Product;
   locale: string;
   usingSample: boolean;
 }) {
@@ -190,6 +191,7 @@ function ProductCard({
     subscription: 'bg-purple-100 text-purple-700',
   };
 
+  const productType = (product.product_type ?? 'digital') as ProductType;
   const imageUrl = Array.isArray(product.images) && product.images.length > 0
     ? String(product.images[0])
     : null;
@@ -207,14 +209,14 @@ function ProductCard({
           <img src={imageUrl} alt={name} className="h-full w-full object-cover" />
         ) : (
           <span className="text-[var(--color-neutral-400)]" aria-hidden="true">
-            {TYPE_ICONS[(product.product_type ?? 'digital') as ProductType]}
+            {TYPE_ICONS[productType]}
           </span>
         )}
         {/* Type badge */}
         <span
-          className={`absolute top-3 ${isAr ? 'start-3' : 'start-3'} px-2.5 py-1 rounded-full text-xs font-medium ${typeBadgeColor[(product.product_type ?? 'digital') as ProductType]}`}
+          className={`absolute top-3 start-3 px-2.5 py-1 rounded-full text-xs font-medium ${typeBadgeColor[productType]}`}
         >
-          {isAr ? typeLabel[(product.product_type ?? 'digital') as ProductType].ar : typeLabel[(product.product_type ?? 'digital') as ProductType].en}
+          {isAr ? typeLabel[productType].ar : typeLabel[productType].en}
         </span>
       </div>
 

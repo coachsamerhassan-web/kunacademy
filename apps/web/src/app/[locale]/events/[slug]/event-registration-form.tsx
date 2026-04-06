@@ -77,17 +77,18 @@ export function EventRegistrationForm({
   const isAr = locale === 'ar';
   const copy = isAr ? t.ar : t.en;
 
-  // Auth is optional on events pages (no AuthProvider in layout)
-  // Guest registration is supported for free events
+  // Auth is optional — guest registration is supported for free events
   const [user, setUser] = useState<{ id: string; email: string } | null>(null);
   useEffect(() => {
-    import('@kunacademy/db').then(({ createBrowserClient }) => {
-      const supabase = createBrowserClient();
-      if (!supabase) return;
-      supabase.auth.getUser().then(({ data }) => {
-        if (data?.user) setUser({ id: data.user.id, email: data.user.email || '' });
-      });
-    }).catch(() => {});
+    // Fetch session from next-auth to pre-fill form fields
+    fetch('/api/auth/session')
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (data?.user?.email) {
+          setUser({ id: data.user.id ?? '', email: data.user.email });
+        }
+      })
+      .catch(() => {});
   }, []);
 
   const [name, setName] = useState('');

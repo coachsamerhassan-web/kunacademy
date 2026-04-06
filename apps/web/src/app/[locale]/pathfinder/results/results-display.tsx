@@ -3,8 +3,9 @@
 import { useCallback } from 'react';
 import Link from 'next/link';
 import { JourneyMap } from '@/lib/pathfinder/journey-map';
+import { RadarChart } from '@/lib/pathfinder/radar-chart';
 import { generateReportHtml } from '@/lib/pathfinder/report-template';
-import type { RoiResult } from '@kunacademy/cms';
+import type { RoiResult, CorporateRoiResult } from '@kunacademy/cms';
 
 // ── Program URL Map ────────────────────────────────────────────────────────────
 // Maps pathfinder recommendation slugs to their actual page URLs.
@@ -19,15 +20,35 @@ const PROGRAM_URL_MAP: Record<string, string> = {
   'stce-level-5-stfc':         '/academy/certifications/stce/level-5',
   'stdc-doctors':              '/academy/certifications/doctors',
   'stcm-managers':             '/academy/certifications/managers',
+  // Manhajak 3 packages (board decision 2026-04-05)
   'menhajak-training':         '/academy/packages/training',
   'menhajak-organizational':   '/academy/packages/organizational',
   'menhajak-leadership':       '/academy/packages/leadership',
   'mcc-mentoring':             '/academy/certifications/mcc-mentoring',
   'your-identity':             '/academy/courses/your-identity',
-  'impact-engineering':        '/academy/courses/impact-engineering',
+  // Impact Engineering (board decision 2026-04-05)
+  'impact-engineering':            '/academy/courses/impact-engineering',
+  'impact-engineering-foundation': '/academy/courses/impact-engineering',
+  'impact-engineering-mastery':    '/academy/courses/impact-engineering',
+  // GPS audience segments (board decision 2026-04-05)
+  'gps':                       '/academy/certifications/gps',
+  'gps-accelerator':           '/academy/certifications/gps',
+  'gps-professional':          '/academy/certifications/gps',
+  // Corporate / GM Playbook
   'gm-playbook-briefing':      '/programs/corporate/gm-playbook',
   'gm-playbook-foundation':    '/programs/corporate/gm-playbook',
   'gm-playbook-mastery':       '/programs/corporate/gm-playbook',
+  // Mini-courses (board decision 2026-04-05 — 10 mini-courses)
+  'mini-course-communication': '/academy/mini-courses/communication',
+  'mini-course-confidence':    '/academy/mini-courses/confidence',
+  'mini-course-leadership':    '/academy/mini-courses/leadership',
+  'mini-course-listening':     '/academy/mini-courses/listening',
+  'mini-course-presence':      '/academy/mini-courses/presence',
+  'mini-course-resilience':    '/academy/mini-courses/resilience',
+  'mini-course-self-awareness':'/academy/mini-courses/self-awareness',
+  'mini-course-goals':         '/academy/mini-courses/goals',
+  'mini-course-emotion':       '/academy/mini-courses/emotion',
+  'mini-course-team':          '/academy/mini-courses/team',
 };
 
 function getProgramUrl(locale: string, slug: string): string {
@@ -46,6 +67,13 @@ interface Recommendation {
   price_aed?: number;
 }
 
+interface SelfAssessmentEntry {
+  benefit_id: string;
+  current: number;
+  target_3m: number;
+  target_6m: number;
+}
+
 interface Props {
   name: string;
   locale: 'ar' | 'en';
@@ -53,6 +81,12 @@ interface Props {
   journeyStage: string;
   recommendations: Recommendation[];
   roi: RoiResult | null;
+  // Corporate-specific props
+  corporateRoi?: CorporateRoiResult | null;
+  proposalPdfUrl?: string | null;
+  direction?: string | null;
+  selectedBenefits?: Array<{ id: string; label_ar: string; label_en: string }> | null;
+  selfAssessment?: SelfAssessmentEntry[] | null;
 }
 
 // ── Label helpers ──────────────────────────────────────────────────────────────
@@ -98,7 +132,7 @@ function fmtAed(n: number) {
 
 // ── Component ──────────────────────────────────────────────────────────────────
 
-export function ResultsDisplay({ name, locale, type, journeyStage, recommendations, roi }: Props) {
+export function ResultsDisplay({ name, locale, type, journeyStage, recommendations, roi, corporateRoi, proposalPdfUrl, direction: _direction, selectedBenefits, selfAssessment }: Props) {
   const isAr = locale === 'ar';
 
   const stageLabel = isAr
@@ -150,15 +184,15 @@ export function ResultsDisplay({ name, locale, type, journeyStage, recommendatio
       >
         <div className="relative z-10 mx-auto max-w-3xl px-4 text-center animate-fade-up">
           <p className="text-sm font-semibold uppercase tracking-wider mb-3" style={{ color: '#E4601E' }}>
-            {isAr ? 'نتائجك' : 'Your Results'}
+            {isAr ? 'تقريرك الشامل' : 'Your Extended Report'}
           </p>
           <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">
             {isAr ? `أهلاً ${name}،` : `Welcome, ${name},`}
           </h1>
           <p className="text-white/75 text-base">
             {isAr
-              ? 'إليك خارطة طريقك الشخصية نحو النمو'
-              : 'Here is your personalized growth roadmap'}
+              ? 'إليك خارطة طريقك الشخصية الكاملة نحو النمو'
+              : 'Here is your complete personalized growth roadmap'}
           </p>
           {/* Stage badge */}
           <div className="inline-flex items-center gap-2 mt-5 px-4 py-2 rounded-full border-2" style={{ borderColor: '#E4601E', background: 'rgba(228,96,30,.12)' }}>
@@ -198,28 +232,86 @@ export function ResultsDisplay({ name, locale, type, journeyStage, recommendatio
           </Card>
         )}
 
-        {/* ROI card (corporate only) */}
+        {/* ROI card (corporate only — legacy individual roi_inputs) */}
         {type === 'corporate' && roi && (
           <Card title={isAr ? 'العائد على الاستثمار' : 'Return on Investment'}>
             <RoiCard roi={roi} isAr={isAr} />
           </Card>
         )}
 
+        {/* ── Corporate savings overview (new benefits-based flow) ───────────── */}
+        {type === 'corporate' && corporateRoi && (
+          <>
+            {/* Total savings + per-benefit breakdown */}
+            <Card title={isAr ? 'توفيرات متوقعة لفريقك' : 'Projected Savings for Your Team'}>
+              <CorporateSavingsCard corporateRoi={corporateRoi} isAr={isAr} />
+            </Card>
+
+            {/* Full program vs per-leader financial comparison */}
+            <Card title={isAr ? 'مقارنة خيارات الاستثمار' : 'Investment Options Comparison'}>
+              <CorporateFinancialCard corporateRoi={corporateRoi} isAr={isAr} />
+            </Card>
+
+            {/* Self-assessment radar chart — shows if we have the data */}
+            {selfAssessment && selfAssessment.length > 0 && selectedBenefits && selectedBenefits.length > 0 && (
+              <Card title={isAr ? 'خارطة التطوير الذاتي' : 'Self-Assessment Growth Map'}>
+                <CorporateRadarCard
+                  selfAssessment={selfAssessment}
+                  selectedBenefits={selectedBenefits}
+                  locale={locale}
+                />
+              </Card>
+            )}
+          </>
+        )}
+
         {/* Actions */}
         <div className="flex flex-col sm:flex-row gap-3 pt-2">
-          {/* Download — UX-Pro: touch-target-size — py-3.5 ensures ≥44px */}
-          <button
-            onClick={handleDownload}
-            className="flex-1 flex items-center justify-center gap-2 rounded-full font-semibold py-3.5 px-6 transition-opacity hover:opacity-90 active:opacity-75 min-h-[44px]"
-            style={{ background: 'var(--color-primary, #474099)', color: 'white' }}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
-              <polyline points="7 10 12 15 17 10" />
-              <line x1="12" y1="15" x2="12" y2="3" />
-            </svg>
-            {isAr ? 'تحميل التقرير' : 'Download Report'}
-          </button>
+          {/* Proposal download (corporate with PDF) — primary CTA */}
+          {type === 'corporate' && proposalPdfUrl ? (
+            <>
+              <a
+                href={proposalPdfUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 flex items-center justify-center gap-2 rounded-full font-semibold py-3.5 px-6 transition-opacity hover:opacity-90 active:opacity-75 min-h-[44px]"
+                style={{ background: 'var(--color-primary, #474099)', color: 'white' }}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+                  <polyline points="7 10 12 15 17 10" />
+                  <line x1="12" y1="15" x2="12" y2="3" />
+                </svg>
+                {isAr ? 'تحميل عرضك المخصص' : 'Download Your Proposal'}
+              </a>
+              {/* Secondary: HTML report download */}
+              <button
+                onClick={handleDownload}
+                className="flex items-center justify-center gap-2 rounded-full font-semibold py-3.5 px-5 transition-opacity hover:opacity-90 active:opacity-75 min-h-[44px] border-2"
+                style={{ borderColor: '#474099', color: '#474099', background: 'transparent' }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+                  <polyline points="14 2 14 8 20 8" />
+                </svg>
+                {isAr ? 'تقرير HTML' : 'HTML Report'}
+              </button>
+            </>
+          ) : (
+            /* Standard download for individual / corporate without PDF */
+            <button
+              onClick={handleDownload}
+              className="flex-1 flex items-center justify-center gap-2 rounded-full font-semibold py-3.5 px-6 transition-opacity hover:opacity-90 active:opacity-75 min-h-[44px]"
+              style={{ background: 'var(--color-primary, #474099)', color: 'white' }}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
+              {isAr ? 'تحميل التقرير' : 'Download Report'}
+            </button>
+          )}
 
           {/* WhatsApp */}
           <a
@@ -352,6 +444,156 @@ function AltRec({ rec, isAr, locale }: { rec: Recommendation; isAr: boolean; loc
       >
         {isAr ? 'اعرف أكثر' : 'Learn More'}
       </Link>
+    </div>
+  );
+}
+
+// ── Corporate sub-components ───────────────────────────────────────────────────
+
+function CorporateSavingsCard({ corporateRoi, isAr }: { corporateRoi: CorporateRoiResult; isAr: boolean }) {
+  return (
+    <div className="space-y-4">
+      {/* Total savings hero number */}
+      <div
+        className="rounded-xl p-5 text-center"
+        style={{ background: 'linear-gradient(135deg, #474099 0%, #1D1A3D 100%)' }}
+      >
+        <p className="text-sm text-white/70 mb-1">
+          {isAr ? 'إجمالي التوفير السنوي المتوقع' : 'Total Projected Annual Savings'}
+        </p>
+        <p className="text-3xl font-black text-white">
+          {fmtAed(corporateRoi.total_annual_savings)}
+        </p>
+      </div>
+
+      {/* Per-benefit breakdown grid */}
+      {corporateRoi.per_benefit_savings.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {corporateRoi.per_benefit_savings.map((b) => (
+            <div
+              key={b.benefit_id}
+              className="rounded-xl p-4 border"
+              style={{ borderColor: '#E8E3DC', background: '#FFF5E9' }}
+            >
+              <p className="text-sm font-semibold mb-1" style={{ color: '#1F1B14' }}>
+                {isAr ? b.label_ar : b.label_en}
+              </p>
+              <p className="text-lg font-black" style={{ color: '#E4601E' }}>
+                {fmtAed(b.annual_savings)}
+              </p>
+              <p className="text-xs mt-0.5" style={{ color: '#6B6560' }}>
+                {isAr
+                  ? `تحسين ${b.improvement_pct}%`
+                  : `${b.improvement_pct}% improvement`}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CorporateFinancialCard({ corporateRoi, isAr }: { corporateRoi: CorporateRoiResult; isAr: boolean }) {
+  // Highlight the better ROI option
+  const fullIsBetter = corporateRoi.full_program_roi_multiple >= corporateRoi.per_leader_roi_multiple;
+
+  const columns = [
+    {
+      key: 'full',
+      label: isAr ? 'البرنامج الكامل' : 'Full Program',
+      cost: corporateRoi.full_program_cost,
+      roi: corporateRoi.full_program_roi_multiple,
+      net: corporateRoi.net_return_full,
+      isBest: fullIsBetter,
+    },
+    {
+      key: 'per-leader',
+      label: isAr ? 'حزمة كل قائد' : 'Per-Leader Package',
+      cost: corporateRoi.per_leader_cost,
+      roi: corporateRoi.per_leader_roi_multiple,
+      net: corporateRoi.net_return_per_leader,
+      isBest: !fullIsBetter,
+    },
+  ];
+
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      {columns.map((col) => (
+        <div
+          key={col.key}
+          className="rounded-xl p-5 border-2 relative"
+          style={{
+            borderColor: col.isBest ? '#E4601E' : '#E8E3DC',
+            background: col.isBest ? 'rgba(228,96,30,.04)' : 'white',
+          }}
+        >
+          {col.isBest && (
+            <div
+              className="absolute -top-3 left-1/2 -translate-x-1/2 text-xs font-bold px-3 py-1 rounded-full"
+              style={{ background: '#E4601E', color: 'white' }}
+            >
+              {isAr ? 'الأعلى عائداً' : 'Best ROI'}
+            </div>
+          )}
+          <p className="font-bold text-base mb-3 text-center" style={{ color: '#1F1B14' }}>
+            {col.label}
+          </p>
+          <div className="space-y-2">
+            <div className="flex justify-between items-center text-sm">
+              <span style={{ color: '#6B6560' }}>{isAr ? 'التكلفة' : 'Cost'}</span>
+              <span className="font-bold" style={{ color: '#474099' }}>{fmtAed(col.cost)}</span>
+            </div>
+            <div className="flex justify-between items-center text-sm">
+              <span style={{ color: '#6B6560' }}>{isAr ? 'مضاعف العائد' : 'ROI Multiple'}</span>
+              <span className="font-black text-base" style={{ color: '#E4601E' }}>{col.roi}×</span>
+            </div>
+            <div className="flex justify-between items-center text-sm border-t pt-2" style={{ borderColor: '#E8E3DC' }}>
+              <span style={{ color: '#6B6560' }}>{isAr ? 'صافي العائد' : 'Net Return'}</span>
+              <span className="font-bold" style={{ color: col.net >= 0 ? '#474099' : '#dc2626' }}>
+                {fmtAed(col.net)}
+              </span>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function CorporateRadarCard({
+  selfAssessment,
+  selectedBenefits,
+  locale,
+}: {
+  selfAssessment: SelfAssessmentEntry[];
+  selectedBenefits: Array<{ id: string; label_ar: string; label_en: string }>;
+  locale: 'ar' | 'en';
+}) {
+  const isAr = locale === 'ar';
+
+  // Map self-assessment entries to RadarChart format, joining with benefit labels
+  const benefitLabelMap = new Map(selectedBenefits.map((b) => [b.id, isAr ? b.label_ar : b.label_en]));
+
+  const radarBenefits = selfAssessment
+    .filter((entry) => benefitLabelMap.has(entry.benefit_id))
+    .map((entry) => ({
+      label: benefitLabelMap.get(entry.benefit_id) ?? entry.benefit_id,
+      current: entry.current,
+      target_3m: entry.target_3m,
+      target_6m: entry.target_6m,
+    }));
+
+  if (radarBenefits.length === 0) return null;
+
+  return (
+    <div>
+      <p className="text-xs mb-3" style={{ color: '#6B6560' }}>
+        {isAr
+          ? 'تقييمك الذاتي للحالة الراهنة مقابل الأهداف المستقبلية'
+          : 'Your self-assessment: current state vs. future targets'}
+      </p>
+      <RadarChart benefits={radarBenefits} locale={locale} height={300} />
     </div>
   );
 }

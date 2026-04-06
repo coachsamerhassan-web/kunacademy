@@ -2,7 +2,6 @@
 
 import { useAuth } from '@kunacademy/auth';
 import { useEffect, useState } from 'react';
-import { createBrowserClient } from '@kunacademy/db';
 import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
 import { useParams, useRouter } from 'next/navigation';
@@ -48,20 +47,10 @@ export default function AdminBookingsPage() {
   const [updating, setUpdating] = useState<string | null>(null);
   const isAr = locale === 'ar';
 
-  const supabase = createBrowserClient();
-
   async function fetchBookings() {
-    const { data } = await supabase
-      .from('bookings')
-      .select(`
-        *,
-        customer:profiles!bookings_customer_id_fkey(full_name_ar, full_name_en, email),
-        coach:providers(profile:profiles(full_name_ar, full_name_en)),
-        service:services(name_en, name_ar)
-      `)
-      .order('start_time', { ascending: false })
-      .limit(200);
-    setBookings((data as any) ?? []);
+    const res = await fetch('/api/admin/bookings-list');
+    const data = await res.json();
+    setBookings((data.bookings as any) ?? []);
     setLoading(false);
   }
 
@@ -73,33 +62,29 @@ export default function AdminBookingsPage() {
 
   async function updateStatus(id: string, newStatus: string) {
     setUpdating(id);
-    await supabase.from('bookings').update({ status: newStatus }).eq('id', id);
+    await fetch('/api/admin/bookings-list', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ booking_id: id, status: newStatus }),
+    });
     setBookings(prev => prev.map(b => b.id === id ? { ...b, status: newStatus } : b));
 
     // Notify customer when booking is confirmed (non-blocking)
     if (newStatus === 'confirmed') {
-      supabase.auth.getSession().then(({ data: { session } }) => {
-        if (session?.access_token) {
-          fetch('/api/notifications/booking', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
-            body: JSON.stringify({ bookingId: id }),
-          }).catch(() => {});
-        }
-      });
+      fetch('/api/notifications/booking', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookingId: id }),
+      }).catch(() => {});
     }
 
     // Calculate earnings when booking is completed (non-blocking)
     if (newStatus === 'completed') {
-      supabase.auth.getSession().then(({ data: { session } }) => {
-        if (session?.access_token) {
-          fetch('/api/earnings/calculate', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
-            body: JSON.stringify({ booking_id: id }),
-          }).catch(() => {});
-        }
-      });
+      fetch('/api/earnings/calculate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ booking_id: id }),
+      }).catch(() => {});
     }
 
     setUpdating(null);

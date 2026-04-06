@@ -52,8 +52,8 @@ const PACKAGE_CARDS = [
     slug: 'organizational',
     nameAr: 'منهجك المؤسسي',
     nameEn: 'Organizational Methodology',
-    hoursAr: '+121 ساعة',
-    hoursEn: '121+ Hours',
+    hoursAr: '+125 ساعة',
+    hoursEn: '125+ Hours',
     targetAr: 'كوتشز مؤسسات ومسؤولو موارد بشرية وتطوير',
     targetEn: 'Organizational coaches, HR and L&D professionals',
     pathwayAr: [

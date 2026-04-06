@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@kunacademy/db';
+import { withAdminContext } from '@kunacademy/db';
+import { getAuthUser } from '@kunacademy/auth/server';
 import { randomBytes } from 'crypto';
+import { sql } from 'drizzle-orm';
 
 /**
  * POST /api/books/[slug]/share
@@ -20,25 +22,19 @@ export async function POST(
   try {
     const { slug } = await params;
 
-    const supabaseTyped = createServerClient();
-    if (!supabaseTyped) {
-      return NextResponse.json({ error: 'Auth not configured' }, { status: 500 });
-    }
-    // book_shares and book_access tables are not yet in generated types
-    const supabase = supabaseTyped as any;
-
-    const { data: { user } } = await supabaseTyped.auth.getUser();
+    // Auth via Auth.js session (cookie-based)
+    const user = await getAuthUser();
     if (!user) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
 
     // Sender must have access to the book
-    const { data: senderAccess } = await supabase
-      .from('book_access')
-      .select('id')
-      .eq('user_id', user.id)
-      .eq('book_slug', slug)
-      .single();
+    const senderAccess = await withAdminContext(async (db) => {
+      const rows = await db.execute(
+        sql`SELECT id FROM book_access WHERE user_id = ${user.id} AND book_slug = ${slug} LIMIT 1`
+      );
+      return rows.rows[0] as { id: string } | undefined;
+    });
 
     if (!senderAccess) {
       return NextResponse.json({ error: 'You do not have access to this book' }, { status: 403 });
@@ -55,33 +51,29 @@ export async function POST(
     }
 
     // Generate share token (32 bytes = 64 hex chars)
-    const token = randomBytes(32).toString('hex');
+    const token2 = randomBytes(32).toString('hex');
     const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
 
     // Store share record
-    const { data: share, error: insertError } = await supabase
-      .from('book_shares')
-      .insert({
-        book_slug: slug,
-        token,
-        sender_user_id: user.id,
-        recipient_email: recipientEmail,
-        sender_name: senderName,
-        message: message || null,
-        expires_at: expiresAt.toISOString(),
-        used: false,
-      })
-      .select('id')
-      .single();
+    const share = await withAdminContext(async (db) => {
+      const rows = await db.execute(
+        sql`
+          INSERT INTO book_shares (book_slug, token, sender_user_id, recipient_email, sender_name, message, expires_at, used)
+          VALUES (${slug}, ${token2}, ${user.id}, ${recipientEmail}, ${senderName}, ${message || null}, ${expiresAt.toISOString()}, false)
+          RETURNING id
+        `
+      );
+      return rows.rows[0] as { id: string } | undefined;
+    });
 
-    if (insertError) {
+    if (!share) {
       return NextResponse.json(
-        { error: `Failed to create share: ${insertError.message}` },
+        { error: 'Failed to create share' },
         { status: 500 }
       );
     }
 
-    const shareUrl = `${request.nextUrl.origin}/reader/${slug}/share?token=${token}`;
+    const shareUrl = `${request.nextUrl.origin}/reader/${slug}/share?token=${token2}`;
 
     // Emit email event (event bus will handle sending)
     try {
@@ -90,7 +82,7 @@ export async function POST(
         timestamp: new Date().toISOString(),
         data: {
           shareId: share.id,
-          token,
+          token: token2,
           bookSlug: slug,
           recipientEmail,
           senderName,
@@ -111,7 +103,7 @@ export async function POST(
     }
 
     return NextResponse.json({
-      shareToken: token,
+      shareToken: token2,
       shareUrl,
       expiresAt: expiresAt.toISOString(),
     });

@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @source "../../../../packages/ui/src";
+@source "../../../../packages/cms/src";
 
 /* ============================================
    Kun Academy — Design Tokens (Tailwind v4)

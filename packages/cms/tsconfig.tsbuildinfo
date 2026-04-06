@@ -1,1 +1,1 @@
-{"root":["./src/content-provider.ts","./src/google-docs-fetcher.ts","./src/helpers.ts","./src/index.ts","./src/json-provider.ts","./src/sheets-provider.ts","./src/types.ts"],"version":"5.9.3"}
+{"root":["./src/benefits-roi-calculator.ts","./src/content-provider.ts","./src/doc-styles.ts","./src/google-docs-fetcher.ts","./src/helpers.ts","./src/index.ts","./src/json-provider.ts","./src/pathfinder-scorer.ts","./src/sheets-provider.ts","./src/types.ts","./src/doc-renderer.tsx"],"version":"5.9.3"}

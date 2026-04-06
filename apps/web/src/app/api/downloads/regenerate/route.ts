@@ -1,5 +1,8 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { createServerClient } from '@kunacademy/db';
+import { withUserContext, withAdminContext } from '@kunacademy/db';
+import { order_items, orders, digital_assets, download_tokens } from '@kunacademy/db/schema';
+import { eq, desc } from 'drizzle-orm';
+import { getAuthUser } from '@kunacademy/auth/server';
 import { randomUUID } from 'crypto';
 import { getBusinessConfig } from '@/lib/cms-config';
 
@@ -7,21 +10,10 @@ import { getBusinessConfig } from '@/lib/cms-config';
 // Generates a new download token for an expired/exhausted download
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createServerClient();
-    if (!supabase) {
-      return NextResponse.json(
-        { error: 'Database unavailable' },
-        { status: 503 }
-      );
-    }
-
     // Get authenticated user
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
+    const user = await getAuthUser();
 
-    if (authError || !user) {
+    if (!user) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -38,21 +30,27 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify the user owns this order_item
-    const { data: orderItem, error: orderItemError } = await supabase
-      .from('order_items')
-      .select('id, orders(user_id)')
-      .eq('id', order_item_id || '')
-      .single();
+    const [orderItem] = await withUserContext(user.id, async (db) => {
+      return db.select({
+        id: order_items.id,
+        product_id: order_items.product_id,
+        order_id: order_items.order_id,
+        customer_id: orders.customer_id,
+      })
+        .from(order_items)
+        .innerJoin(orders, eq(orders.id, order_items.order_id))
+        .where(eq(order_items.id, order_item_id || ''))
+        .limit(1);
+    });
 
-    if (orderItemError || !orderItem) {
+    if (!orderItem) {
       return NextResponse.json(
         { error: 'Order item not found' },
         { status: 404 }
       );
     }
 
-    const order = orderItem.orders as any;
-    if (order.user_id !== user.id) {
+    if (orderItem.customer_id !== user.id) {
       return NextResponse.json(
         { error: 'Forbidden' },
         { status: 403 }
@@ -60,16 +58,16 @@ export async function POST(request: NextRequest) {
     }
 
     // Get the digital asset for this product
-    const actualProductId = product_id || (orderItem as any).product_id;
-    const { data: asset, error: assetError } = await supabase
-      .from('digital_assets')
-      .select('*')
-      .eq('product_id', actualProductId)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single();
+    const actualProductId = product_id || orderItem.product_id;
+    const [asset] = await withAdminContext(async (db) => {
+      return db.select()
+        .from(digital_assets)
+        .where(eq(digital_assets.product_id, actualProductId))
+        .orderBy(desc(digital_assets.created_at))
+        .limit(1);
+    });
 
-    if (assetError || !asset) {
+    if (!asset) {
       return NextResponse.json(
         { error: 'No digital asset found for this product' },
         { status: 404 }
@@ -81,11 +79,10 @@ export async function POST(request: NextRequest) {
     const token = randomUUID();
     const expires_at = new Date(
       Date.now() + config.download_token_expiry_hours * 60 * 60 * 1000
-    ).toISOString();
+    );
 
-    const { data: downloadToken, error: tokenError } = await supabase
-      .from('download_tokens')
-      .insert({
+    const [downloadToken] = await withAdminContext(async (db) => {
+      return db.insert(download_tokens).values({
         order_item_id,
         user_id: user.id,
         asset_id: asset.id,
@@ -93,12 +90,11 @@ export async function POST(request: NextRequest) {
         expires_at,
         download_count: 0,
         max_downloads: config.download_max_count,
-      } as any)
-      .select()
-      .single();
+      }).returning();
+    });
 
-    if (tokenError) {
-      console.error('[downloads/regenerate] Token creation error:', tokenError);
+    if (!downloadToken) {
+      console.error('[downloads/regenerate] Token creation failed');
       return NextResponse.json(
         { error: 'Failed to generate new download token' },
         { status: 500 }
@@ -109,7 +105,7 @@ export async function POST(request: NextRequest) {
       success: true,
       token,
       download_url: `/api/downloads/${token}`,
-      expires_at,
+      expires_at: expires_at.toISOString(),
       max_downloads: config.download_max_count,
     });
   } catch (err: any) {

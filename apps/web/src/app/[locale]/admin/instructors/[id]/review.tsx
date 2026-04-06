@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import { Button } from '@kunacademy/ui/button';
-import { createBrowserClient } from '@kunacademy/db';
 
 interface InstructorData {
   id: string;
@@ -25,15 +24,10 @@ export function InstructorReview({ locale, instructorId }: { locale: string; ins
   const isAr = locale === 'ar';
 
   useEffect(() => {
-    const supabase = createBrowserClient();
-    if (!supabase) return;
-    supabase
-      .from('instructors')
-      .select('*')
-      .eq('id', instructorId)
-      .single()
-      .then(({ data }: { data: any }) => {
-        setInstructor(data as unknown as InstructorData);
+    fetch(`/api/admin/instructors/${instructorId}`)
+      .then(r => r.ok ? r.json() : { instructor: null })
+      .then(data => {
+        setInstructor(data.instructor as InstructorData | null);
         setLoading(false);
       });
   }, [instructorId]);
@@ -41,10 +35,11 @@ export function InstructorReview({ locale, instructorId }: { locale: string; ins
   async function handleApprove() {
     if (!instructor) return;
     setSaving(true);
-    const supabase = createBrowserClient();
-    if (!supabase) return;
-    await supabase.from('instructors').update({ is_visible: true }).eq('id', instructor.id);
-    await supabase.from('providers').update({ is_visible: true }).eq('profile_id', instructor.id);
+    await fetch(`/api/admin/instructors/${instructor.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ is_visible: true }),
+    });
     setInstructor({ ...instructor, is_visible: true });
     setSaving(false);
   }
@@ -52,9 +47,11 @@ export function InstructorReview({ locale, instructorId }: { locale: string; ins
   async function handleHide() {
     if (!instructor) return;
     setSaving(true);
-    const supabase = createBrowserClient();
-    if (!supabase) return;
-    await supabase.from('instructors').update({ is_visible: false }).eq('id', instructor.id);
+    await fetch(`/api/admin/instructors/${instructor.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ is_visible: false }),
+    });
     setInstructor({ ...instructor, is_visible: false });
     setSaving(false);
   }

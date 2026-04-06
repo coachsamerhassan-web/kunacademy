@@ -1,11 +1,19 @@
 import Image from 'next/image';
 import { setRequestLocale } from 'next-intl/server';
-import { cms } from '@kunacademy/cms';
+import { cms } from '@kunacademy/cms/server';
 import { Section } from '@kunacademy/ui/section';
 import { GeometricPattern } from '@kunacademy/ui/patterns';
 import { Card } from '@kunacademy/ui/card';
 import type { Metadata } from 'next';
 import { ArrowLeft } from 'lucide-react';
+
+// Bilingual category label mapping (shared with blog listing page)
+const CATEGORY_LABELS: Record<string, { en: string; ar: string }> = {
+  methodology: { en: 'Methodology', ar: 'المنهجية' },
+  coaching: { en: 'Coaching', ar: 'الكوتشينج' },
+  certification: { en: 'Certification', ar: 'الشهادات' },
+  retreats: { en: 'Retreats', ar: 'الخلوات' },
+};
 
 interface Props {
   params: Promise<{ locale: string; slug: string }>;
@@ -13,10 +21,12 @@ interface Props {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale, slug } = await params;
-  const category = decodeURIComponent(slug);
+  const categorySlug = decodeURIComponent(slug);
   const isAr = locale === 'ar';
+  const categoryLabel =
+    CATEGORY_LABELS[categorySlug.toLowerCase()]?.[isAr ? 'ar' : 'en'] || categorySlug;
   return {
-    title: `${category} | ${isAr ? 'المدوّنة — أكاديمية كُن' : 'Blog — Kun Academy'}`,
+    title: `${categoryLabel} | ${isAr ? 'المدوّنة — أكاديمية كُن' : 'Blog — Kun Academy'}`,
   };
 }
 
@@ -25,6 +35,8 @@ export default async function BlogCategoryPage({ params }: Props) {
   setRequestLocale(locale);
   const isAr = locale === 'ar';
   const category = decodeURIComponent(slug);
+  const categoryLabel =
+    CATEGORY_LABELS[category.toLowerCase()]?.[isAr ? 'ar' : 'en'] || category;
 
   const posts = await cms.getBlogPostsByCategory(category);
 
@@ -41,7 +53,7 @@ export default async function BlogCategoryPage({ params }: Props) {
             className="text-[2rem] md:text-[3rem] font-bold text-[var(--text-primary)] leading-tight"
             style={{ fontFamily: isAr ? 'var(--font-arabic-heading)' : 'var(--font-english-heading)' }}
           >
-            {category}
+            {categoryLabel}
           </h1>
           <p className="mt-3 text-[var(--text-muted)] text-lg">
             {isAr

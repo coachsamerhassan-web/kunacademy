@@ -34,18 +34,50 @@ export default async function YaqathaPage({ params }: { params: Promise<{ locale
       </section>
 
       <Section variant="white">
-        <div className="max-w-3xl mx-auto">
+        <div className="max-w-3xl mx-auto text-center py-8">
+          {/* Coming Soon badge */}
+          <span
+            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-semibold uppercase tracking-wider mb-6"
+            style={{ background: 'rgba(71,64,153,0.08)', color: 'var(--color-primary)' }}
+          >
+            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+              <circle cx="12" cy="12" r="10" />
+              <path d="M12 8v4l3 3" />
+            </svg>
+            {isAr ? 'قريبًا' : 'Coming Soon'}
+          </span>
+
           <Heading level={2}>
             {isAr ? 'عن يقظة' : 'About Yaqatha'}
           </Heading>
-          <p className="mt-4 text-[var(--color-neutral-700)] leading-relaxed">
+          <p className="mt-4 text-[var(--color-neutral-700)] leading-relaxed max-w-xl mx-auto">
             {isAr
               ? 'يقظة هي تجربة غامرة تأخذك في رحلة اكتشاف الذات من خلال الإشارات الحسّية الجسدية. ليست دورة تقليدية — بل تجربة حياتية تمزج بين التفكير الحسّي والتأمّل العميق والممارسة الجسدية.'
               : 'Yaqatha is an immersive experience that takes you on a journey of self-discovery through somatic body signals. It\'s not a traditional course — it\'s a life experience that blends Somatic Thinking, deep reflection, and embodied practice.'}
           </p>
+
+          <p
+            className="mt-6 text-sm leading-relaxed max-w-lg mx-auto"
+            style={{ color: 'var(--color-neutral-500)' }}
+          >
+            {isAr
+              ? 'هذا البرنامج في مرحلة التطوير حاليًا. سجّل اهتمامك وسنعلمك فور الإطلاق.'
+              : 'This programme is currently in development. Register your interest and we\'ll notify you at launch.'}
+          </p>
+
           <Button variant="primary" size="lg" className="mt-8">
             {isAr ? 'سجّل اهتمامك' : 'Register Your Interest'}
           </Button>
+
+          <div className="mt-8">
+            <a
+              href={`/${locale}/programs/`}
+              className="text-sm font-medium hover:underline"
+              style={{ color: 'var(--color-accent)' }}
+            >
+              {isAr ? '← استكشف البرامج الأخرى' : '← Explore Other Programmes'}
+            </a>
+          </div>
         </div>
       </Section>
     </main>

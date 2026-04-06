@@ -1,5 +1,76 @@
-// @kunacademy/db — Supabase client + typed queries
-export { createBrowserClient, createServerClient, createAdminClient, isSupabaseConfigured } from './client';
-export type { TypedSupabaseClient } from './client';
-export type { Database, Tables, Profile, Course, CourseSection, Lesson, LessonSyllabus, LessonProgress, Enrollment, Booking, Payment, Service, Product, Order, OrderItem, DigitalAsset, DownloadToken, BlogPost, CoachRating, CoachBadge, CreditTransaction, Earning, PayoutRequest, CommunityPost, Certificate, Material, VideoProvider } from './types';
-export type { EnrollmentStatus, EnrollmentType, PaymentStatus, BookingStatus, OrderStatus, CreditType, EarningSource, EarningStatus, PayoutStatus, ScheduleType, BadgeTier, ProductType, CommissionScope } from './types';
+// @kunacademy/db — Drizzle ORM client (Wave 6.75)
+export { db, getPool, withUserContext, withAdminContext, closePool } from './pool';
+export { sql, eq, and, or, desc, asc, inArray, isNull, not, count, sum } from 'drizzle-orm';
+export { logAdminAction } from './audit';
+export type { AuditAction, AdminAuditLog } from './audit';
+export { encryptField, decryptField } from './encryption';
+// Storage utilities: import from '@kunacademy/db/storage' (server-only, uses fs)
+
+// Type exports (Drizzle-inferred, replaces Supabase generated types)
+export type {
+  Product,
+  NewProduct,
+  Orders,
+  NewOrders,
+  Profile,
+  NewProfile,
+  Enrollment,
+  NewEnrollment,
+  Booking,
+  NewBooking,
+  Payment,
+  NewPayment,
+  Lesson,
+  NewLesson,
+  Course,
+  NewCourse,
+  CourseSection,
+  NewCourseSection,
+  LessonProgress,
+  NewLessonProgress,
+  LessonSyllabus,
+  NewLessonSyllabus,
+  DigitalAsset,
+  NewDigitalAsset,
+  DownloadToken,
+  NewDownloadToken,
+  BlogPost,
+  NewBlogPost,
+  CoachRating,
+  NewCoachRating,
+  CoachBadge,
+  NewCoachBadge,
+  CreditTransaction,
+  NewCreditTransaction,
+  Earning,
+  NewEarning,
+  PayoutRequest,
+  NewPayoutRequest,
+  CommunityPost,
+  NewCommunityPost,
+  Certificate,
+  NewCertificate,
+  Material,
+  NewMaterial,
+  Service,
+  NewService,
+  OrderItem,
+  NewOrderItem,
+} from './types';
+
+export type {
+  ProductType,
+  OrderStatus,
+  EnrollmentStatus,
+  EnrollmentType,
+  PaymentStatus,
+  BookingStatus,
+  CreditType,
+  EarningSource,
+  EarningStatus,
+  PayoutStatus,
+  ScheduleType,
+  BadgeTier,
+  CommissionScope,
+  VideoProvider,
+} from './types';

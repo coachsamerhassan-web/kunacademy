@@ -17,6 +17,7 @@ import type {
   Testimonial,
   Event,
   BlogPost,
+  Quote,
 } from './types';
 
 /**
@@ -116,6 +117,12 @@ export interface ContentProvider {
 
   /** Get featured testimonials (for homepage carousel) */
   getFeaturedTestimonials(): Promise<Testimonial[]>;
+
+  // ── Quotes ───────────────────────────────────────────────────────────
+
+  getAllQuotes(): Promise<Quote[]>;
+
+  getQuotesByCategory(category: string): Promise<Quote[]>;
 
   // ── Sheet 8: Events ─────────────────────────────────────────────────
 

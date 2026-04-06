@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createAdminClient } from '@kunacademy/db';
+import { withAdminContext } from '@kunacademy/db';
+import { getAuthUser } from '@kunacademy/auth/server';
+import { sql } from 'drizzle-orm';
 
 // POST /api/earnings/calculate
 // Body: { booking_id: string }
 // Auth: admin or system call (e.g. when booking status transitions to 'completed')
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createAdminClient();
-
     // --- Auth check: admin or system call ---
     const authHeader = request.headers.get('authorization');
     const systemSecret = process.env.SYSTEM_API_SECRET;
@@ -19,20 +19,11 @@ export async function POST(request: NextRequest) {
       isAuthorized = true;
     }
 
-    // Admin user check
-    if (!isAuthorized && authHeader?.startsWith('Bearer ')) {
-      const token = authHeader.slice(7);
-      const { data: { user } } = await supabase.auth.getUser(token);
-      if (user) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', user.id)
-          .single() as unknown as { data: { role?: string } | null };
-
-        if (profile?.role === 'admin' || profile?.role === 'super_admin') {
-          isAuthorized = true;
-        }
+    // Admin user check via Auth.js session
+    if (!isAuthorized) {
+      const user = await getAuthUser();
+      if (user && (user.role === 'admin' || user.role === 'super_admin')) {
+        isAuthorized = true;
       }
     }
 
@@ -48,23 +39,21 @@ export async function POST(request: NextRequest) {
     }
 
     // --- 1. Fetch the booking with service price ---
-    const { data: booking, error: bookingErr } = await supabase
-      .from('bookings')
-      .select('id, provider_id, service_id, price, currency, status')
-      .eq('id', booking_id)
-      .single() as unknown as {
-        data: {
-          id: string;
-          provider_id: string;
-          service_id: string | null;
-          price: number | null;
-          currency: string | null;
-          status: string | null;
-        } | null;
-        error: unknown;
-      };
+    const booking = await withAdminContext(async (db) => {
+      const rows = await db.execute(
+        sql`SELECT id, provider_id, service_id, price, currency, status FROM bookings WHERE id = ${booking_id} LIMIT 1`
+      );
+      return rows.rows[0] as {
+        id: string;
+        provider_id: string;
+        service_id: string | null;
+        price: number | null;
+        currency: string | null;
+        status: string | null;
+      } | undefined;
+    });
 
-    if (bookingErr || !booking) {
+    if (!booking) {
       return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
     }
 
@@ -84,59 +73,61 @@ export async function POST(request: NextRequest) {
 
     // Try service-specific rate first
     if (booking.service_id) {
-      const { data: serviceRate } = await supabase
-        .from('commission_rates')
-        .select('rate_pct')
-        .eq('scope', 'service')
-        .eq('scope_id', booking.service_id)
-        .maybeSingle() as unknown as { data: { rate_pct: number } | null };
+      const serviceRate = await withAdminContext(async (db) => {
+        const rows = await db.execute(
+          sql`SELECT rate_pct FROM commission_rates WHERE scope = 'service' AND scope_id = ${booking.service_id} LIMIT 1`
+        );
+        return rows.rows[0] as { rate_pct: number } | undefined;
+      });
 
       if (serviceRate?.rate_pct !== undefined) {
-        commissionPct = serviceRate.rate_pct;
+        commissionPct = Number(serviceRate.rate_pct);
       } else {
         // Try coach-specific rate
-        const { data: coachRate } = await supabase
-          .from('commission_rates')
-          .select('rate_pct')
-          .eq('scope', 'coach')
-          .eq('scope_id', booking.provider_id)
-          .maybeSingle() as unknown as { data: { rate_pct: number } | null };
+        const coachRate = await withAdminContext(async (db) => {
+          const rows = await db.execute(
+            sql`SELECT rate_pct FROM commission_rates WHERE scope = 'coach' AND scope_id = ${booking.provider_id} LIMIT 1`
+          );
+          return rows.rows[0] as { rate_pct: number } | undefined;
+        });
 
         if (coachRate?.rate_pct !== undefined) {
-          commissionPct = coachRate.rate_pct;
+          commissionPct = Number(coachRate.rate_pct);
         } else {
           // Try global rate
-          const { data: globalRate } = await supabase
-            .from('commission_rates')
-            .select('rate_pct')
-            .eq('scope', 'global')
-            .maybeSingle() as unknown as { data: { rate_pct: number } | null };
+          const globalRate = await withAdminContext(async (db) => {
+            const rows = await db.execute(
+              sql`SELECT rate_pct FROM commission_rates WHERE scope = 'global' LIMIT 1`
+            );
+            return rows.rows[0] as { rate_pct: number } | undefined;
+          });
 
           if (globalRate?.rate_pct !== undefined) {
-            commissionPct = globalRate.rate_pct;
+            commissionPct = Number(globalRate.rate_pct);
           }
         }
       }
     } else {
       // No service_id — try coach then global
-      const { data: coachRate } = await supabase
-        .from('commission_rates')
-        .select('rate_pct')
-        .eq('scope', 'coach')
-        .eq('scope_id', booking.provider_id)
-        .maybeSingle() as unknown as { data: { rate_pct: number } | null };
+      const coachRate = await withAdminContext(async (db) => {
+        const rows = await db.execute(
+          sql`SELECT rate_pct FROM commission_rates WHERE scope = 'coach' AND scope_id = ${booking.provider_id} LIMIT 1`
+        );
+        return rows.rows[0] as { rate_pct: number } | undefined;
+      });
 
       if (coachRate?.rate_pct !== undefined) {
-        commissionPct = coachRate.rate_pct;
+        commissionPct = Number(coachRate.rate_pct);
       } else {
-        const { data: globalRate } = await supabase
-          .from('commission_rates')
-          .select('rate_pct')
-          .eq('scope', 'global')
-          .maybeSingle() as unknown as { data: { rate_pct: number } | null };
+        const globalRate = await withAdminContext(async (db) => {
+          const rows = await db.execute(
+            sql`SELECT rate_pct FROM commission_rates WHERE scope = 'global' LIMIT 1`
+          );
+          return rows.rows[0] as { rate_pct: number } | undefined;
+        });
 
         if (globalRate?.rate_pct !== undefined) {
-          commissionPct = globalRate.rate_pct;
+          commissionPct = Number(globalRate.rate_pct);
         }
       }
     }
@@ -152,26 +143,20 @@ export async function POST(request: NextRequest) {
     const availableAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
     // --- 4. Insert earning record ---
-    const { data: earning, error: insertErr } = await supabase
-      .from('earnings')
-      .insert({
-        user_id: booking.provider_id,
-        source_type: 'service_booking',
-        source_id: booking_id,
-        gross_amount: grossCents,
-        commission_pct: commissionPct,
-        commission_amount: commissionCents,
-        net_amount: netCents,
-        currency,
-        status: 'pending',
-        available_at: availableAt,
-      })
-      .select()
-      .single();
+    const earning = await withAdminContext(async (db) => {
+      const rows = await db.execute(
+        sql`
+          INSERT INTO earnings (user_id, source_type, source_id, gross_amount, commission_pct, commission_amount, net_amount, currency, status, available_at)
+          VALUES (${booking.provider_id}, 'service_booking', ${booking_id}, ${grossCents}, ${commissionPct}, ${commissionCents}, ${netCents}, ${currency}, 'pending', ${availableAt})
+          RETURNING *
+        `
+      );
+      return rows.rows[0] as any | undefined;
+    });
 
-    if (insertErr) {
-      console.error('[earnings/calculate] Insert failed:', insertErr);
-      return NextResponse.json({ error: insertErr.message }, { status: 500 });
+    if (!earning) {
+      console.error('[earnings/calculate] Insert failed');
+      return NextResponse.json({ error: 'Failed to insert earning' }, { status: 500 });
     }
 
     console.log('[earnings/calculate] Earning created:', earning?.id, {

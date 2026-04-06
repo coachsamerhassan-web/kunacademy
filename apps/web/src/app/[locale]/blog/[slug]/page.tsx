@@ -1,7 +1,7 @@
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { setRequestLocale } from 'next-intl/server';
-import { cms } from '@kunacademy/cms';
+import { cms, AsyncDocRenderer } from '@kunacademy/cms/server';
 import { Section } from '@kunacademy/ui/section';
 import { GeometricPattern } from '@kunacademy/ui/patterns';
 import { MarkdownContent } from '@/components/markdown-content';
@@ -144,7 +144,9 @@ export default async function BlogPostPage({ params }: Props) {
       {/* Content */}
       <Section variant="white">
         <article className="max-w-3xl mx-auto">
-          {content ? (
+          {post.content_doc_id ? (
+            <AsyncDocRenderer docId={post.content_doc_id} locale={locale as 'ar' | 'en'} />
+          ) : content ? (
             <MarkdownContent content={content} isAr={isAr} />
           ) : excerpt ? (
             <div

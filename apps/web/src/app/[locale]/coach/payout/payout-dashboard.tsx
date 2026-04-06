@@ -36,7 +36,7 @@ function statusBadge(status: string, isAr: boolean) {
 }
 
 export function PayoutDashboard({ locale }: { locale: string }) {
-  const { user, session, loading: authLoading } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const isAr = locale === 'ar';
   const [payouts, setPayouts] = useState<PayoutRequest[]>([]);
   const [balance, setBalance] = useState(0);
@@ -53,10 +53,8 @@ export function PayoutDashboard({ locale }: { locale: string }) {
   const [accountName, setAccountName] = useState('');
 
   useEffect(() => {
-    if (!session?.access_token) return;
-    fetch('/api/payouts', {
-      headers: { Authorization: `Bearer ${session.access_token}` },
-    })
+    if (!user) return;
+    fetch('/api/payouts')
       .then(r => r.json())
       .then(data => {
         setPayouts(data.payouts || []);
@@ -64,11 +62,10 @@ export function PayoutDashboard({ locale }: { locale: string }) {
         setLoading(false);
       })
       .catch(() => setLoading(false));
-  }, [session]);
+  }, [user]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!session?.access_token) return;
     setError('');
     setSuccess('');
     setSubmitting(true);
@@ -82,10 +79,7 @@ export function PayoutDashboard({ locale }: { locale: string }) {
 
     const res = await fetch('/api/payouts', {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${session.access_token}`,
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         amount: amountMinor,
         currency: 'AED',

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@kunacademy/db';
+import { withAdminContext } from '@kunacademy/db';
+import { getAuthUser } from '@kunacademy/auth/server';
+import { sql } from 'drizzle-orm';
 
 /**
  * POST /api/books/[slug]/share/accept
@@ -17,34 +19,28 @@ export async function POST(
   try {
     const { slug } = await params;
 
-    const supabaseTyped = createServerClient();
-    if (!supabaseTyped) {
-      return NextResponse.json({ error: 'Auth not configured' }, { status: 500 });
-    }
-    // book_shares and book_access tables are not yet in generated types
-    const supabase = supabaseTyped as any;
-
-    const { data: { user } } = await supabaseTyped.auth.getUser();
+    // Auth via Auth.js session (cookie-based)
+    const user = await getAuthUser();
     if (!user) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
 
     const body = await request.json();
-    const { token } = body;
+    const { token: shareToken } = body;
 
-    if (!token) {
+    if (!shareToken) {
       return NextResponse.json({ error: 'Token required' }, { status: 400 });
     }
 
     // Verify token exists, is not expired, and not yet used
-    const { data: shareRecord, error: selectError } = await supabase
-      .from('book_shares')
-      .select('id, expires_at, used, book_slug')
-      .eq('token', token)
-      .eq('book_slug', slug)
-      .single();
+    const shareRecord = await withAdminContext(async (db) => {
+      const rows = await db.execute(
+        sql`SELECT id, expires_at, used, book_slug FROM book_shares WHERE token = ${shareToken} AND book_slug = ${slug} LIMIT 1`
+      );
+      return rows.rows[0] as { id: string; expires_at: string; used: boolean; book_slug: string } | undefined;
+    });
 
-    if (selectError || !shareRecord) {
+    if (!shareRecord) {
       return NextResponse.json(
         { error: 'Invalid or expired share token' },
         { status: 400 }
@@ -67,19 +63,20 @@ export async function POST(
     }
 
     // Check if user already has access
-    const { data: existingAccess } = await supabase
-      .from('book_access')
-      .select('id')
-      .eq('user_id', user.id)
-      .eq('book_slug', slug)
-      .single();
+    const existingAccess = await withAdminContext(async (db) => {
+      const rows = await db.execute(
+        sql`SELECT id FROM book_access WHERE user_id = ${user.id} AND book_slug = ${slug} LIMIT 1`
+      );
+      return rows.rows[0] as { id: string } | undefined;
+    });
 
     if (existingAccess) {
       // Already has access — just mark share as used and return success
-      await supabase
-        .from('book_shares')
-        .update({ used: true })
-        .eq('id', shareRecord.id);
+      await withAdminContext(async (db) => {
+        await db.execute(
+          sql`UPDATE book_shares SET used = true WHERE id = ${shareRecord.id}`
+        );
+      });
 
       return NextResponse.json({
         success: true,
@@ -88,28 +85,32 @@ export async function POST(
     }
 
     // Grant access — insert new book_access record
-    const { error: grantError } = await supabase
-      .from('book_access')
-      .insert({
-        user_id: user.id,
-        book_slug: slug,
-        granted_at: new Date().toISOString(),
-      });
+    const grantError = await withAdminContext(async (db) => {
+      try {
+        await db.execute(
+          sql`INSERT INTO book_access (user_id, book_slug, granted_at) VALUES (${user.id}, ${slug}, NOW())`
+        );
+        return null;
+      } catch (e) {
+        return e;
+      }
+    });
 
     if (grantError) {
       return NextResponse.json(
-        { error: `Failed to grant access: ${grantError.message}` },
+        { error: `Failed to grant access: ${String(grantError)}` },
         { status: 500 }
       );
     }
 
     // Mark share as used
-    const { error: updateError } = await supabase
-      .from('book_shares')
-      .update({ used: true })
-      .eq('id', shareRecord.id);
-
-    if (updateError) {
+    try {
+      await withAdminContext(async (db) => {
+        await db.execute(
+          sql`UPDATE book_shares SET used = true WHERE id = ${shareRecord.id}`
+        );
+      });
+    } catch (updateError) {
       console.error('Failed to mark share as used:', updateError);
       // Don't fail the request — access was granted successfully
     }

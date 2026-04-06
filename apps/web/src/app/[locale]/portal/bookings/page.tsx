@@ -2,7 +2,6 @@
 
 import { useAuth } from '@kunacademy/auth';
 import { useEffect, useState } from 'react';
-import { createBrowserClient } from '@kunacademy/db';
 import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
 import { useParams } from 'next/navigation';
@@ -26,14 +25,10 @@ export default function MyBookings() {
 
   useEffect(() => {
     if (!user) return;
-    const supabase = createBrowserClient();
-    supabase
-      .from('bookings')
-      .select('id, start_time, end_time, status, notes, service:services(name_ar, name_en), provider:providers(bio_ar, bio_en, profile:profiles(full_name_ar, full_name_en))')
-      .eq('customer_id', user.id)
-      .order('start_time', { ascending: false })
-      .then(({ data }) => {
-        setBookings((data as unknown as Booking[]) ?? []);
+    fetch('/api/user/bookings')
+      .then(r => r.ok ? r.json() : { bookings: [] })
+      .then(data => {
+        setBookings((data.bookings ?? []) as Booking[]);
         setLoading(false);
       });
   }, [user]);

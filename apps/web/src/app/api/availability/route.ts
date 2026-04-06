@@ -1,10 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+import { db } from '@kunacademy/db';
+import { eq, and, gte, lte } from 'drizzle-orm';
+import { providers, coach_schedules, bookings, coach_time_off } from '@kunacademy/db/schema';
 
 // GET /api/availability?coach_id=xxx&start=2026-03-25&end=2026-04-22&duration=60
 export async function GET(request: NextRequest) {
@@ -19,13 +16,13 @@ export async function GET(request: NextRequest) {
   }
 
   // Resolve provider_id → profile_id for coach_schedules / coach_time_off lookup
-  // (coach_schedules.coach_id and coach_time_off.coach_id reference profiles(id),
-  //  not providers(id) — these are different UUIDs)
-  const { data: provider } = await supabase
-    .from('providers')
-    .select('profile_id')
-    .eq('id', coachId)
-    .single();
+  const providerRows = await db
+    .select({ profile_id: providers.profile_id })
+    .from(providers)
+    .where(eq(providers.id, coachId))
+    .limit(1);
+
+  const provider = providerRows[0] ?? null;
 
   if (!provider?.profile_id) {
     return NextResponse.json({ slots: [] });
@@ -34,49 +31,63 @@ export async function GET(request: NextRequest) {
   const profileId = provider.profile_id;
 
   // 1. Get weekly schedule (include buffer_minutes)
-  const { data: schedules } = await supabase
-    .from('coach_schedules')
-    .select('day_of_week, start_time, end_time, timezone, buffer_minutes')
-    .eq('coach_id', profileId)
-    .eq('is_active', true);
+  const schedules = await db
+    .select({
+      day_of_week: coach_schedules.day_of_week,
+      start_time: coach_schedules.start_time,
+      end_time: coach_schedules.end_time,
+      timezone: coach_schedules.timezone,
+      buffer_minutes: coach_schedules.buffer_minutes,
+    })
+    .from(coach_schedules)
+    .where(and(eq(coach_schedules.coach_id, profileId), eq(coach_schedules.is_active, true)));
 
-  if (!schedules || schedules.length === 0) {
+  if (!schedules.length) {
     return NextResponse.json({ slots: [] });
   }
 
   // 2. Determine buffer: use first schedule's buffer_minutes, default 15
-  const bufferMinutes = (schedules[0] as any)?.buffer_minutes ?? 15;
+  const bufferMinutes = schedules[0]?.buffer_minutes ?? 15;
 
-  // 3. Get existing bookings in date range — exclude held slots that are still held
-  //    A slot is "blocked" if:
-  //      status in ('pending', 'confirmed'), OR
-  //      status = 'held' AND held_until > now()
+  // 3. Get existing bookings in date range
   const now = new Date().toISOString();
-  const { data: bookings } = await supabase
-    .from('bookings')
-    .select('start_time, end_time, status, held_until')
-    .eq('provider_id', coachId)
-    .gte('start_time', startDate)
-    .lte('start_time', endDate + 'T23:59:59');
+  const bookingRows = await db
+    .select({
+      start_time: bookings.start_time,
+      end_time: bookings.end_time,
+      status: bookings.status,
+      held_until: bookings.held_until,
+    })
+    .from(bookings)
+    .where(
+      and(
+        eq(bookings.provider_id, coachId),
+        gte(bookings.start_time, new Date(startDate).toISOString()),
+        lte(bookings.start_time, new Date(endDate + 'T23:59:59').toISOString())
+      )
+    );
 
-  const activeBookings = (bookings || []).filter(b => {
+  const activeBookings = bookingRows.filter((b) => {
     if (b.status === 'pending' || b.status === 'confirmed') return true;
     if (b.status === 'held' && b.held_until && b.held_until > now) return true;
     return false;
   });
 
   // 4. Get time-off days (range-aware)
-  // coach_time_off.coach_id references profiles(id) — use profileId
-  const { data: timeOffs } = await supabase
-    .from('coach_time_off')
-    .select('start_date, end_date')
-    .eq('coach_id', profileId)
-    .lte('start_date', endDate)
-    .gte('end_date', startDate);
+  const timeOffRows = await db
+    .select({ start_date: coach_time_off.start_date, end_date: coach_time_off.end_date })
+    .from(coach_time_off)
+    .where(
+      and(
+        eq(coach_time_off.coach_id, profileId),
+        lte(coach_time_off.start_date, endDate),
+        gte(coach_time_off.end_date, startDate)
+      )
+    );
 
   // Build a set of blocked dates from time-off ranges
   const timeOffDates = new Set<string>();
-  for (const t of timeOffs || []) {
+  for (const t of timeOffRows) {
     const rangeStart = new Date(t.start_date);
     const rangeEnd = new Date(t.end_date);
     for (let d = new Date(rangeStart); d <= rangeEnd; d.setDate(d.getDate() + 1)) {
@@ -84,17 +95,21 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  const bookedSlots = activeBookings.map(b => ({
-    date: b.start_time.split('T')[0],
-    start: b.start_time.split('T')[1]?.slice(0, 5) || b.start_time,
-    end: b.end_time.split('T')[1]?.slice(0, 5) || b.end_time,
-  }));
+  const bookedSlots = activeBookings.map((b) => {
+    const startStr = b.start_time;
+    const endStr = b.end_time;
+    return {
+      date: startStr.split('T')[0],
+      start: startStr.split('T')[1]?.slice(0, 5) || startStr,
+      end: endStr.split('T')[1]?.slice(0, 5) || endStr,
+    };
+  });
 
   // 5. Generate available slots with buffer
   const slots: Array<{ date: string; start_time: string; end_time: string }> = [];
   const start = new Date(startDate);
   const end = new Date(endDate);
-  const tz = (schedules[0] as any)?.timezone || 'Asia/Dubai';
+  const tz = schedules[0]?.timezone || 'Asia/Dubai';
 
   for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
     const dateStr = d.toISOString().split('T')[0];
@@ -104,7 +119,7 @@ export async function GET(request: NextRequest) {
     if (timeOffDates.has(dateStr)) continue;
 
     // Find schedule blocks for this day
-    const daySchedules = schedules.filter(s => s.day_of_week === dayOfWeek);
+    const daySchedules = schedules.filter((s) => s.day_of_week === dayOfWeek);
 
     for (const sched of daySchedules) {
       const [startH, startM] = sched.start_time.split(':').map(Number);
@@ -122,7 +137,7 @@ export async function GET(request: NextRequest) {
 
         // Check if slot overlaps any booked block
         const isBooked = bookedSlots.some(
-          b =>
+          (b) =>
             b.date === dateStr &&
             b.start < slotEndTime &&
             b.end > slotStartTime

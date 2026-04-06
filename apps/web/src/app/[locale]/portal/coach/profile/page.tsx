@@ -2,7 +2,6 @@
 
 import { useAuth } from '@kunacademy/auth';
 import { useEffect, useState } from 'react';
-import { createBrowserClient } from '@kunacademy/db';
 import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
 import { Button } from '@kunacademy/ui/button';
@@ -20,24 +19,28 @@ export default function CoachProfileEdit() {
 
   useEffect(() => {
     if (!user) return;
-    const supabase = createBrowserClient();
-    supabase.from('instructors').select('*').eq('profile_id', user.id).single().then(({ data }) => {
-      if (data) {
-        setInstructor(data);
-        setBio((isAr ? data.bio_ar : data.bio_en) as string || '');
-      }
-    });
+    fetch('/api/coach/profile')
+      .then(r => r.ok ? r.json() : { instructor: null })
+      .then(data => {
+        if (data.instructor) {
+          setInstructor(data.instructor);
+          setBio((isAr ? data.instructor.bio_ar : data.instructor.bio_en) || '');
+        }
+      });
   }, [user, isAr]);
 
   async function handleSubmitDraft() {
     if (!instructor) return;
     setSaving(true);
-    const supabase = createBrowserClient();
-    await supabase.from('instructor_drafts').insert({
-      instructor_id: instructor.id as string,
-      field_name: isAr ? 'bio_ar' : 'bio_en',
-      old_value: (isAr ? instructor.bio_ar : instructor.bio_en) as string,
-      new_value: bio,
+    await fetch('/api/coach/profile/draft', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        instructor_id: instructor.id,
+        field_name: isAr ? 'bio_ar' : 'bio_en',
+        old_value: isAr ? instructor.bio_ar : instructor.bio_en,
+        new_value: bio,
+      }),
     });
     setSaving(false);
     setSaved(true);

@@ -12,8 +12,8 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
       ? 'منهجك المؤسسي — الباقة الشاملة للكوتشز المؤسسيين | أكاديمية كُن'
       : 'Organizational Methodology Package — Complete Path for Org Coaches | Kun Academy',
     description: isAr
-      ? 'رحلة متكاملة +121 ساعة من STI إلى STOC مع جلستين حصريتين لتصميم برنامج مؤسسي'
-      : 'Complete 121+ hour journey from STI to STOC with 2 exclusive sessions to design an organizational program',
+      ? 'رحلة متكاملة 125 ساعة من STI إلى STOC مع جلستين حصريتين لتصميم برنامج مؤسسي'
+      : 'Complete 125-hour journey from STI to STOC with 2 exclusive sessions to design an organizational program',
     alternates: {
       canonical: `/${locale}/academy/packages/organizational/`,
     },
@@ -139,10 +139,10 @@ export default async function OrganizationalPackagePage({ params }: { params: Pr
             locale,
             name: isAr ? 'منهجك المؤسسي — الباقة الشاملة' : 'Organizational Methodology — Complete Package',
             description: isAr
-              ? 'رحلة متكاملة +121 ساعة للكوتشز المؤسسيين ومتخصصي الموارد البشرية'
-              : 'Complete 121+ hour journey for organizational coaches and HR professionals',
+              ? 'رحلة متكاملة 125 ساعة للكوتشز المؤسسيين ومتخصصي الموارد البشرية'
+              : 'Complete 125-hour journey for organizational coaches and HR professionals',
             slug: 'academy/packages/organizational',
-            hours: 121,
+            hours: 125,
           })),
         }}
       />
@@ -176,13 +176,13 @@ export default async function OrganizationalPackagePage({ params }: { params: Pr
           </h1>
           <p className="mt-4 text-white/60 text-lg max-w-2xl mx-auto">
             {isAr
-              ? 'رحلة متكاملة +121 ساعة من الصفر إلى التخصّص في الكوتشينج المؤسسي'
-              : 'A complete 121+ hour journey from zero to specialization in organizational coaching'}
+              ? 'رحلة متكاملة 125 ساعة من الصفر إلى التخصّص في الكوتشينج المؤسسي'
+              : 'A complete 125-hour journey from zero to specialization in organizational coaching'}
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-6 text-sm text-white/70">
             <span className="flex items-center gap-1.5">
               <span className="text-[var(--color-accent-200)]">◆</span>
-              {isAr ? '+121 ساعة تعليمية' : '121+ learning hours'}
+              {isAr ? '125 ساعة تعليمية' : '125 learning hours'}
             </span>
             <span className="flex items-center gap-1.5">
               <span className="text-[var(--color-accent-200)]">◆</span>
@@ -257,7 +257,7 @@ export default async function OrganizationalPackagePage({ params }: { params: Pr
           </h2>
           <div className="grid md:grid-cols-2 gap-4">
             {[
-              { ar: '+121 ساعة تعليمية عبر 4 مستويات متكاملة', en: '121+ learning hours across 4 integrated levels' },
+              { ar: '125 ساعة تعليمية عبر 4 مستويات متكاملة (121 تدريب + 4 إرشاد)', en: '125 learning hours across 4 integrated levels (121 training + 4 mentoring)' },
               { ar: 'جلسة تصميم برنامج مؤسسي متكامل (حصرية)', en: 'Integrated organizational program design session (exclusive)' },
               { ar: 'جلسة مراجعة وإشراف على التطبيق (حصرية)', en: 'Review & application supervision session (exclusive)' },
               { ar: 'شهادة STL4 — تخصّص كوتشينج المؤسسات', en: 'STL4 Certificate — Organizational Coaching Specialization' },

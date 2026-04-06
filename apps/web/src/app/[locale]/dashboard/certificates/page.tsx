@@ -1,7 +1,6 @@
 'use client';
 
 import { useAuth } from '@kunacademy/auth';
-import { createBrowserClient } from '@kunacademy/db';
 import { Section } from '@kunacademy/ui/section';
 import { Card } from '@kunacademy/ui/card';
 import { useState, useEffect, use, useCallback } from 'react';
@@ -26,46 +25,11 @@ export default function CertificatesPage({ params }: { params: Promise<{ locale:
 
   useEffect(() => {
     if (!user) return;
-    const supabase = createBrowserClient();
 
     async function load() {
-      // Get certificates
-      const { data: certs } = await supabase
-        .from('certificates')
-        .select('id, enrollment_id, verification_code, issued_at, pdf_url')
-        .eq('user_id', user!.id)
-        .order('issued_at', { ascending: false });
-
-      if (!certs?.length) {
-        setLoading(false);
-        return;
-      }
-
-      // Get enrollment -> course mapping
-      const enrollmentIds = certs.map((c: any) => c.enrollment_id);
-      const { data: enrollments } = await supabase
-        .from('enrollments')
-        .select('id, course_id')
-        .in('id', enrollmentIds);
-
-      const courseIds = [...new Set((enrollments ?? []).map((e: any) => e.course_id))];
-      const { data: courses } = await supabase
-        .from('courses')
-        .select('id, title_ar, title_en')
-        .in('id', courseIds);
-
-      // Map course titles to certificates
-      const enriched = certs.map((cert: any) => {
-        const enrollment = (enrollments ?? []).find((e: any) => e.id === cert.enrollment_id);
-        const course = enrollment ? (courses ?? []).find((c: any) => c.id === enrollment.course_id) : null;
-        return {
-          ...cert,
-          course_title_ar: course?.title_ar ?? '',
-          course_title_en: course?.title_en ?? '',
-        };
-      });
-
-      setCertificates(enriched);
+      const res = await fetch('/api/user/certificates');
+      const data = await res.json();
+      setCertificates(data.certificates ?? []);
       setLoading(false);
     }
 
@@ -75,17 +39,9 @@ export default function CertificatesPage({ params }: { params: Promise<{ locale:
   const handleGeneratePDF = useCallback(async (certId: string) => {
     setGeneratingId(certId);
     try {
-      const supabase = createBrowserClient();
-      const { data: session } = await supabase.auth.getSession();
-      const token = session?.session?.access_token;
-      if (!token) return;
-
       const res = await fetch('/api/certificates/generate', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ certificate_id: certId }),
       });
 

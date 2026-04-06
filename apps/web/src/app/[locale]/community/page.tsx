@@ -2,7 +2,8 @@ import type { Metadata } from 'next';
 import { setRequestLocale } from 'next-intl/server';
 import { Section } from '@kunacademy/ui/section';
 import { GeometricPattern } from '@kunacademy/ui/patterns';
-import { cms, contentGetter } from '@kunacademy/cms';
+import { cms } from '@kunacademy/cms/server';
+import { contentGetter } from '@kunacademy/cms';
 import { CommunityMembers } from './community-members';
 
 interface Props { params: Promise<{ locale: string }> }

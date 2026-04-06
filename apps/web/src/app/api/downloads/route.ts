@@ -1,13 +1,9 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-import type { Database } from '@kunacademy/db';
+import { withAdminContext } from '@kunacademy/db';
+import { products, digital_assets, download_tokens } from '@kunacademy/db/schema';
+import { eq, desc } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import { getBusinessConfig } from '@/lib/cms-config';
-
-const supabase = createClient<Database>(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 export async function POST(request: NextRequest) {
   try {
@@ -21,13 +17,19 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify the product exists and is digital
-    const { data: product, error: productError } = await supabase
-      .from('products')
-      .select('id, product_type, name_ar, name_en')
-      .eq('id', product_id)
-      .single();
+    const [product] = await withAdminContext(async (db) => {
+      return db.select({
+        id: products.id,
+        product_type: products.product_type,
+        name_ar: products.name_ar,
+        name_en: products.name_en,
+      })
+        .from(products)
+        .where(eq(products.id, product_id))
+        .limit(1);
+    });
 
-    if (productError || !product) {
+    if (!product) {
       return NextResponse.json({ error: 'Product not found' }, { status: 404 });
     }
 
@@ -39,15 +41,15 @@ export async function POST(request: NextRequest) {
     }
 
     // Find the digital asset for this product
-    const { data: asset, error: assetError } = await supabase
-      .from('digital_assets')
-      .select('*')
-      .eq('product_id', product_id)
-      .order('created_at' as any, { ascending: false })
-      .limit(1)
-      .single();
+    const [asset] = await withAdminContext(async (db) => {
+      return db.select()
+        .from(digital_assets)
+        .where(eq(digital_assets.product_id, product_id))
+        .orderBy(desc(digital_assets.created_at))
+        .limit(1);
+    });
 
-    if (assetError || !asset) {
+    if (!asset) {
       return NextResponse.json(
         { error: 'No digital asset found for this product' },
         { status: 404 }
@@ -57,11 +59,10 @@ export async function POST(request: NextRequest) {
     // Generate download token with CMS-configurable expiry and limits
     const config = await getBusinessConfig();
     const token = randomUUID();
-    const expires_at = new Date(Date.now() + config.download_token_expiry_hours * 60 * 60 * 1000).toISOString();
+    const expires_at = new Date(Date.now() + config.download_token_expiry_hours * 60 * 60 * 1000);
 
-    const { data: downloadToken, error: tokenError } = await supabase
-      .from('download_tokens')
-      .insert({
+    const [downloadToken] = await withAdminContext(async (db) => {
+      return db.insert(download_tokens).values({
         order_item_id: product_id, // Using product_id as reference when no order exists
         user_id,
         asset_id: asset.id,
@@ -69,12 +70,11 @@ export async function POST(request: NextRequest) {
         expires_at,
         download_count: 0,
         max_downloads: config.download_max_count,
-      } as any)
-      .select()
-      .single();
+      }).returning();
+    });
 
-    if (tokenError) {
-      console.error('[downloads] Token creation error:', tokenError);
+    if (!downloadToken) {
+      console.error('[downloads] Token creation failed');
       return NextResponse.json(
         { error: 'Failed to generate download token' },
         { status: 500 }
@@ -86,8 +86,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       token,
       download_url,
-      expires_at,
-      max_downloads: 3,
+      expires_at: expires_at.toISOString(),
+      max_downloads: config.download_max_count,
     });
   } catch (err: any) {
     console.error('[downloads]', err);

@@ -1,34 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-import type { Database } from '@kunacademy/db';
-
-const supabase = createClient<Database>(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
-async function getUser(request: NextRequest) {
-  const authHeader = request.headers.get('authorization');
-  if (!authHeader?.startsWith('Bearer ')) return null;
-  const token = authHeader.slice(7);
-  const { data: { user } } = await supabase.auth.getUser(token);
-  return user;
-}
+import { db, withAdminContext } from '@kunacademy/db';
+import { getAuthUser } from '@kunacademy/auth/server';
+import { eq } from 'drizzle-orm';
+import { enrollments, certificates, courses, profiles } from '@kunacademy/db/schema';
 
 // GET /api/lms/certificate?enrollmentId=xxx — get certificate for an enrollment
 export async function GET(request: NextRequest) {
-  const user = await getUser(request);
+  const user = await getAuthUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const enrollmentId = request.nextUrl.searchParams.get('enrollmentId');
   if (!enrollmentId) return NextResponse.json({ error: 'enrollmentId required' }, { status: 400 });
 
   // Check enrollment belongs to user and is completed
-  const { data: enrollment } = await supabase
-    .from('enrollments')
-    .select('id, user_id, course_id, status, completed_at')
-    .eq('id', enrollmentId)
-    .single();
+  const enrollmentRows = await db
+    .select({
+      id: enrollments.id,
+      user_id: enrollments.user_id,
+      course_id: enrollments.course_id,
+      status: enrollments.status,
+      completed_at: enrollments.completed_at,
+    })
+    .from(enrollments)
+    .where(eq(enrollments.id, enrollmentId))
+    .limit(1);
+
+  const enrollment = enrollmentRows[0] ?? null;
 
   if (!enrollment || enrollment.user_id !== user.id) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
@@ -39,34 +36,51 @@ export async function GET(request: NextRequest) {
   }
 
   // Check if certificate already exists
-  let { data: certificate } = await supabase
-    .from('certificates')
-    .select('*')
-    .eq('enrollment_id', enrollmentId)
-    .single();
+  let certificate: typeof certificates.$inferSelect | null = null;
+  const certRows = await db
+    .select()
+    .from(certificates)
+    .where(eq(certificates.enrollment_id, enrollmentId))
+    .limit(1);
+
+  certificate = certRows[0] ?? null;
 
   if (!certificate) {
     // Create certificate
-    const { data: newCert, error } = await supabase
-      .from('certificates')
-      .insert({
-        user_id: user.id,
-        enrollment_id: enrollmentId,
-        credential_type: 'completion',
-        issued_at: new Date().toISOString(),
-      })
-      .select()
-      .single();
-
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    certificate = newCert;
+    try {
+      await withAdminContext(async (adminDb) => {
+        const rows = await adminDb
+          .insert(certificates)
+          .values({
+            user_id: user.id,
+            enrollment_id: enrollmentId,
+            credential_type: 'completion',
+            issued_at: new Date(),
+          })
+          .returning();
+        certificate = rows[0] ?? null;
+      });
+    } catch (e: any) {
+      return NextResponse.json({ error: e?.message ?? 'Certificate creation failed' }, { status: 500 });
+    }
   }
 
   // Get course + user info for certificate display
-  const [{ data: course }, { data: profile }] = await Promise.all([
-    supabase.from('courses').select('title_ar, title_en, duration_hours').eq('id', enrollment.course_id).single(),
-    supabase.from('profiles').select('full_name_ar, full_name_en, email').eq('id', user.id).single(),
+  const [courseRows, profileRows] = await Promise.all([
+    db
+      .select({ title_ar: courses.title_ar, title_en: courses.title_en, duration_hours: courses.duration_hours })
+      .from(courses)
+      .where(eq(courses.id, enrollment.course_id!))
+      .limit(1),
+    db
+      .select({ full_name_ar: profiles.full_name_ar, full_name_en: profiles.full_name_en, email: profiles.email })
+      .from(profiles)
+      .where(eq(profiles.id, user.id))
+      .limit(1),
   ]);
+
+  const course = courseRows[0] ?? null;
+  const profile = profileRows[0] ?? null;
 
   return NextResponse.json({
     certificate,
@@ -81,27 +95,43 @@ export async function POST(request: NextRequest) {
   const { code } = await request.json();
   if (!code) return NextResponse.json({ error: 'code required' }, { status: 400 });
 
-  const { data: certificate } = await supabase
-    .from('certificates')
-    .select('*, enrollments(course_id, completed_at), profiles(full_name_ar, full_name_en)')
-    .eq('verification_code', code)
-    .single();
+  const certRows = await db
+    .select()
+    .from(certificates)
+    .where(eq(certificates.verification_code, code))
+    .limit(1);
+
+  const certificate = certRows[0] ?? null;
 
   if (!certificate) {
     return NextResponse.json({ valid: false });
   }
 
-  const enrollment = (certificate as any).enrollments;
-  const profile = (certificate as any).profiles;
+  // Get enrollment and profile separately
+  const [enrollmentRows, profileRows] = await Promise.all([
+    db
+      .select({ course_id: enrollments.course_id, completed_at: enrollments.completed_at })
+      .from(enrollments)
+      .where(eq(enrollments.id, certificate.enrollment_id))
+      .limit(1),
+    db
+      .select({ full_name_ar: profiles.full_name_ar, full_name_en: profiles.full_name_en })
+      .from(profiles)
+      .where(eq(profiles.id, certificate.user_id))
+      .limit(1),
+  ]);
 
-  let courseName = null;
+  const enrollment = enrollmentRows[0] ?? null;
+  const profile = profileRows[0] ?? null;
+
+  let courseName: { title_ar: string; title_en: string } | null = null;
   if (enrollment?.course_id) {
-    const { data: course } = await supabase
-      .from('courses')
-      .select('title_ar, title_en')
-      .eq('id', enrollment.course_id)
-      .single();
-    courseName = course;
+    const courseRows = await db
+      .select({ title_ar: courses.title_ar, title_en: courses.title_en })
+      .from(courses)
+      .where(eq(courses.id, enrollment.course_id))
+      .limit(1);
+    courseName = courseRows[0] ?? null;
   }
 
   return NextResponse.json({
