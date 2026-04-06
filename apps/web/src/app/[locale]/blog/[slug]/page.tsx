@@ -191,9 +191,9 @@ export default async function BlogPostPage({ params }: Props) {
           )}
 
           {/* Tags */}
-          {post.tags?.length > 0 && (
+          {post.tags && (Array.isArray(post.tags) ? post.tags : String(post.tags).split(',').map(t => t.trim()).filter(Boolean)).length > 0 && (
             <div className="flex flex-wrap gap-2 mt-8 pt-6 border-t border-[var(--color-neutral-100)]">
-              {post.tags.map((tag) => (
+              {(Array.isArray(post.tags) ? post.tags : String(post.tags).split(',').map(t => t.trim()).filter(Boolean)).map((tag) => (
                 <span key={tag} className="inline-flex items-center px-3 py-1 rounded-full text-xs bg-[var(--color-neutral-100)] text-[var(--color-neutral-600)]">
                   {tag}
                 </span>
