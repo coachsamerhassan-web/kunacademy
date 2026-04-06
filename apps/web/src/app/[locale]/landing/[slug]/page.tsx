@@ -9,7 +9,7 @@ import { notFound } from 'next/navigation';
 // Import CMS provider
 async function getLandingPage(slug: string, locale: string) {
   try {
-    const { cms } = await import('@kunacademy/cms');
+    const { cms } = await import('@kunacademy/cms/server');
     const sections = await cms.getPageContent(slug);
     if (!sections || Object.keys(sections).length === 0) return null;
 
