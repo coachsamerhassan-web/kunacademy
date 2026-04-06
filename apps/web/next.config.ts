@@ -51,6 +51,17 @@ const nextConfig: NextConfig = {
       // Booking flow consolidation (Wave 15)
       { source: '/:locale/book', destination: '/:locale/coaching/book', permanent: true },
       { source: '/:locale/book/:path*', destination: '/:locale/coaching/book', permanent: true },
+      // WordPress legacy URL redirects
+      { source: '/:locale/register', destination: '/:locale/auth/signup', permanent: true },
+      { source: '/:locale/login', destination: '/:locale/auth/login', permanent: true },
+      { source: '/:locale/my-account', destination: '/:locale/dashboard', permanent: true },
+      { source: '/:locale/my-account/:path*', destination: '/:locale/dashboard', permanent: true },
+      { source: '/:locale/about-us', destination: '/:locale/about', permanent: true },
+      { source: '/:locale/our-team', destination: '/:locale/coaches', permanent: true },
+      { source: '/:locale/privacy-policy', destination: '/:locale/legal/privacy', permanent: true },
+      { source: '/:locale/terms-of-service', destination: '/:locale/legal/terms', permanent: true },
+      { source: '/:locale/refund-policy', destination: '/:locale/legal/refund', permanent: true },
+      { source: '/:locale/faq', destination: '/:locale/contact', permanent: true },
     ];
   },
 

@@ -45,11 +45,11 @@ const primaryNav: NavItem[] = [
         groupLabelAr: 'شهادات الكوتشينج',
         groupLabelEn: 'Certifications',
         items: [
-          { labelAr: 'STIC — كوتش فردي', labelEn: 'STIC — Individual Coach', href: '/academy/certifications/stce/level-1/' },
-          { labelAr: 'STAIC — كوتش متقدم', labelEn: 'STAIC — Advanced Coach', href: '/academy/certifications/stce/level-2/' },
-          { labelAr: 'STGC — كوتش جمعي', labelEn: 'STGC — Group Coach', href: '/academy/certifications/stce/level-3/' },
-          { labelAr: 'STOC — كوتش مؤسسات', labelEn: 'STOC — Organisational Coach', href: '/academy/certifications/stce/level-4/' },
-          { labelAr: 'STFC — كوتش أسري', labelEn: 'STFC — Family Coach', href: '/academy/certifications/stce/level-5/' },
+          { labelAr: 'كوتش فردي (STIC)', labelEn: 'Individual Coach (STIC)', href: '/academy/certifications/stce/level-1/' },
+          { labelAr: 'كوتش متقدم (STAIC)', labelEn: 'Advanced Coach (STAIC)', href: '/academy/certifications/stce/level-2/' },
+          { labelAr: 'كوتش جمعي (STGC)', labelEn: 'Group Coach (STGC)', href: '/academy/certifications/stce/level-3/' },
+          { labelAr: 'كوتش مؤسسات (STOC)', labelEn: 'Organisational Coach (STOC)', href: '/academy/certifications/stce/level-4/' },
+          { labelAr: 'كوتش أسري (STFC)', labelEn: 'Family Coach (STFC)', href: '/academy/certifications/stce/level-5/' },
         ],
       },
       // Column 3: Pathway Packages (منهجك)

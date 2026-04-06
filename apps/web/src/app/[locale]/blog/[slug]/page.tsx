@@ -8,6 +8,15 @@ import { MarkdownContent } from '@/components/markdown-content';
 import type { Metadata } from 'next';
 import { ArrowLeft } from 'lucide-react';
 
+// Bilingual category label mapping
+const CATEGORY_LABELS: Record<string, { en: string; ar: string }> = {
+  methodology: { en: 'Methodology', ar: 'المنهجية' },
+  coaching: { en: 'Coaching', ar: 'الكوتشينج' },
+  certification: { en: 'Certification', ar: 'الشهادات' },
+  retreats: { en: 'Retreats', ar: 'الخلوات' },
+  'programs-and-events': { en: 'Programs & Events', ar: 'البرامج والفعاليات' },
+};
+
 interface Props {
   params: Promise<{ locale: string; slug: string }>;
 }
@@ -88,7 +97,7 @@ export default async function BlogPostPage({ params }: Props) {
           <div className="flex flex-wrap items-center gap-3 mb-4">
             {post.category && (
               <span className={`text-xs font-medium uppercase tracking-wider ${post.featured_image_url ? 'text-[var(--color-accent)]' : 'text-[var(--color-accent)]'}`}>
-                {post.category}
+                {CATEGORY_LABELS[post.category.toLowerCase()]?.[isAr ? 'ar' : 'en'] || post.category}
               </span>
             )}
             {post.published_at && (

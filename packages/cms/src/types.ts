@@ -319,6 +319,8 @@ export interface Testimonial extends AuditFields {
   is_featured: boolean;
   /** Sort order */
   display_order: number;
+  /** Coach who delivered this testimonial's session (references Team slug) */
+  coach_slug?: string;
 }
 
 // ── Quotes ─────────────────────────────────────────────────────────────────

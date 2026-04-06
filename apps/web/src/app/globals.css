@@ -645,6 +645,45 @@ h1, h2, h3 {
   text-wrap: balance;
 }
 
+/* ============================================
+   Doc renderer heading sizing
+   Tailwind v4 does not generate CSS rules for
+   text-[var(--token)] arbitrary values, so we
+   apply heading font-sizes directly here.
+   Responsive scaling is inherited from the
+   :root media query block above.
+   ============================================ */
+.kun-doc-prose h1 {
+  font-size: var(--text-page-title);
+}
+
+html[lang="ar"] .kun-doc-prose h1,
+[dir="rtl"] .kun-doc-prose h1 {
+  font-size: var(--text-page-title-ar);
+}
+
+.kun-doc-prose h2 {
+  font-size: var(--text-section);
+}
+
+html[lang="ar"] .kun-doc-prose h2,
+[dir="rtl"] .kun-doc-prose h2 {
+  font-size: var(--text-section-ar);
+}
+
+.kun-doc-prose h3 {
+  font-size: var(--text-card-title);
+}
+
+html[lang="ar"] .kun-doc-prose h3,
+[dir="rtl"] .kun-doc-prose h3 {
+  font-size: var(--text-card-title-ar);
+}
+
+.kun-doc-prose h4 {
+  font-size: var(--text-lead);
+}
+
 /* Better RTL letter-spacing (Arabic doesn't use letter-spacing) */
 [dir="rtl"] h1, [dir="rtl"] h2, [dir="rtl"] h3,
 [dir="rtl"] h4, [dir="rtl"] h5, [dir="rtl"] h6 {

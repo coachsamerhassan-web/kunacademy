@@ -9,7 +9,7 @@
  */
 import { redirect } from 'next/navigation';
 
-export default function RootNotFound() {
+export default function GlobalNotFound() {
   // Default locale is 'ar' — redirect so the user gets the branded,
   // locale-aware 404 page with the correct RTL layout.
   redirect('/ar');

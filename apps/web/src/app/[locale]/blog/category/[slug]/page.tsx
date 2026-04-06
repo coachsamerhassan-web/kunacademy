@@ -13,6 +13,7 @@ const CATEGORY_LABELS: Record<string, { en: string; ar: string }> = {
   coaching: { en: 'Coaching', ar: 'الكوتشينج' },
   certification: { en: 'Certification', ar: 'الشهادات' },
   retreats: { en: 'Retreats', ar: 'الخلوات' },
+  'programs-and-events': { en: 'Programs & Events', ar: 'البرامج والفعاليات' },
 };
 
 interface Props {

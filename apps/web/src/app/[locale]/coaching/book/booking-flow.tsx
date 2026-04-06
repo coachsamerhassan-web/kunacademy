@@ -10,10 +10,13 @@ import { useSearchParams } from 'next/navigation';
 
 interface Service {
   id: string;
+  slug: string | null;
   name_ar: string;
   name_en: string;
   duration_minutes: number;
   price_aed: number | null;
+  sessions_count: number | null;
+  eligible_kun_levels: string[] | null;
   category_id: string | null;
   is_active: boolean;
 }
@@ -26,6 +29,7 @@ interface Coach {
   title_en: string;
   photo_url: string | null;
   coach_level: string | null;
+  kun_level: string | null;
   specialties: string[] | null;
 }
 
@@ -348,8 +352,14 @@ function BookingFlowInner({ locale }: { locale: string }) {
   }, []);
 
   // Load services on mount
+  // When a coach is pre-selected via ?coach=slug, pass coach_slug so the API
+  // returns only services matching that coach's kun_level (+ computes 3-pack price).
   useEffect(() => {
-    fetch('/api/booking/services')
+    const url = preSelectCoachSlug
+      ? `/api/booking/services?coach_slug=${encodeURIComponent(preSelectCoachSlug)}`
+      : '/api/booking/services';
+
+    fetch(url)
       .then((r) => r.json())
       .then((data) => {
         const loaded = (data.services as Service[]) || [];
@@ -360,9 +370,9 @@ function BookingFlowInner({ locale }: { locale: string }) {
         if (preSelectSlug && !selectedService) {
           const match = loaded.find(
             (s) =>
+              s.slug === preSelectSlug ||
               s.name_en.toLowerCase().replace(/\s+/g, '-') === preSelectSlug ||
-              s.name_ar === preSelectSlug ||
-              (s as any).slug === preSelectSlug
+              s.name_ar === preSelectSlug
           );
           if (match) {
             setSelectedService(match);
@@ -581,9 +591,10 @@ function BookingFlowInner({ locale }: { locale: string }) {
   }
 
   // ── Price display helper ──
+  // Prices stored in DB as minor units (250 AED = 25000). Divide by 100 for display.
   function formatPrice(price: number | null) {
-    if (!price) return isAr ? 'مجاني' : 'Free';
-    return `${(price / 100).toFixed(0)} AED`;
+    if (price === null || price === 0) return isAr ? 'مجاني' : 'Free';
+    return `${Math.round(price / 100)} AED`;
   }
 
   // ── Render: step content ──
@@ -631,12 +642,25 @@ function BookingFlowInner({ locale }: { locale: string }) {
                     {isAr ? svc.name_ar : svc.name_en}
                   </div>
                   <div className="mt-2 flex items-center gap-2 flex-wrap">
-                    <span className="inline-flex items-center rounded-full bg-[var(--color-neutral-100)] px-2.5 py-0.5 text-xs text-[var(--color-neutral-600)]">
-                      {svc.duration_minutes} {isAr ? 'دقيقة' : 'min'}
-                    </span>
+                    {/* Duration or sessions count */}
+                    {svc.sessions_count && svc.sessions_count > 1 ? (
+                      <span className="inline-flex items-center rounded-full bg-[var(--color-neutral-100)] px-2.5 py-0.5 text-xs text-[var(--color-neutral-600)]">
+                        {svc.sessions_count} {isAr ? 'جلسات' : 'sessions'} · {svc.duration_minutes} {isAr ? 'دقيقة' : 'min'}
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center rounded-full bg-[var(--color-neutral-100)] px-2.5 py-0.5 text-xs text-[var(--color-neutral-600)]">
+                        {svc.duration_minutes} {isAr ? 'دقيقة' : 'min'}
+                      </span>
+                    )}
                     <span className="inline-flex items-center rounded-full bg-[var(--color-primary-50)] px-2.5 py-0.5 text-xs text-[var(--color-primary)] font-medium">
                       {formatPrice(svc.price_aed)}
                     </span>
+                    {/* 15% discount badge for 3-pack */}
+                    {svc.slug === '3-session-package' && (
+                      <span className="inline-flex items-center rounded-full bg-green-50 px-2.5 py-0.5 text-xs text-green-700 font-medium ring-1 ring-green-200">
+                        {isAr ? 'خصم ١٥٪' : '15% off'}
+                      </span>
+                    )}
                   </div>
                 </button>
               ))}

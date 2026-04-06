@@ -66,6 +66,18 @@ export const methodologyFaqs: FAQItem[] = [
     ar: { q: 'ما معنى الاعتماد من ICF وكيف يتعلق بالتفكير الحسّي؟', a: 'ICF (الاتحاد الدولي للكوتشينج) هو أعلى جهة اعتماد لمنهجيات الكوتشينج في العالم. برنامج STCE المبني على التفكير الحسّي® معتمد منه — يعني أن ساعاتك التدريبية تُحتسب رسمياً نحو شهادتي ACC وPCC.' },
     en: { q: 'What is ICF accreditation and how does it relate to Somatic Thinking?', a: 'ICF (International Coaching Federation) is the world\'s highest coaching accreditation body. The STCE program built on Somatic Thinking® is ICF-accredited — meaning your training hours officially count toward ACC and PCC credentials.' },
   },
+  {
+    ar: { q: 'من طوّر التفكير الحسّي؟', a: 'سامر حسن، MCC — أول متحدث عربي أصلي يحصل على شهادة ماستر كوتش معتمد من ICF. طوّر التفكير الحسّي على مدى أكثر من ١٥ عامًا من ممارسة الكوتشينج المهني، مستندًا إلى أكثر من ٣٠ عامًا من الفنون القتالية والعلاجية عبر أربع قارات.' },
+    en: { q: 'Who developed Somatic Thinking?', a: 'Samer Hassan, MCC — the first native Arabic speaker to earn the ICF Master Certified Coach credential. He developed Somatic Thinking over 15+ years of professional coaching practice, informed by 30+ years of martial and healing arts across four continents.' },
+  },
+  {
+    ar: { q: 'هل التفكير الحسّي منهجية دينية؟', a: 'لا. رغم أن أساسه الفلسفي يستلهم من التراث الفكري الإسلامي (مفهوم النَّفْس والوحدة التوحيدية)، إلا أن المنهجية مصمّمة لتكون عالمية ثقافيًا. مارسها أشخاص من جميع الأديان ومن بلا أديان في ١٣ دولة.' },
+    en: { q: 'Is Somatic Thinking a religious methodology?', a: 'No. While its philosophical foundation draws from Islamic intellectual heritage (the concept of النَّفْس and Tawhidi unity), the methodology is designed to be culturally universal. It has been practiced by people of all faiths and no faith across 13 countries.' },
+  },
+  {
+    ar: { q: 'كيف يُعتمد التفكير الحسّي؟', a: 'برنامج تعليم كوتش التفكير الحسّي (STCE) معتمد من الاتحاد الدولي للكوتشينج (ICF) في المستوى الأول (مسار ACC، ٦٩ ساعة) والمستوى الثاني (مسار PCC، ٧٥ ساعة). برنامج STAIC المتقدّم يوفّر مسار MCC.' },
+    en: { q: 'How is Somatic Thinking accredited?', a: 'The Somatic Thinking Coach Education (STCE) program is accredited by the International Coaching Federation (ICF) at Level 1 (ACC pathway, 69 hours) and Level 2 (PCC pathway, 75 hours). The STAIC advanced program offers an MCC pathway.' },
+  },
 ];
 
 /** Corporate */

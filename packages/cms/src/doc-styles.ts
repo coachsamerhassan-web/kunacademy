@@ -14,8 +14,9 @@
  */
 export const DOC_CLASS_MAP: Readonly<Record<string, string>> = {
   // Headings — map to the established typography scale
+  // font-size for h1–h4 is set via .kun-doc-prose h* rules in globals.css
+  // (Tailwind v4 does not generate CSS for text-[var(--token)] arbitrary values)
   h1: [
-    'text-[var(--text-page-title)]',
     'font-bold',
     'leading-tight',
     'text-[var(--text-primary)]',
@@ -26,7 +27,6 @@ export const DOC_CLASS_MAP: Readonly<Record<string, string>> = {
   ].join(' '),
 
   h2: [
-    'text-[var(--text-section)]',
     'font-bold',
     'leading-tight',
     'text-[var(--text-primary)]',
@@ -37,7 +37,6 @@ export const DOC_CLASS_MAP: Readonly<Record<string, string>> = {
   ].join(' '),
 
   h3: [
-    'text-[var(--text-card-title)]',
     'font-semibold',
     'leading-snug',
     'text-[var(--text-primary)]',
@@ -46,7 +45,6 @@ export const DOC_CLASS_MAP: Readonly<Record<string, string>> = {
   ].join(' '),
 
   h4: [
-    'text-[var(--text-lead)]',
     'font-semibold',
     'leading-snug',
     'text-[var(--text-accent)]',

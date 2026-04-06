@@ -12,6 +12,7 @@ import { AudienceTabs } from '@/components/audience-tabs';
 import { buildGpsTabs, buildIeTabs } from '@/components/audience-tabs-data';
 import { LeadCaptureForm } from '@/components/lead-capture-form';
 import { getPricingRegion, getGeoPrice, shouldShowPrice, formatGeoPrice } from '@/lib/geo-pricing';
+import { courseJsonLd } from '@kunacademy/ui/structured-data';
 
 export const revalidate = 300;
 
@@ -137,6 +138,20 @@ function localizeIcfDetails(text: string, isAr: boolean): string {
     result = result.replace(pattern, replacement);
   }
   return result;
+}
+
+/**
+ * Extract a numeric hour count from a duration string.
+ * "40 hours" → 40 | "2 days (10 hours)" → 10 | "3 days" → 72 | fallback → 0
+ */
+function parseDurationHours(duration: string): number {
+  // "X days (Y hours)"
+  const daysHours = duration.match(/(\d+)\s+hours?/i);
+  if (daysHours) return parseInt(daysHours[1], 10);
+  // "X days" only — approximate as 8h/day
+  const daysOnly = duration.match(/^(\d+)\s+days?$/i);
+  if (daysOnly) return parseInt(daysOnly[1], 10) * 8;
+  return 0;
 }
 
 function formatBadgeColor(format: string): string {
@@ -547,6 +562,26 @@ export default async function ProgramDetailPage({ params }: Props) {
           ctaHref={`/${locale}/checkout?program=${program.slug}`}
         />
       )}
+
+      {/* ── Structured Data: Course schema (JSON-LD) ─────────────────────── */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(
+            courseJsonLd({
+              locale,
+              name: isAr ? program.title_ar : program.title_en,
+              description: (isAr ? program.description_ar : program.description_en) ?? '',
+              slug: `programs/${slug}`,
+              hours: parseDurationHours(program.duration ?? ''),
+              // price_aed from CMS is in full AED units; courseJsonLd expects minor units (cents)
+              ...(pricingVisible && !program.is_free && program.price_aed
+                ? { priceAed: program.price_aed * 100, currency: 'AED' }
+                : {}),
+            })
+          ),
+        }}
+      />
     </main>
   );
 }

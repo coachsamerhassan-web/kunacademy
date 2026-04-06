@@ -86,6 +86,15 @@ export default auth(async function middleware(request) {
     }
   }
 
+  // Coach route protection
+  if (withoutLocale.startsWith('/coach')) {
+    const role = (session.user as any).role as string | undefined;
+    const coachConfirmed = role === 'coach' || role === 'admin' || role === 'super_admin';
+    if (!coachConfirmed) {
+      return NextResponse.redirect(new URL(`/${locale}/dashboard`, request.url));
+    }
+  }
+
   return response;
 }) as any;
 

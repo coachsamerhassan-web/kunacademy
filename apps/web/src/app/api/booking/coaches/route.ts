@@ -31,6 +31,7 @@ export async function GET(request: NextRequest) {
         title_en: instructors.title_en,
         photo_url: instructors.photo_url,
         coach_level: instructors.coach_level,
+        kun_level: instructors.kun_level,
         specialties: instructors.specialties,
       })
       .from(instructors)
@@ -50,6 +51,7 @@ export async function GET(request: NextRequest) {
           title_en: inst.title_en,
           photo_url: inst.photo_url,
           coach_level: inst.coach_level,
+          kun_level: inst.kun_level,
           specialties: inst.specialties,
         };
       })

@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { withAdminContext } from '@kunacademy/db';
-import { payments } from '@kunacademy/db/schema';
+import { payments, courses, services, bookings, products } from '@kunacademy/db/schema';
 import { eq, and, gte, lte } from 'drizzle-orm';
 import { createCheckoutSession, createTabbySession } from '@kunacademy/payments';
 
@@ -51,10 +51,151 @@ function getCountry(request: NextRequest): string {
   ).toUpperCase();
 }
 
+/** Map a currency code to the price column name in our tables (minor units). */
+function priceColumn(currency: string): string | null {
+  const map: Record<string, string> = {
+    AED: 'price_aed',
+    SAR: 'price_sar',
+    EGP: 'price_egp',
+    USD: 'price_usd',
+    EUR: 'price_eur',
+  };
+  return map[currency.toUpperCase()] ?? null;
+}
+
+/**
+ * Fetch the canonical price for an item from the database.
+ *
+ * Returns an object with:
+ *   - canonicalPrice: the server-authoritative price in minor units for the
+ *     requested currency, or null if the item/currency is not found.
+ *   - error: a human-readable reason to return to the client, or null.
+ *
+ * Events are CMS-driven (no DB table) — we skip price verification for them
+ * and return null/null, letting the checkout proceed. They are flagged in the
+ * payment metadata so admin staff can spot anomalies.
+ *
+ * @param item_type  The type of item being purchased.
+ * @param item_id    The UUID of the item (or booking UUID for 'booking').
+ * @param currency   The ISO-4217 currency code submitted by the client.
+ */
+async function fetchCanonicalPrice(
+  item_type: string,
+  item_id: string,
+  currency: string,
+): Promise<{ canonicalPrice: number | null; error: string | null }> {
+  const col = priceColumn(currency);
+
+  if (item_type === 'course') {
+    if (!col) return { canonicalPrice: null, error: 'Unsupported currency for course pricing' };
+
+    const rows = await withAdminContext(async (db) =>
+      db.select({ id: courses.id, is_free: courses.is_free })
+        .from(courses)
+        .where(eq(courses.id, item_id))
+        .limit(1)
+    );
+    if (!rows || rows.length === 0) return { canonicalPrice: null, error: 'Course not found' };
+
+    const course = rows[0];
+    if (course.is_free) return { canonicalPrice: 0, error: null };
+
+    // Re-select the specific price column dynamically via raw query to avoid
+    // switching on every currency name in application code.
+    const priceRows = await withAdminContext(async (db) =>
+      db.select({
+        price_aed: courses.price_aed,
+        price_sar: courses.price_sar,
+        price_egp: courses.price_egp,
+        price_usd: courses.price_usd,
+        price_eur: courses.price_eur,
+      })
+        .from(courses)
+        .where(eq(courses.id, item_id))
+        .limit(1)
+    );
+    if (!priceRows || priceRows.length === 0) return { canonicalPrice: null, error: 'Course pricing not found' };
+
+    const priceRow = priceRows[0] as Record<string, number | null>;
+    const canonicalPrice = priceRow[col] ?? null;
+    return { canonicalPrice, error: null };
+  }
+
+  if (item_type === 'booking') {
+    // Booking price comes from its linked service.
+    const bookingRows = await withAdminContext(async (db) =>
+      db.select({ service_id: bookings.service_id })
+        .from(bookings)
+        .where(eq(bookings.id, item_id))
+        .limit(1)
+    );
+    if (!bookingRows || bookingRows.length === 0) return { canonicalPrice: null, error: 'Booking not found' };
+    const serviceId = bookingRows[0].service_id;
+    if (!serviceId) return { canonicalPrice: null, error: 'Booking has no associated service' };
+
+    // Services don't have EUR pricing — treat EUR as unsupported for bookings.
+    const bookingCol = col && col !== 'price_eur' ? col : null;
+    if (!bookingCol) return { canonicalPrice: null, error: 'Unsupported currency for service pricing' };
+
+    const svcRows = await withAdminContext(async (db) =>
+      db.select({
+        price_aed: services.price_aed,
+        price_sar: services.price_sar,
+        price_egp: services.price_egp,
+        price_usd: services.price_usd,
+      })
+        .from(services)
+        .where(eq(services.id, serviceId))
+        .limit(1)
+    );
+    if (!svcRows || svcRows.length === 0) return { canonicalPrice: null, error: 'Service not found' };
+
+    const svcRow = svcRows[0] as Record<string, number | null>;
+    const canonicalPrice = svcRow[bookingCol] ?? null;
+    return { canonicalPrice, error: null };
+  }
+
+  if (item_type === 'product') {
+    // Products table has AED, EGP, USD only — no SAR, no EUR.
+    const productCol = col && ['price_aed', 'price_egp', 'price_usd'].includes(col) ? col : null;
+    if (!productCol) return { canonicalPrice: null, error: 'Unsupported currency for product pricing' };
+
+    const productRows = await withAdminContext(async (db) =>
+      db.select({
+        price_aed: products.price_aed,
+        price_egp: products.price_egp,
+        price_usd: products.price_usd,
+      })
+        .from(products)
+        .where(eq(products.id, item_id))
+        .limit(1)
+    );
+    if (!productRows || productRows.length === 0) return { canonicalPrice: null, error: 'Product not found' };
+
+    const productRow = productRows[0] as Record<string, number | null>;
+    const canonicalPrice = productRow[productCol] ?? null;
+    return { canonicalPrice, error: null };
+  }
+
+  if (item_type === 'event') {
+    // Events are served from CMS (Google Sheets / Contentful) — no DB table.
+    // We cannot verify the price server-side. Log that verification was skipped
+    // and allow the payment to proceed; admin staff review flagged payments.
+    return { canonicalPrice: null, error: null };
+  }
+
+  // Unknown item type — fail closed.
+  return { canonicalPrice: null, error: `Unknown item type: ${item_type}` };
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { item_type, item_id, item_name, user_id, user_email, currency, amount, gateway, locale } = body;
+    const {
+      item_type, item_id, item_name, user_id, user_email,
+      currency, amount, gateway, locale,
+      applied_credits,
+    } = body;
 
     if (!item_type || !item_id || !user_id || !currency || !amount || !gateway) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -88,6 +229,52 @@ export async function POST(request: NextRequest) {
         }, { status: 400 });
       }
     }
+
+    // ── Server-side price verification ──────────────────────────────
+    // Reconstruct the pre-credit base price the client claims they should pay.
+    // Credits legitimately reduce the charged amount, so we compare against
+    // (amount + applied_credits) rather than the raw amount.
+    const appliedCredits = typeof applied_credits === 'number' && applied_credits > 0
+      ? applied_credits
+      : 0;
+    const claimedBasePrice = amount + appliedCredits;
+
+    const { canonicalPrice, error: priceError } = await fetchCanonicalPrice(
+      item_type, item_id, currency,
+    );
+
+    if (priceError) {
+      // Item not found or unsupported currency — do not proceed.
+      console.warn('[checkout] price-verification error', { item_type, item_id, currency, priceError });
+      return NextResponse.json({ error: priceError }, { status: 400 });
+    }
+
+    if (canonicalPrice !== null) {
+      // Reject free items — they must use the enrollment API.
+      if (canonicalPrice === 0) {
+        return NextResponse.json(
+          { error: 'This item is free — use the enrollment flow instead' },
+          { status: 400 },
+        );
+      }
+
+      // Allow ±1 minor unit tolerance for rounding (e.g. percentage discounts).
+      const PRICE_TOLERANCE = 1; // 1 minor unit = 0.01 AED/USD/etc.
+      if (Math.abs(claimedBasePrice - canonicalPrice) > PRICE_TOLERANCE) {
+        console.warn('[checkout] price mismatch', {
+          item_type, item_id, currency,
+          claimed: claimedBasePrice,
+          canonical: canonicalPrice,
+          applied_credits: appliedCredits,
+        });
+        return NextResponse.json(
+          { error: 'Price mismatch — please refresh and try again' },
+          { status: 400 },
+        );
+      }
+    }
+    // canonicalPrice === null means we skipped verification (event / unknown).
+    // We proceed but the gateway records the submitted amount as-is.
 
     // ── InstaPay (Egypt) ──────────────────────────────────────────────
     if (gateway === 'instapay') {

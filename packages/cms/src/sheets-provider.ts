@@ -5,6 +5,8 @@
 // Requires: GOOGLE_SHEETS_API_KEY env var (read-only, no OAuth needed)
 // Sheets must be shared as "Anyone with the link can view"
 
+import { readFile } from 'fs/promises';
+import { join } from 'path';
 import type { ContentProvider } from './content-provider';
 import type {
   PageContent,
@@ -57,7 +59,7 @@ async function fetchSheetRows<T>(
   sheetName: string,
   apiKey: string
 ): Promise<T[]> {
-  const url = `${SHEETS_API_BASE}/${spreadsheetId}/values/${encodeURIComponent(sheetName)}?key=${apiKey}`;
+  const url = `${SHEETS_API_BASE}/${spreadsheetId}/values/${encodeURIComponent(sheetName)}?key=${apiKey}&valueRenderOption=FORMATTED_VALUE`;
   // Next.js extends RequestInit with `next` option for ISR revalidation.
   // Cast to avoid TS error in non-Next environments.
   const res = await fetch(url, {
@@ -132,7 +134,8 @@ function isArrayColumn(header: string): boolean {
 // ── Program Logo Defaults (code assets, not CMS content) ────────────────────
 
 const PROGRAM_LOGO_MAP: Record<string, string> = {
-  'somatic-thinking-intro': '/images/programs/logos/stic.png',
+  // STCE family
+  'somatic-thinking-intro': '/images/programs/logos/somatic-thinking-methodology.png',
   'stce-level-1-stic': '/images/programs/logos/stic.png',
   'your-identity': '/images/programs/logos/stic.png',
   'stce-level-2-staic': '/images/programs/logos/staic.png',
@@ -141,13 +144,27 @@ const PROGRAM_LOGO_MAP: Record<string, string> = {
   'stce-level-5-stfc': '/images/programs/logos/stfc.png',
   'stdc-doctors': '/images/programs/logos/stdc.png',
   'stcm-managers': '/images/programs/logos/stcm.png',
+  // Manhajak family
   'menhajak-training': '/images/programs/logos/manhajak-dark.png',
   'menhajak-organizational': '/images/programs/logos/manhajak-dark.png',
   'menhajak-leadership': '/images/programs/logos/manhajak-dark.png',
+  // Impact Engineering family
   'impact-engineering': '/images/programs/logos/impact-eng-white.png',
+  'impact-engineering-foundation': '/images/programs/logos/impact-eng-white.png',
+  'impact-engineering-mastery': '/images/programs/logos/impact-eng-white.png',
+  // GM Playbook family
   'gm-playbook-briefing': '/images/programs/logos/gm-milestone-1-briefing.png',
   'gm-playbook-foundation': '/images/programs/logos/gm-milestone-2-foundation.png',
   'gm-playbook-mastery': '/images/programs/logos/gm-milestone-3-mastery.png',
+  // Ihya
+  'ihya-reviving-the-self': '/images/programs/logos/ihya-main-white.png',
+  // GPS of Life family
+  'gps-of-life': '/images/programs/logos/gps-life-main.png',
+  'gps': '/images/programs/logos/gps-life-main.png',
+  'gps-accelerator': '/images/programs/logos/gps-life-main.png',
+  'gps-professional': '/images/programs/logos/gps-life-main.png',
+  // Yaqatha
+  'yaqatha': '/images/programs/logos/yaqatha-gradient.svg',
 };
 
 // ── Program Hero Image Defaults (reusing existing site assets) ───────────────
@@ -331,6 +348,27 @@ export class GoogleSheetsProvider implements ContentProvider {
   // ── Sheet 6: Pathfinder ─────────────────────────────────────────────
 
   private async loadPathfinder(): Promise<PathfinderQuestion[]> {
+    // P0 fix: Google Sheets has corrupted Arabic text for the Pathfinder tab.
+    // Prefer the local JSON file (committed to the repo) over Sheets data for
+    // this tab specifically. The JSON is the source of truth until the Sheets
+    // encoding is repaired. Works in both local dev and on VPS because the file
+    // is part of the repository/build at data/cms/pathfinder.json.
+    const localJsonPath = join(process.cwd(), 'data', 'cms', 'pathfinder.json');
+    try {
+      const raw = await readFile(localJsonPath, 'utf-8');
+      const rows = JSON.parse(raw) as PathfinderQuestion[];
+      const published = rows.filter((r) => (r as unknown as { published: boolean }).published !== false);
+      console.log(`[cms/sheets] Pathfinder: using local JSON override (${published.length} questions)`);
+      return published.map((row) => ({
+        ...row,
+        answers: Array.isArray(row.answers)
+          ? row.answers
+          : parseAnswersJson(row.answers as unknown as string),
+      }));
+    } catch {
+      console.warn('[cms/sheets] Pathfinder local JSON not found — falling back to Google Sheets');
+    }
+
     const rows = await this.loadSheet<PathfinderQuestion & { answers: string }>('pathfinder');
     return this.published(rows as unknown as (PathfinderQuestion & { published: boolean })[]).map((row) => ({
       ...row,
@@ -364,6 +402,11 @@ export class GoogleSheetsProvider implements ContentProvider {
   async getFeaturedTestimonials(): Promise<Testimonial[]> {
     const all = await this.getAllTestimonials();
     return all.filter((t) => t.is_featured);
+  }
+
+  async getTestimonialsByCoach(coachSlug: string): Promise<Testimonial[]> {
+    const all = await this.getAllTestimonials();
+    return all.filter((t) => t.coach_slug === coachSlug);
   }
 
   // ── Quotes ─────────────────────────────────────────────────────────

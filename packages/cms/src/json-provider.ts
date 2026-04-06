@@ -29,7 +29,8 @@ function csvToArray(value: string | undefined): string[] {
 // ── Program Logo Defaults (code assets, not CMS content) ────────────────────
 
 const PROGRAM_LOGO_MAP: Record<string, string> = {
-  'somatic-thinking-intro': '/images/programs/logos/stic.png',
+  // STCE family
+  'somatic-thinking-intro': '/images/programs/logos/somatic-thinking-methodology.png',
   'stce-level-1-stic': '/images/programs/logos/stic.png',
   'your-identity': '/images/programs/logos/stic.png',
   'stce-level-2-staic': '/images/programs/logos/staic.png',
@@ -38,19 +39,54 @@ const PROGRAM_LOGO_MAP: Record<string, string> = {
   'stce-level-5-stfc': '/images/programs/logos/stfc.png',
   'stdc-doctors': '/images/programs/logos/stdc.png',
   'stcm-managers': '/images/programs/logos/stcm.png',
+  // Manhajak family
   'menhajak-training': '/images/programs/logos/manhajak-dark.png',
   'menhajak-organizational': '/images/programs/logos/manhajak-dark.png',
   'menhajak-leadership': '/images/programs/logos/manhajak-dark.png',
+  // Impact Engineering family
   'impact-engineering': '/images/programs/logos/impact-eng-white.png',
+  'impact-engineering-foundation': '/images/programs/logos/impact-eng-white.png',
+  'impact-engineering-mastery': '/images/programs/logos/impact-eng-white.png',
+  // GM Playbook family
   'gm-playbook-briefing': '/images/programs/logos/gm-milestone-1-briefing.png',
   'gm-playbook-foundation': '/images/programs/logos/gm-milestone-2-foundation.png',
   'gm-playbook-mastery': '/images/programs/logos/gm-milestone-3-mastery.png',
+  // Ihya
+  'ihya-reviving-the-self': '/images/programs/logos/ihya-main-white.png',
+  // GPS of Life family
+  'gps-of-life': '/images/programs/logos/gps-life-main.png',
+  'gps': '/images/programs/logos/gps-life-main.png',
+  'gps-accelerator': '/images/programs/logos/gps-life-main.png',
+  'gps-professional': '/images/programs/logos/gps-life-main.png',
+  // Yaqatha
+  'yaqatha': '/images/programs/logos/yaqatha-gradient.svg',
 };
 
 const PROGRAM_HERO_MAP: Record<string, string> = {
   'stce-level-3-stgc': '/images/community/hands-circle-gulf.jpg',
   'mcc-mentoring': '/images/founder/samer-podcast-smile-warm-light.jpg',
   'menhajak-training': '/images/founder/samer-workshop-candid-thumbsup.jpg',
+};
+
+// ── Event Image Fallbacks (by program_slug → first content image) ────────────
+// Used when an event has no image_url but links to a known program.
+// Maps program slug → first content image for that program.
+const EVENT_IMAGE_BY_PROGRAM: Record<string, string> = {
+  'somatic-thinking-intro':   '/images/programs/content/somatic-thinking-intro--01-stone-doorway.png',
+  'stce-level-1-stic':        '/images/programs/content/stce-level-1-stic--01-coaching-room-presence.png',
+  'your-identity':            '/images/programs/content/your-identity--01-coach-client-profile.png',
+  'stce-level-2-staic':       '/images/programs/content/stce-level-2-staic--01-terrace-dusk.png',
+  'stce-level-3-stgc':        '/images/programs/content/stce-level-3-stgc--01-coaching-circle.png',
+  'stce-level-4-stoc':        '/images/programs/content/stce-level-4-stoc--01-executive-office.png',
+  'stce-level-5-stfc':        '/images/programs/content/stce-level-5-stfc--01-couple-couch.png',
+  'menhajak-training':        '/images/programs/content/menhajak-training--01-empty-seminar-room.png',
+  'menhajak-organizational':  '/images/programs/content/menhajak-organizational--01-institutional-corridor.png',
+  'menhajak-leadership':      '/images/programs/content/menhajak-leadership--01-founder-at-window.png',
+  'impact-engineering':       '/images/programs/content/impact-engineering--01-split-moment-diptych.png',
+  'gm-playbook-briefing':     '/images/programs/content/gm-playbook-briefing--01-leader-phone.png',
+  'gps-of-life':              '/images/programs/content/gps-of-life--01-cairo-crossroads.png',
+  'ihya-reviving-the-self':   '/images/programs/content/ihya-reviving-the-self--01-car-night-recognition.png',
+  'mcc-mentoring':            '/images/programs/content/mcc-mentoring--01-master-apprentice-chiaroscuro.png',
 };
 
 export class JsonFileProvider implements ContentProvider {
@@ -281,6 +317,10 @@ export class JsonFileProvider implements ContentProvider {
     return [];
   }
 
+  async getTestimonialsByCoach(_coachSlug: string): Promise<Testimonial[]> {
+    return [];
+  }
+
   async getAllQuotes(): Promise<Quote[]> {
     const rows = await this.loadSheet<Quote>('quotes');
     return rows
@@ -293,9 +333,20 @@ export class JsonFileProvider implements ContentProvider {
     return all.filter((q) => q.category === category);
   }
 
+  private normalizeEvent(e: import('./types').Event): import('./types').Event {
+    // Resolve image_url: use CMS value if present, otherwise fall back to
+    // the program's first content image (if the event links to a program).
+    const image_url =
+      e.image_url ||
+      (e.program_slug ? (EVENT_IMAGE_BY_PROGRAM[e.program_slug] ?? '') : '');
+    return { ...e, image_url };
+  }
+
   async getAllEvents(): Promise<import('./types').Event[]> {
     const rows = await this.loadSheet<import('./types').Event>('events');
-    return rows.filter((e) => e.published !== false);
+    return rows
+      .filter((e) => e.published !== false)
+      .map((e) => this.normalizeEvent(e));
   }
 
   async getUpcomingEvents(): Promise<import('./types').Event[]> {

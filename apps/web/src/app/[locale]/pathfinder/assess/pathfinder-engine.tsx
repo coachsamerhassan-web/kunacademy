@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import type { PathfinderQuestion, PathfinderAnswer, LightReport } from '@kunacademy/cms';
 import { scoreAnswersLight } from '@kunacademy/cms';
@@ -120,13 +120,18 @@ export function PathfinderEngine({ locale, questions, corporateBenefits }: Props
 
   // ── Transition helper ──────────────────────────────────────────────────────
 
+  // useTransition avoids React 19 dev-mode Performance.measure errors
+  // that occurred when setTimeout interleaved with concurrent fiber updates
+  const [, startTransition] = useTransition();
   const animateTransition = useCallback((callback: () => void) => {
     setIsAnimating(true);
     setTimeout(() => {
-      callback();
-      setIsAnimating(false);
+      startTransition(() => {
+        callback();
+        setIsAnimating(false);
+      });
     }, 250);
-  }, []);
+  }, [startTransition]);
 
   // ── Step handlers ──────────────────────────────────────────────────────────
 

@@ -743,22 +743,158 @@ export default async function MethodologyPage({ params }: { params: Promise<{ lo
             )}
           </div>
 
-          {/* Visual intervention point highlight */}
-          <div
-            className="rounded-2xl p-6 flex items-start gap-4"
-            style={{ background: 'linear-gradient(135deg, var(--color-primary) 0%, #1D1A3D 100%)' }}
-          >
-            <div className="shrink-0 flex h-10 w-10 items-center justify-center rounded-full bg-[var(--color-accent)] text-white text-lg">
-              ↓
+          {/* SVG Circular Flow Diagram */}
+          <div className="mt-10 mb-2">
+            <p className="text-center text-xs font-semibold tracking-[0.15em] uppercase text-[var(--color-neutral-400)] mb-8" style={{ fontFamily: bodyFont }}>
+              {isAr ? 'الدورة تتكرّر باستمرار' : 'The cycle repeats continuously'}
+            </p>
+            {/* Responsive wrapper — fixed 360×360 viewBox, scales to container */}
+            <div className="mx-auto w-full max-w-[360px]">
+              <svg
+                viewBox="0 0 360 360"
+                width="100%"
+                height="100%"
+                aria-label={isAr ? 'مخطط دورة التفاعل الإنساني الدائري' : 'Human Interaction Cycle circular diagram'}
+                role="img"
+              >
+                {/* ── Definitions ── */}
+                <defs>
+                  {/* Circular path for the arrow ring — clockwise */}
+                  <path id="cicCW" d="M180,180 m-130,0 a130,130 0 1,1 0,0.001" fill="none" />
+                  {/* Arrow marker */}
+                  <marker id="arrowCW" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+                    <path d="M0,0 L0,6 L6,3 z" fill="var(--color-primary)" opacity="0.45" />
+                  </marker>
+                  {/* Glow filter for the highlighted node */}
+                  <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+                    <feGaussianBlur stdDeviation="4" result="blur" />
+                    <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+                  </filter>
+                </defs>
+
+                {/* ── Dashed ring ── */}
+                <circle cx="180" cy="180" r="130" fill="none" stroke="var(--color-primary)" strokeWidth="1.5" strokeDasharray="6 6" opacity="0.25" />
+
+                {/* ── Rotating arrow dashes (visual motion cue) ── */}
+                <circle cx="180" cy="180" r="130" fill="none" stroke="var(--color-primary)" strokeWidth="2" strokeDasharray="18 222" strokeLinecap="round" opacity="0.5" markerEnd="url(#arrowCW)" />
+
+                {/*
+                  Nodes are placed at equal angles around the circle (72° apart).
+                  Order (clockwise from top): Actions(270°), Sensations(342°), Feelings(54°), Thoughts(126°), Becoming(198°)
+                  x = 180 + 130·cos(θ), y = 180 + 130·sin(θ)   [θ in radians, 0 = right]
+                  Actions    θ = -90°  → x=180,   y=50
+                  Sensations θ = -18°  → x=303.7, y=139.8
+                  Feelings   θ =  54°  → x=256.5, y=285.2
+                  Thoughts   θ = 126°  → x=103.5, y=285.2
+                  Becoming   θ = 198°  → x=56.3,  y=139.8
+                */}
+
+                {/* ── Node connector lines ── */}
+                {[
+                  [180, 50, 303.7, 139.8],
+                  [303.7, 139.8, 256.5, 285.2],
+                  [256.5, 285.2, 103.5, 285.2],
+                  [103.5, 285.2, 56.3, 139.8],
+                  [56.3, 139.8, 180, 50],
+                ].map(([x1, y1, x2, y2], i) => (
+                  <line key={i} x1={x1} y1={y1} x2={x2} y2={y2}
+                    stroke="var(--color-primary)" strokeWidth="1" opacity="0.08" />
+                ))}
+
+                {/* ── NODES ── */}
+
+                {/* 1. Actions (top) — standard */}
+                <g>
+                  <circle cx="180" cy="50" r="36" fill="var(--color-primary)" opacity="0.9" />
+                  <text x="180" y="46" textAnchor="middle" dominantBaseline="middle"
+                    fill="white" fontSize="11" fontWeight="700" fontFamily="inherit">
+                    {isAr ? 'أفعال' : 'Actions'}
+                  </text>
+                  <text x="180" y="59" textAnchor="middle" dominantBaseline="middle"
+                    fill="rgba(255,255,255,0.65)" fontSize="8.5" fontFamily="inherit">
+                    {isAr ? 'Actions' : 'أفعال'}
+                  </text>
+                </g>
+
+                {/* 2. Sensations (top-right) — HIGHLIGHTED as intervention point */}
+                <g filter="url(#glow)">
+                  <circle cx="303.7" cy="139.8" r="40" fill="var(--color-accent)" />
+                  {/* Outer ring to mark as special */}
+                  <circle cx="303.7" cy="139.8" r="44" fill="none" stroke="var(--color-accent)" strokeWidth="2" opacity="0.4" />
+                  <text x="303.7" y="134" textAnchor="middle" dominantBaseline="middle"
+                    fill="white" fontSize="10.5" fontWeight="700" fontFamily="inherit">
+                    {isAr ? 'أحاسيس' : 'Sensations'}
+                  </text>
+                  <text x="303.7" y="146" textAnchor="middle" dominantBaseline="middle"
+                    fill="rgba(255,255,255,0.7)" fontSize="8" fontFamily="inherit">
+                    {isAr ? 'Sensations' : 'أحاسيس'}
+                  </text>
+                </g>
+
+                {/* 3. Feelings (bottom-right) — standard */}
+                <g>
+                  <circle cx="256.5" cy="285.2" r="36" fill="#6A5FF0" opacity="0.9" />
+                  <text x="256.5" y="281" textAnchor="middle" dominantBaseline="middle"
+                    fill="white" fontSize="11" fontWeight="700" fontFamily="inherit">
+                    {isAr ? 'مشاعر' : 'Feelings'}
+                  </text>
+                  <text x="256.5" y="293" textAnchor="middle" dominantBaseline="middle"
+                    fill="rgba(255,255,255,0.65)" fontSize="8.5" fontFamily="inherit">
+                    {isAr ? 'Feelings' : 'مشاعر'}
+                  </text>
+                </g>
+
+                {/* 4. Thoughts (bottom-left) — standard */}
+                <g>
+                  <circle cx="103.5" cy="285.2" r="36" fill="#8B5CF6" opacity="0.9" />
+                  <text x="103.5" y="281" textAnchor="middle" dominantBaseline="middle"
+                    fill="white" fontSize="11" fontWeight="700" fontFamily="inherit">
+                    {isAr ? 'أفكار' : 'Thoughts'}
+                  </text>
+                  <text x="103.5" y="293" textAnchor="middle" dominantBaseline="middle"
+                    fill="rgba(255,255,255,0.65)" fontSize="8.5" fontFamily="inherit">
+                    {isAr ? 'Thoughts' : 'أفكار'}
+                  </text>
+                </g>
+
+                {/* 5. Becoming (top-left) — standard */}
+                <g>
+                  <circle cx="56.3" cy="139.8" r="36" fill="var(--color-primary)" opacity="0.75" />
+                  <text x="56.3" y="135" textAnchor="middle" dominantBaseline="middle"
+                    fill="white" fontSize="11" fontWeight="700" fontFamily="inherit">
+                    {isAr ? 'صيرورة' : 'Becoming'}
+                  </text>
+                  <text x="56.3" y="147" textAnchor="middle" dominantBaseline="middle"
+                    fill="rgba(255,255,255,0.65)" fontSize="8.5" fontFamily="inherit">
+                    {isAr ? 'Becoming' : 'صيرورة'}
+                  </text>
+                </g>
+
+                {/* ── Centre label ── */}
+                <text x="180" y="174" textAnchor="middle" dominantBaseline="middle"
+                  fill="var(--color-primary)" fontSize="9" fontWeight="600" fontFamily="inherit" opacity="0.6">
+                  {isAr ? 'دورة التفاعل' : 'Human Interaction'}
+                </text>
+                <text x="180" y="187" textAnchor="middle" dominantBaseline="middle"
+                  fill="var(--color-primary)" fontSize="9" fontWeight="600" fontFamily="inherit" opacity="0.6">
+                  {isAr ? 'الإنساني' : 'Cycle'}
+                </text>
+              </svg>
             </div>
-            <div>
-              <p className="text-white font-semibold mb-1" style={{ fontFamily: headingFont }}>
-                {isAr ? 'نقطة التدخّل' : 'The Intervention Point'}
-              </p>
-              <p className="text-white/75 text-sm leading-relaxed" style={{ fontFamily: bodyFont }}>
+
+            {/* Legend — intervention point callout */}
+            <div className="mt-6 mx-auto max-w-sm flex items-start gap-3 rounded-xl px-4 py-3"
+              style={{ background: 'linear-gradient(135deg, rgba(71,64,153,0.08) 0%, rgba(212,168,83,0.08) 100%)', border: '1px solid rgba(212,168,83,0.25)' }}>
+              <span className="shrink-0 inline-flex h-5 w-5 items-center justify-center rounded-full text-white text-[10px] font-bold mt-0.5"
+                style={{ background: 'var(--color-accent)' }}>↓</span>
+              <p className="text-[var(--color-neutral-700)] text-sm leading-relaxed" style={{ fontFamily: bodyFont }}>
+                <strong className="text-[var(--text-primary)]">
+                  {isAr ? 'نقطة التدخّل: الأحاسيس' : 'Intervention point: Sensations'}
+                </strong>
+                {' — '}
                 {isAr
-                  ? 'بينما الكوتشينج التقليدي يتدخّل عند مستوى الأفكار، التفكير الحسّي يتدخّل أبكر — عند مستوى الأحاسيس. هذا هو الفارق الجوهري.'
-                  : 'While traditional coaching intervenes at the level of thoughts, Somatic Thinking intervenes earlier — at the level of sensations. This is the fundamental difference.'}
+                  ? 'بينما الكوتشينج التقليدي يتدخّل عند الأفكار، التفكير الحسّي يتدخّل أبكر — عند الإحساس الجسدي. هذا هو الفارق الجوهري.'
+                  : 'While traditional coaching intervenes at the level of thoughts, Somatic Thinking intervenes earlier — at the level of physical sensation. This is the fundamental difference.'}
               </p>
             </div>
           </div>
@@ -862,81 +998,112 @@ export default async function MethodologyPage({ params }: { params: Promise<{ lo
 
       {/* ═══════════════════════════════════════
           SECTION 10 — WHAT DISTINGUISHES ST
+          Comparison cards: "Others" vs "We"
       ═══════════════════════════════════════ */}
       <Section variant="white">
-        <div className="max-w-3xl mx-auto">
-          <p className="text-xs font-semibold tracking-[0.18em] uppercase text-[var(--color-accent)] mb-3">
-            {isAr ? 'التمييز' : 'Distinction'}
-          </p>
-          <h2
-            className="text-2xl md:text-3xl font-bold text-[var(--text-primary)] mb-10"
-            style={{ fontFamily: headingFont }}
-          >
-            {isAr ? 'ما الذي يميّز التفكير الحسّي؟' : 'What Distinguishes Somatic Thinking?'}
-          </h2>
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center mb-12">
+            <p className="text-xs font-semibold tracking-[0.18em] uppercase text-[var(--color-accent)] mb-3">
+              {isAr ? 'التمييز' : 'Distinction'}
+            </p>
+            <h2
+              className="text-2xl md:text-3xl font-bold text-[var(--text-primary)]"
+              style={{ fontFamily: headingFont }}
+            >
+              {isAr ? 'ما الذي يميّز التفكير الحسّي؟' : 'What Distinguishes Somatic Thinking?'}
+            </h2>
+          </div>
 
-          <div className="space-y-6">
+          <div className="space-y-5">
             {(isAr ? [
               {
-                title: 'ليس الكوتشينج الجسدي الغربي',
-                body: 'التفكير الحسّي® منهجية مستقلة — ليس ترجمة أو تكييفًا أو فرعًا من أي منهج سوماتيكي غربي. نشأ من تربة ثقافية مختلفة، بجذور فلسفية مختلفة، ويصل إلى الحضور عبر مسار مختلف.',
+                others: 'مناهج سوماتيكية غربية — ترجمات أو تكييفات من تقاليد غربية.',
+                we: 'منهجية مستقلة نشأت من تربة ثقافية مختلفة، بجذور فلسفية مختلفة، تصل إلى الحضور عبر مسار مختلف.',
               },
               {
-                title: 'لا يستخدم لغة «الطاقة»',
-                body: 'نستخدم مصطلح «إشارات حسّية جسدية» — لأن العلم يؤكّد أن الجسد يُرسل بيانات قابلة للقراءة والقياس. نتجنّب مصطلحات مثل «الطاقة» و«الشاكرات» و«الذبذبات» التي تطمس الحدود بين الكوتشينج وممارسات خارج نطاقنا.',
+                others: 'يستخدمون لغة «الطاقة» و«الشاكرات» و«الذبذبات».',
+                we: 'نستخدم «إشارات حسّية جسدية» — بيانات قابلة للقراءة والقياس يؤكّدها العلم.',
               },
               {
-                title: 'يتحدّث مع الجسد، لا عنه',
-                body: 'كثير من المنهجيات تصف دور الجسد فكرياً. التفكير الحسّي يُشرك الجسد مباشرة — كل جلسة، كل تمرين، كل لحظة تعلّم تبدأ بتجربة جسدية حقيقية. الفهم يتبع؛ لا يقود.',
+                others: 'يتحدّثون عن الجسد فكرياً — يصفون دوره بالنظرية.',
+                we: 'نتحدّث مع الجسد مباشرة — كل جلسة تبدأ بتجربة جسدية حقيقية. الفهم يتبع؛ لا يقود.',
               },
               {
-                title: 'مبني على فلسفة توحيدية',
-                body: 'الإنسان كيان واحد متكامل — الجسد والعقل والنَّفْس ليسوا أنظمة منفصلة تُدار، بل أبعاد لكلّ واحد يُختبر. هذا الأساس الفلسفي يجعل المنهجية متوافقة بشكل طبيعي مع الرؤى الإسلامية والروحانية والعلمانية على حد سواء.',
+                others: 'يعتبرون الجسد والعقل والنَّفْس أنظمة منفصلة تُدار.',
+                we: 'فلسفة توحيدية: الإنسان كيان واحد متكامل — أبعاد لكلّ واحد يُختبر. متوافق مع جميع الرؤى.',
               },
               {
-                title: 'يرى الكوتشينج طريقة حياة، لا مهنة',
-                body: 'بالنسبة لنا، الكوتشينج ليس ما تفعله — بل من تكون حين تكون حاضرًا كلياً. هذا التمييز يُشكّل كل شيء: كيف ندرّب الكوتشز، كيف نقيس النمو، وما نؤمن أنه يجعل الكوتشينج يستحق العمل.',
+                others: 'يرون الكوتشينج مهنة — أدوات وتقنيات تُطبَّق.',
+                we: 'نرى الكوتشينج طريقة حياة — من تكون حين تكون حاضرًا كلياً. هذا يُشكّل كل شيء.',
               },
             ] : [
               {
-                title: 'It is not Western Somatic Coaching',
-                body: 'Somatic Thinking® is an independent methodology — not a translation, adaptation, or branch of any Western somatic approach. It emerged from a different cultural soil, with different philosophical roots, and arrives at presence through a different path.',
+                others: 'Western somatic approaches — translations or adaptations of Western traditions.',
+                we: 'An independent methodology from different cultural soil, with different philosophical roots, arriving at presence through a different path.',
               },
               {
-                title: 'It does not use the language of "energy"',
-                body: 'We use the term "somatic signals" (إشارات حسّية جسدية) — because science confirms the body sends readable, measurable data. We avoid terms like "energy," "chakras," or "vibrations" that blur the line between coaching and practices that fall outside our scope.',
+                others: 'Use the language of "energy," "chakras," and "vibrations."',
+                we: 'We use "somatic signals" — readable, measurable data confirmed by science.',
               },
               {
-                title: 'It talks with the body, not about it',
-                body: 'Many methodologies describe the body\'s role intellectually. Somatic Thinking engages the body directly — every session, every exercise, every learning moment begins with a real physical experience. The understanding follows; it doesn\'t lead.',
+                others: 'Talk about the body intellectually — describe its role through theory.',
+                we: 'We talk with the body directly — every session begins with a real physical experience. Understanding follows; it doesn\'t lead.',
               },
               {
-                title: 'It is built on a Tawhidi philosophy',
-                body: 'The human being is one integrated entity — body, mind, and self (النَّفْس) are not separate systems to be managed, but dimensions of one whole to be experienced. This philosophical foundation makes the methodology naturally compatible with Islamic, spiritual, and secular worldviews alike.',
+                others: 'Treat body, mind, and self as separate systems to be managed.',
+                we: 'Tawhidi philosophy: the human is one integrated whole — naturally compatible with Islamic, spiritual, and secular worldviews.',
               },
               {
-                title: 'It holds coaching as a way of being, not a profession',
-                body: 'For us, coaching is not what you do — it is who you are when you are fully present. This distinction shapes everything: how we train coaches, how we measure growth, and what we believe makes coaching worth doing.',
+                others: 'See coaching as a profession — tools and techniques to apply.',
+                we: 'We see coaching as a way of being — who you are when fully present. This shapes everything.',
               },
             ]).map((item, i) => (
               <div
                 key={i}
-                className="flex gap-5 rounded-2xl p-6 border border-[var(--color-neutral-200)] hover:border-[var(--color-primary-300)] transition-all duration-300"
-                style={{ background: 'var(--color-surface, #F8F7FC)' }}
+                className="grid grid-cols-1 md:grid-cols-2 rounded-2xl overflow-hidden border border-[var(--color-neutral-200)] hover:shadow-[0_8px_32px_rgba(71,64,153,0.08)] transition-all duration-300"
               >
-                <div
-                  className="shrink-0 flex h-8 w-8 items-center justify-center rounded-full text-white text-sm font-bold"
-                  style={{ background: 'var(--color-primary)' }}
-                >
-                  ✓
+                {/* "Others" side — muted */}
+                <div className="px-6 py-5 md:border-e border-b md:border-b-0 border-[var(--color-neutral-200)]"
+                  style={{ background: 'var(--color-surface, #F8F7FC)' }}>
+                  <div className="flex items-start gap-3">
+                    <span className="shrink-0 mt-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-[var(--color-neutral-300)] text-white text-xs"
+                      aria-hidden="true">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                        <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                      </svg>
+                    </span>
+                    <div>
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--color-neutral-400)] mb-1">
+                        {isAr ? 'مناهج أخرى' : 'Other Approaches'}
+                      </p>
+                      <p className="text-[var(--color-neutral-500)] text-sm leading-relaxed" style={{ fontFamily: bodyFont }}>
+                        {item.others}
+                      </p>
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="font-bold text-[var(--text-primary)] mb-1.5" style={{ fontFamily: headingFont }}>
-                    {item.title}
-                  </h3>
-                  <p className="text-[var(--color-neutral-600)] text-sm leading-relaxed" style={{ fontFamily: bodyFont }}>
-                    {item.body}
-                  </p>
+
+                {/* "We" side — accent/elevated */}
+                <div className="px-6 py-5"
+                  style={{ background: 'linear-gradient(135deg, rgba(71,64,153,0.04) 0%, rgba(212,168,83,0.06) 100%)' }}>
+                  <div className="flex items-start gap-3">
+                    <span className="shrink-0 mt-0.5 flex h-6 w-6 items-center justify-center rounded-full text-white text-xs"
+                      style={{ background: 'var(--color-accent)' }}
+                      aria-hidden="true">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                    </span>
+                    <div>
+                      <p className="text-[10px] font-semibold uppercase tracking-wider mb-1"
+                        style={{ color: 'var(--color-accent)' }}>
+                        {isAr ? 'التفكير الحسّي' : 'Somatic Thinking'}
+                      </p>
+                      <p className="text-[var(--text-primary)] text-sm leading-relaxed font-medium" style={{ fontFamily: bodyFont }}>
+                        {item.we}
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
             ))}
@@ -958,22 +1125,25 @@ export default async function MethodologyPage({ params }: { params: Promise<{ lo
       </section>
 
       {/* ═══════════════════════════════════════
-          SECTION 11 — MULTI-PATHWAY CTA
+          SECTION 11 — BEGIN YOUR EXPERIENCE
+          Multi-pathway CTA with gradient bg
       ═══════════════════════════════════════ */}
       <section
         className="relative overflow-hidden py-20 md:py-28"
         aria-label={isAr ? 'ابدأ تجربتك' : 'Begin Your Experience'}
       >
+        {/* Deep Slate Blue gradient */}
         <div
           className="absolute inset-0"
-          style={{ background: 'linear-gradient(135deg, var(--color-primary) 0%, #1D1A3D 100%)' }}
+          style={{ background: 'linear-gradient(160deg, #1D1A3D 0%, var(--color-primary) 40%, #0D0B1E 100%)' }}
         />
         <GeometricPattern pattern="eight-star" opacity={0.06} fade="both" />
 
         <div className="relative z-10 mx-auto max-w-[var(--max-content-width)] px-4 md:px-8">
+          {/* Header */}
           <div className="text-center mb-14">
             <p className="text-xs font-semibold tracking-[0.18em] uppercase text-[var(--color-accent)] mb-3">
-              {isAr ? 'البداية' : 'Begin'}
+              {isAr ? 'الخطوة التالية' : 'Next Step'}
             </p>
             <h2
               className="text-2xl md:text-3xl font-bold text-white mb-4"
@@ -988,100 +1158,165 @@ export default async function MethodologyPage({ params }: { params: Promise<{ lo
             </p>
           </div>
 
-          {/* Pathway cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 max-w-5xl mx-auto mb-12">
+          {/* Pathway cards — 5 cards: 3 top row, 2 bottom row centred */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 max-w-5xl mx-auto mb-12">
             {(isAr ? [
               {
-                icon: '🎧',
+                icon: (
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
+                  </svg>
+                ),
                 title: '٩٠ دقيقة مع نفسك',
+                subtitle: 'أريد أن أختبره بنفسي',
                 desc: 'تجربة مصغّرة مجانية',
-                href: `/${locale}/courses/90-minutes`,
+                href: `/${locale}/programs/90-minutes`,
                 primary: false,
               },
               {
-                icon: '🎓',
+                icon: (
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M22 10v6M2 10l10-5 10 5-10 5z" /><path d="M6 12v5c0 1.5 3 3 6 3s6-1.5 6-3v-5" />
+                  </svg>
+                ),
                 title: 'برنامج STCE',
+                subtitle: 'أريد أن أصبح كوتش تفكير حسّي',
                 desc: 'معتمد من ICF · ٢٤٠ ساعة',
-                href: `/${locale}/academy/certifications/stce`,
+                href: `/${locale}/programs/certification/stic`,
                 primary: true,
               },
               {
-                icon: '🪞',
+                icon: (
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
+                  </svg>
+                ),
                 title: 'جلسة كوتشينج فردية',
-                desc: 'كوتشينج بمنهج التفكير الحسّي',
-                href: `/${locale}/coaching/individual`,
+                subtitle: 'أريد كوتشينج بهذا المنهج',
+                desc: 'احجز جلسة مع كوتش معتمد',
+                href: `/${locale}/coaching/book`,
                 primary: false,
               },
               {
-                icon: '📚',
+                icon: (
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" /><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+                  </svg>
+                ),
                 title: 'برنامج منهجك',
-                desc: 'عمّق منهجيتك الحالية',
-                href: `/${locale}/academy/certifications/manhajak`,
+                subtitle: 'أريد تعميق منهجيتي الحالية',
+                desc: 'للمدربين والكوتشز',
+                href: `/${locale}/programs/manhajak`,
                 primary: false,
               },
               {
-                icon: '🏢',
+                icon: (
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <rect x="2" y="7" width="20" height="14" rx="2" /><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2" />
+                  </svg>
+                ),
                 title: 'البرامج المؤسسية',
-                desc: 'أدخل التفكير الحسّي لمؤسستك',
-                href: `/${locale}/coaching/corporate`,
+                subtitle: 'أريد إدخال هذا لمؤسستي',
+                desc: 'هندسة الأثر للمؤسسات',
+                href: `/${locale}/programs/impact-engineering`,
                 primary: false,
               },
             ] : [
               {
-                icon: '🎧',
+                icon: (
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
+                  </svg>
+                ),
                 title: '90 Minutes With Yourself',
+                subtitle: 'I want to experience it myself',
                 desc: 'Free micro-experience',
-                href: `/${locale}/courses/90-minutes`,
+                href: `/${locale}/programs/90-minutes`,
                 primary: false,
               },
               {
-                icon: '🎓',
-                title: 'STCE Program',
-                desc: 'ICF-accredited · 240 hours',
-                href: `/${locale}/academy/certifications/stce`,
+                icon: (
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M22 10v6M2 10l10-5 10 5-10 5z" /><path d="M6 12v5c0 1.5 3 3 6 3s6-1.5 6-3v-5" />
+                  </svg>
+                ),
+                title: 'Become a Certified Coach',
+                subtitle: 'I want to become a Somatic Thinking coach',
+                desc: 'STCE Program — ICF-accredited, 240 hours',
+                href: `/${locale}/programs/certification/stic`,
                 primary: true,
               },
               {
-                icon: '🪞',
-                title: 'Individual Coaching Session',
-                desc: 'Coaching with this approach',
-                href: `/${locale}/coaching/individual`,
+                icon: (
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
+                  </svg>
+                ),
+                title: 'Book a Coaching Session',
+                subtitle: 'I want coaching with this approach',
+                desc: 'Individual session with a certified coach',
+                href: `/${locale}/coaching/book`,
                 primary: false,
               },
               {
-                icon: '📚',
-                title: 'Manhajak Program',
-                desc: 'Deepen your existing methodology',
-                href: `/${locale}/academy/certifications/manhajak`,
+                icon: (
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" /><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+                  </svg>
+                ),
+                title: 'Manhajak Training Program',
+                subtitle: 'I want to deepen my existing methodology',
+                desc: 'For trainers and coaches',
+                href: `/${locale}/programs/manhajak`,
                 primary: false,
               },
               {
-                icon: '🏢',
+                icon: (
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <rect x="2" y="7" width="20" height="14" rx="2" /><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2" />
+                  </svg>
+                ),
                 title: 'Corporate Programs',
-                desc: 'Bring this to your organization',
-                href: `/${locale}/coaching/corporate`,
+                subtitle: 'I want to bring this to my organization',
+                desc: 'Impact Engineering for organizations',
+                href: `/${locale}/programs/impact-engineering`,
                 primary: false,
               },
             ]).map((pathway) => (
               <a
                 key={pathway.href}
                 href={pathway.href}
-                className={`group flex items-start gap-4 rounded-2xl p-6 transition-all duration-300 ${
+                className={`group relative flex flex-col rounded-2xl p-6 transition-all duration-300 hover:-translate-y-1 ${
                   pathway.primary
                     ? 'bg-[var(--color-accent)] text-white hover:bg-[#C49A42] shadow-[0_8px_30px_rgba(212,168,83,0.3)]'
-                    : 'bg-white/10 text-white hover:bg-white/20 border border-white/20'
+                    : 'bg-white/[0.07] text-white hover:bg-white/[0.14] border border-white/[0.12] hover:border-white/25 backdrop-blur-sm'
                 }`}
               >
-                <span className="text-2xl shrink-0 mt-0.5">{pathway.icon}</span>
-                <div>
-                  <div className="font-semibold text-sm mb-0.5" style={{ fontFamily: headingFont }}>
-                    {pathway.title}
-                  </div>
-                  <div className={`text-xs ${pathway.primary ? 'text-white/80' : 'text-white/60'}`} style={{ fontFamily: bodyFont }}>
-                    {pathway.desc}
-                  </div>
-                </div>
-                <span className="ms-auto text-lg opacity-60 group-hover:opacity-100 group-hover:translate-x-1 transition-all duration-200">
+                {/* Icon */}
+                <span className={`mb-4 inline-flex h-10 w-10 items-center justify-center rounded-xl ${
+                  pathway.primary ? 'bg-white/20' : 'bg-white/10'
+                }`}>
+                  {pathway.icon}
+                </span>
+
+                {/* Title */}
+                <h3 className="font-bold text-base mb-1" style={{ fontFamily: headingFont }}>
+                  {pathway.title}
+                </h3>
+
+                {/* Subtitle — the "I want to..." line */}
+                <p className={`text-xs italic mb-2 ${pathway.primary ? 'text-white/70' : 'text-white/50'}`} style={{ fontFamily: bodyFont }}>
+                  {pathway.subtitle}
+                </p>
+
+                {/* Description */}
+                <p className={`text-xs mt-auto ${pathway.primary ? 'text-white/80' : 'text-white/60'}`} style={{ fontFamily: bodyFont }}>
+                  {pathway.desc}
+                </p>
+
+                {/* Arrow */}
+                <span className="absolute top-5 end-5 text-lg opacity-40 group-hover:opacity-100 transition-opacity duration-200"
+                  aria-hidden="true">
                   {isAr ? '←' : '→'}
                 </span>
               </a>

@@ -21,15 +21,34 @@ export default async function YaqathaPage({ params }: { params: Promise<{ locale
 
   return (
     <main>
-      <section className="relative overflow-hidden py-16 md:py-24" style={{ background: 'linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-600) 100%)' }}>
+      <section className="relative overflow-hidden py-16 md:py-28" style={{ background: 'linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-600) 100%)' }}>
         <GeometricPattern pattern="flower-of-life" opacity={0.08} fade="both" />
-        <div className="relative z-10 mx-auto max-w-[var(--max-content-width)] px-4 md:px-6 text-center">
-          <h1 className="text-[2.25rem] md:text-[3.5rem] font-bold text-[#FFF5E9] leading-[1.1]" style={{ fontFamily: isAr ? 'var(--font-arabic-heading)' : 'var(--font-english-heading)' }}>
-            {isAr ? 'يقظة — الصحوة' : 'Yaqatha — Awakening'}
-          </h1>
-          <p className="mt-4 text-white/65 max-w-2xl mx-auto text-lg md:text-xl">
-            {isAr ? 'رحلة اكتشاف الذات من خلال التفكير الحسّي — تجربة تحوّلية عميقة' : 'A journey of self-discovery through Somatic Thinking — a deep transformative experience'}
-          </p>
+        <div className="relative z-10 mx-auto max-w-[var(--max-content-width)] px-4 md:px-6 md:flex md:items-center md:gap-12">
+
+          {/* Logo — mobile: centered above title, desktop: side column */}
+          <div className="flex justify-center mb-8 md:mb-0 md:shrink-0 md:order-2">
+            <div className="relative">
+              <div
+                className="absolute inset-0 rounded-full blur-2xl opacity-20"
+                style={{ background: 'radial-gradient(circle, #D4A853 0%, transparent 70%)' }}
+              />
+              <img
+                src="/images/programs/logos/yaqatha-gradient.svg"
+                alt=""
+                className="relative h-40 w-40 md:h-64 md:w-64 object-contain drop-shadow-[0_0_30px_rgba(212,168,83,0.3)]"
+              />
+            </div>
+          </div>
+
+          {/* Text content */}
+          <div className="text-center md:text-start md:flex-1 md:order-1">
+            <h1 className="text-[2.25rem] md:text-[3.5rem] font-bold text-[#FFF5E9] leading-[1.1]" style={{ fontFamily: isAr ? 'var(--font-arabic-heading)' : 'var(--font-english-heading)' }}>
+              {isAr ? 'يقظة — الصحوة' : 'Yaqatha — Awakening'}
+            </h1>
+            <p className="mt-4 text-white/65 max-w-2xl mx-auto md:mx-0 text-lg md:text-xl">
+              {isAr ? 'رحلة اكتشاف الذات من خلال التفكير الحسّي — تجربة تحوّلية عميقة' : 'A journey of self-discovery through Somatic Thinking — a deep transformative experience'}
+            </p>
+          </div>
         </div>
       </section>
 

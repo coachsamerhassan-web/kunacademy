@@ -5,9 +5,9 @@ import { cms, AsyncDocRenderer } from '@kunacademy/cms/server';
 import { Section } from '@kunacademy/ui/section';
 import { GeometricPattern } from '@kunacademy/ui/patterns';
 import { MarkdownContent } from '@/components/markdown-content';
-import { ArrowLeft, ArrowRight, Calendar, MessageCircle } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Calendar, MessageCircle, Quote } from 'lucide-react';
 import type { Metadata } from 'next';
-import type { TeamMember } from '@kunacademy/cms';
+import type { TeamMember, Testimonial } from '@kunacademy/cms';
 
 interface Props {
   params: Promise<{ locale: string; slug: string }>;
@@ -40,45 +40,47 @@ type CoachLevelKey = 'ACC' | 'PCC' | 'MCC' | 'instructor' | 'facilitator' | 'gue
 const LEVEL_META: Record<CoachLevelKey, {
   labelEn: string;
   labelAr: string;
-  sessionPrice: number | null;        // AED — null = contact
-  badgeClasses: string;               // pill badge styling
+  badgeClasses: string;
 }> = {
   ACC: {
     labelEn: 'Associate Certified Coach',
     labelAr: 'مدرّب معتمد مشارك',
-    sessionPrice: 250,
     badgeClasses: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200',
   },
   PCC: {
     labelEn: 'Professional Certified Coach',
     labelAr: 'مدرّب محترف معتمد',
-    sessionPrice: 400,
     badgeClasses: 'bg-blue-50 text-blue-700 ring-1 ring-blue-200',
   },
   MCC: {
     labelEn: 'Master Certified Coach',
     labelAr: 'مدرّب معتمد رئيسي',
-    sessionPrice: 800,
     badgeClasses: 'bg-amber-50 text-amber-700 ring-1 ring-amber-200',
   },
   instructor: {
     labelEn: 'Instructor',
     labelAr: 'مدرّب',
-    sessionPrice: null,
     badgeClasses: 'bg-purple-50 text-purple-700 ring-1 ring-purple-200',
   },
   facilitator: {
     labelEn: 'Facilitator',
     labelAr: 'ميسّر',
-    sessionPrice: null,
     badgeClasses: 'bg-teal-50 text-teal-700 ring-1 ring-teal-200',
   },
   guest: {
     labelEn: 'Guest Coach',
     labelAr: 'كوتش ضيف',
-    sessionPrice: null,
     badgeClasses: 'bg-neutral-100 text-neutral-600 ring-1 ring-neutral-200',
   },
+};
+
+// ── Kun level → session price (AED) & booking service slug ───────────────────
+
+const KUN_LEVEL_PRICE: Record<string, { priceAed: number; serviceSlug: string }> = {
+  basic:        { priceAed: 250,  serviceSlug: 'individual-basic'        },
+  professional: { priceAed: 400,  serviceSlug: 'individual-professional'  },
+  expert:       { priceAed: 600,  serviceSlug: 'individual-expert'        },
+  master:       { priceAed: 800,  serviceSlug: 'individual-master'        },
 };
 
 const KUN_LEVEL_META: Record<string, {
@@ -146,9 +148,10 @@ export default async function CoachProfilePage({ params }: Props) {
   setRequestLocale(locale);
   const isAr = locale === 'ar';
 
-  const [coach, allCoaches] = await Promise.all([
+  const [coach, allCoaches, coachTestimonials] = await Promise.all([
     cms.getTeamMember(slug),
     cms.getBookableCoaches(),
+    cms.getTestimonialsByCoach(slug),
   ]);
   if (!coach) notFound();
 
@@ -158,6 +161,11 @@ export default async function CoachProfilePage({ params }: Props) {
 
   const levelMeta = coach.coach_level
     ? LEVEL_META[coach.coach_level as CoachLevelKey] ?? null
+    : null;
+
+  // Resolve pricing from kun_level (board-approved tiers)
+  const kunLevelPrice = coach.kun_level
+    ? KUN_LEVEL_PRICE[coach.kun_level] ?? null
     : null;
 
   const jsonLd = {
@@ -174,18 +182,23 @@ export default async function CoachProfilePage({ params }: Props) {
   // ── Related coaches ────────────────────────────────────────────────────────
   const relatedCoaches = getRelatedCoaches(allCoaches, coach, 3);
 
-  // ── Services list based on coach level ─────────────────────────────────────
+  // ── Services list based on coach's kun_level (board-approved tiers) ─────────
   interface ServiceItem {
     slug: string;
     labelEn: string;
     labelAr: string;
+    subtextEn?: string;
+    subtextAr?: string;
     priceEn: string;
     priceAr: string;
     durationEn: string;
     durationAr: string;
+    badgeEn?: string;
+    badgeAr?: string;
   }
 
-  const services: ServiceItem[] = [
+  const coachingServices: ServiceItem[] = [
+    // 1. Discovery Session — always shown for bookable coaches
     {
       slug: 'discovery',
       labelEn: 'Discovery Session',
@@ -195,15 +208,32 @@ export default async function CoachProfilePage({ params }: Props) {
       durationEn: '20 min',
       durationAr: '٢٠ دقيقة',
     },
-    ...(levelMeta?.sessionPrice != null
+    // 2. Individual Coaching — only if coach has a kun_level with a known price
+    ...(kunLevelPrice != null
       ? [{
-          slug: 'individual',
+          slug: kunLevelPrice.serviceSlug,
           labelEn: 'Individual Coaching',
           labelAr: 'كوتشينج فردي',
-          priceEn: `${levelMeta.sessionPrice} AED`,
-          priceAr: `${levelMeta.sessionPrice} درهم`,
+          priceEn: `${kunLevelPrice.priceAed} AED`,
+          priceAr: `${kunLevelPrice.priceAed} درهم`,
           durationEn: '60 min',
           durationAr: '٦٠ دقيقة',
+        }]
+      : []),
+    // 3. 3-Session Package — only if coach has a priced tier (15% discount)
+    ...(kunLevelPrice != null
+      ? [{
+          slug: '3-session-package',
+          labelEn: '3-Session Package',
+          labelAr: 'باقة ٣ جلسات',
+          subtextEn: '3 × 60 min',
+          subtextAr: '٣ × ٦٠ دقيقة',
+          priceEn: `${Math.round(kunLevelPrice.priceAed * 3 * 0.85)} AED`,
+          priceAr: `${Math.round(kunLevelPrice.priceAed * 3 * 0.85)} درهم`,
+          durationEn: '3 sessions',
+          durationAr: '٣ جلسات',
+          badgeEn: '15% off',
+          badgeAr: 'خصم ١٥٪',
         }]
       : []),
   ];
@@ -441,8 +471,77 @@ export default async function CoachProfilePage({ params }: Props) {
         </Section>
       )}
 
+      {/* ── Testimonials ──────────────────────────────────────────────────── */}
+      {coachTestimonials.length > 0 && (
+        <Section variant="white">
+          <div className="max-w-3xl mx-auto">
+            <p className="text-xs font-semibold uppercase tracking-[0.15em] text-[var(--color-accent)] mb-3">
+              {isAr ? 'آراء العملاء' : 'Client Testimonials'}
+            </p>
+            <h2
+              className="text-2xl md:text-3xl font-bold text-[var(--text-accent)] mb-8 leading-snug"
+              style={{ fontFamily: isAr ? 'var(--font-arabic-heading)' : 'var(--font-english-heading)' }}
+            >
+              {isAr ? 'ماذا يقول العملاء؟' : 'What Clients Say'}
+            </h2>
+
+            <div className="space-y-5">
+              {coachTestimonials.map((t: Testimonial) => {
+                const clientName = isAr ? t.name_ar : (t.name_en || t.name_ar);
+                const content    = isAr ? t.content_ar : (t.content_en || t.content_ar);
+                const role       = isAr ? t.role_ar : (t.role_en || t.role_ar);
+                const location   = isAr ? t.location_ar : (t.location_en || t.location_ar);
+
+                if (!content) return null;
+
+                return (
+                  <figure
+                    key={t.id}
+                    className="relative rounded-2xl border border-[var(--color-surface-highest)] bg-[var(--color-surface-low)] p-6"
+                  >
+                    {/* Decorative quote mark */}
+                    <Quote
+                      className="absolute top-4 end-4 w-6 h-6 text-[var(--color-primary-100)]"
+                      aria-hidden="true"
+                    />
+
+                    {/* Content */}
+                    <blockquote className="relative">
+                      <p
+                        className="text-[var(--text-secondary)] leading-relaxed text-sm md:text-base"
+                        style={{ fontFamily: isAr ? 'var(--font-arabic-body)' : 'inherit' }}
+                      >
+                        &ldquo;{content}&rdquo;
+                      </p>
+                    </blockquote>
+
+                    {/* Attribution */}
+                    <figcaption className="mt-4 flex items-center gap-3">
+                      {/* Avatar initial */}
+                      <div className="shrink-0 w-9 h-9 rounded-full bg-[var(--color-primary-100)] flex items-center justify-center text-sm font-bold text-[var(--color-primary)]">
+                        {clientName.charAt(0)}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-[var(--text-primary)] truncate">
+                          {clientName}
+                        </p>
+                        {(role || location) && (
+                          <p className="text-xs text-[var(--color-neutral-500)] truncate">
+                            {[role, location].filter(Boolean).join(' · ')}
+                          </p>
+                        )}
+                      </div>
+                    </figcaption>
+                  </figure>
+                );
+              })}
+            </div>
+          </div>
+        </Section>
+      )}
+
       {/* ── Services ─────────────────────────────────────────────────────── */}
-      {coach.is_bookable && services.length > 0 && (
+      {coach.is_bookable && coachingServices.length > 0 && (
         <Section variant="white">
           <div className="max-w-3xl mx-auto">
             <p className="text-xs font-semibold uppercase tracking-[0.15em] text-[var(--color-accent)] mb-3">
@@ -456,21 +555,31 @@ export default async function CoachProfilePage({ params }: Props) {
             </h2>
 
             <div className="space-y-4">
-              {services.map((svc) => (
+              {coachingServices.map((svc) => (
                 <div
                   key={svc.slug}
                   className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-2xl border border-[var(--color-surface-highest)] bg-[var(--color-surface-low)] p-5 hover:border-[var(--color-primary-200)] hover:shadow-sm transition-all duration-200"
                 >
                   {/* Service info */}
                   <div className="flex-1 min-w-0">
-                    <p
-                      className="font-semibold text-[var(--text-primary)] text-base leading-snug"
-                      style={{ fontFamily: isAr ? 'var(--font-arabic-heading)' : 'inherit' }}
-                    >
-                      {isAr ? svc.labelAr : svc.labelEn}
-                    </p>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p
+                        className="font-semibold text-[var(--text-primary)] text-base leading-snug"
+                        style={{ fontFamily: isAr ? 'var(--font-arabic-heading)' : 'inherit' }}
+                      >
+                        {isAr ? svc.labelAr : svc.labelEn}
+                      </p>
+                      {/* Discount badge (e.g. 3-session pack) */}
+                      {(isAr ? svc.badgeAr : svc.badgeEn) && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-green-50 text-green-700 ring-1 ring-green-200">
+                          {isAr ? svc.badgeAr : svc.badgeEn}
+                        </span>
+                      )}
+                    </div>
                     <p className="mt-1 text-sm text-[var(--color-neutral-600)]">
-                      {isAr ? svc.durationAr : svc.durationEn}
+                      {isAr
+                        ? (svc.subtextAr ?? svc.durationAr)
+                        : (svc.subtextEn ?? svc.durationEn)}
                     </p>
                   </div>
 

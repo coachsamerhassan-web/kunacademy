@@ -118,6 +118,9 @@ export interface ContentProvider {
   /** Get featured testimonials (for homepage carousel) */
   getFeaturedTestimonials(): Promise<Testimonial[]>;
 
+  /** Get testimonials attributed to a specific coach (by slug) */
+  getTestimonialsByCoach(coachSlug: string): Promise<Testimonial[]>;
+
   // ── Quotes ───────────────────────────────────────────────────────────
 
   getAllQuotes(): Promise<Quote[]>;

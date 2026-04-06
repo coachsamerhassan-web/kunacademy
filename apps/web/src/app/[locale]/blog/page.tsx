@@ -208,7 +208,7 @@ export default async function BlogPage({ params }: Props) {
                             className="inline-block text-xs tracking-[0.2em] uppercase font-semibold mb-3 px-3 py-1 rounded-full"
                             style={{ background: 'var(--color-accent)', color: '#fff' }}
                           >
-                            {posts[0].category}
+                            {CATEGORY_LABELS[posts[0].category.toLowerCase()]?.[isAr ? 'ar' : 'en'] || posts[0].category}
                           </span>
                         )}
 
@@ -245,7 +245,7 @@ export default async function BlogPage({ params }: Props) {
                           className="inline-block text-xs tracking-[0.2em] uppercase font-semibold mb-4"
                           style={{ color: 'var(--color-accent)' }}
                         >
-                          {posts[0].category}
+                          {CATEGORY_LABELS[posts[0].category.toLowerCase()]?.[isAr ? 'ar' : 'en'] || posts[0].category}
                         </span>
                       )}
 
@@ -345,7 +345,7 @@ export default async function BlogPage({ params }: Props) {
                                 className="text-[0.65rem] tracking-[0.2em] uppercase font-semibold mb-2"
                                 style={{ color: catColor }}
                               >
-                                {post.category}
+                                {CATEGORY_LABELS[post.category.toLowerCase()]?.[isAr ? 'ar' : 'en'] || post.category}
                               </span>
                             )}
 
