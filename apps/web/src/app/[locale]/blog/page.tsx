@@ -51,13 +51,11 @@ export default async function BlogPage({ params }: Props) {
 
   const allPosts = await cms.getAllBlogPosts();
 
-  // Include posts that have a title in either locale.
-  // Articles not yet translated to the current locale still appear using the
-  // other locale's title/excerpt, so the listing page is never artificially empty.
+  // Only show articles that have a title in the CURRENT locale.
+  // Arabic blog shows only Arabic articles; English blog shows only English.
   const posts = allPosts.filter((p) => {
-    const primary = isAr ? p.title_ar : p.title_en;
-    const fallback = isAr ? p.title_en : p.title_ar;
-    return (primary && primary.trim().length > 0) || (fallback && fallback.trim().length > 0);
+    const title = isAr ? p.title_ar : p.title_en;
+    return title && title.trim().length > 0;
   });
 
   // Extract unique categories
@@ -67,12 +65,11 @@ export default async function BlogPage({ params }: Props) {
   const bodyFont = isAr ? 'var(--font-arabic-body)' : undefined;
   const dir = isAr ? 'rtl' : 'ltr';
 
-  // Bilingual fallback helpers — prefer current locale, fall back to the other.
-  // Used so English-only articles still appear on /ar/blog (and vice-versa).
+  // Strict locale helpers — no cross-language fallback on listing pages.
   const getTitle = (p: { title_ar?: string | null; title_en?: string | null }) =>
-    (isAr ? p.title_ar : p.title_en) || (isAr ? p.title_en : p.title_ar) || '';
+    (isAr ? p.title_ar : p.title_en) || '';
   const getExcerpt = (p: { excerpt_ar?: string | null; excerpt_en?: string | null }) =>
-    (isAr ? p.excerpt_ar : p.excerpt_en) || (isAr ? p.excerpt_en : p.excerpt_ar) || undefined;
+    (isAr ? p.excerpt_ar : p.excerpt_en) || undefined;
 
   return (
     <main dir={dir} style={bodyFont ? { fontFamily: bodyFont } : undefined}>

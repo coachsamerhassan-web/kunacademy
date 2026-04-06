@@ -54,6 +54,11 @@ export default async function BlogPostPage({ params }: Props) {
   const content = isAr ? post.content_ar : post.content_en;
   const excerpt = isAr ? post.excerpt_ar : post.excerpt_en;
 
+  // Check if the article exists in the OTHER locale (for language toggle)
+  const otherLocale = isAr ? 'en' : 'ar';
+  const otherTitle = isAr ? post.title_en : post.title_ar;
+  const hasOtherLang = otherTitle && otherTitle.trim().length > 0;
+
   // Fetch author if present
   const author = post.author_slug ? await cms.getTeamMember(post.author_slug) : null;
   const authorName = author ? (isAr ? author.name_ar : author.name_en) : null;
@@ -119,6 +124,21 @@ export default async function BlogPostPage({ params }: Props) {
           >
             {title}
           </h1>
+
+          {/* Language toggle — same article in other language */}
+          {hasOtherLang && (
+            <a
+              href={`/${otherLocale}/blog/${slug}`}
+              className={`inline-flex items-center gap-2 mt-4 px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                post.featured_image_url
+                  ? 'bg-white/10 text-white/80 hover:bg-white/20 hover:text-white'
+                  : 'bg-[var(--color-neutral-100)] text-[var(--color-neutral-600)] hover:bg-[var(--color-neutral-200)]'
+              }`}
+            >
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+              {isAr ? 'Read in English' : 'اقرأ بالعربية'}
+            </a>
+          )}
 
           {/* Author */}
           {author && (

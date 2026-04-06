@@ -39,7 +39,12 @@ export default async function BlogCategoryPage({ params }: Props) {
   const categoryLabel =
     CATEGORY_LABELS[category.toLowerCase()]?.[isAr ? 'ar' : 'en'] || category;
 
-  const posts = await cms.getBlogPostsByCategory(category);
+  const allCategoryPosts = await cms.getBlogPostsByCategory(category);
+  // Only show articles that exist in the current locale
+  const posts = allCategoryPosts.filter((p) => {
+    const title = isAr ? p.title_ar : p.title_en;
+    return title && title.trim().length > 0;
+  });
 
   return (
     <main>
