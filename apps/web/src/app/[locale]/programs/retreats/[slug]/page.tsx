@@ -293,16 +293,18 @@ export default async function RetreatDetailPage({ params }: Props) {
   const content = retreatContent[slug as RetreatSlug];
   if (!content) notFound();
 
-  const title = isAr ? event.title_ar : event.title_en;
-  const description = isAr ? event.description_ar : event.description_en;
-  const location = isAr ? event.location_ar : event.location_en;
+  // event is guaranteed non-null here — either from CMS or inline fallback (notFound exits above)
+  const ev = event!;
+  const title = isAr ? ev.title_ar : ev.title_en;
+  const description = isAr ? ev.description_ar : ev.description_en;
+  const location = isAr ? ev.location_ar : ev.location_en;
 
-  const startDate = new Date(event.date_start + 'T00:00:00');
-  const endDate = event.date_end ? new Date(event.date_end + 'T00:00:00') : null;
+  const startDate = new Date(ev.date_start + 'T00:00:00');
+  const endDate = ev.date_end ? new Date(ev.date_end + 'T00:00:00') : null;
   const today = new Date().toISOString().split('T')[0];
-  const isPast = event.date_start < today;
-  const isDeadlinePassed = event.registration_deadline && event.registration_deadline < today;
-  const isOpen = event.status === 'open' && !isPast && !isDeadlinePassed;
+  const isPast = ev.date_start < today;
+  const isDeadlinePassed = ev.registration_deadline && ev.registration_deadline < today;
+  const isOpen = ev.status === 'open' && !isPast && !isDeadlinePassed;
 
   const dateRangeStr = (() => {
     const locStr = locale === 'ar' ? 'ar-SA' : 'en-US';
@@ -326,8 +328,8 @@ export default async function RetreatDetailPage({ params }: Props) {
     '@type': 'Event',
     name: title,
     description: description || '',
-    startDate: event.date_start,
-    ...(event.date_end ? { endDate: event.date_end } : {}),
+    startDate: ev.date_start,
+    ...(ev.date_end ? { endDate: ev.date_end } : {}),
     image: content.image,
     eventStatus: isPast
       ? 'https://schema.org/EventScheduled'
