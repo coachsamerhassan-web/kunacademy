@@ -12,7 +12,15 @@ COMMENT ON COLUMN services.eligible_kun_levels IS
 ALTER TABLE services
   ADD COLUMN IF NOT EXISTS slug TEXT;
 
-CREATE UNIQUE INDEX IF NOT EXISTS idx_services_slug ON services(slug) WHERE slug IS NOT NULL;
+-- Use a proper UNIQUE constraint (not partial index) so ON CONFLICT (slug) works
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'uq_services_slug'
+  ) THEN
+    ALTER TABLE services ADD CONSTRAINT uq_services_slug UNIQUE (slug);
+  END IF;
+END $$;
 
 -- 3. Upsert the 6 board-approved booking services
 -- Using stable UUID slugs so re-runs are idempotent via slug match
