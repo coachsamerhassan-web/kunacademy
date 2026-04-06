@@ -6,7 +6,7 @@ import { ArrowLeft } from 'lucide-react';
 import type { Metadata } from 'next';
 import type { Service } from '@kunacademy/cms';
 import { ServicesMatrix } from './services-matrix';
-import servicesData from '@/../../data/cms/services.json';
+import servicesData from '../../../../../data/cms/services.json';
 
 export const dynamic = 'force-dynamic';
 
