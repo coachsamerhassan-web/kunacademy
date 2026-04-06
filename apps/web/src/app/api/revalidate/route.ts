@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
 
     // Clear the in-memory doc cache too
     try {
-      const { invalidateDocCache } = await import('@kunacademy/cms');
+      const { invalidateDocCache } = await import('@kunacademy/cms/server');
       invalidateDocCache();
       revalidated.push('doc-cache');
     } catch {
