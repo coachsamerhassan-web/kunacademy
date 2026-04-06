@@ -18,6 +18,7 @@ import type {
   PathfinderQuestion,
   Testimonial,
   Quote,
+  BlogPost,
 } from './types';
 
 /** Parse comma-separated string into string[] (for specialties, languages, etc.) */
@@ -362,20 +363,29 @@ export class JsonFileProvider implements ContentProvider {
     return all.find((e) => e.slug === slug) ?? null;
   }
 
-  async getAllBlogPosts(): Promise<import('./types').BlogPost[]> {
-    return [];
+  async getAllBlogPosts(): Promise<BlogPost[]> {
+    const rows = await this.loadSheet<BlogPost>('blog');
+    return rows
+      .filter((p) => p.published !== false)
+      .sort((a, b) => {
+        if (a.display_order !== b.display_order) return a.display_order - b.display_order;
+        return (b.published_at ?? '').localeCompare(a.published_at ?? '');
+      });
   }
 
-  async getBlogPost(_slug: string): Promise<import('./types').BlogPost | null> {
-    return null;
+  async getBlogPost(slug: string): Promise<BlogPost | null> {
+    const all = await this.getAllBlogPosts();
+    return all.find((p) => p.slug === slug) ?? null;
   }
 
-  async getFeaturedBlogPosts(): Promise<import('./types').BlogPost[]> {
-    return [];
+  async getFeaturedBlogPosts(): Promise<BlogPost[]> {
+    const all = await this.getAllBlogPosts();
+    return all.filter((p) => p.is_featured);
   }
 
-  async getBlogPostsByCategory(_category: string): Promise<import('./types').BlogPost[]> {
-    return [];
+  async getBlogPostsByCategory(category: string): Promise<BlogPost[]> {
+    const all = await this.getAllBlogPosts();
+    return all.filter((p) => p.category?.toLowerCase() === category.toLowerCase());
   }
 
   async invalidateCache(): Promise<void> {
