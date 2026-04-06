@@ -311,15 +311,20 @@ export class JsonFileProvider implements ContentProvider {
 
 
   async getAllTestimonials(): Promise<Testimonial[]> {
-    return [];
+    const rows = await this.loadSheet<Testimonial>('testimonials');
+    return rows
+      .filter((t) => t.published !== false)
+      .sort((a, b) => (a.display_order ?? 999) - (b.display_order ?? 999));
   }
 
   async getFeaturedTestimonials(): Promise<Testimonial[]> {
-    return [];
+    const all = await this.getAllTestimonials();
+    return all.filter((t) => t.is_featured);
   }
 
-  async getTestimonialsByCoach(_coachSlug: string): Promise<Testimonial[]> {
-    return [];
+  async getTestimonialsByCoach(coachSlug: string): Promise<Testimonial[]> {
+    const all = await this.getAllTestimonials();
+    return all.filter((t) => t.coach_slug === coachSlug);
   }
 
   async getAllQuotes(): Promise<Quote[]> {
