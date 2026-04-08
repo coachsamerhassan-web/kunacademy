@@ -122,7 +122,7 @@ export default function AdminTestimonialsPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-[var(--color-neutral-50)] border-b border-[var(--color-neutral-200)]">
-                <th className="px-3 py-2.5 w-8"><input type="checkbox" checked={selected.size === items.length && items.length > 0} onChange={toggleAll} className="rounded" /></th>
+                <th className="px-3 py-2.5 w-8"><input type="checkbox" checked={selected.size === items.length && items.length > 0} onChange={toggleAll} className="rounded" aria-label={isAr ? 'تحديد كل الشهادات' : 'Select all testimonials'} /></th>
                 <th className="px-3 py-2.5 text-start font-medium text-[var(--color-neutral-500)]">{isAr ? 'الاسم' : 'Name'}</th>
                 <th className="px-3 py-2.5 text-start font-medium text-[var(--color-neutral-500)]">{isAr ? 'البرنامج' : 'Program'}</th>
                 <th className="px-3 py-2.5 text-start font-medium text-[var(--color-neutral-500)]">{isAr ? 'اللغة' : 'Lang'}</th>
@@ -134,7 +134,7 @@ export default function AdminTestimonialsPage() {
             <tbody>
               {items.map(t => (
                 <tr key={t.id} className="border-b border-[var(--color-neutral-100)] hover:bg-[var(--color-neutral-50)]">
-                  <td className="px-3 py-2.5"><input type="checkbox" checked={selected.has(t.id)} onChange={() => toggleSelect(t.id)} className="rounded" /></td>
+                  <td className="px-3 py-2.5"><input type="checkbox" checked={selected.has(t.id)} onChange={() => toggleSelect(t.id)} className="rounded" aria-label={isAr ? `تحديد شهادة ${t.client_name}` : `Select testimonial by ${t.client_name}`} /></td>
                   <td className="px-3 py-2.5 font-medium text-[var(--text-primary)]">{t.client_name}</td>
                   <td className="px-3 py-2.5 text-[var(--color-neutral-500)] text-xs">{t.program_name || '—'}</td>
                   <td className="px-3 py-2.5">

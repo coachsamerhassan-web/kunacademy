@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { setRequestLocale } from 'next-intl/server';
+import Image from 'next/image';
 import { GeometricPattern } from '@kunacademy/ui/patterns';
 import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
@@ -64,7 +65,16 @@ export default async function LandingPage({ params }: { params: Promise<{ locale
       {/* Hero */}
       <Section variant="primary" className="py-20 text-center">
         {page.content.hero_image && (
-          <img src={page.content.hero_image} alt="" className="mx-auto max-h-64 mb-8 rounded-lg" />
+          <div className="relative mx-auto h-64 w-full max-w-md mb-8">
+            <Image
+              src={page.content.hero_image}
+              alt=""
+              fill
+              className="rounded-lg object-contain"
+              role="presentation"
+              aria-hidden="true"
+            />
+          </div>
         )}
         <Heading level={1} className="text-white text-3xl sm:text-4xl">
           {page.content.headline || page.content.title || slug}

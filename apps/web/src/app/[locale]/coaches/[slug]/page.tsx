@@ -608,6 +608,55 @@ export default async function CoachProfilePage({ params }: Props) {
         </Section>
       )}
 
+      {/* ── Group Coaching ───────────────────────────────────────────────── */}
+      {coach.is_bookable && kunLevelPrice != null && (
+        <Section variant="surface">
+          <div className="max-w-3xl mx-auto">
+            <p className="text-xs font-semibold uppercase tracking-[0.15em] text-[var(--color-accent)] mb-3">
+              {isAr ? 'جماعي' : 'Group'}
+            </p>
+            <h2
+              className="text-2xl md:text-3xl font-bold text-[var(--text-accent)] mb-8 leading-snug"
+              style={{ fontFamily: isAr ? 'var(--font-arabic-heading)' : 'var(--font-english-heading)' }}
+            >
+              {isAr ? 'جلسات كوتشينج جماعية' : 'Group Coaching Sessions'}
+            </h2>
+
+            <div
+              className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-2xl border border-[var(--color-surface-highest)] bg-[var(--color-surface-low)] p-5 hover:border-[var(--color-primary-200)] hover:shadow-sm transition-all duration-200"
+            >
+              {/* Service info */}
+              <div className="flex-1 min-w-0">
+                <p
+                  className="font-semibold text-[var(--text-primary)] text-base leading-snug"
+                  style={{ fontFamily: isAr ? 'var(--font-arabic-heading)' : 'inherit' }}
+                >
+                  {isAr ? 'جلسات كوتشينج جماعية' : 'Group Coaching Sessions'}
+                </p>
+                <p className="mt-1 text-sm text-[var(--color-neutral-600)]">
+                  {isAr
+                    ? 'جلسات جماعية صغيرة (٣-٥ مشاركين) للنمو المشترك والمساءلة · ٩٠ دقيقة'
+                    : 'Small group sessions (3-5 participants) for shared growth and accountability · 90 min'}
+                </p>
+              </div>
+
+              {/* Price + CTA */}
+              <div className="flex items-center gap-4 shrink-0">
+                <span className="text-lg font-bold text-[var(--color-primary)]">
+                  {isAr ? '١٥٠ درهم' : '150 AED'}
+                </span>
+                <a
+                  href={`/${locale}/coaching/book?coach=${slug}&service=group-coaching-session&type=group`}
+                  className="inline-flex items-center justify-center rounded-xl bg-[var(--color-accent)] px-5 py-2.5 text-sm font-semibold text-white min-h-[44px] hover:bg-[var(--color-accent-500)] transition-colors duration-200 shadow-[0_2px_12px_rgba(228,96,30,0.3)]"
+                >
+                  {isAr ? 'احجز' : 'Book'}
+                </a>
+              </div>
+            </div>
+          </div>
+        </Section>
+      )}
+
       {/* ── Availability Preview (1.7) ────────────────────────────────────── */}
       {coach.is_bookable && (
         <Section variant="surface">

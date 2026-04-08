@@ -112,6 +112,7 @@ export function LoginForm({ locale, mode = 'login' }: { locale: string; mode?: '
       <button
         type="button"
         onClick={handleGoogleLogin}
+        aria-label={isAr ? 'الدخول عبر Google' : 'Continue with Google'}
         className="flex w-full items-center justify-center gap-3 rounded-lg border border-[var(--color-neutral-300)] bg-white px-4 py-3 text-base font-medium text-[var(--color-neutral-700)] transition-colors hover:bg-[var(--color-neutral-50)] min-h-[44px]"
       >
         <GoogleIcon />
@@ -190,6 +191,9 @@ export function LoginForm({ locale, mode = 'login' }: { locale: string; mode?: '
           setStatus('idle');
           setErrorMessage('');
         }}
+        aria-label={authMethod === 'password'
+          ? (isAr ? 'التبديل إلى رابط الدخول بدون كلمة مرور' : 'Switch to magic link sign-in (no password required)')
+          : (isAr ? 'التبديل إلى تسجيل الدخول بكلمة المرور' : 'Switch to email and password sign-in')}
         className="w-full text-center text-sm text-[var(--color-neutral-500)] hover:text-[var(--color-primary)] transition-colors"
       >
         {authMethod === 'password'

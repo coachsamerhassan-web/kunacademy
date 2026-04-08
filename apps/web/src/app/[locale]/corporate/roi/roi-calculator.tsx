@@ -275,6 +275,7 @@ function InputField({
           step={step ?? 1}
           value={value}
           onChange={(e) => onChange(e.target.value)}
+          aria-label={label}
           className="flex-1 h-2 rounded-full appearance-none bg-[var(--color-neutral-200)] accent-[var(--color-primary)]"
         />
         <div className="flex items-center gap-1 text-sm font-semibold text-[var(--text-primary)] w-24 justify-end">

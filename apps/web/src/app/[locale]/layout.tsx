@@ -13,6 +13,7 @@ import { fontVariables } from '@/lib/fonts';
 import { NextImageProvider } from '@/components/image-provider';
 import { ScrollRestore } from '@/components/scroll-restore';
 import { Analytics } from '@/components/analytics';
+import { CookieConsent } from '@/components/cookie-consent';
 import { organizationJsonLd, websiteJsonLd } from '@kunacademy/ui/structured-data';
 import { getDailyQuotes } from '@/components/samer-quote';
 import "../globals.css";
@@ -104,6 +105,7 @@ export default async function LocaleLayout({
             <ScrollObserver />
             <ScrollRestore />
             <Analytics />
+            <CookieConsent />
           </NextImageProvider>
           </AuthProvider>
         </NextIntlClientProvider>

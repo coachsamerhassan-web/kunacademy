@@ -2,6 +2,7 @@
 
 import { useState, useEffect, type ReactNode } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import type { ProductType } from '@kunacademy/db';
 import { Download, Package, RefreshCw } from 'lucide-react';
 
@@ -206,7 +207,13 @@ function ProductCard({
       {/* Image / Placeholder */}
       <div className="relative h-48 bg-gradient-to-br from-[#474099]/10 to-[#474099]/5 flex items-center justify-center overflow-hidden">
         {imageUrl ? (
-          <img src={imageUrl} alt={name} className="h-full w-full object-cover" />
+          <Image
+            src={imageUrl}
+            alt={name}
+            fill
+            className="object-cover"
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+          />
         ) : (
           <span className="text-[var(--color-neutral-400)]" aria-hidden="true">
             {TYPE_ICONS[productType]}

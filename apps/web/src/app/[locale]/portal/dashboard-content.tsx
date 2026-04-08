@@ -4,6 +4,7 @@ import { useAuth } from '@kunacademy/auth';
 import { Button } from '@kunacademy/ui/button';
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
+import Image from 'next/image';
 
 interface Enrollment {
   id: string;
@@ -137,9 +138,17 @@ export function DashboardContent({ locale }: { locale: string }) {
                 href={`/${locale}/portal/courses/${e.course?.slug || e.id}`}
                 className="flex items-center gap-4 rounded-lg border border-[var(--color-neutral-200)] p-4 hover:shadow-sm transition-shadow"
               >
-                <div className="w-12 h-12 rounded-lg bg-[var(--color-neutral-100)] flex-shrink-0 overflow-hidden">
+                <div className="relative w-12 h-12 rounded-lg bg-[var(--color-neutral-100)] flex-shrink-0 overflow-hidden">
                   {e.course?.thumbnail_url ? (
-                    <img src={e.course.thumbnail_url} alt="" className="w-full h-full object-cover" />
+                    <Image
+                      src={e.course.thumbnail_url}
+                      alt=""
+                      fill
+                      className="object-cover"
+                      sizes="48px"
+                      role="presentation"
+                      aria-hidden="true"
+                    />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-[var(--color-neutral-400)] text-xs">
                       {e.enrollment_type === 'recorded' ? 'REC' : e.enrollment_type === 'live' ? 'LIVE' : 'PKG'}

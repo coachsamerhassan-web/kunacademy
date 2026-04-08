@@ -337,10 +337,10 @@ export function CheckoutFlow({ locale }: { locale: string }) {
       {/* Payment Plan — deposit/installment option (only for eligible programs) */}
       {item?.installment_enabled && (
         <div className="rounded-lg border border-[var(--color-neutral-200)] p-4">
-          <p className="font-medium text-sm mb-3">
+          <p id="payment-plan-heading" className="font-medium text-sm mb-3">
             {isAr ? 'خطة الدفع' : 'Payment Plan'}
           </p>
-          <div className="space-y-2">
+          <div role="radiogroup" aria-labelledby="payment-plan-heading" className="space-y-2">
             <label className={`flex items-center gap-3 rounded-lg border p-3 cursor-pointer min-h-[44px] ${paymentPlan === 'full' ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/5' : 'border-[var(--color-neutral-200)]'}`}>
               <input type="radio" name="plan" value="full" checked={paymentPlan === 'full'} onChange={() => setPaymentPlan('full')} className="accent-[var(--color-primary)]" />
               <div>
@@ -411,10 +411,10 @@ export function CheckoutFlow({ locale }: { locale: string }) {
 
       {/* Payment method */}
       <div>
-        <label className="block text-sm font-medium text-[var(--color-neutral-700)] mb-2">
+        <p id="payment-method-heading" className="block text-sm font-medium text-[var(--color-neutral-700)] mb-2">
           {isAr ? 'طريقة الدفع' : 'Payment Method'}
-        </label>
-        <div className="space-y-2">
+        </p>
+        <div role="radiogroup" aria-labelledby="payment-method-heading" className="space-y-2">
           {/* Stripe — available for all currencies except EGP */}
           {currency !== 'EGP' && (
             <label className={`flex items-center gap-3 rounded-lg border p-4 cursor-pointer min-h-[44px] ${paymentMethod === 'stripe' ? 'border-[var(--color-primary)]' : 'border-[var(--color-neutral-200)]'}`}>

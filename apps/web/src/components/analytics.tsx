@@ -1,15 +1,50 @@
 'use client';
 
 import Script from 'next/script';
+import { useState, useEffect } from 'react';
+import { useConsent } from './cookie-consent';
 
 const GA_ID = process.env.NEXT_PUBLIC_GA4_ID;
 const META_PIXEL_ID = process.env.NEXT_PUBLIC_META_PIXEL_ID;
 
 export function Analytics() {
+  const initialConsent = useConsent();
+  const [consent, setConsent] = useState(initialConsent);
+
+  useEffect(() => {
+    // Sync initial consent from hook on mount
+    setConsent(initialConsent);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    function handleConsentChange() {
+      // Re-read consent from localStorage when it changes
+      try {
+        const raw = localStorage.getItem('kun-cookie-consent');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          setConsent({
+            analytics: parsed.analytics === true,
+            marketing: parsed.marketing === true,
+          });
+        } else {
+          setConsent({ analytics: false, marketing: false });
+        }
+      } catch {
+        setConsent({ analytics: false, marketing: false });
+      }
+    }
+
+    window.addEventListener('cookie-consent-changed', handleConsentChange);
+    return () => {
+      window.removeEventListener('cookie-consent-changed', handleConsentChange);
+    };
+  }, []);
+
   return (
     <>
-      {/* Google Analytics 4 */}
-      {GA_ID && (
+      {/* Google Analytics 4 — only when analytics consent is granted */}
+      {GA_ID && consent.analytics && (
         <>
           <Script
             src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`}
@@ -29,8 +64,8 @@ export function Analytics() {
         </>
       )}
 
-      {/* Meta Pixel */}
-      {META_PIXEL_ID && (
+      {/* Meta Pixel — only when marketing consent is granted */}
+      {META_PIXEL_ID && consent.marketing && (
         <Script id="meta-pixel" strategy="afterInteractive">
           {`
             !function(f,b,e,v,n,t,s)
@@ -50,16 +85,38 @@ export function Analytics() {
   );
 }
 
-/** Fire a custom GA4 event */
+/** Fire a custom GA4 event — no-op when analytics consent is not granted */
 export function trackEvent(eventName: string, params?: Record<string, unknown>) {
-  if (typeof window !== 'undefined' && 'gtag' in window) {
+  if (typeof window === 'undefined') return;
+
+  // Check consent before firing
+  try {
+    const raw = localStorage.getItem('kun-cookie-consent');
+    const parsed = raw ? JSON.parse(raw) : {};
+    if (parsed.analytics !== true) return;
+  } catch {
+    return;
+  }
+
+  if ('gtag' in window) {
     (window as any).gtag('event', eventName, params);
   }
 }
 
-/** Fire a custom Meta Pixel event */
+/** Fire a custom Meta Pixel event — no-op when marketing consent is not granted */
 export function trackMetaEvent(eventName: string, params?: Record<string, unknown>) {
-  if (typeof window !== 'undefined' && 'fbq' in window) {
+  if (typeof window === 'undefined') return;
+
+  // Check consent before firing
+  try {
+    const raw = localStorage.getItem('kun-cookie-consent');
+    const parsed = raw ? JSON.parse(raw) : {};
+    if (parsed.marketing !== true) return;
+  } catch {
+    return;
+  }
+
+  if ('fbq' in window) {
     (window as any).fbq('track', eventName, params);
   }
 }

@@ -239,6 +239,7 @@ export default function AdminCoursesPage() {
               checked={editLesson.is_preview ?? false}
               onChange={(e) => setEditLesson({ ...editLesson, is_preview: e.target.checked })}
               className="rounded"
+              aria-label={isAr ? 'معاينة مجانية (مرئي للجميع)' : 'Free preview (visible to all)'}
             />
             <span className="text-sm">{isAr ? 'معاينة مجانية (مرئي للجميع)' : 'Free preview (visible to all)'}</span>
           </label>

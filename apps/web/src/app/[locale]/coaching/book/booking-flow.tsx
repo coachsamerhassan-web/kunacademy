@@ -130,6 +130,10 @@ function WeekCalendar({ slots, loading, timezone, locale, onSelect, isMobile }: 
                 key={ds}
                 type="button"
                 onClick={() => setActiveDayIndex(i)}
+                aria-label={isAr
+                  ? `${d.toLocaleDateString('ar-SA', { weekday: 'long' })}، ${d.toLocaleDateString('ar-SA', { day: 'numeric', month: 'long' })}`
+                  : `${d.toLocaleDateString('en-US', { weekday: 'long' })}, ${d.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}`}
+                aria-pressed={isActive}
                 className={`flex-shrink-0 flex flex-col items-center px-3 py-2 rounded-xl text-sm min-h-[56px] min-w-[52px] transition-colors ${
                   isActive
                     ? 'bg-[var(--color-primary)] text-white font-semibold'
@@ -182,6 +186,9 @@ function WeekCalendar({ slots, loading, timezone, locale, onSelect, isMobile }: 
                 key={i}
                 type="button"
                 onClick={() => onSelect(slot)}
+                aria-label={isAr
+                  ? `${formatTime12(slot.start_time, locale)} — ${activeDay.toLocaleDateString('ar-SA', { weekday: 'long', day: 'numeric', month: 'long' })}`
+                  : `${formatTime12(slot.start_time, locale)} on ${activeDay.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}`}
                 className="rounded-full border border-[var(--color-neutral-200)] px-4 py-2 text-sm font-medium hover:border-[var(--color-primary)] hover:text-[var(--color-primary)] hover:bg-[var(--color-primary-50)] transition-colors min-h-[44px]"
               >
                 {formatTime12(slot.start_time, locale)}
@@ -245,6 +252,9 @@ function WeekCalendar({ slots, loading, timezone, locale, onSelect, isMobile }: 
                       key={i}
                       type="button"
                       onClick={() => onSelect(slot)}
+                      aria-label={isAr
+                        ? `${formatTime12(slot.start_time, locale)} — ${d.toLocaleDateString('ar-SA', { weekday: 'long', day: 'numeric', month: 'long' })}`
+                        : `${formatTime12(slot.start_time, locale)} on ${d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}`}
                       // UX-Pro: touch-target-size — minimum 44px (was 36px)
                       className="rounded-full border border-[var(--color-neutral-200)] px-2 py-1.5 text-xs font-medium hover:border-[var(--color-primary)] hover:text-[var(--color-primary)] hover:bg-[var(--color-primary-50)] transition-colors text-center min-h-[44px]"
                     >
