@@ -4,14 +4,23 @@ import { products, digital_assets, download_tokens } from '@kunacademy/db/schema
 import { eq, desc } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import { getBusinessConfig } from '@/lib/cms-config';
+import { getAuthUser } from '@kunacademy/auth/server';
 
 export async function POST(request: NextRequest) {
   try {
-    const { product_id, user_id } = await request.json();
+    // ── Auth guard ────────────────────────────────────────────────────
+    // Identity MUST come from the server-verified session, never the request body.
+    const sessionUser = await getAuthUser();
+    if (!sessionUser) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const user_id = sessionUser.id;
 
-    if (!product_id || !user_id) {
+    const { product_id } = await request.json();
+
+    if (!product_id) {
       return NextResponse.json(
-        { error: 'Missing required fields: product_id, user_id' },
+        { error: 'Missing required fields: product_id' },
         { status: 400 }
       );
     }

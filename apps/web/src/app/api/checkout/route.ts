@@ -5,6 +5,34 @@ import { eq, and, gte, lte } from 'drizzle-orm';
 import { createCheckoutSession, createTabbySession } from '@kunacademy/payments';
 import { getAuthUser } from '@kunacademy/auth/server';
 
+// ── Rate limiting (in-memory, per-process) ──────────────────────────────────
+// Protects against card-testing attacks (attacker probing many cards via checkout).
+// Two buckets: per-IP (unauthenticated) and per-user (authenticated).
+// Window: 1 minute. Limits: 10 POST/IP/min, 20 POST/user/min.
+const _rlIp = new Map<string, { count: number; resetAt: number }>();
+const _rlUser = new Map<string, { count: number; resetAt: number }>();
+const RL_WINDOW_MS = 60 * 1000; // 1 minute
+const RL_MAX_IP = 10;
+const RL_MAX_USER = 20;
+
+function _checkRateLimit(map: Map<string, { count: number; resetAt: number }>, key: string, max: number): boolean {
+  const now = Date.now();
+  const entry = map.get(key);
+  if (!entry || now > entry.resetAt) {
+    map.set(key, { count: 1, resetAt: now + RL_WINDOW_MS });
+    return false;
+  }
+  entry.count++;
+  return entry.count > max;
+}
+
+// Periodic cleanup to prevent unbounded map growth (every 5 min)
+setInterval(() => {
+  const now = Date.now();
+  for (const [k, v] of _rlIp) { if (now > v.resetAt) _rlIp.delete(k); }
+  for (const [k, v] of _rlUser) { if (now > v.resetAt) _rlUser.delete(k); }
+}, 5 * 60 * 1000);
+
 // KUN Egypt coaching — CIB InstaPay
 const INSTAPAY_CONFIG = {
   account_name: 'KUN Egypt coaching',
@@ -198,6 +226,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     const user_id = sessionUser.id;
+
+    // ── Rate limiting ─────────────────────────────────────────────────
+    // Card-testing protection: 10 req/IP/min (pre-auth fallback) + 20 req/user/min.
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+      || request.headers.get('x-real-ip')
+      || 'unknown';
+    if (_checkRateLimit(_rlIp, ip, RL_MAX_IP) || _checkRateLimit(_rlUser, user_id, RL_MAX_USER)) {
+      return NextResponse.json(
+        { error: 'Too many checkout attempts. Please try again later.' },
+        {
+          status: 429,
+          headers: { 'Retry-After': '60' },
+        }
+      );
+    }
 
     const body = await request.json();
     const {

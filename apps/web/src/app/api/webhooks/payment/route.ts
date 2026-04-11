@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { withAdminContext } from '@kunacademy/db';
 import { captureTabbyPayment } from '@kunacademy/payments';
 import { createZohoInvoice } from '@/lib/zoho-books';
-import { randomUUID } from 'crypto';
+import { randomUUID, timingSafeEqual } from 'crypto';
 import { getBusinessConfig } from '@/lib/cms-config';
 import { alertWebhookFailure, alertPaymentMismatch } from '@kunacademy/email';
 import { sql } from 'drizzle-orm';
@@ -29,7 +29,23 @@ export async function POST(request: NextRequest) {
       const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
       let event: any;
 
-      if (webhookSecret && stripeSignature) {
+      if (!webhookSecret) {
+        // Fail-closed: never silently accept unsigned webhooks.
+        if (process.env.NODE_ENV === 'production') {
+          console.error('[stripe-webhook] STRIPE_WEBHOOK_SECRET is not set — rejecting webhook in production');
+          return NextResponse.json({ error: 'Webhook misconfigured' }, { status: 500 });
+        }
+        // In dev/test: reject with a clear developer message.
+        console.error('[stripe-webhook] STRIPE_WEBHOOK_SECRET is not set. Set it in .env.local to process webhooks locally (use the Stripe CLI: stripe listen --forward-to localhost:3000/api/webhooks/payment).');
+        return NextResponse.json({ error: 'STRIPE_WEBHOOK_SECRET env var is not set — cannot verify signature' }, { status: 500 });
+      }
+
+      if (!stripeSignature) {
+        console.error('[stripe-webhook] Missing stripe-signature header');
+        return NextResponse.json({ error: 'Missing signature' }, { status: 401 });
+      }
+
+      {
         const stripe = (await import('stripe')).default;
         const stripeClient = new stripe(process.env.STRIPE_SECRET_KEY!);
         try {
@@ -38,10 +54,6 @@ export async function POST(request: NextRequest) {
           console.error('[stripe-webhook] Signature verification failed:', err.message);
           return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
         }
-      } else {
-        // Fallback for dev/testing — log warning
-        console.warn('[stripe-webhook] No webhook secret configured — skipping signature verification');
-        event = JSON.parse(body);
       }
 
       // --- IDEMPOTENCY CHECK (event-level, primary guard) ---
@@ -103,11 +115,24 @@ export async function POST(request: NextRequest) {
         status = 'failed';
       }
     } else if (gateway === 'tabby') {
-      // Verify Tabby webhook signature
-      const sigHeader = request.headers.get('x-tabby-signature');
+      // Verify Tabby webhook signature using timingSafeEqual to prevent timing attacks.
+      // Tabby sends the secret as a literal header value (not HMAC) — UTF-8 encoding.
       const expectedSig = process.env.TABBY_WEBHOOK_SECRET;
-      if (expectedSig && sigHeader !== expectedSig) {
-        console.error('[tabby-webhook] Signature mismatch');
+      if (!expectedSig) {
+        console.error('[tabby-webhook] TABBY_WEBHOOK_SECRET is not set — rejecting webhook');
+        return NextResponse.json({ error: 'Webhook misconfigured' }, { status: 500 });
+      }
+      const sigHeader = request.headers.get('x-tabby-signature');
+      // NEVER log sigHeader — prevents leaking received signature in error logs.
+      let sigValid = false;
+      if (sigHeader) {
+        const receivedBuf = Buffer.from(sigHeader, 'utf8');
+        const expectedBuf = Buffer.from(expectedSig, 'utf8');
+        // timingSafeEqual requires equal-length buffers — mismatched length = invalid.
+        sigValid = receivedBuf.length === expectedBuf.length && timingSafeEqual(receivedBuf, expectedBuf);
+      }
+      if (!sigValid) {
+        console.error('[tabby-webhook] Signature mismatch or missing header');
         return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
       }
 

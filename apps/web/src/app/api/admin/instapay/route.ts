@@ -3,9 +3,19 @@ import { withAdminContext } from '@kunacademy/db';
 import { payments, bookings, orders, profiles } from '@kunacademy/db/schema';
 import { eq, and, sql } from 'drizzle-orm';
 import { notify } from '@kunacademy/email';
+import { getAuthUser } from '@kunacademy/auth/server';
+
+function isAdmin(role: string | undefined): boolean {
+  return role === 'admin' || role === 'super_admin';
+}
 
 /** GET: List pending InstaPay payments awaiting verification */
 export async function GET() {
+  const sessionUser = await getAuthUser();
+  if (!sessionUser || !isAdmin(sessionUser.role)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
   const allPayments = await withAdminContext(async (db) => {
     return db.select()
       .from(payments)
@@ -44,6 +54,11 @@ export async function GET() {
 /** POST: Admin verifies or rejects an InstaPay payment */
 export async function POST(request: NextRequest) {
   try {
+    const sessionUser = await getAuthUser();
+    if (!sessionUser || !isAdmin(sessionUser.role)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
     const { payment_id, action, admin_note } = await request.json();
 
     if (!payment_id || !action) {

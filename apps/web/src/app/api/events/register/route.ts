@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db, withAdminContext } from '@kunacademy/db';
 import { eq, and, inArray } from 'drizzle-orm';
 import { event_registrations } from '@kunacademy/db/schema';
+import { getAuthUser } from '@kunacademy/auth/server';
 
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 const RATE_LIMIT_MAX = 5;
@@ -38,8 +39,15 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    // ── Auth guard ────────────────────────────────────────────────────
+    // If a session exists, use its verified user_id. Anonymous registrations
+    // (e.g. public/free events) are allowed — user_id is stored as null.
+    // This prevents spoofing a user_id from the request body.
+    const sessionUser = await getAuthUser();
+    const user_id = sessionUser?.id ?? null;
+
     const body = await request.json();
-    const { event_slug, name, email, phone, is_free, price_amount, price_currency, event_name, locale, user_id, capacity } = body;
+    const { event_slug, name, email, phone, is_free, price_amount, price_currency, event_name, locale, capacity } = body;
 
     // Validate required fields
     if (!event_slug || !name || !email) {
@@ -112,6 +120,11 @@ export async function POST(request: NextRequest) {
     }
 
     if (regStatus === 'pending_payment') {
+      // TODO(samer-review): Fix 2B BLOCKER — event deposit branching not yet implemented.
+      // Business rule: events ≤1,000 AED → full checkout; events >1,000 AED → deposit-only flow.
+      // A deposit system (partial payment + outstanding balance tracking) does not exist in this
+      // codebase yet. price_amount and price_currency are available in scope but the branching
+      // cannot be wired safely without that infrastructure. Build deposit flow first, then return here.
       // PAID event — redirect to checkout
       const checkoutUrl = `/${locale || 'ar'}/checkout?type=event&id=${regId}&name=${encodeURIComponent(event_name || event_slug)}`;
 
