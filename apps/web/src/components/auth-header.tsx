@@ -15,6 +15,7 @@ export function AuthHeader({ locale, dailyQuote }: AuthHeaderProps) {
     ? {
         name: user.name || user.email || null,
         avatar_url: user.image ?? null,
+        role: user.role ?? null,
       }
     : null;
 

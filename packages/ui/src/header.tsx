@@ -122,6 +122,7 @@ function getInitials(name?: string | null): string {
 export interface HeaderUser {
   name?: string | null;
   avatar_url?: string | null;
+  role?: string | null;
 }
 
 /** Bilingual daily quote passed from the server layout */
@@ -397,27 +398,35 @@ export function Header({ locale, user, dailyQuote }: HeaderProps) {
 
           {/* Auth — avatar when logged in, login link when not */}
           {user ? (
-            <a
-              href={`/${locale}/dashboard/`}
-              className="hidden sm:flex items-center justify-center w-9 h-9 rounded-full overflow-hidden ring-2 ring-[var(--color-primary-100)] hover:ring-[var(--color-primary)] transition-all duration-300 flex-shrink-0"
-              aria-label={t('لوحة التحكم', 'Dashboard')}
-              title={user.name ?? t('لوحة التحكم', 'Dashboard')}
-            >
-              {user.avatar_url ? (
-                <img
-                  src={user.avatar_url}
-                  alt={user.name ?? ''}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <span className="w-full h-full flex items-center justify-center bg-[var(--color-primary)] text-white text-xs font-semibold uppercase">
-                  {getInitials(user.name)}
-                </span>
-              )}
-            </a>
+            (() => {
+              const dashboardPath =
+                user.role === 'admin' || user.role === 'super_admin' ? `/${locale}/admin` :
+                user.role === 'provider' ? `/${locale}/coach` :
+                `/${locale}/dashboard`;
+              return (
+                <a
+                  href={dashboardPath}
+                  className="hidden sm:flex items-center justify-center w-9 h-9 rounded-full overflow-hidden ring-2 ring-[var(--color-primary-100)] hover:ring-[var(--color-primary)] transition-all duration-300 flex-shrink-0"
+                  aria-label={t('لوحة التحكم', 'Dashboard')}
+                  title={user.name ?? t('لوحة التحكم', 'Dashboard')}
+                >
+                  {user.avatar_url ? (
+                    <img
+                      src={user.avatar_url}
+                      alt={user.name ?? ''}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <span className="w-full h-full flex items-center justify-center bg-[var(--color-primary)] text-white text-xs font-semibold uppercase">
+                      {getInitials(user.name)}
+                    </span>
+                  )}
+                </a>
+              );
+            })()
           ) : (
             <a
-              href={`/${locale}/dashboard/`}
+              href={`/${locale}/auth/login`}
               className="hidden sm:flex text-sm font-medium text-[var(--color-primary)] hover:text-[var(--color-primary-600)] min-h-[44px] items-center px-3 transition-colors duration-300"
             >
               {t('دخول', 'Login')}
@@ -579,23 +588,31 @@ export function Header({ locale, user, dailyQuote }: HeaderProps) {
 
             {/* Mobile auth — show user info or login */}
             {user ? (
-              <a
-                href={`/${locale}/dashboard/`}
-                className="flex items-center gap-3 w-full rounded-xl border-2 border-[var(--color-primary)] px-4 py-3 text-base font-medium text-[var(--color-primary)] hover:bg-[var(--color-primary-50)] transition-colors duration-300"
-                onClick={() => setMenuOpen(false)}
-              >
-                <span className="flex items-center justify-center w-8 h-8 rounded-full overflow-hidden bg-[var(--color-primary)] text-white text-xs font-semibold uppercase flex-shrink-0">
-                  {user.avatar_url ? (
-                    <img src={user.avatar_url} alt={user.name ?? ''} className="w-full h-full object-cover" />
-                  ) : (
-                    getInitials(user.name)
-                  )}
-                </span>
-                <span>{user.name ?? t('لوحة التحكم', 'Dashboard')}</span>
-              </a>
+              (() => {
+                const dashboardPath =
+                  user.role === 'admin' || user.role === 'super_admin' ? `/${locale}/admin` :
+                  user.role === 'provider' ? `/${locale}/coach` :
+                  `/${locale}/dashboard`;
+                return (
+                  <a
+                    href={dashboardPath}
+                    className="flex items-center gap-3 w-full rounded-xl border-2 border-[var(--color-primary)] px-4 py-3 text-base font-medium text-[var(--color-primary)] hover:bg-[var(--color-primary-50)] transition-colors duration-300"
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    <span className="flex items-center justify-center w-8 h-8 rounded-full overflow-hidden bg-[var(--color-primary)] text-white text-xs font-semibold uppercase flex-shrink-0">
+                      {user.avatar_url ? (
+                        <img src={user.avatar_url} alt={user.name ?? ''} className="w-full h-full object-cover" />
+                      ) : (
+                        getInitials(user.name)
+                      )}
+                    </span>
+                    <span>{user.name ?? t('لوحة التحكم', 'Dashboard')}</span>
+                  </a>
+                );
+              })()
             ) : (
               <a
-                href={`/${locale}/dashboard/`}
+                href={`/${locale}/auth/login`}
                 className="block w-full text-center rounded-xl border-2 border-[var(--color-primary)] px-4 py-3 text-base font-medium text-[var(--color-primary)] hover:bg-[var(--color-primary-50)] transition-colors duration-300"
                 onClick={() => setMenuOpen(false)}
               >
