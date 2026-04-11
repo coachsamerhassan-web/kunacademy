@@ -3,6 +3,7 @@ import { withAdminContext } from '@kunacademy/db';
 import { payments, courses, services, bookings, products } from '@kunacademy/db/schema';
 import { eq, and, gte, lte } from 'drizzle-orm';
 import { createCheckoutSession, createTabbySession } from '@kunacademy/payments';
+import { getAuthUser } from '@kunacademy/auth/server';
 
 // KUN Egypt coaching — CIB InstaPay
 const INSTAPAY_CONFIG = {
@@ -190,14 +191,22 @@ async function fetchCanonicalPrice(
 
 export async function POST(request: NextRequest) {
   try {
+    // ── Auth guard ────────────────────────────────────────────────────
+    // Identity MUST come from the server-verified session, never the request body.
+    const sessionUser = await getAuthUser();
+    if (!sessionUser) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const user_id = sessionUser.id;
+
     const body = await request.json();
     const {
-      item_type, item_id, item_name, user_id, user_email,
+      item_type, item_id, item_name, user_email,
       currency, amount, gateway, locale,
       applied_credits,
     } = body;
 
-    if (!item_type || !item_id || !user_id || !currency || !amount || !gateway) {
+    if (!item_type || !item_id || !currency || !amount || !gateway) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
