@@ -1,3 +1,13 @@
+/** Escape HTML special characters to prevent XSS in email templates. */
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;');
+}
+
 interface Attachment {
   filename: string;
   content: string; // base64 encoded
@@ -291,6 +301,148 @@ export async function sendProposalEmail(
     html,
     attachments: [{ filename: 'Kun-Proposal.pdf', content: pdfBase64 }],
   });
+}
+
+export interface PaymentReceivedEmailParams {
+  /** Recipient email address */
+  to: string;
+  /** 'ar' for Arabic (RTL) or 'en' for English. Defaults to 'en'. */
+  locale: 'ar' | 'en';
+  /** Recipient's first name (or display name). Falls back to "there" / "يا صديقنا". */
+  first_name?: string;
+  /** Human-readable item / program name — HTML-escaped internally. */
+  item_name: string;
+  /** Pre-formatted amount string, e.g. "250.00" */
+  amount_display: string;
+  /** ISO currency code, e.g. "AED" */
+  currency: string;
+  /** Gateway label, e.g. "Stripe", "Tabby (4 installments)", "InstaPay" — escaped internally. */
+  gateway: string;
+  /** Internal payment / transaction ID for the customer's reference — escaped internally. */
+  payment_id: string;
+  /** ISO 8601 date string — displayed as-is after basic escaping. */
+  transaction_date: string;
+}
+
+/**
+ * Bilingual payment confirmation email.
+ *
+ * Security: item_name, gateway, and payment_id are HTML-escaped before
+ * interpolation because they can contain arbitrary user/gateway-supplied content.
+ * amount_display and currency come from internal payment records and are not
+ * escaped (they are numeric / ISO-code values controlled by the system).
+ *
+ * Locale defaults to 'en' when missing or unknown — safer international fallback.
+ */
+export async function sendPaymentReceivedEmail({
+  to,
+  locale,
+  first_name,
+  item_name,
+  amount_display,
+  currency,
+  gateway,
+  payment_id,
+  transaction_date,
+}: PaymentReceivedEmailParams): Promise<ReturnType<typeof sendEmail>> {
+  const isAr = locale === 'ar';
+  const dir = isAr ? 'rtl' : 'ltr';
+
+  // Fallback greeting tokens
+  const greeting = first_name
+    ? (isAr ? `يا ${escapeHtml(first_name)}` : `Hi ${escapeHtml(first_name)}`)
+    : (isAr ? 'يا صديقنا' : 'Hi there');
+
+  // Escape user / gateway-supplied strings
+  const safeItem = escapeHtml(item_name);
+  const safeGateway = escapeHtml(gateway);
+  const safePaymentId = escapeHtml(payment_id);
+  // transaction_date is system-generated (toISOString().split('T')[0] → YYYY-MM-DD);
+  // escaping adds no value and creates inconsistency with amount_display/currency.
+  const safeDate = transaction_date;
+
+  const subject = isAr
+    ? 'تأكيد استلام الدفع — أكاديمية كُن'
+    : 'Payment Confirmation — Kun Academy';
+
+  const html = `
+    <div dir="${dir}" style="font-family: system-ui, Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #FFFDF9; border-radius: 12px; overflow: hidden;">
+      <!-- Header -->
+      <div style="background: #474099; padding: 28px 36px; text-align: ${isAr ? 'right' : 'left'};">
+        <p style="color: rgba(255,255,255,0.7); font-size: 13px; margin: 0 0 4px;">
+          ${isAr ? 'أكاديمية كُن للكوتشينج' : 'Kun Coaching Academy'}
+        </p>
+        <h1 style="color: #ffffff; font-size: 22px; margin: 0; font-weight: 700; line-height: 1.4;">
+          ${isAr ? 'تم استلام دفعتك' : 'Payment Received'}
+        </h1>
+      </div>
+
+      <!-- Body -->
+      <div style="padding: 32px 36px;">
+        <p style="color: #333; font-size: 16px; margin: 0 0 20px;">
+          ${greeting}،
+        </p>
+        <p style="color: #555; font-size: 15px; line-height: 1.7; margin: 0 0 24px;">
+          ${isAr
+            ? `تم استلام دفعتك بنجاح. يسعدنا انضمامك إلى <strong style="color:#474099;">${safeItem}</strong>.`
+            : `Your payment has been successfully received. We're glad to have you in <strong style="color:#474099;">${safeItem}</strong>.`
+          }
+        </p>
+
+        <!-- Receipt details -->
+        <div style="background: #f5f3ef; border-radius: 10px; padding: 20px 24px; margin: 0 0 24px;">
+          <table style="width:100%; border-collapse: collapse; font-size: 14px; color: #444;">
+            <tr>
+              <td style="padding: 6px 0; font-weight: 600; width: 45%;">
+                ${isAr ? 'البرنامج / المنتج' : 'Item'}
+              </td>
+              <td style="padding: 6px 0;">${safeItem}</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; font-weight: 600;">
+                ${isAr ? 'المبلغ المدفوع' : 'Amount Paid'}
+              </td>
+              <td style="padding: 6px 0; font-weight: 700; color: #474099;">${amount_display} ${currency}</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; font-weight: 600;">
+                ${isAr ? 'طريقة الدفع' : 'Payment Method'}
+              </td>
+              <td style="padding: 6px 0;">${safeGateway}</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; font-weight: 600;">
+                ${isAr ? 'تاريخ المعاملة' : 'Date'}
+              </td>
+              <td style="padding: 6px 0;">${safeDate}</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; font-weight: 600; color: #888; font-size: 12px;">
+                ${isAr ? 'رقم المرجع' : 'Reference ID'}
+              </td>
+              <td style="padding: 6px 0; color: #888; font-size: 12px; word-break: break-all;">${safePaymentId}</td>
+            </tr>
+          </table>
+        </div>
+
+        <p style="color: #888; font-size: 13px; margin: 0;">
+          ${isAr
+            ? 'للاستفسار أو الدعم: <a href="mailto:support@kunacademy.com" style="color:#474099;">support@kunacademy.com</a>'
+            : 'Questions or need support? <a href="mailto:support@kunacademy.com" style="color:#474099;">support@kunacademy.com</a>'
+          }
+        </p>
+      </div>
+
+      <!-- Footer -->
+      <div style="background: #2D2860; padding: 20px 36px; text-align: center;">
+        <p style="color: rgba(255,255,255,0.5); font-size: 11px; margin: 0;">
+          ${isAr ? 'أكاديمية كُن للكوتشينج — kunacademy.com' : 'Kun Coaching Academy — kunacademy.com'}
+        </p>
+      </div>
+    </div>
+  `;
+
+  return sendEmail({ to, subject, html });
 }
 
 /** Payout processed notification (for coaches) */

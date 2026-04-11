@@ -8,11 +8,13 @@ export {
   sendBookingConfirmation,
   sendEnrollmentConfirmation,
   sendPaymentReceipt,
+  sendPaymentReceivedEmail,
   sendBookingReminder,
   sendInstallmentReminder,
   sendPayoutNotification,
   sendProposalEmail,
 } from './sender';
+export type { PaymentReceivedEmailParams } from './sender';
 
 // Calendar invites
 export { generateICS } from './ics';

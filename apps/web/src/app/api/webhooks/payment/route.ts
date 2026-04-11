@@ -435,19 +435,26 @@ async function sendNotifications(payment: any) {
   const userName = meta.user_name || userEmail?.split('@')[0] || '';
   const gatewayLabel = payment.gateway === 'tabby' ? 'Tabby (4 installments)' : payment.gateway;
 
-  // 1. Email receipt
+  // 1. Bilingual payment confirmation email (AR/EN via sendPaymentReceivedEmail)
   if (userEmail) {
     try {
-      const { sendEmail } = await import('@kunacademy/email');
-      await sendEmail({
+      const { sendPaymentReceivedEmail } = await import('@kunacademy/email');
+      // Derive locale from payment metadata; default to 'en' for unknown/missing values.
+      const rawLocale = (meta.locale as string | undefined) || '';
+      const locale: 'ar' | 'en' = rawLocale === 'ar' ? 'ar' : 'en';
+      // Extract first name only (avoids leaking full name or email prefix into greeting).
+      const firstName = (meta.user_name as string | undefined)?.split(' ')[0] || undefined;
+      const transactionDate = new Date(payment.created_at || Date.now()).toISOString().split('T')[0];
+      await sendPaymentReceivedEmail({
         to: userEmail,
-        subject: 'Payment Receipt — Kun Academy',
-        html: `<div style="font-family: system-ui; max-width: 600px; margin: 0 auto; padding: 32px;">
-          <h1 style="color: #474099;">Payment Received</h1>
-          <p>Thank you, ${userName}. Your payment of ${(payment.amount / 100).toFixed(2)} ${payment.currency} has been received.</p>
-          <p>Payment method: ${gatewayLabel}</p>
-          <p>Transaction ID: ${payment.id}</p>
-        </div>`,
+        locale,
+        first_name: firstName,
+        item_name: meta.item_name || `${meta.item_type || 'item'} — ${meta.item_id || ''}`,
+        amount_display: (payment.amount / 100).toFixed(2),
+        currency: payment.currency,
+        gateway: gatewayLabel,
+        payment_id: payment.id,
+        transaction_date: transactionDate,
       });
     } catch (e) { console.error('[notify] Email failed:', e); }
   }
