@@ -1,6 +1,7 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
+import { useAuth } from '@kunacademy/auth';
 
 interface NavItem {
   href: string;
@@ -39,6 +40,7 @@ interface PortalSidebarProps {
 
 export function PortalSidebar({ locale, variant }: PortalSidebarProps) {
   const pathname = usePathname();
+  const { signOut } = useAuth();
   const isAr = locale === 'ar';
   const items = variant === 'dashboard' ? dashboardNav : coachNav;
 
@@ -67,6 +69,17 @@ export function PortalSidebar({ locale, variant }: PortalSidebarProps) {
             </a>
           );
         })}
+        <div className="hidden md:block h-px bg-[var(--color-neutral-200)] my-2" aria-hidden="true" />
+        <button
+          type="button"
+          onClick={signOut}
+          className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors min-h-[44px] text-[var(--color-neutral-600)] hover:bg-red-50 hover:text-red-600 w-full text-start"
+        >
+          <svg aria-hidden="true" className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+          </svg>
+          <span>{isAr ? 'تسجيل الخروج' : 'Sign Out'}</span>
+        </button>
       </div>
     </nav>
   );
