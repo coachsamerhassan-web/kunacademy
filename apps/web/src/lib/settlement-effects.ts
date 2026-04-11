@@ -161,14 +161,40 @@ export async function fireSettlementEffects(
     currency,
     item_type,
     item_id,
-    coach_id,
     referrer_id,
     source_type,
   } = params;
+  let { coach_id } = params;
 
   const errors: string[] = [];
   let commission_written = false;
   let store_credit_written = false;
+
+  // ── 0. coach_id settlement-time lookup ─────────────────────────────────────
+  // checkout never writes coach_id into payments.metadata, so we derive it here
+  // from the item record using item_type + item_id.
+  if (!coach_id && item_type && item_id) {
+    try {
+      if (item_type === 'course') {
+        const rows = await withAdminContext(async (db) => db.execute(
+          sql`SELECT instructor_id FROM courses WHERE id = ${item_id} LIMIT 1`,
+        ));
+        coach_id = (rows.rows[0] as any)?.instructor_id ?? null;
+      } else if (item_type === 'booking') {
+        const rows = await withAdminContext(async (db) => db.execute(
+          sql`SELECT provider_id FROM bookings WHERE id = ${item_id} LIMIT 1`,
+        ));
+        coach_id = (rows.rows[0] as any)?.provider_id ?? null;
+      }
+      // event: the Kun model has events with multiple speaker_slugs, not a single coach.
+      // event_registrations has no coach_id column. Event coach commission is deferred
+      // to a post-S0 wave when the speaker-payout model is defined. Leave coach_id null.
+      // product: no coach, leave null
+    } catch (err) {
+      console.error('[settlement-effects] coach_id lookup failed', { item_type, item_id, err });
+      // Fail soft — leave coach_id null, the existing guard will skip the earnings write
+    }
+  }
 
   // ── 1. Coach earnings ───────────────────────────────────────────────────────
   if (coach_id && amount_minor > 0) {

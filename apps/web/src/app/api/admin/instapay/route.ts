@@ -4,6 +4,8 @@ import { payments, bookings, orders, profiles } from '@kunacademy/db/schema';
 import { eq, and, sql } from 'drizzle-orm';
 import { notify } from '@kunacademy/email';
 import { getAuthUser } from '@kunacademy/auth/server';
+import { fireSettlementEffects, type EarningsSourceType } from '@/lib/settlement-effects';
+import { createZohoBooksInvoice, buildItemSku } from '@/lib/zoho-books';
 
 function isAdmin(role: string | undefined): boolean {
   return role === 'admin' || role === 'super_admin';
@@ -156,6 +158,53 @@ export async function POST(request: NextRequest) {
             transactionId: payment.id,
           },
         }).catch(e => console.error('[instapay] Notification failed:', e));
+      }
+
+      // ── Settlement effects: coach earnings + referrer store credit ─────────
+      // Mirrors webhook settlement pattern. Non-blocking — fulfillment already done.
+      const settleMeta = metadata;
+      const settleUserId = settleMeta.user_id as string | undefined;
+      if (settleUserId) {
+        const settleItemType = (settleMeta.item_type as string | undefined) || 'course';
+        const settleItemId = (settleMeta.item_id as string | undefined) || '';
+        const settleCoachId = (settleMeta.coach_id as string | undefined) ?? null;
+        const settleReferrerId = (settleMeta.referrer_id as string | undefined) ?? null;
+        const settleSourceTypeMap: Record<string, EarningsSourceType> = {
+          course: 'course_payment', booking: 'booking_payment',
+          event: 'event_payment', product: 'product_payment',
+        };
+        const settleSourceType: EarningsSourceType = settleSourceTypeMap[settleItemType] ?? 'course_payment';
+
+        try {
+          await fireSettlementEffects({
+            payment_id: payment.id,
+            user_id: settleUserId,
+            amount_minor: payment.amount,
+            currency: payment.currency,
+            item_type: settleItemType as 'course' | 'booking' | 'event' | 'product',
+            item_id: settleItemId,
+            coach_id: settleCoachId,
+            referrer_id: settleReferrerId,
+            source_type: settleSourceType,
+          });
+        } catch (e: any) {
+          console.error('[instapay] Settlement effects failed:', e.message);
+        }
+
+        try {
+          await createZohoBooksInvoice({
+            customer_name: (settleMeta.user_name as string | undefined) || (settleMeta.user_email as string | undefined)?.split('@')[0] || 'Customer',
+            customer_email: (settleMeta.user_email as string | undefined) || '',
+            item_sku: buildItemSku(settleItemType, settleItemId || payment.id),
+            item_name: (settleMeta.item_name as string | undefined) || `${settleItemType} - ${settleItemId || payment.id}`,
+            unit_price_minor: payment.amount,
+            currency: (payment.currency ?? 'EGP').toUpperCase() as 'EGP' | 'AED' | 'USD' | 'EUR' | 'SAR',
+            reference_number: payment.id,
+            notes: `InstaPay verified by admin — ref ${payment.id}`,
+          });
+        } catch (e: any) {
+          console.error('[instapay] Zoho Books invoice failed:', e.message);
+        }
       }
     }
 

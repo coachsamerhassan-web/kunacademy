@@ -3,6 +3,7 @@ import { db, withAdminContext } from '@kunacademy/db';
 import { eq, and, inArray } from 'drizzle-orm';
 import { event_registrations } from '@kunacademy/db/schema';
 import { getAuthUser } from '@kunacademy/auth/server';
+import { cms } from '@kunacademy/cms/server';
 
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 const RATE_LIMIT_MAX = 5;
@@ -47,7 +48,7 @@ export async function POST(request: NextRequest) {
     const user_id = sessionUser?.id ?? null;
 
     const body = await request.json();
-    const { event_slug, name, email, phone, is_free, price_amount, price_currency, event_name, locale, capacity } = body;
+    const { event_slug, name, email, phone, price_currency, event_name, locale } = body;
 
     // Validate required fields
     if (!event_slug || !name || !email) {
@@ -58,6 +59,26 @@ export async function POST(request: NextRequest) {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return NextResponse.json({ error: 'Invalid email format' }, { status: 400 });
     }
+
+    // Load event from CMS — this is the authoritative source for price, capacity, and date.
+    // Never trust price_amount, deposit_percentage, capacity, or event_date from the request body.
+    const cmsEvent = await cms.getEvent(sanitize(event_slug));
+    if (!cmsEvent) {
+      return NextResponse.json({ error: 'Event not found' }, { status: 404 });
+    }
+    // price_aed on the CMS event is in whole AED units; convert to minor units (×100)
+    const fullPriceMinorUnits = typeof cmsEvent.price_aed === 'number' && cmsEvent.price_aed > 0
+      ? Math.round(cmsEvent.price_aed * 100)
+      : 0;
+    const rawDepositPct = typeof (cmsEvent as any).deposit_percentage === 'number'
+      ? (cmsEvent as any).deposit_percentage
+      : 30;
+    const safeDepositPct = Math.min(100, Math.max(1, Math.round(rawDepositPct))) || 30;
+    const capacity = cmsEvent.capacity ?? null;
+    const rawEventDate: string | null = cmsEvent.date_start ?? null;
+    // is_free is derived from CMS price, not from the request body.
+    // An event is free iff its CMS price_aed is 0. Never trust body.is_free.
+    const isEventFree = fullPriceMinorUnits === 0;
 
     // Check for duplicate registration (same email + event)
     const existingRows = await db
@@ -97,7 +118,7 @@ export async function POST(request: NextRequest) {
             ${sanitize(email)},
             ${phone ? sanitize(phone) : null},
             ${capacity ?? null}::integer,
-            ${!is_free}
+            ${!isEventFree}
           )`
         );
       });
@@ -124,34 +145,14 @@ export async function POST(request: NextRequest) {
       // Business rule: events priced >1,000 AED equivalent → deposit-only path.
       //                events priced ≤1,000 AED → full payment path.
       //
-      // price_amount is in minor units (e.g. 200,000 = 2,000 AED).
-      // 1,000 AED in minor units = 100,000.
-      //
-      // deposit_percentage and balance_due_days_before_event are CMS-configurable per-event
-      // and passed from the registration form. We sanitize and default them here.
-      // They are snapshotted into event_registrations so the webhook can reconstruct
-      // the schedule without re-querying the (CMS) event.
-
-      const fullPriceMinorUnits = typeof price_amount === 'number' && price_amount > 0
-        ? price_amount
-        : 0;
-
-      // Sanitize deposit_percentage: must be integer [1..100], default 30
-      const rawDepositPct = typeof body.deposit_percentage === 'number'
-        ? body.deposit_percentage
-        : 30;
-      const safeDepositPct = Math.min(100, Math.max(1, Math.round(rawDepositPct))) || 30;
+      // All monetary values are derived from the CMS event (set above), never from
+      // the request body, to prevent price-tamper attacks.
 
       // Sanitize balance_due_days_before_event: must be positive integer, default 14
       const rawBalanceDays = typeof body.balance_due_days_before_event === 'number'
         ? body.balance_due_days_before_event
         : 14;
       const safeBalanceDays = Math.max(1, Math.round(rawBalanceDays)) || 14;
-
-      // Sanitize event_date: ISO string passed from the registration form
-      const rawEventDate: string | null = typeof body.event_date === 'string' && body.event_date.length > 0
-        ? body.event_date
-        : null;
 
       const EVENT_DEPOSIT_THRESHOLD = 100_000; // 1,000 AED in minor units
 
