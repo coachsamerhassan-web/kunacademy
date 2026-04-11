@@ -148,9 +148,10 @@ export async function POST(request: NextRequest) {
       // All monetary values are derived from the CMS event (set above), never from
       // the request body, to prevent price-tamper attacks.
 
-      // Sanitize balance_due_days_before_event: must be positive integer, default 14
-      const rawBalanceDays = typeof body.balance_due_days_before_event === 'number'
-        ? body.balance_due_days_before_event
+      // balance_due_days_before_event is CMS-authoritative — never read from body.
+      // Field not yet on the CMS Event type; (as any) cast returns 14 until added.
+      const rawBalanceDays = typeof (cmsEvent as any).balance_due_days_before_event === 'number'
+        ? (cmsEvent as any).balance_due_days_before_event
         : 14;
       const safeBalanceDays = Math.max(1, Math.round(rawBalanceDays)) || 14;
 

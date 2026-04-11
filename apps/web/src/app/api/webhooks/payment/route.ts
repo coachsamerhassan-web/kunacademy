@@ -1078,8 +1078,8 @@ export async function POST(request: NextRequest) {
                 });
 
                 console.log(
-                  `[payment-webhook] Event deposit settled for reg \${eventRegId}. ` +
-                  `Balance \${reg.balance_amount} due \${balanceDue}.`
+                  `[payment-webhook] Event deposit settled for reg ${eventRegId}. ` +
+                  `Balance ${reg.balance_amount} due ${balanceDue}.`
                 );
               }
 
@@ -1112,7 +1112,7 @@ export async function POST(request: NextRequest) {
                 }
               }
             } else if (reg?.deposit_paid_at) {
-              console.log(`[payment-webhook] Event deposit already recorded for reg \${eventRegId} — skipping`);
+              console.log(`[payment-webhook] Event deposit already recorded for reg ${eventRegId} — skipping`);
             }
 
           } else if (fullPlan) {
@@ -1133,7 +1133,7 @@ export async function POST(request: NextRequest) {
                       WHERE id = ${eventRegId}`
                 );
               });
-              console.log(`[payment-webhook] Event fully paid and confirmed for reg \${eventRegId}`);
+              console.log(`[payment-webhook] Event fully paid and confirmed for reg ${eventRegId}`);
             }
           }
         }

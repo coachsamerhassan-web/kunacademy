@@ -166,7 +166,7 @@ export async function POST(request: NextRequest) {
       const settleUserId = settleMeta.user_id as string | undefined;
       if (settleUserId) {
         const settleItemType = (settleMeta.item_type as string | undefined) || 'course';
-        const settleItemId = (settleMeta.item_id as string | undefined) || '';
+        const settleItemId = (settleMeta.item_id as string | undefined) || payment.id;
         const settleCoachId = (settleMeta.coach_id as string | undefined) ?? null;
         const settleReferrerId = (settleMeta.referrer_id as string | undefined) ?? null;
         const settleSourceTypeMap: Record<string, EarningsSourceType> = {
