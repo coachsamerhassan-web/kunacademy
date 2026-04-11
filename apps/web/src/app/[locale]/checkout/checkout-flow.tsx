@@ -41,6 +41,9 @@ interface CartItem {
   discount_percentage?: number | null;
   discount_valid_until?: string | null;
   installment_enabled?: boolean | null;
+  // Event-specific deposit fields (populated from URL params for CMS events)
+  event_deposit_pct?: number | null;   // percentage, e.g. 25 (not 0.25)
+  event_balance_due_days?: number | null;
 }
 
 /** Detect currency from timezone (fallback when geo API unavailable) */
@@ -169,19 +172,34 @@ export function CheckoutFlow({ locale }: { locale: string }) {
         })
         .catch(() => setLoading(false));
     } else if (itemType === 'event') {
-      // Event registration — item data comes from query params (CMS event, not in DB)
+      // Event registration — item data comes from query params (CMS event, not in DB).
+      // deposit_pct and price_aed are set by /api/events/register when price >1,000 AED.
       const name = searchParams.get('name') || 'Event';
+      const rawDepositPct = Number(searchParams.get('deposit_pct')) || null;
+      const rawPriceAed = Number(searchParams.get('price_aed')) || 0;
+      const paymentPlanParam = searchParams.get('payment_plan'); // 'deposit' | 'full' | null
+
       setItem({
         type: 'event' as any,
         id: itemId,
         name_ar: decodeURIComponent(name),
         name_en: decodeURIComponent(name),
-        price_aed: Number(searchParams.get('price_aed')) || 0,
+        // price_aed is the FULL price (minor units), even in deposit flow.
+        price_aed: rawPriceAed,
         price_sar: Number(searchParams.get('price_sar')) || 0,
         price_egp: Number(searchParams.get('price_egp')) || 0,
         price_usd: Number(searchParams.get('price_usd')) || 0,
         price_eur: Number(searchParams.get('price_eur')) || 0,
+        event_deposit_pct: rawDepositPct,
+        event_balance_due_days: Number(searchParams.get('balance_days')) || null,
       });
+
+      // Auto-select payment plan from URL param (set by /api/events/register)
+      if (paymentPlanParam === 'deposit') {
+        setPaymentPlan('deposit');
+      } else if (paymentPlanParam === 'full') {
+        setPaymentPlan('full');
+      }
       setLoading(false);
     } else {
       setLoading(false);
@@ -205,6 +223,28 @@ export function CheckoutFlow({ locale }: { locale: string }) {
   const creditsApplied = applyCredits ? Math.min(creditBalance, price) : 0;
   const effectivePrice = price - creditsApplied;
 
+  // ── Event deposit derived values ─────────────────────────────────────────
+  // EVENT_DEPOSIT_THRESHOLD: 1,000 AED in minor units. Must match server logic.
+  const EVENT_DEPOSIT_THRESHOLD = 100_000;
+  // isHighTicketEvent: true when item is an event AND full price > 1,000 AED equivalent.
+  // We check AED price (the canonical price column) since deposit_pct is always in AED context.
+  const isHighTicketEvent =
+    item?.type === 'event' &&
+    (item.price_aed ?? 0) > EVENT_DEPOSIT_THRESHOLD;
+
+  // depositPct: server-verified percentage from the URL param (set by /api/events/register).
+  // Defaults to 30 if not provided. This is DISPLAY ONLY — the server re-verifies.
+  const depositPct = item?.event_deposit_pct ?? 30;
+
+  // depositAmountDisplay: what the student pays now (minor units), for display.
+  const depositAmountDisplay = isHighTicketEvent
+    ? Math.round(effectivePrice * depositPct / 100)
+    : 0;
+  // balanceAmountDisplay: what remains after the deposit (minor units), for display.
+  const balanceAmountDisplay = isHighTicketEvent
+    ? effectivePrice - depositAmountDisplay
+    : 0;
+
   // Derived: can show Tabby?
   const tabbyAvailable =
     TABBY_CURRENCIES.includes(currency) &&
@@ -223,10 +263,46 @@ export function CheckoutFlow({ locale }: { locale: string }) {
     setInstapayInstructions(null);
   }, [currency, geo]);
 
+  // Force deposit plan for high-ticket events (>1,000 AED).
+  // This is a UX constraint matching the server business rule — the deposit radio
+  // will be pre-selected and the full-payment option hidden.
+  useEffect(() => {
+    if (isHighTicketEvent && paymentPlan !== 'deposit') {
+      setPaymentPlan('deposit');
+    }
+  }, [isHighTicketEvent]);
+
   async function handlePayment() {
     if (!item || !user) return;
     setProcessing(true);
     setCheckoutError(null);
+
+    // ── Gateway × payment_plan validation ──────────────────────────────────
+    // EGP/InstaPay: no installments in S0 — skip for EGP entirely.
+    if (paymentPlan === 'installment' && paymentMethod === 'instapay') {
+      setCheckoutError(
+        isAr
+          ? 'التقسيط غير متاح لهذه طريقة الدفع'
+          : 'Installments are not available for this payment method.'
+      );
+      setProcessing(false);
+      return;
+    }
+
+    // Tabby: native 4-installment only — installment_count is always 4.
+    // Stripe: valid installment counts are 3, 6, 9.
+    if (paymentPlan === 'installment' && paymentMethod === 'stripe') {
+      const validStripeCounts = [3, 6, 9];
+      if (!validStripeCounts.includes(installmentCount)) {
+        setCheckoutError(
+          isAr
+            ? 'عدد الأقساط غير صالح. اختر 3 أو 6 أو 9 أقساط.'
+            : 'Invalid installment count. Please choose 3, 6, or 9 installments.'
+        );
+        setProcessing(false);
+        return;
+      }
+    }
 
     try {
       // Apply credits first if toggled
@@ -244,6 +320,17 @@ export function CheckoutFlow({ locale }: { locale: string }) {
         }
       }
 
+      // Determine effective installment_count for the POST body.
+      // Tabby = always 4 (native BNPL). Stripe = user-selected (3/6/9).
+      const resolvedInstallmentCount =
+        paymentMethod === 'tabby' ? 4 : installmentCount;
+
+      // For event deposits: send the deposit fraction as amount, but also include
+      // full_amount so the server can recompute if the DB snapshot is incomplete.
+      // The server ALWAYS re-verifies from DB — never trusts client values blindly.
+      const isEventDeposit = item.type === 'event' && isHighTicketEvent && paymentPlan === 'deposit';
+      const gatewayAmount = isEventDeposit ? depositAmountDisplay : effectivePrice;
+
       const res = await fetch('/api/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -254,11 +341,15 @@ export function CheckoutFlow({ locale }: { locale: string }) {
           user_id: user.id,
           user_email: user.email,
           currency,
-          amount: effectivePrice,
+          amount: gatewayAmount,
           applied_credits: creditsApplied,
           gateway: paymentMethod,
           locale,
           country: geo?.country || 'XX',
+          payment_plan: paymentPlan,
+          installment_count: paymentPlan === 'installment' ? resolvedInstallmentCount : undefined,
+          // Event-specific: full_amount hint for server fallback (not used if DB snapshot exists)
+          ...(item.type === 'event' ? { full_amount: effectivePrice } : {}),
         }),
       });
 
@@ -338,8 +429,40 @@ export function CheckoutFlow({ locale }: { locale: string }) {
         </div>
       )}
 
-      {/* Payment Plan — deposit/installment option (only for eligible programs) */}
-      {item?.installment_enabled && (
+      {/* Payment Plan — event deposit (forced) or installment for eligible programs */}
+      {isHighTicketEvent ? (
+        // ── Event deposit forced UI (price > 1,000 AED) ────────────────────────
+        // Business rule: deposit is required; full-payment option is hidden.
+        <div className="rounded-lg border border-[var(--color-primary)] bg-[var(--color-primary)]/5 p-4">
+          <p className="font-medium text-sm mb-2 text-[var(--color-primary)]">
+            {isAr ? 'خطة الدفع — إيداع مطلوب' : 'Payment Plan — Deposit Required'}
+          </p>
+          <div className="space-y-1 text-sm">
+            <div className="flex justify-between">
+              <span className="text-[var(--color-neutral-600)]">
+                {isAr ? `الإيداع الآن (${depositPct}%)` : `Deposit now (${depositPct}%)`}
+              </span>
+              <span className="font-bold text-[var(--color-primary)]">
+                {formatPrice(depositAmountDisplay, currency)}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-[var(--color-neutral-600)]">
+                {isAr
+                  ? `الرصيد المتبقي (يستحق قبل ${item?.event_balance_due_days ?? 14} يومًا من الفعالية)`
+                  : `Balance due (${item?.event_balance_due_days ?? 14} days before event)`}
+              </span>
+              <span className="font-medium">{formatPrice(balanceAmountDisplay, currency)}</span>
+            </div>
+          </div>
+          <p className="text-xs text-[var(--color-neutral-500)] mt-2">
+            {isAr
+              ? 'ستتلقى تذكيرًا قبل موعد استحقاق الرصيد.'
+              : 'You will receive a reminder before the balance is due.'}
+          </p>
+        </div>
+      ) : item?.installment_enabled ? (
+        // ── Standard installment/deposit UI for eligible non-event programs ───
         <div className="rounded-lg border border-[var(--color-neutral-200)] p-4">
           <p id="payment-plan-heading" className="font-medium text-sm mb-3">
             {isAr ? 'خطة الدفع' : 'Payment Plan'}
@@ -365,30 +488,53 @@ export function CheckoutFlow({ locale }: { locale: string }) {
               </div>
             </label>
 
-            <label className={`flex items-center gap-3 rounded-lg border p-3 cursor-pointer min-h-[44px] ${paymentPlan === 'installment' ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/5' : 'border-[var(--color-neutral-200)]'}`}>
-              <input type="radio" name="plan" value="installment" checked={paymentPlan === 'installment'} onChange={() => setPaymentPlan('installment')} className="accent-[var(--color-primary)]" />
-              <div className="flex-1">
-                <span className="font-medium text-sm">{isAr ? 'أقساط شهرية' : 'Monthly Installments'}</span>
-                <div className="flex items-center gap-2 mt-1">
-                  <select
-                    value={installmentCount}
-                    onChange={(e) => setInstallmentCount(parseInt(e.target.value))}
-                    className="text-xs rounded border border-[var(--color-neutral-300)] px-2 py-1 min-h-[32px]"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    {[2, 3, 4, 5, 6].map(n => (
-                      <option key={n} value={n}>{n} {isAr ? 'أقساط' : 'payments'}</option>
-                    ))}
-                  </select>
-                  <span className="text-xs text-[var(--color-neutral-500)]">
-                    {formatPrice(Math.ceil(effectivePrice / installmentCount), currency)} / {isAr ? 'شهر' : 'mo'}
-                  </span>
+            {/* Installments via Stripe not available for EGP (InstaPay only in Egypt) */}
+            {currency === 'EGP' ? (
+              <div className="rounded-lg border border-[var(--color-neutral-200)] p-3 opacity-50 cursor-not-allowed" title={isAr ? 'التقسيط عبر بطاقة الائتمان غير متاح حاليًا لمصر — قريبًا' : 'Card installments not yet available for EGP — coming soon'}>
+                <div className="flex items-center gap-3">
+                  <input type="radio" name="plan" value="installment" disabled className="accent-[var(--color-neutral-300)]" />
+                  <div>
+                    <span className="font-medium text-sm text-[var(--color-neutral-500)]">{isAr ? 'أقساط شهرية' : 'Monthly Installments'}</span>
+                    <span className="text-xs text-[var(--color-neutral-400)] block">
+                      {isAr ? 'غير متاح للدفع بالجنيه المصري — قريبًا' : 'Not available for EGP payments — coming soon'}
+                    </span>
+                  </div>
                 </div>
               </div>
-            </label>
+            ) : (
+              <label className={`flex items-center gap-3 rounded-lg border p-3 cursor-pointer min-h-[44px] ${paymentPlan === 'installment' ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/5' : 'border-[var(--color-neutral-200)]'}`}>
+                <input type="radio" name="plan" value="installment" checked={paymentPlan === 'installment'} onChange={() => setPaymentPlan('installment')} className="accent-[var(--color-primary)]" />
+                <div className="flex-1">
+                  <span className="font-medium text-sm">{isAr ? 'أقساط شهرية' : 'Monthly Installments'}</span>
+                  <div className="flex items-center gap-2 mt-1">
+                    <select
+                      value={installmentCount}
+                      onChange={(e) => setInstallmentCount(parseInt(e.target.value))}
+                      className="text-xs rounded border border-[var(--color-neutral-300)] px-2 py-1 min-h-[32px]"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {/* Tabby = fixed 4. Stripe = 3/6/9 only (subscription schedule intervals). */}
+                      {paymentMethod === 'tabby'
+                        ? [4].map(n => (
+                            <option key={n} value={n}>{n} {isAr ? 'أقساط' : 'payments'}</option>
+                          ))
+                        : [3, 6, 9].map(n => (
+                            <option key={n} value={n}>{n} {isAr ? 'أقساط' : 'payments'}</option>
+                          ))
+                      }
+                    </select>
+                    <span className="text-xs text-[var(--color-neutral-500)]">
+                      {/* Server uses floor+remainder-in-first: show floor amount. First payment
+                          may be slightly higher to absorb rounding. */}
+                      {formatPrice(Math.floor(effectivePrice / installmentCount), currency)} / {isAr ? 'شهر (القسط الأول قد يختلف قليلًا)' : 'mo (first payment may vary slightly)'}
+                    </span>
+                  </div>
+                </div>
+              </label>
+            )}
           </div>
         </div>
-      )}
+      ) : null}
 
       {/* Currency selector — geo-aware */}
       <div>
@@ -535,7 +681,9 @@ export function CheckoutFlow({ locale }: { locale: string }) {
             : effectivePrice <= 0
             ? (isAr ? 'تأكيد (مدفوع بالرصيد)' : 'Confirm (paid with credits)')
             : paymentPlan === 'deposit'
-            ? (isAr ? `ادفع إيداع ${formatPrice(Math.round(effectivePrice * 0.3), currency)}` : `Pay Deposit ${formatPrice(Math.round(effectivePrice * 0.3), currency)}`)
+            ? (isAr
+                ? `ادفع إيداع ${formatPrice(isHighTicketEvent ? depositAmountDisplay : Math.round(effectivePrice * 0.3), currency)}`
+                : `Pay Deposit ${formatPrice(isHighTicketEvent ? depositAmountDisplay : Math.round(effectivePrice * 0.3), currency)}`)
             : paymentPlan === 'installment'
             ? (isAr ? `ادفع القسط الأول ${formatPrice(Math.ceil(effectivePrice / installmentCount), currency)}` : `Pay First Installment ${formatPrice(Math.ceil(effectivePrice / installmentCount), currency)}`)
             : (isAr ? `ادفع ${formatPrice(effectivePrice, currency)}` : `Pay ${formatPrice(effectivePrice, currency)}`)}

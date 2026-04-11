@@ -36,7 +36,7 @@ export async function GET(req: NextRequest) {
           LEFT JOIN payments pay ON pay.id = ps.payment_id
           LEFT JOIN courses c ON c.id = pay.course_id
           CROSS JOIN LATERAL jsonb_array_elements(ps.installments) AS inst(value)
-          WHERE ps.schedule_type = 'installment'
+          WHERE ps.schedule_type IN ('installment', 'deposit_balance')
             AND (inst.value->>'status') = 'pending'
             AND (inst.value->>'due_date')::timestamptz >= ${dayStart.toISOString()}
             AND (inst.value->>'due_date')::timestamptz < ${dayEnd.toISOString()}

@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { withAdminContext } from '@kunacademy/db';
 import { payments, courses, services, bookings, products } from '@kunacademy/db/schema';
-import { eq, and, gte, lte } from 'drizzle-orm';
+import { eq, and, gte, lte, sql } from 'drizzle-orm';
 import { createCheckoutSession, createTabbySession } from '@kunacademy/payments';
 import { getAuthUser } from '@kunacademy/auth/server';
 
@@ -44,6 +44,52 @@ const INSTAPAY_CONFIG = {
 const TABBY_CURRENCIES = ['AED', 'SAR'];
 const TABBY_COUNTRIES = ['AE', 'SA'];
 const TABBY_MINIMUM = 250_000; // 2,500 AED/SAR in minor units
+
+// Valid payment plan values
+const VALID_PAYMENT_PLANS = ['full', 'deposit', 'installment'] as const;
+type PaymentPlan = (typeof VALID_PAYMENT_PLANS)[number];
+
+// Gateway × payment_plan × currency matrix validation.
+// Returns null if valid, or an error string if invalid.
+function validateInstallmentMatrix(
+  gateway: string,
+  payment_plan: PaymentPlan,
+  currency: string,
+  installment_count: number,
+): string | null {
+  if (payment_plan !== 'installment') return null; // non-installment plans checked elsewhere
+
+  if (gateway === 'instapay') {
+    // EGP/InstaPay installments are out of scope for S0.
+    return 'Installments are not available for InstaPay. Please use full payment or contact us.';
+  }
+
+  if (gateway === 'tabby') {
+    // Tabby native BNPL: AED/SAR only, installment_count must be exactly 4.
+    if (!TABBY_CURRENCIES.includes(currency)) {
+      return 'Tabby installments are only available for AED and SAR.';
+    }
+    if (installment_count !== 4) {
+      return 'Tabby supports 4 installments only.';
+    }
+    return null;
+  }
+
+  if (gateway === 'stripe') {
+    // Stripe Subscription Schedules: 3, 6, or 9 monthly installments.
+    const validCounts = [3, 6, 9];
+    if (!validCounts.includes(installment_count)) {
+      return 'Stripe installments must be 3, 6, or 9 months.';
+    }
+    // EGP installments via Stripe are deferred to a later wave (Decision 3).
+    if (currency === 'EGP') {
+      return 'EGP installments are not available in this version. Please use full payment or contact us.';
+    }
+    return null;
+  }
+
+  return 'Installments are not supported for the selected payment method.';
+}
 
 async function generateUniqueInstapayAmount(baseAmount: number): Promise<number> {
   const today = new Date().toISOString().split('T')[0];
@@ -207,9 +253,11 @@ async function fetchCanonicalPrice(
   }
 
   if (item_type === 'event') {
-    // Events are served from CMS (Google Sheets / Contentful) — no DB table.
-    // We cannot verify the price server-side. Log that verification was skipped
-    // and allow the payment to proceed; admin staff review flagged payments.
+    // Events are CMS-driven — no DB price table.
+    // We snapshot the event's registration row to validate the deposit split,
+    // but the canonical full price itself cannot be re-verified here.
+    // The deposit amount is always re-computed server-side in the POST handler
+    // from the DB-stored deposit_percentage, never from the client claim.
     return { canonicalPrice: null, error: null };
   }
 
@@ -247,10 +295,37 @@ export async function POST(request: NextRequest) {
       item_type, item_id, item_name, user_email,
       currency, amount, gateway, locale,
       applied_credits,
+      payment_plan: rawPaymentPlan,
+      installment_count: rawInstallmentCount,
     } = body;
 
     if (!item_type || !item_id || !currency || !amount || !gateway) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    }
+
+    // ── Server-side payment_plan + installment_count validation ─────────────
+    // Default to 'full' if not provided.
+    const payment_plan: PaymentPlan = VALID_PAYMENT_PLANS.includes(rawPaymentPlan)
+      ? (rawPaymentPlan as PaymentPlan)
+      : 'full';
+
+    // installment_count: only meaningful when payment_plan === 'installment'.
+    const installment_count: number = payment_plan === 'installment'
+      ? (typeof rawInstallmentCount === 'number' && [3, 4, 6, 9].includes(rawInstallmentCount)
+          ? rawInstallmentCount
+          : 0) // 0 will fail matrix validation below
+      : 0;
+
+    if (payment_plan === 'installment' && installment_count === 0) {
+      return NextResponse.json(
+        { error: 'installment_count must be one of: 3, 4, 6, 9' },
+        { status: 400 },
+      );
+    }
+
+    const matrixError = validateInstallmentMatrix(gateway, payment_plan, currency, installment_count);
+    if (matrixError) {
+      return NextResponse.json({ error: matrixError }, { status: 400 });
     }
 
     const country = getCountry(request);
@@ -328,22 +403,108 @@ export async function POST(request: NextRequest) {
     // canonicalPrice === null means we skipped verification (event / unknown).
     // We proceed but the gateway records the submitted amount as-is.
 
+    // ── Event deposit: server-side amount recomputation ──────────────────────
+    // SECURITY CRITICAL: When item_type === 'event' and payment_plan === 'deposit',
+    // we MUST NOT charge the client-sent `amount`. The client's claim of how much
+    // the deposit should be is completely untrusted.
+    //
+    // Instead:
+    //   1. Look up the event_registration row (keyed by item_id, which is the registration UUID).
+    //   2. Read deposit_percentage and deposit_amount snapshots written by /api/events/register.
+    //   3. Recompute chargedAmount server-side. The client-sent `amount` is irrelevant.
+    //
+    // For non-event types or full-payment events, chargedAmount = amount (unchanged).
+
+    // `chargedAmount` is what will actually be sent to the payment gateway.
+    // `depositMetaOverride` carries extra event-specific metadata for the payments row.
+    let chargedAmount: number = amount;
+    let depositMetaOverride: Record<string, unknown> | null = null;
+
+    if (item_type === 'event' && payment_plan === 'deposit') {
+      const regRow = await withAdminContext(async (db) => {
+        const rows = await db.execute(
+          sql`SELECT deposit_percentage, deposit_amount, balance_amount, balance_due_date, status
+              FROM event_registrations
+              WHERE id = ${item_id}
+              LIMIT 1`
+        );
+        return rows.rows[0] as {
+          deposit_percentage: number | null;
+          deposit_amount: number | null;
+          balance_amount: number | null;
+          balance_due_date: string | null;
+          status: string;
+        } | undefined;
+      });
+
+      if (!regRow) {
+        return NextResponse.json({ error: 'Event registration not found' }, { status: 404 });
+      }
+
+      // Registration must still be awaiting payment (idempotency guard)
+      if (regRow.status !== 'pending_payment') {
+        return NextResponse.json(
+          { error: 'This registration is no longer awaiting payment' },
+          { status: 409 },
+        );
+      }
+
+      if (regRow.deposit_amount !== null && regRow.balance_amount !== null) {
+        // Happy path: snapshot is complete — use the pre-computed values.
+        chargedAmount = regRow.deposit_amount;
+        depositMetaOverride = {
+          payment_plan: 'deposit',
+          deposit_percentage: regRow.deposit_percentage,
+          deposit_amount: regRow.deposit_amount,
+          balance_amount: regRow.balance_amount,
+          balance_due_date: regRow.balance_due_date,
+          event_registration_id: item_id,
+        };
+      } else if (regRow.deposit_percentage !== null) {
+        // Fallback: deposit_percentage is stored but deposit_amount/balance_amount were not
+        // snapshotted yet (non-fatal write in register route). We CANNOT recompute safely
+        // because we have no server-authoritative full price — the CMS is the source of truth
+        // and we will not accept a client-supplied full_amount as the base for a financial
+        // calculation. Reject and ask the user to restart the flow so the snapshot is written.
+        return NextResponse.json(
+          { error: 'Deposit snapshot incomplete — please go back and re-register for this event.' },
+          { status: 400 },
+        );
+      } else {
+        // No deposit config on the registration — deny deposit path.
+        return NextResponse.json(
+          { error: 'Deposit configuration not found for this event. Please re-register or contact support.' },
+          { status: 400 },
+        );
+      }
+    } else if (item_type === 'event' && payment_plan === 'full') {
+      // Full payment for an event: record the plan in metadata for the webhook.
+      depositMetaOverride = {
+        payment_plan: 'full',
+        event_registration_id: item_id,
+      };
+    }
+
     // ── InstaPay (Egypt) ──────────────────────────────────────────────
     if (gateway === 'instapay') {
-      const uniqueAmount = await generateUniqueInstapayAmount(amount);
+      // chargedAmount is the deposit amount (server-computed) or the full amount.
+      const uniqueAmount = await generateUniqueInstapayAmount(chargedAmount);
 
       const [payment] = await withAdminContext(async (db) => {
         return db.insert(payments).values({
           amount: uniqueAmount,
           currency: 'EGP',
           gateway: 'instapay',
+          // event_registration_id: set when item_type === 'event' for webhook routing.
+          event_registration_id: depositMetaOverride?.event_registration_id as string ?? null,
           status: 'pending',
           metadata: {
             item_type, item_id, item_name, user_id, user_email,
-            base_amount: amount,
+            base_amount: chargedAmount,
             unique_suffix: uniqueAmount % 100,
             verification_status: 'awaiting_transfer',
             country,
+            ...(depositMetaOverride ?? {}),
           },
         }).returning();
       });
@@ -367,32 +528,100 @@ export async function POST(request: NextRequest) {
 
     // ── Stripe (International) ────────────────────────────────────────
     if (gateway === 'stripe') {
+      if (!process.env.STRIPE_SECRET_KEY) {
+        return NextResponse.json({ error: 'Stripe not configured' }, { status: 503 });
+      }
+
       const [payment] = await withAdminContext(async (db) => {
         return db.insert(payments).values({
-          amount, currency,
+          // chargedAmount is the server-computed deposit (for event deposits) or the full price.
+          amount: chargedAmount, currency,
           gateway: 'stripe',
+          // event_registration_id links this payment to the registration for webhook routing.
+          event_registration_id: depositMetaOverride?.event_registration_id as string ?? null,
           status: 'pending',
-          metadata: { item_type, item_id, item_name, user_id, user_email, country },
+          metadata: {
+            item_type, item_id, item_name, user_id, user_email, country,
+            payment_plan,
+            ...(payment_plan === 'installment' ? { installment_count } : {}),
+            ...(depositMetaOverride ?? {}),
+          },
         }).returning();
       });
 
       if (!payment) return NextResponse.json({ error: 'Failed to create payment' }, { status: 500 });
 
-      if (!process.env.STRIPE_SECRET_KEY) {
-        return NextResponse.json({ error: 'Stripe not configured' }, { status: 503 });
-      }
-
       const successUrl = `${origin}/${locale || 'ar'}/checkout/success?payment_id=${payment.id}`;
       const cancelUrl = `${origin}/${locale || 'ar'}/checkout?type=${item_type}&id=${item_id}`;
 
+      // ── Stripe Subscription Schedule (installment path) ──────────────
+      if (payment_plan === 'installment') {
+        // Per-installment amount: floor division; first installment absorbs remainder.
+        const perInstallment = Math.floor(amount / installment_count);
+        const firstInstallment = amount - perInstallment * (installment_count - 1);
+
+        const stripe = (await import('stripe')).default;
+        const stripeClient = new stripe(process.env.STRIPE_SECRET_KEY);
+
+        // Stripe requires a recurring Price object for subscription schedules.
+        // We create an ad-hoc price inline via price_data on the subscription items.
+        // However, SubscriptionSchedules require a pre-created Price ID (not inline
+        // price_data). We create a one-time recurring price for each installment.
+        // For simplicity (all installments equal except first), create ONE recurring price
+        // for the per-installment amount and handle the first-installment remainder
+        // by creating the customer via a SetupIntent-backed checkout session first,
+        // then creating the subscription schedule in the webhook after card is saved.
+        //
+        // S0 implementation: use Stripe Checkout in 'setup' mode to save the card,
+        // then the webhook creates the SubscriptionSchedule after setup completes.
+        // This is the cleanest flow: card save → webhook fires → schedule created.
+        //
+        // The checkout session metadata carries all the installment parameters so the
+        // webhook can reconstruct the schedule.
+
+        const setupSession = await stripeClient.checkout.sessions.create({
+          mode: 'setup',
+          customer_email: user_email || undefined,
+          success_url: `${successUrl}&setup=1`,
+          cancel_url: cancelUrl,
+          metadata: {
+            payment_id: payment.id,
+            item_type,
+            item_id,
+            user_id,
+            payment_plan: 'installment',
+            installment_count: String(installment_count),
+            installment_amount: String(perInstallment),
+            first_installment_amount: String(firstInstallment),
+            currency: currency.toLowerCase(),
+            item_name: item_name || '',
+          },
+        });
+
+        await withAdminContext(async (db) => {
+          await db.update(payments)
+            .set({ gateway_payment_id: setupSession.id })
+            .where(eq(payments.id, payment.id));
+        });
+
+        return NextResponse.json({
+          checkout_url: setupSession.url,
+          payment_id: payment.id,
+          gateway: 'stripe',
+          payment_plan: 'installment',
+          installment_count,
+        });
+      }
+
+      // ── Stripe standard one-off payment ──────────────────────────────
       const session = await createCheckoutSession({
         lineItems: [{
           name: item_name || `${item_type} - ${item_id}`,
-          amount, currency, quantity: 1,
+          amount: chargedAmount, currency, quantity: 1,
         }],
         customerEmail: user_email || '',
         successUrl, cancelUrl,
-        metadata: { payment_id: payment.id, item_type, item_id, user_id },
+        metadata: { payment_id: payment.id, item_type, item_id, user_id, payment_plan },
       });
 
       await withAdminContext(async (db) => {
@@ -412,10 +641,21 @@ export async function POST(request: NextRequest) {
 
       const [payment] = await withAdminContext(async (db) => {
         return db.insert(payments).values({
-          amount, currency,
+          // chargedAmount is the server-computed deposit amount or the full price.
+          amount: chargedAmount, currency,
           gateway: 'tabby',
+          // event_registration_id for webhook routing (event deposit path only).
+          event_registration_id: depositMetaOverride?.event_registration_id as string ?? null,
           status: 'pending',
-          metadata: { item_type, item_id, item_name, user_id, user_email, country },
+          metadata: {
+            item_type, item_id, item_name, user_id, user_email, country,
+            // Tabby is always a 4-installment BNPL — merchant receives full amount upfront.
+            // payment_plan + installment_count stored for reporting; S0 does not schedule
+            // anything for Tabby (no per-installment webhooks reach the merchant).
+            payment_plan: 'installment',
+            installment_count: 4,
+            ...(depositMetaOverride ?? {}),
+          },
         }).returning();
       });
 
@@ -426,7 +666,7 @@ export async function POST(request: NextRequest) {
       const failureUrl = `${origin}/${locale || 'ar'}/checkout?type=${item_type}&id=${item_id}&error=payment_failed`;
 
       const result = await createTabbySession({
-        amount, currency: currency as 'AED' | 'SAR' | 'KWD',
+        amount: chargedAmount, currency: currency as 'AED' | 'SAR' | 'KWD',
         description: item_name || `${item_type} — Kun Academy`,
         buyer: {
           name: user_email?.split('@')[0] || 'Customer',
@@ -437,7 +677,7 @@ export async function POST(request: NextRequest) {
         items: [{
           title: item_name || `${item_type} - ${item_id}`,
           quantity: 1,
-          unit_price: (amount / 100).toFixed(2),
+          unit_price: (chargedAmount / 100).toFixed(2),
           category: 'Education',
           reference_id: item_id,
         }],

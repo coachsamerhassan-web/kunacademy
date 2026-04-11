@@ -120,20 +120,114 @@ export async function POST(request: NextRequest) {
     }
 
     if (regStatus === 'pending_payment') {
-      // TODO(samer-review): Fix 2B BLOCKER — event deposit branching not yet implemented.
-      // Business rule: events ≤1,000 AED → full checkout; events >1,000 AED → deposit-only flow.
-      // A deposit system (partial payment + outstanding balance tracking) does not exist in this
-      // codebase yet. price_amount and price_currency are available in scope but the branching
-      // cannot be wired safely without that infrastructure. Build deposit flow first, then return here.
-      // PAID event — redirect to checkout
-      const checkoutUrl = `/${locale || 'ar'}/checkout?type=event&id=${regId}&name=${encodeURIComponent(event_name || event_slug)}`;
+      // ── Deposit threshold branching (Wave S0 Block C Phase 4) ──────────────
+      // Business rule: events priced >1,000 AED equivalent → deposit-only path.
+      //                events priced ≤1,000 AED → full payment path.
+      //
+      // price_amount is in minor units (e.g. 200,000 = 2,000 AED).
+      // 1,000 AED in minor units = 100,000.
+      //
+      // deposit_percentage and balance_due_days_before_event are CMS-configurable per-event
+      // and passed from the registration form. We sanitize and default them here.
+      // They are snapshotted into event_registrations so the webhook can reconstruct
+      // the schedule without re-querying the (CMS) event.
 
-      return NextResponse.json({
-        success: true,
-        registration_id: regId,
-        status: 'pending_payment',
-        checkout_url: checkoutUrl,
-      });
+      const fullPriceMinorUnits = typeof price_amount === 'number' && price_amount > 0
+        ? price_amount
+        : 0;
+
+      // Sanitize deposit_percentage: must be integer [1..100], default 30
+      const rawDepositPct = typeof body.deposit_percentage === 'number'
+        ? body.deposit_percentage
+        : 30;
+      const safeDepositPct = Math.min(100, Math.max(1, Math.round(rawDepositPct))) || 30;
+
+      // Sanitize balance_due_days_before_event: must be positive integer, default 14
+      const rawBalanceDays = typeof body.balance_due_days_before_event === 'number'
+        ? body.balance_due_days_before_event
+        : 14;
+      const safeBalanceDays = Math.max(1, Math.round(rawBalanceDays)) || 14;
+
+      // Sanitize event_date: ISO string passed from the registration form
+      const rawEventDate: string | null = typeof body.event_date === 'string' && body.event_date.length > 0
+        ? body.event_date
+        : null;
+
+      const EVENT_DEPOSIT_THRESHOLD = 100_000; // 1,000 AED in minor units
+
+      if (fullPriceMinorUnits > EVENT_DEPOSIT_THRESHOLD) {
+        // ── DEPOSIT PATH ──────────────────────────────────────────────────────
+        // Compute deposit and balance amounts server-side.
+        const depositAmount = Math.round(fullPriceMinorUnits * safeDepositPct / 100);
+        const balanceAmount = fullPriceMinorUnits - depositAmount;
+
+        // Compute balance_due_date from event_date (if provided).
+        // If event_date is unavailable, default to 14 days from now as a safe fallback.
+        let balanceDueDate: string;
+        if (rawEventDate) {
+          const ed = new Date(rawEventDate);
+          if (!isNaN(ed.getTime())) {
+            ed.setDate(ed.getDate() - safeBalanceDays);
+            balanceDueDate = ed.toISOString();
+          } else {
+            // rawEventDate present but unparseable — fall back to safeBalanceDays from now
+            const fallback = new Date();
+            fallback.setDate(fallback.getDate() + safeBalanceDays);
+            balanceDueDate = fallback.toISOString();
+          }
+        } else {
+          // No rawEventDate at all — fall back to safeBalanceDays from now
+          const fallback = new Date();
+          fallback.setDate(fallback.getDate() + safeBalanceDays);
+          balanceDueDate = fallback.toISOString();
+        }
+
+        // Snapshot deposit config onto the registration row so the webhook can
+        // reconstruct amounts without re-fetching the CMS event.
+        try {
+          await withAdminContext(async (db) => {
+            const { sql } = await import('drizzle-orm');
+            await db.execute(
+              sql`UPDATE event_registrations
+                  SET deposit_amount = ${depositAmount},
+                      balance_amount = ${balanceAmount},
+                      balance_due_date = ${balanceDueDate},
+                      deposit_percentage = ${safeDepositPct},
+                      balance_due_days_before_event = ${safeBalanceDays}
+                  WHERE id = ${regId}`
+            );
+          });
+        } catch (updateErr) {
+          console.error('[events/register] Failed to snapshot deposit config:', updateErr);
+          // Non-fatal: checkout will re-derive amounts; snapshot is an optimisation.
+        }
+
+        // Build checkout URL carrying deposit params so the UI pre-selects deposit plan.
+        const checkoutUrl = `/${locale || 'ar'}/checkout?type=event&id=${regId}&name=${encodeURIComponent(event_name || event_slug)}&payment_plan=deposit&deposit_pct=${safeDepositPct}&price_aed=${fullPriceMinorUnits}`;
+
+        return NextResponse.json({
+          success: true,
+          registration_id: regId,
+          status: 'pending_payment',
+          payment_plan: 'deposit',
+          deposit_amount: depositAmount,
+          balance_amount: balanceAmount,
+          balance_due_date: balanceDueDate,
+          deposit_percentage: safeDepositPct,
+          checkout_url: checkoutUrl,
+        });
+      } else {
+        // ── FULL PAYMENT PATH ─────────────────────────────────────────────────
+        const checkoutUrl = `/${locale || 'ar'}/checkout?type=event&id=${regId}&name=${encodeURIComponent(event_name || event_slug)}&payment_plan=full&price_aed=${fullPriceMinorUnits}`;
+
+        return NextResponse.json({
+          success: true,
+          registration_id: regId,
+          status: 'pending_payment',
+          payment_plan: 'full',
+          checkout_url: checkoutUrl,
+        });
+      }
     }
 
     // FREE event — registered immediately

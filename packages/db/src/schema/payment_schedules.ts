@@ -12,6 +12,9 @@ export const payment_schedules = pgTable("payment_schedules", {
   schedule_type: text("schedule_type").notNull(),
   installments: jsonb("installments").notNull(),
   currency: text("currency").notNull(),
+  // stripe_subscription_schedule_id: populated for Stripe Subscription Schedule installment plans.
+  // Allows direct lookup of the schedule for admin operations (pause, cancel, etc.)
+  stripe_subscription_schedule_id: text("stripe_subscription_schedule_id"),
   created_at: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
 });
 

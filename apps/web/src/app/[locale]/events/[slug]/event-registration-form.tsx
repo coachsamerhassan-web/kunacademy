@@ -12,6 +12,11 @@ interface EventRegistrationFormProps {
   capacity?: number;
   locale: string;
   registrationDeadline?: string;
+  /** ISO date string for the event start date (e.g. "2026-05-15").
+   *  Forwarded to /api/events/register so the server can compute
+   *  balance_due_date = event_date - balance_due_days_before_event.
+   *  Pass null / omit for "coming soon" events with no confirmed date. */
+  eventDate?: string | null;
 }
 
 type FormState = 'idle' | 'loading' | 'success' | 'duplicate' | 'error';
@@ -73,6 +78,7 @@ export function EventRegistrationForm({
   capacity,
   locale,
   registrationDeadline,
+  eventDate,
 }: EventRegistrationFormProps) {
   const isAr = locale === 'ar';
   const copy = isAr ? t.ar : t.en;
@@ -133,6 +139,9 @@ export function EventRegistrationForm({
     setErrorMsg('');
 
     try {
+      // price_amount: server expects minor units (AED × 100) for deposit threshold.
+      const priceAmountMinorUnits = priceAed > 0 ? Math.round(priceAed * 100) : 0;
+
       const res = await fetch('/api/events/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -145,6 +154,16 @@ export function EventRegistrationForm({
           user_id: user?.id,
           is_free: isFree,
           locale,
+          // ── Wave S0 Phase 4 #11 ───────────────────────────────────────────
+          // event_date: lets the server compute balance_due_date = event_date
+          //   minus balance_due_days_before_event (instead of N days from now).
+          //   Omitted (null) when the event has no confirmed date yet.
+          event_date: eventDate ?? null,
+          // price_amount in minor units (AED × 100) for deposit threshold check.
+          price_amount: priceAmountMinorUnits,
+          // capacity snapshot so the server-side atomic register_for_event()
+          // function has the current limit without re-querying the CMS.
+          capacity: capacity ?? null,
         }),
       });
 

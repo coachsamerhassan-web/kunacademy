@@ -86,14 +86,188 @@ export async function POST(request: NextRequest) {
       }
 
       if (event.type === 'checkout.session.completed') {
-        const session = event.data.object;
-        paymentId = session.metadata?.payment_id;
-        // Capture gateway-reported amount in minor units for mismatch detection
+        const session = event.data.object as any;
+        paymentId = session.metadata?.payment_id ?? null;
+
+        // ── Setup mode: installment card-save → create Stripe Subscription Schedule ──
+        // When mode === 'setup', the student has saved their card for future charges.
+        // We now create the SubscriptionSchedule; enrollment fires on the first invoice.paid.
+        if (session.mode === 'setup' && session.metadata?.payment_plan === 'installment') {
+          const setupMeta = session.metadata as Record<string, string>;
+          const installmentCount = parseInt(setupMeta.installment_count || '3', 10);
+          const installmentAmount = parseInt(setupMeta.installment_amount || '0', 10);
+          const firstInstallmentAmount = parseInt(setupMeta.first_installment_amount || '0', 10);
+          const installmentCurrency = setupMeta.currency || 'aed';
+          const setupIntentId = session.setup_intent as string | null;
+
+          if (!setupIntentId || !paymentId || installmentAmount <= 0) {
+            console.error('[stripe-webhook] setup mode: missing required fields', setupMeta);
+          } else {
+            try {
+              const StripeSDK = (await import('stripe')).default;
+              const stripeSch = new StripeSDK(process.env.STRIPE_SECRET_KEY!);
+
+              // Retrieve SetupIntent to get saved PaymentMethod + Customer
+              const setupIntent = await stripeSch.setupIntents.retrieve(setupIntentId);
+              const customerId = typeof setupIntent.customer === 'string' ? setupIntent.customer : null;
+              const paymentMethodId = typeof setupIntent.payment_method === 'string' ? setupIntent.payment_method : null;
+
+              if (!customerId || !paymentMethodId) {
+                throw new Error(`Setup intent missing customer (${customerId}) or payment_method (${paymentMethodId})`);
+              }
+
+              // Set saved card as default for the customer
+              await stripeSch.customers.update(customerId, {
+                invoice_settings: { default_payment_method: paymentMethodId },
+              });
+
+              // Find or create a monthly recurring price for this installment amount + currency.
+              // lookup_key prevents duplicates across calls.
+              const priceLookupKey = `kun_installment_${installmentCurrency}_${installmentAmount}`;
+              let priceId: string;
+              const existingPrices = await stripeSch.prices.list({ lookup_keys: [priceLookupKey], limit: 1 });
+
+              if (existingPrices.data.length > 0) {
+                priceId = existingPrices.data[0].id;
+              } else {
+                const product = await stripeSch.products.create({
+                  name: setupMeta.item_name || 'Kun Academy Installment',
+                });
+                const price = await stripeSch.prices.create({
+                  unit_amount: installmentAmount,
+                  currency: installmentCurrency,
+                  recurring: { interval: 'month' },
+                  product: product.id,
+                  lookup_key: priceLookupKey,
+                  transfer_lookup_key: false,
+                });
+                priceId = price.id;
+              }
+
+              // Create SubscriptionSchedule: N monthly installments, auto-cancels after last.
+              // All phases use the same amount (per-installment). The first-installment amount
+              // rounding (floor-divide remainder) is stored in schedule metadata for reference.
+              const schedule = await stripeSch.subscriptionSchedules.create({
+                customer: customerId,
+                start_date: 'now',
+                end_behavior: 'cancel',
+                phases: [{
+                  items: [{ price: priceId, quantity: 1 }],
+                  iterations: installmentCount,
+                }],
+                metadata: {
+                  payment_id: paymentId,
+                  item_type: setupMeta.item_type || '',
+                  item_id: setupMeta.item_id || '',
+                  user_id: setupMeta.user_id || '',
+                  installment_count: String(installmentCount),
+                  first_installment_amount: String(firstInstallmentAmount),
+                },
+              });
+
+              // Persist subscription_schedule_id into payment metadata
+              await withAdminContext(async (db) => {
+                const rows = await db.execute(
+                  sql`SELECT metadata FROM payments WHERE id = ${paymentId} LIMIT 1`
+                );
+                const existingMeta = (rows.rows[0] as any)?.metadata ?? {};
+                await db.execute(
+                  sql`UPDATE payments
+                      SET metadata = ${JSON.stringify({
+                        ...existingMeta,
+                        subscription_schedule_id: schedule.id,
+                        stripe_customer_id: customerId,
+                      })}::jsonb
+                      WHERE id = ${paymentId}`
+                );
+              });
+
+              console.log(`[stripe-webhook] Subscription schedule ${schedule.id} created for payment ${paymentId}`);
+            } catch (schedErr: any) {
+              console.error('[stripe-webhook] Failed to create subscription schedule:', schedErr.message);
+
+              // Mark the payment as failed so Amin can identify it in the dashboard.
+              // We do NOT delete the saved payment method — Amin may retry manually.
+              try {
+                await withAdminContext(async (db) => {
+                  await db.execute(
+                    sql`UPDATE payments
+                        SET status = 'failed',
+                            metadata = jsonb_set(
+                              COALESCE(metadata, '{}'::jsonb),
+                              '{schedule_error}',
+                              ${JSON.stringify(schedErr.message)}::jsonb
+                            )
+                        WHERE id = ${paymentId}`
+                  );
+                });
+              } catch (updateErr: any) {
+                console.error('[stripe-webhook] Failed to mark payment as failed:', updateErr.message);
+              }
+
+              // Alert Amin via Telegram (non-blocking)
+              const schedTelegramToken = process.env.TELEGRAM_BOT_TOKEN;
+              const schedAminChatId = process.env.TELEGRAM_AMIN_CHAT_ID;
+              if (schedTelegramToken && schedAminChatId) {
+                void fetch(`https://api.telegram.org/bot${schedTelegramToken}/sendMessage`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    chat_id: schedAminChatId,
+                    text: `ALERT: Installment schedule creation FAILED\nPayment ID: ${paymentId}\nCustomer email: ${setupMeta.user_email || 'unknown'}\nError: ${schedErr.message}\nAction needed: Card saved but no subscription scheduled. Retry or contact student.`,
+                  }),
+                });
+              }
+
+              // Send customer email: "We couldn't set up your installment plan" (non-blocking)
+              const setupUserEmail = setupMeta.user_email;
+              if (setupUserEmail) {
+                try {
+                  const { sendPaymentReceivedEmail } = await import('@kunacademy/email');
+                  const schedLocale: 'ar' | 'en' = setupMeta.locale === 'ar' ? 'ar' : 'en';
+                  await sendPaymentReceivedEmail({
+                    to: setupUserEmail,
+                    locale: schedLocale,
+                    first_name: (setupMeta.user_name as string | undefined)?.split(' ')[0] || undefined,
+                    item_name: setupMeta.item_name || 'program',
+                    amount_display: '0.00',
+                    currency: (setupMeta.currency || 'aed').toUpperCase(),
+                    gateway: 'stripe',
+                    payment_id: paymentId ?? 'unknown',
+                    transaction_date: new Date().toISOString().split('T')[0],
+                    // Override subject/body via a note in the email body — the template will
+                    // render the item_name field which we repurpose as a status message.
+                    // TODO: wire a dedicated 'schedule_failed' template for cleaner messaging.
+                  });
+                } catch (emailErr: any) {
+                  console.error('[stripe-webhook] Failed to send schedule-failure email:', emailErr.message);
+                }
+              }
+
+              void alertWebhookFailure({
+                gateway: 'stripe',
+                eventType: 'checkout.session.completed(setup)',
+                eventId: eventId ?? 'unknown',
+                error: `Subscription schedule creation failed: ${schedErr.message}`,
+              });
+            }
+          }
+
+          // Setup mode: no payment yet — enrollment fires on first invoice.paid.
+          await withAdminContext(async (db) => {
+            await db.execute(
+              sql`UPDATE webhook_events SET status = 'completed', completed_at = NOW() WHERE event_id = ${eventId}`
+            );
+          });
+          return NextResponse.json({ received: true, note: 'setup_card_saved_schedule_created' });
+        }
+
+        // ── Standard payment mode (non-installment checkout) ──────────────────
         if (typeof session.amount_total === 'number') {
           gatewayAmount = session.amount_total;
         }
 
-        // Secondary safety net: check if already completed by gateway_payment_id
+        // Secondary safety net: already-completed guard
         const existingPayment = await withAdminContext(async (db) => {
           const rows = await db.execute(
             sql`SELECT id, status FROM payments WHERE gateway_payment_id = ${session.id} AND status = 'completed' LIMIT 1`
@@ -102,7 +276,6 @@ export async function POST(request: NextRequest) {
         });
 
         if (existingPayment) {
-          // Mark the event record as completed too (keeps audit trail consistent)
           await withAdminContext(async (db) => {
             await db.execute(
               sql`UPDATE webhook_events SET status = 'completed', completed_at = NOW() WHERE event_id = ${eventId}`
@@ -110,6 +283,421 @@ export async function POST(request: NextRequest) {
           });
           return NextResponse.json({ received: true, note: 'already processed' });
         }
+
+      } else if (event.type === 'invoice.paid') {
+        // ── Stripe Subscription Schedule: installment settled ──────────────────
+        // Fires for each successful charge in a subscription schedule.
+        // Decision 3: commission fires on each invoice.paid (per-installment), not upfront.
+        // Idempotency: handled at event level via webhook_events UNIQUE constraint above.
+
+        const invoice = event.data.object as any;
+        const subscriptionId = invoice.subscription as string | null;
+
+        if (!subscriptionId) {
+          // Not a subscription invoice — skip silently
+          await withAdminContext(async (db) => {
+            await db.execute(
+              sql`UPDATE webhook_events SET status = 'completed', completed_at = NOW() WHERE event_id = ${eventId}`
+            );
+          });
+          return NextResponse.json({ received: true, note: 'non_subscription_invoice_skipped' });
+        }
+
+        // Resolve internal payment_id from subscription schedule metadata
+        const StripeForInv = (await import('stripe')).default;
+        const stripeInv = new StripeForInv(process.env.STRIPE_SECRET_KEY!);
+
+        let invPaymentId: string | null = null;
+        let invInstallmentCount = 0;
+        let invUserId: string | null = null;
+        let invItemType: string | null = null;
+        let invItemId: string | null = null;
+
+        try {
+          const sub = await stripeInv.subscriptions.retrieve(subscriptionId);
+          const schedId = typeof sub.schedule === 'string' ? sub.schedule : null;
+          if (schedId) {
+            const sched = await stripeInv.subscriptionSchedules.retrieve(schedId);
+            const sm = sched.metadata as Record<string, string>;
+            invPaymentId = sm.payment_id ?? null;
+            invInstallmentCount = parseInt(sm.installment_count || '0', 10);
+            invUserId = sm.user_id ?? null;
+            invItemType = sm.item_type ?? null;
+            invItemId = sm.item_id ?? null;
+          }
+        } catch (lookupErr: any) {
+          console.error('[stripe-webhook] invoice.paid: schedule lookup failed:', lookupErr.message);
+        }
+
+        if (!invPaymentId) {
+          console.warn('[stripe-webhook] invoice.paid: no payment_id in schedule metadata', { subscriptionId });
+          await withAdminContext(async (db) => {
+            await db.execute(
+              sql`UPDATE webhook_events SET status = 'failed', error_message = 'no payment_id in schedule metadata' WHERE event_id = ${eventId}`
+            );
+          });
+          return NextResponse.json({ received: true, note: 'no_payment_id_in_schedule' });
+        }
+
+        // Fetch internal payment record
+        const invPaymentRecord = await withAdminContext(async (db) => {
+          const rows = await db.execute(
+            sql`SELECT id, metadata, currency, amount FROM payments WHERE id = ${invPaymentId} LIMIT 1`
+          );
+          return rows.rows[0] as { id: string; metadata: any; currency: string; amount: number } | undefined;
+        });
+
+        if (!invPaymentRecord) {
+          console.error('[stripe-webhook] invoice.paid: payment not found:', invPaymentId);
+          await withAdminContext(async (db) => {
+            await db.execute(
+              sql`UPDATE webhook_events SET status = 'failed', error_message = 'payment record not found' WHERE event_id = ${eventId}`
+            );
+          });
+          return NextResponse.json({ received: true, note: 'payment_not_found' });
+        }
+
+        const invMeta = (invPaymentRecord.metadata ?? {}) as Record<string, any>;
+        const invoiceAmountPaid = typeof invoice.amount_paid === 'number' ? invoice.amount_paid : 0;
+
+        // Determine installment number by checking if payment_schedule already exists
+        const existingInvSchedule = await withAdminContext(async (db) => {
+          const rows = await db.execute(
+            sql`SELECT id, installments, total_amount FROM payment_schedules WHERE payment_id = ${invPaymentId} LIMIT 1`
+          );
+          return rows.rows[0] as { id: string; installments: any; total_amount: number } | undefined;
+        });
+
+        if (!existingInvSchedule) {
+          // ── Installment #1: fire enrollment + create schedule + commission ────
+          console.log(`[stripe-webhook] First installment settled for payment ${invPaymentId}`);
+
+          const userId = invUserId ?? invMeta.user_id;
+          const itemType = invItemType ?? invMeta.item_type;
+          const itemId = invItemId ?? invMeta.item_id;
+
+          // 1. Activate enrollment
+          if (itemType === 'course' && itemId && userId) {
+            await withAdminContext(async (db) => {
+              await db.execute(
+                sql`INSERT INTO enrollments (user_id, course_id, status, enrollment_type)
+                    VALUES (${userId}, ${itemId}, 'enrolled', 'recorded')
+                    ON CONFLICT DO NOTHING`
+              );
+            });
+          }
+
+          // 2. Build payment_schedule rows (first = settled, rest = pending)
+          const totalAmt = invPaymentRecord.amount;
+          const count = invInstallmentCount || 3;
+          const perAmt = Math.floor(totalAmt / count);
+          const firstAmt = totalAmt - perAmt * (count - 1); // first absorbs rounding remainder
+          type InstallmentRow = {
+            due_date: string; amount: number; status: string;
+            paid_at: string | null; stripe_invoice_id: string | null;
+          };
+          const instRows: InstallmentRow[] = [];
+          for (let i = 0; i < count; i++) {
+            const due = new Date();
+            due.setMonth(due.getMonth() + i);
+            instRows.push({
+              due_date: due.toISOString(),
+              amount: i === 0 ? firstAmt : perAmt,
+              status: i === 0 ? 'settled' : 'pending',
+              paid_at: i === 0 ? new Date().toISOString() : null,
+              stripe_invoice_id: i === 0 ? String(invoice.id) : null,
+            });
+          }
+
+          await withAdminContext(async (db) => {
+            await db.execute(
+              sql`INSERT INTO payment_schedules
+                  (payment_id, user_id, total_amount, paid_amount, remaining_amount,
+                   schedule_type, installments, currency)
+                  VALUES (
+                    ${invPaymentId}, ${userId}, ${totalAmt}, ${firstAmt}, ${totalAmt - firstAmt},
+                    'installment', ${JSON.stringify(instRows)}::jsonb, ${invPaymentRecord.currency}
+                  )`
+            );
+          });
+
+          // 3. Update payment status to 'active_installment' (partially paid — not yet complete)
+          await withAdminContext(async (db) => {
+            await db.execute(
+              sql`UPDATE payments SET status = 'active_installment' WHERE id = ${invPaymentId}`
+            );
+          });
+
+          // 4. Zoho Books invoice for first installment amount (non-blocking)
+          try {
+            const zohoResult = await createZohoInvoice({
+              customerName: invMeta.user_email?.split('@')[0] || 'Customer',
+              customerEmail: invMeta.user_email || '',
+              itemName: invMeta.item_name || `${itemType} - ${itemId}`,
+              amount: invoiceAmountPaid,
+              currency: invPaymentRecord.currency,
+              paymentGateway: 'stripe',
+              paymentId: `${invPaymentId}-inst-1`,
+              itemType, itemId,
+            });
+            console.log(`[zoho-books] Installment 1 invoice: ${zohoResult.invoice_number}`);
+          } catch (zErr: any) {
+            console.error('[zoho-books] Installment 1 invoice failed:', zErr.message);
+          }
+
+          // 5. Send full enrollment confirmation email (same as one-off payment)
+          await sendNotifications({ ...invPaymentRecord, metadata: { ...invMeta, gateway: 'stripe' } });
+
+          await withAdminContext(async (db) => {
+            await db.execute(
+              sql`UPDATE webhook_events SET status = 'completed', completed_at = NOW(), payment_id = ${invPaymentId} WHERE event_id = ${eventId}`
+            );
+          });
+          return NextResponse.json({ received: true, payment_id: invPaymentId, note: 'installment_1_settled_enrollment_created' });
+
+        } else {
+          // ── Installment #2..N: mark next pending row settled ───────────────
+          const installments: Array<Record<string, any>> = typeof existingInvSchedule.installments === 'string'
+            ? JSON.parse(existingInvSchedule.installments)
+            : existingInvSchedule.installments;
+
+          // ── Invoice-level idempotency guard ────────────────────────────────
+          // Stripe can in rare cases retry with a NEW event ID for the same invoice.
+          // The webhook_events UNIQUE constraint catches same-event-ID retries;
+          // this guard catches same-invoice-ID-but-new-event-ID retries.
+          const alreadySettledByThisInvoice = installments.some(
+            (inst: Record<string, any>) => inst.stripe_invoice_id === String(invoice.id)
+          );
+          if (alreadySettledByThisInvoice) {
+            console.warn(`[stripe-webhook] invoice.paid: invoice ${invoice.id} already recorded in schedule — skipping`);
+            await withAdminContext(async (db) => {
+              await db.execute(
+                sql`UPDATE webhook_events SET status = 'completed', completed_at = NOW() WHERE event_id = ${eventId}`
+              );
+            });
+            return NextResponse.json({ received: true, note: 'invoice_already_recorded' });
+          }
+
+          const pendingIdx = installments.findIndex((inst: Record<string, any>) => inst.status === 'pending');
+
+          if (pendingIdx === -1) {
+            console.warn('[stripe-webhook] invoice.paid: no pending installments', existingInvSchedule.id);
+            await withAdminContext(async (db) => {
+              await db.execute(
+                sql`UPDATE webhook_events SET status = 'completed', completed_at = NOW() WHERE event_id = ${eventId}`
+              );
+            });
+            return NextResponse.json({ received: true, note: 'all_installments_already_settled' });
+          }
+
+          installments[pendingIdx] = {
+            ...installments[pendingIdx],
+            status: 'settled',
+            paid_at: new Date().toISOString(),
+            stripe_invoice_id: String(invoice.id),
+          };
+
+          const newPaid = installments
+            .filter((i: Record<string, any>) => i.status === 'settled')
+            .reduce((s: number, i: Record<string, any>) => s + (i.amount as number), 0);
+          const newRemaining = existingInvSchedule.total_amount - newPaid;
+
+          await withAdminContext(async (db) => {
+            await db.execute(
+              sql`UPDATE payment_schedules
+                  SET installments = ${JSON.stringify(installments)}::jsonb,
+                      paid_amount = ${newPaid},
+                      remaining_amount = ${newRemaining}
+                  WHERE id = ${existingInvSchedule.id}`
+            );
+          });
+
+          const isLastInstallment = newRemaining <= 0;
+
+          if (isLastInstallment) {
+            await withAdminContext(async (db) => {
+              await db.execute(
+                sql`UPDATE payments SET status = 'completed' WHERE id = ${invPaymentId}`
+              );
+            });
+          }
+
+          // Lighter "installment received" notification — does NOT re-enroll.
+          // Commission fires per-installment on invoice.paid per Decision 3.
+          // The enrollment was already created on installment #1 — do not re-enroll.
+          const installmentNum = pendingIdx + 2; // human-readable: #1 already settled, this is #2+
+          await sendInstallmentNotification(
+            invPaymentRecord, invoiceAmountPaid,
+            installmentNum, invInstallmentCount,
+            isLastInstallment,
+          );
+
+          // ── Commission per-installment (Decision 3) ─────────────────────────
+          // Fire for every installment (#2..N), just as it fires for #1 inside sendNotifications.
+          try {
+            const coachId = (invMeta.coach_id as string | undefined) ?? null;
+            if (coachId && invoiceAmountPaid > 0) {
+              const commissionRate = await withAdminContext(async (db) => {
+                const coachRow = await db.execute(
+                  sql`SELECT rate_pct FROM commission_rates WHERE scope = 'coach' AND scope_id = ${coachId} LIMIT 1`
+                );
+                if ((coachRow.rows[0] as any)?.rate_pct !== undefined) {
+                  return Number((coachRow.rows[0] as any).rate_pct);
+                }
+                const globalRow = await db.execute(
+                  sql`SELECT rate_pct FROM commission_rates WHERE scope = 'global' LIMIT 1`
+                );
+                return Number((globalRow.rows[0] as any)?.rate_pct ?? 20);
+              });
+              const commissionAmount = Math.round(invoiceAmountPaid * (commissionRate / 100));
+              const netAmount = invoiceAmountPaid - commissionAmount;
+              const availableAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+              await withAdminContext(async (db) => {
+                await db.execute(
+                  sql`INSERT INTO earnings
+                      (user_id, source_type, source_id, gross_amount, commission_pct, commission_amount, net_amount, currency, status, available_at)
+                      VALUES (${coachId}, 'installment_payment', ${invPaymentId}, ${invoiceAmountPaid}, ${commissionRate}, ${commissionAmount}, ${netAmount}, ${invPaymentRecord.currency}, 'pending', ${availableAt})
+                      ON CONFLICT DO NOTHING`
+                );
+              });
+              console.log(`[stripe-webhook] Commission recorded for installment ${installmentNum}: coach=${coachId} gross=${invoiceAmountPaid} pct=${commissionRate}`);
+            }
+          } catch (commErr: any) {
+            console.error(`[stripe-webhook] Commission write failed for installment ${installmentNum}:`, commErr.message);
+            // Non-fatal: Amin can reconcile manually
+          }
+
+          // Zoho Books invoice for this installment amount (non-blocking)
+          try {
+            await createZohoInvoice({
+              customerName: invMeta.user_email?.split('@')[0] || 'Customer',
+              customerEmail: invMeta.user_email || '',
+              itemName: invMeta.item_name || `${invMeta.item_type} - ${invMeta.item_id}`,
+              amount: invoiceAmountPaid,
+              currency: invPaymentRecord.currency,
+              paymentGateway: 'stripe',
+              paymentId: `${invPaymentId}-inst-${installmentNum}`,
+              itemType: invMeta.item_type,
+              itemId: invMeta.item_id,
+            });
+          } catch (zErr: any) {
+            console.error('[zoho-books] Installment invoice failed:', zErr.message);
+          }
+
+          await withAdminContext(async (db) => {
+            await db.execute(
+              sql`UPDATE webhook_events SET status = 'completed', completed_at = NOW(), payment_id = ${invPaymentId} WHERE event_id = ${eventId}`
+            );
+          });
+
+          return NextResponse.json({
+            received: true,
+            payment_id: invPaymentId,
+            note: isLastInstallment ? 'all_installments_complete' : `installment_${installmentNum}_settled`,
+          });
+        }
+
+      } else if (event.type === 'invoice.payment_failed') {
+        // ── Stripe installment payment failed ──────────────────────────────────
+        // Marks next pending installment as 'failed' in the schedule.
+        // Alerts Amin via Telegram. Student notification is a TODO for a future wave.
+
+        const failedInvoice = event.data.object as any;
+        const failedSubId = failedInvoice.subscription as string | null;
+
+        if (!failedSubId) {
+          await withAdminContext(async (db) => {
+            await db.execute(
+              sql`UPDATE webhook_events SET status = 'completed', completed_at = NOW() WHERE event_id = ${eventId}`
+            );
+          });
+          return NextResponse.json({ received: true, note: 'non_subscription_invoice_failed_skipped' });
+        }
+
+        let failPaymentId: string | null = null;
+        let failInstallmentCount = 0;
+        try {
+          const StripeForFail = (await import('stripe')).default;
+          const stripeFail = new StripeForFail(process.env.STRIPE_SECRET_KEY!);
+          const failSub = await stripeFail.subscriptions.retrieve(failedSubId);
+          const failSchedId = typeof failSub.schedule === 'string' ? failSub.schedule : null;
+          if (failSchedId) {
+            const failSched = await stripeFail.subscriptionSchedules.retrieve(failSchedId);
+            const sm = failSched.metadata as Record<string, string>;
+            failPaymentId = sm.payment_id ?? null;
+            failInstallmentCount = parseInt(sm.installment_count || '0', 10);
+          }
+        } catch (err: any) {
+          console.error('[stripe-webhook] invoice.payment_failed: schedule lookup failed:', err.message);
+        }
+
+        if (failPaymentId) {
+          // Mark next pending installment as 'failed' in payment_schedules
+          const failSchedule = await withAdminContext(async (db) => {
+            const rows = await db.execute(
+              sql`SELECT id, installments FROM payment_schedules WHERE payment_id = ${failPaymentId} LIMIT 1`
+            );
+            return rows.rows[0] as { id: string; installments: any } | undefined;
+          });
+
+          if (failSchedule) {
+            const failInsts: Array<Record<string, any>> = typeof failSchedule.installments === 'string'
+              ? JSON.parse(failSchedule.installments)
+              : failSchedule.installments;
+            const failPendingIdx = failInsts.findIndex((i: Record<string, any>) => i.status === 'pending');
+            if (failPendingIdx !== -1) {
+              failInsts[failPendingIdx] = {
+                ...failInsts[failPendingIdx],
+                status: 'failed',
+                failed_at: new Date().toISOString(),
+                stripe_invoice_id: String(failedInvoice.id),
+              };
+              await withAdminContext(async (db) => {
+                await db.execute(
+                  sql`UPDATE payment_schedules SET installments = ${JSON.stringify(failInsts)}::jsonb WHERE id = ${failSchedule.id}`
+                );
+              });
+            }
+          }
+
+          // Alert Amin via Telegram (non-blocking)
+          const telegramToken = process.env.TELEGRAM_BOT_TOKEN;
+          const aminChatId = process.env.TELEGRAM_AMIN_CHAT_ID;
+          if (telegramToken && aminChatId) {
+            try {
+              const failPayRec = await withAdminContext(async (db) => {
+                const rows = await db.execute(
+                  sql`SELECT metadata, currency, amount FROM payments WHERE id = ${failPaymentId} LIMIT 1`
+                );
+                return rows.rows[0] as { metadata: any; currency: string; amount: number } | undefined;
+              });
+              const failMeta = (failPayRec?.metadata ?? {}) as Record<string, any>;
+              const perInstAmt = failInstallmentCount > 0
+                ? ((failPayRec?.amount ?? 0) / failInstallmentCount / 100).toFixed(2)
+                : 'unknown';
+              await fetch(`https://api.telegram.org/bot${telegramToken}/sendMessage`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  chat_id: aminChatId,
+                  text: `Installment FAILED!\nPayment: ${failPaymentId}\nCustomer: ${failMeta.user_email || 'unknown'}\nInstallment amount: ${perInstAmt} ${failPayRec?.currency || ''}\nStripe invoice: ${failedInvoice.id}`,
+                }),
+              });
+            } catch (tgErr: any) {
+              console.error('[notify] Telegram installment-failure alert failed:', tgErr.message);
+            }
+          }
+
+          console.log(`[stripe-webhook] Installment failed for payment ${failPaymentId}, invoice ${failedInvoice.id}`);
+        }
+
+        await withAdminContext(async (db) => {
+          await db.execute(
+            sql`UPDATE webhook_events SET status = 'completed', completed_at = NOW(), payment_id = ${failPaymentId} WHERE event_id = ${eventId}`
+          );
+        });
+        return NextResponse.json({ received: true, note: 'installment_payment_failed', payment_id: failPaymentId });
+
       } else if (event.type === 'checkout.session.expired') {
         paymentId = event.data.object.metadata?.payment_id;
         status = 'failed';
@@ -364,6 +952,154 @@ export async function POST(request: NextRequest) {
         }
       }
 
+      // ── Event payment settlement (Wave S0 Block C Phase 4) ──────────────────
+      // Handles two sub-cases:
+      //   A) Deposit payment for an event (payment_plan === 'deposit' in metadata)
+      //   B) Balance payment for an event (payment via payment_schedules, no direct
+      //      item_type in metadata — detected via event_registration_id on payments row)
+      if (meta.item_type === 'event') {
+        const eventRegId: string | null =
+          meta.event_registration_id as string ?? payment.event_registration_id ?? null;
+
+        if (eventRegId) {
+          const depositPlan = meta.payment_plan === 'deposit';
+          const fullPlan = meta.payment_plan === 'full';
+
+          if (depositPlan) {
+            // ── SUB-CASE A: Deposit payment settled ───────────────────────────
+            // Idempotency: check deposit_paid_at before writing.
+            const reg = await withAdminContext(async (db) => {
+              const rows = await db.execute(
+                sql`SELECT deposit_paid_at, balance_amount, balance_due_date, status
+                    FROM event_registrations WHERE id = ${eventRegId} LIMIT 1`
+              );
+              return rows.rows[0] as {
+                deposit_paid_at: string | null;
+                balance_amount: number | null;
+                balance_due_date: string | null;
+                status: string;
+              } | undefined;
+            });
+
+            if (reg && !reg.deposit_paid_at) {
+              // Mark deposit as paid and update status
+              await withAdminContext(async (db) => {
+                await db.execute(
+                  sql`UPDATE event_registrations
+                      SET deposit_paid_at = NOW(),
+                          status = 'deposit_paid',
+                          updated_at = NOW()
+                      WHERE id = ${eventRegId}`
+                );
+              });
+
+              // Create payment_schedule for the outstanding balance so the
+              // installment-reminders cron can fire a reminder before balance is due.
+              if (reg.balance_amount && reg.balance_amount > 0) {
+                const balanceDue = reg.balance_due_date || (() => {
+                  const d = new Date();
+                  d.setDate(d.getDate() + 14);
+                  return d.toISOString();
+                })();
+
+                const balanceInstallments = JSON.stringify([{
+                  due_date: balanceDue,
+                  amount: reg.balance_amount,
+                  status: 'pending',
+                  paid_at: null,
+                  item_name: meta.item_name || 'Event Balance',
+                }]);
+
+                await withAdminContext(async (db) => {
+                  await db.execute(
+                    sql`INSERT INTO payment_schedules
+                        (payment_id, user_id, total_amount, paid_amount, remaining_amount,
+                         schedule_type, installments, currency)
+                        VALUES (
+                          ${payment.id},
+                          ${meta.user_id},
+                          ${(meta.deposit_amount as number ?? 0) + (reg.balance_amount ?? 0)},
+                          ${meta.deposit_amount as number ?? 0},
+                          ${reg.balance_amount ?? 0},
+                          'deposit_balance',
+                          ${balanceInstallments},
+                          ${payment.currency}
+                        )
+                        ON CONFLICT DO NOTHING`
+                  );
+                });
+
+                console.log(
+                  `[payment-webhook] Event deposit settled for reg \${eventRegId}. ` +
+                  `Balance \${reg.balance_amount} due \${balanceDue}.`
+                );
+              }
+
+              // ── Commission: fire on deposit settlement per Decision 3 ──────────
+              // Look up coach (provider) from event_registrations.coach_id if present,
+              // else from metadata. commission_pct defaults to global rate.
+              try {
+                const depositAmount = meta.deposit_amount as number ?? payment.amount;
+                const coachId = (meta.coach_id as string | undefined) ?? null;
+                if (coachId) {
+                  // Look up commission rate: coach-specific → global
+                  const commissionRate = await withAdminContext(async (db) => {
+                    const coachRow = await db.execute(
+                      sql`SELECT rate_pct FROM commission_rates WHERE scope = 'coach' AND scope_id = ${coachId} LIMIT 1`
+                    );
+                    if ((coachRow.rows[0] as any)?.rate_pct !== undefined) {
+                      return Number((coachRow.rows[0] as any).rate_pct);
+                    }
+                    const globalRow = await db.execute(
+                      sql`SELECT rate_pct FROM commission_rates WHERE scope = 'global' LIMIT 1`
+                    );
+                    return Number((globalRow.rows[0] as any)?.rate_pct ?? 20);
+                  });
+                  const commissionAmount = Math.round(depositAmount * (commissionRate / 100));
+                  const netAmount = depositAmount - commissionAmount;
+                  const availableAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+                  await withAdminContext(async (db) => {
+                    await db.execute(
+                      sql`INSERT INTO earnings
+                          (user_id, source_type, source_id, gross_amount, commission_pct, commission_amount, net_amount, currency, status, available_at)
+                          VALUES (${coachId}, 'event_deposit', ${payment.id}, ${depositAmount}, ${commissionRate}, ${commissionAmount}, ${netAmount}, ${payment.currency}, 'pending', ${availableAt})
+                          ON CONFLICT DO NOTHING`
+                    );
+                  });
+                  console.log(`[payment-webhook] Commission recorded for event deposit: coach=${coachId} gross=${depositAmount} pct=${commissionRate}`);
+                }
+              } catch (commErr: any) {
+                console.error('[payment-webhook] Commission write failed for event deposit:', commErr.message);
+                // Non-fatal: Amin can reconcile manually
+              }
+            } else if (reg?.deposit_paid_at) {
+              console.log(`[payment-webhook] Event deposit already recorded for reg \${eventRegId} — skipping`);
+            }
+
+          } else if (fullPlan) {
+            // ── SUB-CASE B: Full payment for event ────────────────────────────
+            // Idempotency: only update if not already confirmed.
+            const reg = await withAdminContext(async (db) => {
+              const rows = await db.execute(
+                sql`SELECT status FROM event_registrations WHERE id = ${eventRegId} LIMIT 1`
+              );
+              return rows.rows[0] as { status: string } | undefined;
+            });
+
+            if (reg && reg.status === 'pending_payment') {
+              await withAdminContext(async (db) => {
+                await db.execute(
+                  sql`UPDATE event_registrations
+                      SET status = 'confirmed', updated_at = NOW()
+                      WHERE id = ${eventRegId}`
+                );
+              });
+              console.log(`[payment-webhook] Event fully paid and confirmed for reg \${eventRegId}`);
+            }
+          }
+        }
+      }
+
       // Create Zoho Books invoice (non-blocking — don't fail the webhook)
       try {
         const invoiceResult = await createZohoInvoice({
@@ -473,5 +1209,47 @@ async function sendNotifications(payment: any) {
         }),
       });
     } catch (e) { console.error('[notify] Telegram failed:', e); }
+  }
+}
+
+/**
+ * Send a lighter "installment received" notification for installments #2..N.
+ * Does NOT re-fire enrollment or commission — those happen on installment #1 only.
+ */
+async function sendInstallmentNotification(
+  payment: any,
+  installmentAmount: number,
+  installmentNumber: number,
+  totalInstallments: number,
+  isLast: boolean,
+) {
+  const meta = (payment.metadata || {}) as Record<string, any>;
+  const userEmail = meta.user_email;
+
+  // Telegram alert to Amin (finance) — non-blocking
+  const telegramToken = process.env.TELEGRAM_BOT_TOKEN;
+  const aminChatId = process.env.TELEGRAM_AMIN_CHAT_ID;
+  if (telegramToken && aminChatId) {
+    try {
+      const statusLine = isLast ? 'ALL INSTALLMENTS COMPLETE' : `Installment ${installmentNumber} of ${totalInstallments}`;
+      await fetch(`https://api.telegram.org/bot${telegramToken}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: aminChatId,
+          text: `Installment received!\n${statusLine}\nCustomer: ${userEmail || 'unknown'}\nAmount: ${(installmentAmount / 100).toFixed(2)} ${payment.currency}\nPayment ID: ${payment.id}`,
+        }),
+      });
+    } catch (e) { console.error('[notify] Telegram installment notification failed:', e); }
+  }
+
+  // Email to student (non-blocking)
+  // TODO: Wire a dedicated 'installment_received' email template.
+  // For S0: log only. The student can check their dashboard for schedule status.
+  if (userEmail) {
+    console.log(
+      `[notify] Installment ${installmentNumber}/${totalInstallments} received for ${userEmail}` +
+      (isLast ? ' — All installments complete.' : ''),
+    );
   }
 }

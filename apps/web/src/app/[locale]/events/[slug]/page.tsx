@@ -314,6 +314,7 @@ export default async function EventDetailPage({ params }: Props) {
                   capacity={event.capacity}
                   locale={locale}
                   registrationDeadline={event.registration_deadline}
+                  eventDate={event.date_start ?? null}
                 />
               )}
             </div>
