@@ -1,11 +1,12 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { withAdminContext } from '@kunacademy/db';
 import { captureTabbyPayment } from '@kunacademy/payments';
-import { createZohoInvoice } from '@/lib/zoho-books';
+import { createZohoBooksInvoice, buildItemSku } from '@/lib/zoho-books';
 import { randomUUID, timingSafeEqual } from 'crypto';
 import { getBusinessConfig } from '@/lib/cms-config';
 import { alertWebhookFailure, alertPaymentMismatch } from '@kunacademy/email';
 import { sql } from 'drizzle-orm';
+import { fireSettlementEffects, type EarningsSourceType } from '@/lib/settlement-effects';
 
 // Unified payment webhook — handles Stripe, Tabby
 export async function POST(request: NextRequest) {
@@ -428,25 +429,66 @@ export async function POST(request: NextRequest) {
             );
           });
 
-          // 4. Zoho Books invoice for first installment amount (non-blocking)
+          // 4. Zoho Books invoice for first installment amount (non-blocking, fail-soft)
           try {
-            const zohoResult = await createZohoInvoice({
-              customerName: invMeta.user_email?.split('@')[0] || 'Customer',
-              customerEmail: invMeta.user_email || '',
-              itemName: invMeta.item_name || `${itemType} - ${itemId}`,
-              amount: invoiceAmountPaid,
-              currency: invPaymentRecord.currency,
-              paymentGateway: 'stripe',
-              paymentId: `${invPaymentId}-inst-1`,
-              itemType, itemId,
+            const zohoResult = await createZohoBooksInvoice({
+              customer_name: (invMeta.user_name as string | undefined) || invMeta.user_email?.split('@')[0] || 'Customer',
+              customer_email: invMeta.user_email || '',
+              item_sku: buildItemSku(itemType, itemId),
+              item_name: invMeta.item_name || `${itemType} - ${itemId}`,
+              unit_price_minor: invoiceAmountPaid,
+              currency: invPaymentRecord.currency.toUpperCase() as 'EGP' | 'AED' | 'USD' | 'EUR' | 'SAR',
+              reference_number: `${invPaymentId}-inst-1`,
+              notes: `Installment 1 — Stripe — payment ${invPaymentId}`,
             });
-            console.log(`[zoho-books] Installment 1 invoice: ${zohoResult.invoice_number}`);
+            console.log(`[zoho-books] Installment 1 invoice: ${zohoResult.invoice_number}${zohoResult.was_idempotent ? ' (idempotent)' : ''}`);
           } catch (zErr: any) {
             console.error('[zoho-books] Installment 1 invoice failed:', zErr.message);
+            // Alert Amin — non-blocking; the payment already landed
+            const _zTok = process.env.TELEGRAM_BOT_TOKEN;
+            const _zChat = process.env.TELEGRAM_AMIN_CHAT_ID;
+            if (_zTok && _zChat) {
+              void fetch(`https://api.telegram.org/bot${_zTok}/sendMessage`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  chat_id: _zChat,
+                  text: `⚠️ Zoho Books invoice FAILED (installment 1)\nPayment ID: ${invPaymentId}\nError: ${zErr.message}\nManual backfill required.`,
+                }),
+              }).catch(() => {});
+            }
           }
 
           // 5. Send full enrollment confirmation email (same as one-off payment)
           await sendNotifications({ ...invPaymentRecord, metadata: { ...invMeta, gateway: 'stripe' } });
+
+          // ── Dual-surface settlement effects: installment #1 (Decision 3 + D4) ──
+          // FIXES the pre-existing installment #1 commission gap (D1).
+          // sendNotifications had no earnings write — this resolves it.
+          {
+            const inst1UserId = (invMeta.user_id as string | undefined) || '';
+            if (!inst1UserId) {
+              console.warn(`[stripe-webhook] installment #1 settlement skipped — user_id missing in payment metadata for payment ${invPaymentId}`);
+            } else {
+              const inst1CoachId = (invMeta.coach_id as string | undefined) ?? null;
+              const inst1ReferrerId = (invMeta.referrer_id as string | undefined) ?? null;
+              const inst1Result = await fireSettlementEffects({
+                payment_id: invPaymentId,
+                user_id: inst1UserId,
+                amount_minor: invoiceAmountPaid,
+                currency: invPaymentRecord.currency,
+                item_type: (invMeta.item_type as 'course' | 'booking' | 'event' | 'product') || 'course',
+                item_id: (invMeta.item_id as string | undefined) || '',
+                coach_id: inst1CoachId,
+                referrer_id: inst1ReferrerId,
+                source_type: 'installment_payment',
+              });
+              if (inst1Result.errors.length > 0) {
+                console.error('[stripe-webhook] Settlement effects errors for installment 1:', inst1Result.errors);
+              }
+              console.log(`[stripe-webhook] Settlement effects installment 1: commission_written=${inst1Result.commission_written} store_credit_written=${inst1Result.store_credit_written}`);
+            }
+          }
 
           await withAdminContext(async (db) => {
             await db.execute(
@@ -532,56 +574,62 @@ export async function POST(request: NextRequest) {
             isLastInstallment,
           );
 
-          // ── Commission per-installment (Decision 3) ─────────────────────────
-          // Fire for every installment (#2..N), just as it fires for #1 inside sendNotifications.
-          try {
-            const coachId = (invMeta.coach_id as string | undefined) ?? null;
-            if (coachId && invoiceAmountPaid > 0) {
-              const commissionRate = await withAdminContext(async (db) => {
-                const coachRow = await db.execute(
-                  sql`SELECT rate_pct FROM commission_rates WHERE scope = 'coach' AND scope_id = ${coachId} LIMIT 1`
-                );
-                if ((coachRow.rows[0] as any)?.rate_pct !== undefined) {
-                  return Number((coachRow.rows[0] as any).rate_pct);
-                }
-                const globalRow = await db.execute(
-                  sql`SELECT rate_pct FROM commission_rates WHERE scope = 'global' LIMIT 1`
-                );
-                return Number((globalRow.rows[0] as any)?.rate_pct ?? 20);
+          // ── Dual-surface settlement effects per-installment (Decision 3 + D4) ─────
+          // Consolidates commission (earnings) + referrer store credit into shared helper.
+          // Replaces the former inline earnings INSERT for installments #2..N.
+          {
+            const invUserId = (invMeta.user_id as string | undefined) || '';
+            if (!invUserId) {
+              console.warn(`[stripe-webhook] installment #${installmentNum} settlement skipped — user_id missing in payment metadata for payment ${invPaymentId}`);
+            } else {
+              const invCoachId = (invMeta.coach_id as string | undefined) ?? null;
+              const invReferrerId = (invMeta.referrer_id as string | undefined) ?? null;
+              const invInstResult = await fireSettlementEffects({
+                payment_id: invPaymentId,
+                user_id: invUserId,
+                amount_minor: invoiceAmountPaid,
+                currency: invPaymentRecord.currency,
+                item_type: (invMeta.item_type as 'course' | 'booking' | 'event' | 'product') || 'course',
+                item_id: (invMeta.item_id as string | undefined) || '',
+                coach_id: invCoachId,
+                referrer_id: invReferrerId,
+                source_type: 'installment_payment',
               });
-              const commissionAmount = Math.round(invoiceAmountPaid * (commissionRate / 100));
-              const netAmount = invoiceAmountPaid - commissionAmount;
-              const availableAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
-              await withAdminContext(async (db) => {
-                await db.execute(
-                  sql`INSERT INTO earnings
-                      (user_id, source_type, source_id, gross_amount, commission_pct, commission_amount, net_amount, currency, status, available_at)
-                      VALUES (${coachId}, 'installment_payment', ${invPaymentId}, ${invoiceAmountPaid}, ${commissionRate}, ${commissionAmount}, ${netAmount}, ${invPaymentRecord.currency}, 'pending', ${availableAt})
-                      ON CONFLICT DO NOTHING`
-                );
-              });
-              console.log(`[stripe-webhook] Commission recorded for installment ${installmentNum}: coach=${coachId} gross=${invoiceAmountPaid} pct=${commissionRate}`);
+              if (invInstResult.errors.length > 0) {
+                console.error(`[stripe-webhook] Settlement effects errors for installment ${installmentNum}:`, invInstResult.errors);
+              }
+              console.log(`[stripe-webhook] Settlement effects installment ${installmentNum}: commission_written=${invInstResult.commission_written} store_credit_written=${invInstResult.store_credit_written}`);
             }
-          } catch (commErr: any) {
-            console.error(`[stripe-webhook] Commission write failed for installment ${installmentNum}:`, commErr.message);
-            // Non-fatal: Amin can reconcile manually
           }
 
-          // Zoho Books invoice for this installment amount (non-blocking)
+          // Zoho Books invoice for this installment amount (non-blocking, fail-soft)
           try {
-            await createZohoInvoice({
-              customerName: invMeta.user_email?.split('@')[0] || 'Customer',
-              customerEmail: invMeta.user_email || '',
-              itemName: invMeta.item_name || `${invMeta.item_type} - ${invMeta.item_id}`,
-              amount: invoiceAmountPaid,
-              currency: invPaymentRecord.currency,
-              paymentGateway: 'stripe',
-              paymentId: `${invPaymentId}-inst-${installmentNum}`,
-              itemType: invMeta.item_type,
-              itemId: invMeta.item_id,
+            const zohoInstResult = await createZohoBooksInvoice({
+              customer_name: (invMeta.user_name as string | undefined) || invMeta.user_email?.split('@')[0] || 'Customer',
+              customer_email: invMeta.user_email || '',
+              item_sku: buildItemSku(invMeta.item_type, invMeta.item_id),
+              item_name: invMeta.item_name || `${invMeta.item_type} - ${invMeta.item_id}`,
+              unit_price_minor: invoiceAmountPaid,
+              currency: invPaymentRecord.currency.toUpperCase() as 'EGP' | 'AED' | 'USD' | 'EUR' | 'SAR',
+              reference_number: `${invPaymentId}-inst-${installmentNum}`,
+              notes: `Installment ${installmentNum} — Stripe — payment ${invPaymentId}`,
             });
+            console.log(`[zoho-books] Installment ${installmentNum} invoice: ${zohoInstResult.invoice_number}${zohoInstResult.was_idempotent ? ' (idempotent)' : ''}`);
           } catch (zErr: any) {
             console.error('[zoho-books] Installment invoice failed:', zErr.message);
+            // Alert Amin — non-blocking
+            const _zTok = process.env.TELEGRAM_BOT_TOKEN;
+            const _zChat = process.env.TELEGRAM_AMIN_CHAT_ID;
+            if (_zTok && _zChat) {
+              void fetch(`https://api.telegram.org/bot${_zTok}/sendMessage`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  chat_id: _zChat,
+                  text: `⚠️ Zoho Books invoice FAILED (installment ${installmentNum})\nPayment ID: ${invPaymentId}\nError: ${zErr.message}\nManual backfill required.`,
+                }),
+              }).catch(() => {});
+            }
           }
 
           await withAdminContext(async (db) => {
@@ -1035,42 +1083,33 @@ export async function POST(request: NextRequest) {
                 );
               }
 
-              // ── Commission: fire on deposit settlement per Decision 3 ──────────
-              // Look up coach (provider) from event_registrations.coach_id if present,
-              // else from metadata. commission_pct defaults to global rate.
-              try {
-                const depositAmount = meta.deposit_amount as number ?? payment.amount;
-                const coachId = (meta.coach_id as string | undefined) ?? null;
-                if (coachId) {
-                  // Look up commission rate: coach-specific → global
-                  const commissionRate = await withAdminContext(async (db) => {
-                    const coachRow = await db.execute(
-                      sql`SELECT rate_pct FROM commission_rates WHERE scope = 'coach' AND scope_id = ${coachId} LIMIT 1`
-                    );
-                    if ((coachRow.rows[0] as any)?.rate_pct !== undefined) {
-                      return Number((coachRow.rows[0] as any).rate_pct);
-                    }
-                    const globalRow = await db.execute(
-                      sql`SELECT rate_pct FROM commission_rates WHERE scope = 'global' LIMIT 1`
-                    );
-                    return Number((globalRow.rows[0] as any)?.rate_pct ?? 20);
+              // ── Dual-surface settlement effects: event deposit (Decision 3 + D4) ──
+              // Consolidates commission (earnings) + referrer store credit into shared helper.
+              // Replaces the former inline earnings INSERT for event deposits.
+              {
+                const depUserId = (meta.user_id as string | undefined) || '';
+                if (!depUserId) {
+                  console.warn(`[payment-webhook] event deposit settlement skipped — user_id missing in payment metadata for payment ${payment.id}`);
+                } else {
+                  const depositAmount = (meta.deposit_amount as number | undefined) ?? payment.amount;
+                  const depCoachId = (meta.coach_id as string | undefined) ?? null;
+                  const depReferrerId = (meta.referrer_id as string | undefined) ?? null;
+                  const depResult = await fireSettlementEffects({
+                    payment_id: payment.id,
+                    user_id: depUserId,
+                    amount_minor: depositAmount,
+                    currency: payment.currency,
+                    item_type: 'event',
+                    item_id: (meta.item_id as string | undefined) || '',
+                    coach_id: depCoachId,
+                    referrer_id: depReferrerId,
+                    source_type: 'event_deposit',
                   });
-                  const commissionAmount = Math.round(depositAmount * (commissionRate / 100));
-                  const netAmount = depositAmount - commissionAmount;
-                  const availableAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
-                  await withAdminContext(async (db) => {
-                    await db.execute(
-                      sql`INSERT INTO earnings
-                          (user_id, source_type, source_id, gross_amount, commission_pct, commission_amount, net_amount, currency, status, available_at)
-                          VALUES (${coachId}, 'event_deposit', ${payment.id}, ${depositAmount}, ${commissionRate}, ${commissionAmount}, ${netAmount}, ${payment.currency}, 'pending', ${availableAt})
-                          ON CONFLICT DO NOTHING`
-                    );
-                  });
-                  console.log(`[payment-webhook] Commission recorded for event deposit: coach=${coachId} gross=${depositAmount} pct=${commissionRate}`);
+                  if (depResult.errors.length > 0) {
+                    console.error('[payment-webhook] Settlement effects errors for event deposit:', depResult.errors);
+                  }
+                  console.log(`[payment-webhook] Settlement effects event deposit: commission_written=${depResult.commission_written} store_credit_written=${depResult.store_credit_written}`);
                 }
-              } catch (commErr: any) {
-                console.error('[payment-webhook] Commission write failed for event deposit:', commErr.message);
-                // Non-fatal: Amin can reconcile manually
               }
             } else if (reg?.deposit_paid_at) {
               console.log(`[payment-webhook] Event deposit already recorded for reg \${eventRegId} — skipping`);
@@ -1100,27 +1139,92 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      // Create Zoho Books invoice (non-blocking — don't fail the webhook)
+      // Create Zoho Books invoice (settlement-triggered, non-blocking — don't fail the webhook)
       try {
-        const invoiceResult = await createZohoInvoice({
-          customerName: meta.user_email?.split('@')[0] || 'Customer',
-          customerEmail: meta.user_email || '',
-          itemName: meta.item_name || `${meta.item_type} - ${meta.item_id}`,
-          amount: payment.amount,
-          currency: payment.currency,
-          paymentGateway: payment.gateway,
-          paymentId: payment.id,
-          itemType: meta.item_type,
-          itemId: meta.item_id,
+        const invoiceResult = await createZohoBooksInvoice({
+          customer_name: (meta.user_name as string | undefined) || meta.user_email?.split('@')[0] || 'Customer',
+          customer_email: meta.user_email || '',
+          item_sku: buildItemSku(meta.item_type ?? 'item', meta.item_id ?? payment.id),
+          item_name: meta.item_name || `${meta.item_type ?? 'item'} - ${meta.item_id ?? payment.id}`,
+          unit_price_minor: payment.amount,
+          currency: (payment.currency ?? 'AED').toUpperCase() as 'EGP' | 'AED' | 'USD' | 'EUR' | 'SAR',
+          reference_number: payment.id,
+          notes: `Payment via ${payment.gateway ?? 'gateway'} — ref ${payment.id}`,
         });
-        console.log(`[zoho-books] Invoice created: ${invoiceResult.invoice_number}`);
+        console.log(`[zoho-books] Invoice created: ${invoiceResult.invoice_number}${invoiceResult.was_idempotent ? ' (idempotent)' : ''}`);
       } catch (invoiceErr: any) {
         console.error('[zoho-books] Invoice creation failed:', invoiceErr.message);
-        // Don't fail the webhook — invoice can be created manually
+        // Don't fail the webhook — the payment already landed; invoice can be backfilled manually
+        // Alert Amin via Telegram — non-blocking
+        const _zTok = process.env.TELEGRAM_BOT_TOKEN;
+        const _zChat = process.env.TELEGRAM_AMIN_CHAT_ID;
+        if (_zTok && _zChat) {
+          void fetch(`https://api.telegram.org/bot${_zTok}/sendMessage`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: _zChat,
+              text: `⚠️ Zoho Books invoice FAILED\nPayment ID: ${payment.id}\nAmount: ${(payment.amount / 100).toFixed(2)} ${payment.currency}\nError: ${invoiceErr.message}\nManual backfill required.`,
+            }),
+          }).catch(() => {});
+        }
       }
 
       // Send notifications
       await sendNotifications(payment);
+
+      // ── Dual-surface settlement effects: coach earnings + referrer store credit ──
+      // Fixes the pre-existing installment #1 commission gap (D1) and covers ALL
+      // non-installment settled payments (course, booking, event full, product).
+      // Decision 3: commission fires on payment.settled only.
+      // D4/2026-04-11: dual-surface — earnings + store credit.
+      {
+        const settleMeta = (payment.metadata || {}) as Record<string, any>;
+        const settleItemType = (settleMeta.item_type as string | undefined) || 'course';
+        const settleItemId = (settleMeta.item_id as string | undefined) || '';
+        const settleCoachId = (settleMeta.coach_id as string | undefined) ?? null;
+        const settleReferrerId = (settleMeta.referrer_id as string | undefined) ?? null;
+
+        // Map item_type to EarningsSourceType
+        const settleSourceTypeMap: Record<string, EarningsSourceType> = {
+          course: 'course_payment',
+          booking: 'booking_payment',
+          event: 'event_payment',
+          product: 'product_payment',
+        };
+        let settleSourceType: EarningsSourceType = settleSourceTypeMap[settleItemType];
+        if (!settleSourceType) {
+          console.warn(
+            `[payment-webhook] Unknown item_type "${settleItemType}" for payment ${payment.id} — defaulting to course_payment`,
+          );
+          settleSourceType = 'course_payment';
+        }
+
+        const settleUserId = (settleMeta.user_id as string | undefined) || '';
+        if (!settleUserId) {
+          console.warn(`[payment-webhook] settlement effects skipped — user_id missing in payment metadata for payment ${payment.id}`);
+        } else {
+          const settleResult = await fireSettlementEffects({
+            payment_id: payment.id,
+            user_id: settleUserId,
+            amount_minor: payment.amount,
+            currency: payment.currency,
+            item_type: (settleItemType as 'course' | 'booking' | 'event' | 'product') || 'course',
+            item_id: settleItemId,
+            coach_id: settleCoachId,
+            referrer_id: settleReferrerId,
+            source_type: settleSourceType,
+          });
+
+          if (settleResult.errors.length > 0) {
+            // Non-fatal — log for Amin's manual reconciliation
+            console.error('[payment-webhook] Settlement effects errors:', settleResult.errors);
+          }
+          console.log(
+            `[payment-webhook] Settlement effects: commission_written=${settleResult.commission_written} store_credit_written=${settleResult.store_credit_written} payment=${payment.id}`,
+          );
+        }
+      }
     }
 
     // Mark event as completed in the audit trail
