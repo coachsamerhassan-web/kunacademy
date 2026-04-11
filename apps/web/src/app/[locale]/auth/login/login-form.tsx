@@ -17,6 +17,19 @@ function GoogleIcon() {
 
 type AuthMethod = 'password' | 'magic-link';
 
+async function getRoleBasedLanding(locale: string): Promise<string> {
+  try {
+    const res = await fetch('/api/auth/session');
+    const session = await res.json();
+    const role = session?.user?.role;
+    if (role === 'admin' || role === 'super_admin') return `/${locale}/admin`;
+    if (role === 'provider') return `/${locale}/coach`;
+    return `/${locale}/dashboard`;
+  } catch {
+    return `/${locale}/dashboard`;
+  }
+}
+
 export function LoginForm({ locale, mode = 'login' }: { locale: string; mode?: 'login' | 'signup' }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -52,7 +65,7 @@ export function LoginForm({ locale, mode = 'login' }: { locale: string; mode?: '
         if (result?.error) throw new Error('Invalid login credentials');
         // Full page reload so middleware picks up the new auth cookies
         const params = new URLSearchParams(window.location.search);
-        const redirect = params.get('redirect') || `/${locale}/dashboard`;
+        const redirect = params.get('redirect') || await getRoleBasedLanding(locale);
         window.location.href = redirect;
       }
     } catch (err: any) {
