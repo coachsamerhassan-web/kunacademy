@@ -3,6 +3,7 @@
 import { useAuth } from '@kunacademy/auth';
 import { Section } from '@kunacademy/ui/section';
 import { Card } from '@kunacademy/ui/card';
+import { Button } from '@kunacademy/ui/button';
 import { useState, useEffect, use } from 'react';
 
 interface DashboardStats {
@@ -14,7 +15,7 @@ interface DashboardStats {
 export default function DashboardPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = use(params);
   const isAr = locale === 'ar';
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const [stats, setStats] = useState<DashboardStats>({ enrollments: 0, bookings: 0, certificates: 0 });
   const [profile, setProfile] = useState<{ full_name_ar: string | null; full_name_en: string | null } | null>(null);
 
@@ -61,12 +62,20 @@ export default function DashboardPage({ params }: { params: Promise<{ locale: st
 
   return (
     <Section variant="white">
-      <h1
-        className="text-2xl md:text-3xl font-bold text-[var(--text-primary)] mb-8"
-        style={{ fontFamily: isAr ? 'var(--font-arabic-heading)' : 'var(--font-english-heading)' }}
-      >
-        {greeting}
-      </h1>
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h1
+            className="text-2xl md:text-3xl font-bold text-[var(--text-primary)]"
+            style={{ fontFamily: isAr ? 'var(--font-arabic-heading)' : 'var(--font-english-heading)' }}
+          >
+            {greeting}
+          </h1>
+          <p className="text-sm text-[var(--color-neutral-500)] mt-2">{user?.email}</p>
+        </div>
+        <Button variant="secondary" size="sm" onClick={signOut}>
+          {isAr ? 'تسجيل الخروج' : 'Sign Out'}
+        </Button>
+      </div>
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
