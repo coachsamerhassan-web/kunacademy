@@ -104,6 +104,7 @@ export function CheckoutFlow({ locale }: { locale: string }) {
   const [applyCredits, setApplyCredits] = useState(false);
   const [paymentPlan, setPaymentPlan] = useState<'full' | 'deposit' | 'installment'>('full');
   const [installmentCount, setInstallmentCount] = useState(3);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const isAr = locale === 'ar';
 
   const itemType = searchParams.get('type');
@@ -225,6 +226,7 @@ export function CheckoutFlow({ locale }: { locale: string }) {
   async function handlePayment() {
     if (!item || !user) return;
     setProcessing(true);
+    setCheckoutError(null);
 
     try {
       // Apply credits first if toggled
@@ -266,8 +268,10 @@ export function CheckoutFlow({ locale }: { locale: string }) {
       } else if (data.gateway === 'instapay' && data.instructions) {
         setInstapayInstructions(data);
       } else if (data.error) {
-        alert(data.error);
+        setCheckoutError(data.error);
       }
+    } catch {
+      setCheckoutError(isAr ? 'فشل الاتصال، يرجى المحاولة مرة أخرى' : 'Network error, please try again');
     } finally {
       setProcessing(false);
     }
@@ -505,6 +509,15 @@ export function CheckoutFlow({ locale }: { locale: string }) {
           >
             {isAr ? 'تم التحويل' : 'I have transferred'}
           </button>
+        </div>
+      )}
+
+      {checkoutError && (
+        <div
+          role="alert"
+          className="p-3 rounded-lg bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-sm text-start"
+        >
+          {checkoutError}
         </div>
       )}
 

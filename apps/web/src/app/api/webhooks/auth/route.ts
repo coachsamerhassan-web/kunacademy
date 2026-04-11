@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { timingSafeEqual } from 'crypto';
 import { sendWelcomeEmail, sendTelegramAlert, createZohoCrmContact } from '@kunacademy/email';
 import { withAdminContext } from '@kunacademy/db';
 import { sql } from 'drizzle-orm';
@@ -6,6 +7,37 @@ import { sql } from 'drizzle-orm';
 // Auth webhook — fires on new user signup (triggered by database event or direct POST)
 // Payload format: { type: 'INSERT', record: {...}, ... }
 export async function POST(request: Request) {
+  // ── Shared-secret guard (RS-04 HIGH) ──────────────────────────────────────
+  // Matches the Tabby pattern in /api/webhooks/payment/route.ts:
+  //   • literal secret sent as x-auth-webhook-secret header value
+  //   • timingSafeEqual after equal-length check (prevents length oracle + timing attacks)
+  //   • NEVER log the received header value
+  const expectedSecret = process.env.AUTH_WEBHOOK_SECRET;
+  if (!expectedSecret) {
+    if (process.env.NODE_ENV === 'production') {
+      console.error('[auth-webhook] AUTH_WEBHOOK_SECRET is not set — rejecting webhook in production');
+      return NextResponse.json({ error: 'Webhook misconfigured' }, { status: 500 });
+    }
+    console.error('[auth-webhook] AUTH_WEBHOOK_SECRET is not set. Add it to .env.local to process auth webhooks locally.');
+    return NextResponse.json({ error: 'AUTH_WEBHOOK_SECRET env var is not set — cannot verify signature' }, { status: 500 });
+  }
+  const receivedSecret = request.headers.get('x-auth-webhook-secret');
+  // NEVER log receivedSecret — prevents leaking received secret in error logs.
+  let secretValid = false;
+  if (receivedSecret) {
+    try {
+      const receivedBuf = Buffer.from(receivedSecret, 'utf8');
+      const expectedBuf = Buffer.from(expectedSecret, 'utf8');
+      // timingSafeEqual requires equal-length buffers — mismatched length = invalid.
+      secretValid = receivedBuf.length === expectedBuf.length && timingSafeEqual(receivedBuf, expectedBuf);
+    } catch { /* fail closed — do not log, receivedSecret is attacker-controlled */ }
+  }
+  if (!secretValid) {
+    console.error('[auth-webhook] Invalid or missing x-auth-webhook-secret header');
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+  // ── End guard ─────────────────────────────────────────────────────────────
+
   try {
     const payload = await request.json();
     const event = payload.type; // 'INSERT' for new user
