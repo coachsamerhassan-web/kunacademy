@@ -480,8 +480,7 @@ export default function AdminDiscountCodesPage() {
               </div>
 
               {/* Applicable Services */}
-              {services.length > 0 && (
-                <div>
+              <div>
                   <label className="block text-sm font-medium text-[var(--color-neutral-600)] mb-2">
                     {isAr ? 'الخدمات المشمولة' : 'Applicable Services'}
                   </label>
@@ -510,8 +509,10 @@ export default function AdminDiscountCodesPage() {
                       );
                     })}
                   </div>
+                  {services.length === 0 && (
+                    <p className="text-xs text-[var(--color-neutral-400)] mt-2">{isAr ? 'جاري تحميل الخدمات...' : 'Loading services...'}</p>
+                  )}
                 </div>
-              )}
 
               {/* Active Toggle */}
               <div className="flex items-center justify-between py-1">
