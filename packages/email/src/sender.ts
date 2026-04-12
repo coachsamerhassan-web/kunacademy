@@ -8,6 +8,8 @@ function escapeHtml(str: string): string {
     .replace(/'/g, '&#x27;');
 }
 
+import nodemailer from 'nodemailer';
+
 interface Attachment {
   filename: string;
   content: string; // base64 encoded
@@ -20,29 +22,54 @@ interface EmailParams {
   attachments?: Attachment[];
 }
 
-const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
-const FROM_EMAIL = 'Kun Academy <noreply@kunacademy.com>';
+const FROM_EMAIL = process.env.SMTP_FROM || 'Kun Academy <info@kunacademy.com>';
 
-/** Send an email via Resend */
+/**
+ * SMTP transport — auto-configured from env vars.
+ * Set SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS to enable.
+ * Falls back to console log when not configured (dev/staging).
+ */
+function getTransport() {
+  const host = process.env.SMTP_HOST;
+  const user = process.env.SMTP_USER;
+  const pass = process.env.SMTP_PASS;
+
+  if (!host || !user || !pass) return null;
+
+  return nodemailer.createTransport({
+    host,
+    port: Number(process.env.SMTP_PORT || '587'),
+    secure: process.env.SMTP_SECURE === 'true',
+    auth: { user, pass },
+  });
+}
+
+/** Send an email via SMTP (nodemailer). Falls back to console when not configured. */
 export async function sendEmail({ to, subject, html, attachments }: EmailParams) {
-  if (!RESEND_API_KEY) {
-    console.warn('[email] RESEND_API_KEY not set, skipping email to:', to);
+  const transport = getTransport();
+
+  if (!transport) {
+    console.warn('[email] SMTP not configured, skipping email to:', to, '| subject:', subject);
     return { id: 'mock', success: true };
   }
 
-  const payload: Record<string, unknown> = { from: FROM_EMAIL, to, subject, html };
+  const mailOptions: nodemailer.SendMailOptions = {
+    from: FROM_EMAIL,
+    to,
+    subject,
+    html,
+  };
+
   if (attachments && attachments.length > 0) {
-    payload.attachments = attachments;
+    mailOptions.attachments = attachments.map(a => ({
+      filename: a.filename,
+      content: Buffer.from(a.content, 'base64'),
+    }));
   }
 
-  const res = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${RESEND_API_KEY}` },
-    body: JSON.stringify(payload),
-  });
-
-  if (!res.ok) throw new Error(`Email failed: ${res.statusText}`);
-  return res.json();
+  const info = await transport.sendMail(mailOptions);
+  console.log('[email] sent:', info.messageId, 'to:', to);
+  return { id: info.messageId, success: true };
 }
 
 /** Welcome email after signup */

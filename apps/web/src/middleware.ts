@@ -43,6 +43,14 @@ export default auth(async function middleware(request) {
   // Run i18n middleware first
   const response = intlMiddleware(request);
 
+  // ── Redirect legacy /portal/coach/* → /coach/* ─────────────────────
+  const withoutLocaleForRedirect = request.nextUrl.pathname.replace(/^\/(ar|en)/, '');
+  if (withoutLocaleForRedirect.startsWith('/portal/coach')) {
+    const locale = getLocaleFromPath(request.nextUrl.pathname);
+    const newPath = withoutLocaleForRedirect.replace('/portal/coach', '/coach');
+    return NextResponse.redirect(new URL(`/${locale}${newPath}`, request.url), 301);
+  }
+
   // ── Never protect auth routes — prevents redirect loops ─────────────
   const withoutLocaleEarly = request.nextUrl.pathname.replace(/^\/(ar|en)/, '');
   if (
