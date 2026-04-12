@@ -162,9 +162,19 @@ export function LoginForm({ locale, mode = 'login' }: { locale: string; mode?: '
 
         {authMethod === 'password' && (
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-[var(--color-neutral-700)]">
-              {isAr ? 'كلمة المرور' : 'Password'}
-            </label>
+            <div className="flex items-center justify-between">
+              <label htmlFor="password" className="block text-sm font-medium text-[var(--color-neutral-700)]">
+                {isAr ? 'كلمة المرور' : 'Password'}
+              </label>
+              {mode === 'login' && (
+                <a
+                  href={`/${locale}/auth/reset-password`}
+                  className="text-xs text-[var(--color-primary)] hover:underline"
+                >
+                  {isAr ? 'نسيت كلمة المرور؟' : 'Forgot password?'}
+                </a>
+              )}
+            </div>
             <input
               id="password"
               type="password"
