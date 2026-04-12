@@ -90,11 +90,11 @@ function getGradient(slug: string): string {
 // ── Program filters ───────────────────────────────────────────────────────────
 
 const PROGRAMS = [
-  { slug: 'stic',      ar: 'STIC',      en: 'STIC'      },
-  { slug: 'staic',     ar: 'STAIC',     en: 'STAIC'     },
-  { slug: 'stgc',      ar: 'STGC',      en: 'STGC'      },
-  { slug: 'stoc',      ar: 'STOC',      en: 'STOC'      },
-  { slug: 'manhajak',  ar: 'منهجك',     en: 'Manhajak'  },
+  { slug: 'stce',       ar: 'STIC',      en: 'STIC'      },
+  { slug: 'stce-staic', ar: 'STAIC',     en: 'STAIC'     },
+  { slug: 'stce-stgc',  ar: 'STGC',      en: 'STGC'      },
+  { slug: 'stce-stoc',  ar: 'STOC',      en: 'STOC'      },
+  { slug: 'manhajak',   ar: 'منهجك',     en: 'Manhajak'  },
 ];
 
 // ── Chip component ────────────────────────────────────────────────────────────
