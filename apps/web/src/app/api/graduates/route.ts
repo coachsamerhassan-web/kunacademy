@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { withUserContext } from '../../../../../../packages/db/src/pool';
-import { sql } from 'drizzle-orm';
+import { withUserContext, sql } from '@kunacademy/db';
 
 /**
  * GET /api/graduates — Public graduate directory
