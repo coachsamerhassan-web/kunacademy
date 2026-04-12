@@ -2,6 +2,7 @@
 // Generated via Supabase Management API introspection
 
 export * from './attendance';
+export * from './badge_definitions';
 export * from './blog_posts';
 export * from './board_members';
 export * from './book_access';
@@ -15,6 +16,7 @@ export * from './coach_time_off';
 export * from './commission_rates';
 export * from './community_boards';
 export * from './community_posts';
+export * from './community_members';
 export * from './community_reactions';
 export * from './course_sections';
 export * from './courses';
@@ -25,6 +27,7 @@ export * from './download_tokens';
 export * from './earnings';
 export * from './enrollments';
 export * from './event_registrations';
+export * from './graduate_certificates';
 export * from './instructor_drafts';
 export * from './instructors';
 export * from './lesson_progress';
