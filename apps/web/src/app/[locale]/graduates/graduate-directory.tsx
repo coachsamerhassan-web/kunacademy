@@ -304,9 +304,12 @@ export function GraduateDirectory({ locale, initialData }: Props) {
             const flag     = getFlag(graduate.country);
             const isCoach  = graduate.member_type === 'coach' || graduate.member_type === 'both';
 
-            // Show max 4 badges, with overflow count
-            const visibleBadges = graduate.badges.slice(0, 4);
-            const overflowCount = Math.max(0, graduate.badges.length - 4);
+            // Filter out STCE level badges (duplicate module completions)
+            const moduleBadges = graduate.badges.filter(
+              (b: GraduateBadge) => !b.badge_slug?.startsWith('stce-level-')
+            );
+            const visibleBadges = moduleBadges.slice(0, 4);
+            const overflowCount = Math.max(0, moduleBadges.length - 4);
 
             return (
               <a

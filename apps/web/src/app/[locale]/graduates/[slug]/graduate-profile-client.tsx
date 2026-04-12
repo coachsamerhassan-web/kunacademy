@@ -51,16 +51,29 @@ function formatDate(dateStr: string | null, locale: string): string {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
+/** ICF credential image map */
+const ICF_IMAGES: Record<string, string> = {
+  ACC: '/images/badges/icf-acc.png',
+  PCC: '/images/badges/icf-pcc.png',
+  MCC: '/images/badges/icf-mcc.png',
+};
+
 export function GraduateProfileClient({ certificates, locale }: Props) {
   const isAr = locale === 'ar';
 
   const [activeCert, setActiveCert] = useState<Certificate | null>(null);
 
+  // Filter out STCE level certificates — they duplicate module completions
+  // (Level 1 = STIC, Level 2 = STAIC, Level 3 = STGC, Level 4 = STOC)
+  const visibleCerts = certificates.filter(
+    (c) => !c.certificate_type?.startsWith('level_')
+  );
+
   return (
     <>
       {/* Certificate cards grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {certificates.map((cert) => {
+        {visibleCerts.map((cert) => {
           const programName = isAr ? cert.program_name_ar : cert.program_name_en;
           const badgeLabel  = isAr ? cert.badge_label_ar  : cert.badge_label_en;
 
@@ -108,11 +121,16 @@ export function GraduateProfileClient({ certificates, locale }: Props) {
                       {formatDate(cert.graduation_date, locale)}
                     </span>
                   )}
-                  {cert.icf_credential && (
-                    <span
-                      className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${ICF_BADGE_COLORS[cert.icf_credential] ?? 'bg-neutral-100 text-neutral-600'}`}
-                    >
-                      {cert.icf_credential}
+                  {cert.icf_credential && ICF_IMAGES[cert.icf_credential] && (
+                    <span className="inline-flex items-center gap-1">
+                      <Image
+                        src={ICF_IMAGES[cert.icf_credential]}
+                        alt={cert.icf_credential}
+                        width={20}
+                        height={20}
+                        className="rounded-full"
+                      />
+                      <span className="text-xs font-semibold text-blue-700">{cert.icf_credential}</span>
                     </span>
                   )}
                   {cert.verified && (
