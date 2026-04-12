@@ -325,7 +325,7 @@ export default async function GraduateProfilePage({ params }: Props) {
                     <>
                       هل أنت {name}؟{' '}
                       <a
-                        href={`/${locale}/graduates/claim`}
+                        href={`/${locale}/auth/login?callbackUrl=/${locale}/dashboard/certificates`}
                         className="font-semibold underline underline-offset-2 hover:text-amber-700"
                       >
                         أطالب بملفك الشخصي
@@ -336,7 +336,7 @@ export default async function GraduateProfilePage({ params }: Props) {
                     <>
                       Are you {name}?{' '}
                       <a
-                        href={`/${locale}/graduates/claim`}
+                        href={`/${locale}/auth/login?callbackUrl=/${locale}/dashboard/certificates`}
                         className="font-semibold underline underline-offset-2 hover:text-amber-700"
                       >
                         Claim this profile

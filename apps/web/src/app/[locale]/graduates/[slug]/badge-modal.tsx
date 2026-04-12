@@ -101,7 +101,7 @@ export function BadgeModal({
         ref={dialogRef}
         className={`
           relative w-full max-w-md rounded-2xl bg-white shadow-2xl overflow-hidden
-          animate-fade-up
+          animate-in fade-in-0 zoom-in-95 duration-200
           ${isAr ? 'text-right' : 'text-left'}
         `}
         dir={isAr ? 'rtl' : 'ltr'}
