@@ -19,6 +19,7 @@ interface UserRow {
   created_at: string;
   has_provider: boolean;
   has_instructor: boolean;
+  instructor_id: string | null;
   kun_level: string | null;
   icf_credential: string | null;
   is_bookable: boolean | null;
@@ -32,6 +33,16 @@ interface EditForm {
   icf_credential: string;
   is_visible: boolean;
   is_bookable: boolean;
+  // Coach profile fields
+  title_ar: string;
+  title_en: string;
+  bio_ar: string;
+  bio_en: string;
+  photo_url: string;
+  credentials: string;
+  specialties: string;
+  coaching_styles: string;
+  display_order: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -90,7 +101,17 @@ export default function AdminUsersPage() {
     icf_credential: '',
     is_visible: false,
     is_bookable: false,
+    title_ar: '',
+    title_en: '',
+    bio_ar: '',
+    bio_en: '',
+    photo_url: '',
+    credentials: '',
+    specialties: '',
+    coaching_styles: '',
+    display_order: 0,
   });
+  const [profileLoading, setProfileLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -161,7 +182,7 @@ export default function AdminUsersPage() {
   // ---------------------------------------------------------------------------
   // Modal helpers
   // ---------------------------------------------------------------------------
-  function openEdit(u: UserRow) {
+  async function openEdit(u: UserRow) {
     setEditUser(u);
     setSaveError(null);
     setEditForm({
@@ -170,7 +191,44 @@ export default function AdminUsersPage() {
       icf_credential: u.icf_credential ?? '',
       is_visible: u.instructor_is_visible ?? u.provider_is_visible ?? false,
       is_bookable: u.is_bookable ?? false,
+      title_ar: '',
+      title_en: '',
+      bio_ar: '',
+      bio_en: '',
+      photo_url: '',
+      credentials: '',
+      specialties: '',
+      coaching_styles: '',
+      display_order: 0,
     });
+
+    // Fetch full instructor profile if this is a provider with an instructor record
+    if (u.role === 'provider' && u.instructor_id) {
+      setProfileLoading(true);
+      try {
+        const res = await fetch(`/api/admin/instructors/${u.instructor_id}`);
+        if (res.ok) {
+          const data = await res.json();
+          const ins = data.instructor;
+          if (ins) {
+            setEditForm(f => ({
+              ...f,
+              title_ar: ins.title_ar ?? '',
+              title_en: ins.title_en ?? '',
+              bio_ar: ins.bio_ar ?? '',
+              bio_en: ins.bio_en ?? '',
+              photo_url: ins.photo_url ?? '',
+              credentials: ins.credentials ?? '',
+              specialties: Array.isArray(ins.specialties) ? ins.specialties.join(', ') : (ins.specialties ?? ''),
+              coaching_styles: Array.isArray(ins.coaching_styles) ? ins.coaching_styles.join(', ') : (ins.coaching_styles ?? ''),
+              display_order: ins.display_order ?? 0,
+            }));
+          }
+        }
+      } finally {
+        setProfileLoading(false);
+      }
+    }
   }
 
   async function saveEdit() {
@@ -203,6 +261,36 @@ export default function AdminUsersPage() {
         setSaveError(data.error ?? 'Unknown error');
         return;
       }
+
+      // If provider with an instructor record, also save coach profile fields
+      if (isProvider && editUser.instructor_id) {
+        const splitTrim = (s: string) =>
+          s.split(',').map(v => v.trim()).filter(Boolean);
+
+        const profileBody = {
+          title_ar: editForm.title_ar || undefined,
+          title_en: editForm.title_en || undefined,
+          bio_ar: editForm.bio_ar,
+          bio_en: editForm.bio_en,
+          photo_url: editForm.photo_url,
+          credentials: editForm.credentials,
+          specialties: splitTrim(editForm.specialties),
+          coaching_styles: splitTrim(editForm.coaching_styles),
+          display_order: editForm.display_order,
+        };
+
+        const profileRes = await fetch(`/api/admin/instructors/${editUser.instructor_id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(profileBody),
+        });
+        if (!profileRes.ok) {
+          const profileData = await profileRes.json();
+          setSaveError(profileData.error ?? 'Failed to save coach profile');
+          return;
+        }
+      }
+
       setEditUser(null);
       await fetchUsers();
     } catch (err: any) {
@@ -410,7 +498,7 @@ export default function AdminUsersPage() {
           onClick={() => setEditUser(null)}
         >
           <div
-            className="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 p-6 max-h-[90vh] overflow-y-auto"
+            className="bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 p-6 max-h-[90vh] overflow-y-auto"
             onClick={e => e.stopPropagation()}
           >
             {/* Modal header */}
@@ -541,6 +629,176 @@ export default function AdminUsersPage() {
                         }`}
                       />
                     </button>
+                  </div>
+
+                  {/* ── Coach Profile Section ── */}
+                  <div className="pt-1">
+                    <div className="flex items-center gap-3 mb-4">
+                      <hr className="flex-1 border-[var(--color-neutral-200)]" />
+                      <span className="text-xs font-semibold text-[var(--color-neutral-500)] uppercase tracking-wide whitespace-nowrap">
+                        {isAr ? 'ملف الكوتش' : 'Coach Profile'}
+                      </span>
+                      <hr className="flex-1 border-[var(--color-neutral-200)]" />
+                    </div>
+
+                    {profileLoading ? (
+                      <p className="text-xs text-center text-[var(--color-neutral-400)] py-3">
+                        {isAr ? 'جاري تحميل الملف...' : 'Loading profile...'}
+                      </p>
+                    ) : (
+                      <div className="space-y-4">
+                        {/* Title AR */}
+                        <div>
+                          <label className="block text-sm font-medium text-[var(--color-neutral-600)] mb-1">
+                            {isAr ? 'اللقب (عربي)' : 'Title AR'}
+                          </label>
+                          <input
+                            type="text"
+                            dir="rtl"
+                            value={editForm.title_ar}
+                            onChange={e => setEditForm(f => ({ ...f, title_ar: e.target.value }))}
+                            className="w-full rounded-lg border border-[var(--color-neutral-200)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
+                            placeholder="مثال: كوتش حياة معتمد"
+                          />
+                        </div>
+
+                        {/* Title EN */}
+                        <div>
+                          <label className="block text-sm font-medium text-[var(--color-neutral-600)] mb-1">
+                            {isAr ? 'اللقب (إنجليزي)' : 'Title EN'}
+                          </label>
+                          <input
+                            type="text"
+                            dir="ltr"
+                            value={editForm.title_en}
+                            onChange={e => setEditForm(f => ({ ...f, title_en: e.target.value }))}
+                            className="w-full rounded-lg border border-[var(--color-neutral-200)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
+                            placeholder="e.g. Certified Life Coach"
+                          />
+                        </div>
+
+                        {/* Bio AR */}
+                        <div>
+                          <label className="block text-sm font-medium text-[var(--color-neutral-600)] mb-1">
+                            {isAr ? 'النبذة (عربي)' : 'Bio AR'}
+                          </label>
+                          <textarea
+                            dir="rtl"
+                            rows={3}
+                            value={editForm.bio_ar}
+                            onChange={e => setEditForm(f => ({ ...f, bio_ar: e.target.value }))}
+                            className="w-full rounded-lg border border-[var(--color-neutral-200)] px-3 py-2 text-sm resize-y focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
+                            placeholder="نبذة تعريفية باللغة العربية"
+                          />
+                        </div>
+
+                        {/* Bio EN */}
+                        <div>
+                          <label className="block text-sm font-medium text-[var(--color-neutral-600)] mb-1">
+                            {isAr ? 'النبذة (إنجليزي)' : 'Bio EN'}
+                          </label>
+                          <textarea
+                            dir="ltr"
+                            rows={3}
+                            value={editForm.bio_en}
+                            onChange={e => setEditForm(f => ({ ...f, bio_en: e.target.value }))}
+                            className="w-full rounded-lg border border-[var(--color-neutral-200)] px-3 py-2 text-sm resize-y focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
+                            placeholder="Short bio in English"
+                          />
+                        </div>
+
+                        {/* Photo URL */}
+                        <div>
+                          <label className="block text-sm font-medium text-[var(--color-neutral-600)] mb-1">
+                            {isAr ? 'رابط الصورة' : 'Photo URL'}
+                          </label>
+                          {editForm.photo_url && (
+                            <div className="mb-2">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={editForm.photo_url}
+                                alt="coach photo preview"
+                                className="w-12 h-12 rounded-full object-cover border border-[var(--color-neutral-200)]"
+                              />
+                            </div>
+                          )}
+                          <input
+                            type="url"
+                            dir="ltr"
+                            value={editForm.photo_url}
+                            onChange={e => setEditForm(f => ({ ...f, photo_url: e.target.value }))}
+                            className="w-full rounded-lg border border-[var(--color-neutral-200)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
+                            placeholder="https://..."
+                          />
+                        </div>
+
+                        {/* Credentials */}
+                        <div>
+                          <label className="block text-sm font-medium text-[var(--color-neutral-600)] mb-1">
+                            {isAr ? 'الشهادات والاعتمادات' : 'Credentials'}
+                          </label>
+                          <input
+                            type="text"
+                            dir="ltr"
+                            value={editForm.credentials}
+                            onChange={e => setEditForm(f => ({ ...f, credentials: e.target.value }))}
+                            className="w-full rounded-lg border border-[var(--color-neutral-200)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
+                            placeholder="e.g. ICF PCC, NLP Practitioner"
+                          />
+                        </div>
+
+                        {/* Specialties */}
+                        <div>
+                          <label className="block text-sm font-medium text-[var(--color-neutral-600)] mb-1">
+                            {isAr ? 'التخصصات' : 'Specialties'}
+                          </label>
+                          <input
+                            type="text"
+                            dir={isAr ? 'rtl' : 'ltr'}
+                            value={editForm.specialties}
+                            onChange={e => setEditForm(f => ({ ...f, specialties: e.target.value }))}
+                            className="w-full rounded-lg border border-[var(--color-neutral-200)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
+                            placeholder={isAr ? 'مفصولة بفاصلة، مثال: قيادة، علاقات' : 'Comma-separated, e.g. Leadership, Relationships'}
+                          />
+                          <p className="mt-1 text-xs text-[var(--color-neutral-400)]">
+                            {isAr ? 'أدخل التخصصات مفصولة بفاصلة' : 'Enter specialties separated by commas'}
+                          </p>
+                        </div>
+
+                        {/* Coaching Styles */}
+                        <div>
+                          <label className="block text-sm font-medium text-[var(--color-neutral-600)] mb-1">
+                            {isAr ? 'أساليب الكوتشنج' : 'Coaching Styles'}
+                          </label>
+                          <input
+                            type="text"
+                            dir={isAr ? 'rtl' : 'ltr'}
+                            value={editForm.coaching_styles}
+                            onChange={e => setEditForm(f => ({ ...f, coaching_styles: e.target.value }))}
+                            className="w-full rounded-lg border border-[var(--color-neutral-200)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
+                            placeholder={isAr ? 'مفصولة بفاصلة، مثال: جسدي، تحليلي' : 'Comma-separated, e.g. Somatic, Analytical'}
+                          />
+                          <p className="mt-1 text-xs text-[var(--color-neutral-400)]">
+                            {isAr ? 'أدخل الأساليب مفصولة بفاصلة' : 'Enter coaching styles separated by commas'}
+                          </p>
+                        </div>
+
+                        {/* Display Order */}
+                        <div>
+                          <label className="block text-sm font-medium text-[var(--color-neutral-600)] mb-1">
+                            {isAr ? 'ترتيب العرض' : 'Display Order'}
+                          </label>
+                          <input
+                            type="number"
+                            min={0}
+                            dir="ltr"
+                            value={editForm.display_order}
+                            onChange={e => setEditForm(f => ({ ...f, display_order: parseInt(e.target.value, 10) || 0 }))}
+                            className="w-full rounded-lg border border-[var(--color-neutral-200)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
+                          />
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </>
               )}

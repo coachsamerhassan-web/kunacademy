@@ -26,7 +26,7 @@
 
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
-import { withAdminContext } from '@kunacademy/db';
+import { withAdminContext, closePool } from '../packages/db/src/pool';
 import { sql } from 'drizzle-orm';
 
 // ---------------------------------------------------------------------------
@@ -560,7 +560,6 @@ async function main() {
 
   log('\n=== ETL complete ===');
 
-  const { closePool } = await import('@kunacademy/db');
   await closePool();
 }
 
