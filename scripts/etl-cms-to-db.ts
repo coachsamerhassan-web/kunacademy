@@ -346,8 +346,8 @@ async function etlCoaches(adminDb: any): Promise<void> {
             ${icfCredential},
             ${icfCredential},
             ${kunLevel},
-            ${specialtiesArr},
-            ${stylesArr},
+            ${specialtiesArr?.length ? sql`ARRAY[${sql.join(specialtiesArr.map((s: string) => sql`${s}`), sql`, `)}]::text[]` : sql`NULL`},
+            ${stylesArr?.length ? sql`ARRAY[${sql.join(stylesArr.map((s: string) => sql`${s}`), sql`, `)}]::text[]` : sql`NULL`},
             ${isVisible},
             ${coach.is_bookable === true},
             ${displayOrder}
@@ -389,8 +389,8 @@ async function etlCoaches(adminDb: any): Promise<void> {
                   coach_level      = ${icfCredential},
                   icf_credential   = ${icfCredential},
                   kun_level        = ${kunLevel},
-                  specialties      = ${specialtiesArr},
-                  coaching_styles  = ${stylesArr},
+                  specialties      = ${specialtiesArr?.length ? sql`ARRAY[${sql.join(specialtiesArr.map((s: string) => sql`${s}`), sql`, `)}]::text[]` : sql`NULL`},
+                  coaching_styles  = ${stylesArr?.length ? sql`ARRAY[${sql.join(stylesArr.map((s: string) => sql`${s}`), sql`, `)}]::text[]` : sql`NULL`},
                   is_visible       = ${isVisible},
                   is_platform_coach = ${coach.is_bookable === true},
                   display_order    = ${displayOrder}
@@ -407,7 +407,9 @@ async function etlCoaches(adminDb: any): Promise<void> {
                   ${coach.slug}, ${coach.title_ar}, ${coach.title_en},
                   ${coach.bio_ar || null}, ${coach.bio_en || null}, ${coach.photo_url || null},
                   ${coach.credentials || null}, ${icfCredential}, ${icfCredential}, ${kunLevel},
-                  ${specialtiesArr}, ${stylesArr}, ${isVisible},
+                  ${specialtiesArr?.length ? sql`ARRAY[${sql.join(specialtiesArr.map((s: string) => sql`${s}`), sql`, `)}]::text[]` : sql`NULL`},
+                  ${stylesArr?.length ? sql`ARRAY[${sql.join(stylesArr.map((s: string) => sql`${s}`), sql`, `)}]::text[]` : sql`NULL`},
+                  ${isVisible},
                   ${coach.is_bookable === true}, ${displayOrder}
                 )
               `);
@@ -419,7 +421,7 @@ async function etlCoaches(adminDb: any): Promise<void> {
             instructorSkipped++;
           }
         } else {
-          warn(`${label} instructors failed: ${err?.message}`);
+          warn(`${label} instructors failed: ${err?.message}${err?.detail ? ' | detail: ' + err.detail : ''}${err?.code ? ' | code: ' + err.code : ''}`);
           instructorSkipped++;
         }
       }
@@ -553,8 +555,11 @@ async function main() {
   log('  DB stores minor units. This script multiplies by 100 before writing.');
   log('  price_eur from JSON is skipped (no matching column in services table).');
 
+  // Separate transactions so a coach failure doesn't rollback services
   await withAdminContext(async (adminDb: any) => {
     await etlServices(adminDb);
+  });
+  await withAdminContext(async (adminDb: any) => {
     await etlCoaches(adminDb);
   });
 
