@@ -127,10 +127,30 @@ function Chip({
 
 // ── Main component ─────────────────────────────────────────────────────────────
 
+/** Map API response (certificates) to component shape (badges) */
+function mapApiData(raw: any): DirectoryData {
+  return {
+    total: raw?.total ?? 0,
+    totalPages: raw?.totalPages ?? 0,
+    graduates: (raw?.graduates ?? []).map((g: any) => ({
+      ...g,
+      badges: (g.certificates ?? g.badges ?? []).map((c: any) => ({
+        badge_slug: c.badge_slug,
+        badge_label_ar: c.badge_label_ar,
+        badge_label_en: c.badge_label_en,
+        image_url: c.badge_image_url ?? c.image_url,
+        program_slug: c.program_slug,
+        graduation_date: c.graduation_date,
+        icf_credential: c.icf_credential,
+      })),
+    })),
+  };
+}
+
 export function GraduateDirectory({ locale, initialData }: Props) {
   const isAr = locale === 'ar';
 
-  const [data,       setData]       = useState<DirectoryData>(initialData);
+  const [data,       setData]       = useState<DirectoryData>(mapApiData(initialData));
   const [loading,    setLoading]    = useState(false);
   const [search,     setSearch]     = useState('');
   const [program,    setProgram]    = useState('');
@@ -150,8 +170,8 @@ export function GraduateDirectory({ locale, initialData }: Props) {
 
         const res = await fetch(`/api/graduates?${params.toString()}`);
         if (!res.ok) throw new Error('Failed to fetch');
-        const json: DirectoryData = await res.json();
-        setData(json);
+        const json = await res.json();
+        setData(mapApiData(json));
       } catch {
         // Keep previous data on error
       } finally {
