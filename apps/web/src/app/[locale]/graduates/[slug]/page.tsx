@@ -97,7 +97,7 @@ async function fetchGraduate(slug: string): Promise<GraduateProfile | null> {
     const baseUrl =
       process.env.NEXT_PUBLIC_APP_URL ||
       process.env.NEXT_PUBLIC_SITE_URL ||
-      'http://localhost:3000';
+      process.env.NEXTAUTH_URL || 'http://localhost:3001';
 
     const res = await fetch(`${baseUrl}/api/graduates/${slug}`, {
       next: { revalidate: 60 },
