@@ -21,6 +21,7 @@ export const bookings = pgTable("bookings", {
   cancellation_reason: text("cancellation_reason"),
   held_until: timestamp("held_until", { withTimezone: true, mode: 'string' }),
   held_by: uuid("held_by"),
+  calendar_event_id: text("calendar_event_id"),
 });
 
 export type Bookings = typeof bookings.$inferSelect;

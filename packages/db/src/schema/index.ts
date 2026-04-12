@@ -8,6 +8,7 @@ export * from './book_access';
 export * from './bookings';
 export * from './certificates';
 export * from './coach_badges';
+export * from './coach_integrations';
 export * from './coach_ratings';
 export * from './coach_schedules';
 export * from './coach_time_off';
