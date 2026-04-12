@@ -206,8 +206,19 @@ export function CheckoutFlow({ locale }: { locale: string }) {
     }
   }, [itemId, itemType, programSlug]);
 
+  // Events are AED-only until proper multi-currency pricing ships.
+  // Force currency to AED whenever the item type is 'event', regardless of geo.
+  const isEventCheckout = item?.type === 'event' || itemType === 'event';
+  useEffect(() => {
+    if (isEventCheckout && currency !== 'AED') {
+      setCurrency('AED');
+    }
+  }, [isEventCheckout]);
+
   // Derived: which currencies are available based on geo
   const availableCurrencies: Currency[] = (() => {
+    // Events locked to AED — no currency choice until multi-currency pricing is built.
+    if (isEventCheckout) return ['AED'];
     const base: Currency[] = ['AED', 'SAR', 'USD', 'EUR'];
     // EGP ONLY visible from Egypt (geo-locked)
     if (geo?.is_egypt) base.splice(2, 0, 'EGP'); // insert after SAR
@@ -536,27 +547,36 @@ export function CheckoutFlow({ locale }: { locale: string }) {
         </div>
       ) : null}
 
-      {/* Currency selector — geo-aware */}
+      {/* Currency selector — geo-aware; locked to AED for events */}
       <div>
         <label className="block text-sm font-medium text-[var(--color-neutral-700)] mb-2">
           {isAr ? 'العملة' : 'Currency'}
         </label>
-        <div className="flex flex-wrap gap-2">
-          {availableCurrencies.map(c => (
-            <button
-              key={c}
-              type="button"
-              onClick={() => setCurrency(c)}
-              className={`rounded-lg px-4 py-2 text-sm font-medium transition min-h-[44px] ${
-                currency === c
-                  ? 'bg-[var(--color-primary)] text-white'
-                  : 'border border-[var(--color-neutral-300)] hover:border-[var(--color-primary)]'
-              }`}
-            >
-              {c}
-            </button>
-          ))}
-        </div>
+        {isEventCheckout ? (
+          // Events: no currency choice — AED only until multi-currency pricing ships.
+          <div className="flex flex-wrap gap-2">
+            <span className="rounded-lg px-4 py-2 text-sm font-medium bg-[var(--color-primary)] text-white min-h-[44px] flex items-center">
+              AED
+            </span>
+          </div>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            {availableCurrencies.map(c => (
+              <button
+                key={c}
+                type="button"
+                onClick={() => setCurrency(c)}
+                className={`rounded-lg px-4 py-2 text-sm font-medium transition min-h-[44px] ${
+                  currency === c
+                    ? 'bg-[var(--color-primary)] text-white'
+                    : 'border border-[var(--color-neutral-300)] hover:border-[var(--color-primary)]'
+                }`}
+              >
+                {c}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Payment method */}

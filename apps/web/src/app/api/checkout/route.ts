@@ -357,6 +357,19 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // ── Event AED-only guard ─────────────────────────────────────────────────
+    // Events do not yet have independent per-currency pricing. Until the proper
+    // geo-based pricing model ships, only AED is accepted for event checkouts.
+    // A non-AED currency would resolve to price_usd/price_eur = 0, which would
+    // let an attacker claim a free deposit. Reject at the API boundary regardless
+    // of what the UI shows.
+    if (item_type === 'event' && currency !== 'AED') {
+      return NextResponse.json(
+        { error: 'Events are AED-only. Multi-currency event pricing is not yet available.' },
+        { status: 400 },
+      );
+    }
+
     // ── Server-side price verification ──────────────────────────────
     // Reconstruct the pre-credit base price the client claims they should pay.
     // Credits legitimately reduce the charged amount, so we compare against
