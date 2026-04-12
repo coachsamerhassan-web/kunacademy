@@ -3,6 +3,7 @@ import { db, withAdminContext } from '@kunacademy/db';
 import { getAuthUser } from '@kunacademy/auth/server';
 import { eq, and, desc, inArray } from 'drizzle-orm';
 import { bookings, services, providers, profiles } from '@kunacademy/db/schema';
+import { getCoachCalendarIntegration, deleteBookingEvent } from '@/lib/google-calendar';
 
 /** GET /api/user/bookings — authenticated user's bookings with service + coach data */
 export async function GET() {
@@ -89,13 +90,57 @@ export async function PATCH(request: NextRequest) {
     const { booking_id, status } = await request.json();
     if (!booking_id || !status) return NextResponse.json({ error: 'booking_id and status required' }, { status: 400 });
 
-    // Security: only allow cancelling own bookings
+    // Fetch booking details first — needed for ownership check + calendar cleanup
+    const [bookingDetails] = await withAdminContext(async (adminDb) => {
+      return adminDb.select({
+        id: bookings.id,
+        calendar_event_id: bookings.calendar_event_id,
+        provider_id: bookings.provider_id,
+      })
+        .from(bookings)
+        .where(and(eq(bookings.id, booking_id), eq(bookings.customer_id, user.id)))
+        .limit(1);
+    });
+
+    if (!bookingDetails) {
+      return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
+    }
+
+    // Security: update only the verified booking (ownership already confirmed above)
     await withAdminContext(async (adminDb) => {
       await adminDb
         .update(bookings)
-        .set({ status })
-        .where(eq(bookings.id, booking_id) && eq(bookings.customer_id, user.id) as any);
+        .set({
+          status,
+          cancelled_at: status === 'cancelled' ? new Date().toISOString() : undefined,
+        })
+        .where(and(eq(bookings.id, booking_id), eq(bookings.customer_id, user.id)));
     });
+
+    // Non-blocking: delete Google Calendar event on cancel
+    if (status === 'cancelled' && bookingDetails.calendar_event_id && bookingDetails.provider_id) {
+      db.select({ profile_id: providers.profile_id })
+        .from(providers)
+        .where(eq(providers.id, bookingDetails.provider_id))
+        .limit(1)
+        .then(rows => {
+          const coachProfileId = rows[0]?.profile_id;
+          if (coachProfileId) {
+            getCoachCalendarIntegration(coachProfileId).then(integration => {
+              if (integration) {
+                deleteBookingEvent({
+                  calendarEventId: bookingDetails.calendar_event_id!,
+                  calendarId: integration.calendar_id || 'primary',
+                  accessToken: integration.access_token,
+                  refreshToken: integration.refresh_token,
+                  tokenExpiresAt: integration.token_expires_at,
+                  integrationId: integration.id,
+                }).catch(() => {});
+              }
+            }).catch(() => {});
+          }
+        }).catch(() => {});
+    }
 
     return NextResponse.json({ success: true });
   } catch (err: any) {

@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAdminContext } from '@kunacademy/db';
-import { bookings } from '@kunacademy/db/schema';
+import { bookings, providers, services, profiles } from '@kunacademy/db/schema';
 import { eq, and, lt, gt, ne } from 'drizzle-orm';
 import { getAuthUser } from '@kunacademy/auth/server';
+import { getCoachCalendarIntegration, updateBookingEvent } from '@/lib/google-calendar';
 
 /**
  * POST /api/bookings/reschedule
@@ -43,6 +44,7 @@ export async function POST(request: NextRequest) {
       start_time: bookings.start_time,
       end_time: bookings.end_time,
       status: bookings.status,
+      calendar_event_id: bookings.calendar_event_id,
     })
       .from(bookings)
       .where(eq(bookings.id, booking_id))
@@ -53,8 +55,20 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Booking not found' }, { status: 404 });
   }
 
-  // Must belong to this user
-  if (booking.customer_id !== user.id) {
+  // Allow customer OR coach (provider) to reschedule
+  const isCustomer = booking.customer_id === user.id;
+  let isCoach = false;
+  if (!isCustomer) {
+    // Check if user is the coach for this booking
+    const providerRows = await withAdminContext(async (db) => {
+      return db.select({ id: providers.id })
+        .from(providers)
+        .where(eq(providers.profile_id, user.id))
+        .limit(1);
+    });
+    isCoach = providerRows.length > 0 && providerRows[0].id === booking.provider_id;
+  }
+  if (!isCustomer && !isCoach) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
@@ -124,6 +138,65 @@ export async function POST(request: NextRequest) {
     }).catch(() => {});
   } catch {
     // Non-blocking
+  }
+
+  // Non-blocking: update Google Calendar event on reschedule
+  if (booking.calendar_event_id && booking.provider_id) {
+    (async () => {
+      try {
+        // Resolve coach profile_id
+        const provRows = await withAdminContext(async (db) => {
+          return db.select({ profile_id: providers.profile_id })
+            .from(providers)
+            .where(eq(providers.id, booking.provider_id!))
+            .limit(1);
+        });
+        const coachProfileId = provRows[0]?.profile_id;
+        if (!coachProfileId) return;
+
+        const integration = await getCoachCalendarIntegration(coachProfileId);
+        if (!integration) return;
+
+        // Fetch service info for description rebuild
+        const [serviceInfo] = booking.service_id
+          ? await withAdminContext(async (db) => {
+              return db.select({ name_en: services.name_en, duration_minutes: services.duration_minutes })
+                .from(services)
+                .where(eq(services.id, booking.service_id!))
+                .limit(1);
+            })
+          : [null];
+
+        // Fetch customer info for description rebuild
+        const [customerInfo] = booking.customer_id
+          ? await withAdminContext(async (db) => {
+              return db.select({ full_name_en: profiles.full_name_en, email: profiles.email })
+                .from(profiles)
+                .where(eq(profiles.id, booking.customer_id!))
+                .limit(1);
+            })
+          : [null];
+
+        await updateBookingEvent({
+          calendarEventId: booking.calendar_event_id!,
+          calendarId: integration.calendar_id || 'primary',
+          startTime: parsedNewStart.toISOString(),
+          endTime: parsedNewEnd.toISOString(),
+          accessToken: integration.access_token,
+          refreshToken: integration.refresh_token,
+          tokenExpiresAt: integration.token_expires_at,
+          integrationId: integration.id,
+          bookingId: booking.id,
+          clientName: customerInfo?.full_name_en || 'Client',
+          clientEmail: customerInfo?.email || '',
+          serviceName: serviceInfo?.name_en || 'Coaching Session',
+          durationMinutes: serviceInfo?.duration_minutes || 60,
+          meetingUrl: null,
+        });
+      } catch {
+        // Calendar update is non-blocking
+      }
+    })();
   }
 
   return NextResponse.json({

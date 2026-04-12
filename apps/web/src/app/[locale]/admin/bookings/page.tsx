@@ -21,6 +21,21 @@ interface Booking {
   service?: { name_en: string; name_ar: string };
 }
 
+interface Coach {
+  id: string;
+  full_name: string;
+  provider_id: string | null;
+  name_ar: string | null;
+  name_en: string | null;
+}
+
+interface Service {
+  id: string;
+  name_ar: string | null;
+  name_en: string | null;
+  duration_minutes: number;
+}
+
 const statusColors: Record<string, string> = {
   confirmed: 'bg-green-100 text-green-700',
   pending: 'bg-yellow-100 text-yellow-700',
@@ -46,6 +61,13 @@ export default function AdminBookingsPage() {
   const [filter, setFilter] = useState<string>('all');
   const [updating, setUpdating] = useState<string | null>(null);
   const isAr = locale === 'ar';
+
+  // Edit modal state
+  const [editBooking, setEditBooking] = useState<Booking | null>(null);
+  const [coaches, setCoaches] = useState<Coach[]>([]);
+  const [servicesList, setServicesList] = useState<Service[]>([]);
+  const [editForm, setEditForm] = useState({ provider_id: '', service_id: '', start_time: '', end_time: '', status: '', notes: '' });
+  const [saving, setSaving] = useState(false);
 
   async function fetchBookings() {
     const res = await fetch('/api/admin/bookings-list');
@@ -88,6 +110,50 @@ export default function AdminBookingsPage() {
     }
 
     setUpdating(null);
+  }
+
+  async function openEditModal(booking: Booking) {
+    setEditBooking(booking);
+    setEditForm({
+      provider_id: booking.provider_id || '',
+      service_id: booking.service_id || '',
+      start_time: booking.start_time ? new Date(booking.start_time).toISOString().slice(0, 16) : '',
+      end_time: booking.end_time ? new Date(booking.end_time).toISOString().slice(0, 16) : '',
+      status: booking.status || '',
+      notes: '',
+    });
+    const [coachRes, svcRes] = await Promise.all([
+      fetch('/api/admin/coaches-list').then(r => r.json()),
+      fetch('/api/admin/services-list').then(r => r.json()),
+    ]);
+    setCoaches(coachRes.coaches || []);
+    setServicesList(svcRes.services || []);
+  }
+
+  async function saveEdit() {
+    if (!editBooking) return;
+    setSaving(true);
+    try {
+      const res = await fetch('/api/admin/bookings-list', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          booking_id: editBooking.id,
+          provider_id: editForm.provider_id || undefined,
+          service_id: editForm.service_id || undefined,
+          start_time: editForm.start_time ? new Date(editForm.start_time).toISOString() : undefined,
+          end_time: editForm.end_time ? new Date(editForm.end_time).toISOString() : undefined,
+          status: editForm.status || undefined,
+          notes: editForm.notes || undefined,
+        }),
+      });
+      if (res.ok) {
+        setEditBooking(null);
+        await fetchBookings();
+      }
+    } finally {
+      setSaving(false);
+    }
   }
 
   const filtered = filter === 'all' ? bookings : bookings.filter(b => b.status === filter);
@@ -203,6 +269,12 @@ export default function AdminBookingsPage() {
                             {isAr ? 'اكتمل' : 'Complete'}
                           </button>
                         )}
+                        <button
+                          onClick={() => openEditModal(booking)}
+                          className="px-2 py-1 rounded text-xs font-medium bg-[var(--color-neutral-100)] text-[var(--color-neutral-700)] hover:bg-[var(--color-neutral-200)]"
+                        >
+                          {isAr ? 'تعديل' : 'Edit'}
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -212,6 +284,117 @@ export default function AdminBookingsPage() {
           </table>
         </div>
       </Section>
+
+      {/* Edit Modal */}
+      {editBooking && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setEditBooking(null)}>
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 p-6 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <h2 className="text-lg font-bold text-[var(--text-primary)] mb-4">
+              {isAr ? 'تعديل الحجز' : 'Edit Booking'}
+            </h2>
+
+            <div className="space-y-4">
+              {/* Coach */}
+              <div>
+                <label className="block text-sm font-medium text-[var(--color-neutral-600)] mb-1">{isAr ? 'الكوتش' : 'Coach'}</label>
+                <select
+                  value={editForm.provider_id}
+                  onChange={e => setEditForm(f => ({ ...f, provider_id: e.target.value }))}
+                  className="w-full rounded-lg border border-[var(--color-neutral-200)] px-3 py-2 text-sm"
+                >
+                  <option value="">{isAr ? 'اختر كوتش' : 'Select coach'}</option>
+                  {coaches.filter(c => c.provider_id).map(c => (
+                    <option key={c.provider_id!} value={c.provider_id!}>
+                      {isAr ? c.name_ar || c.full_name : c.name_en || c.full_name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Service */}
+              <div>
+                <label className="block text-sm font-medium text-[var(--color-neutral-600)] mb-1">{isAr ? 'الخدمة' : 'Service'}</label>
+                <select
+                  value={editForm.service_id}
+                  onChange={e => setEditForm(f => ({ ...f, service_id: e.target.value }))}
+                  className="w-full rounded-lg border border-[var(--color-neutral-200)] px-3 py-2 text-sm"
+                >
+                  <option value="">{isAr ? 'اختر خدمة' : 'Select service'}</option>
+                  {servicesList.map(s => (
+                    <option key={s.id} value={s.id}>
+                      {isAr ? s.name_ar : s.name_en} ({s.duration_minutes} min)
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Start Time */}
+              <div>
+                <label className="block text-sm font-medium text-[var(--color-neutral-600)] mb-1">{isAr ? 'وقت البدء' : 'Start Time'}</label>
+                <input
+                  type="datetime-local"
+                  value={editForm.start_time}
+                  onChange={e => setEditForm(f => ({ ...f, start_time: e.target.value }))}
+                  className="w-full rounded-lg border border-[var(--color-neutral-200)] px-3 py-2 text-sm"
+                />
+              </div>
+
+              {/* End Time */}
+              <div>
+                <label className="block text-sm font-medium text-[var(--color-neutral-600)] mb-1">{isAr ? 'وقت الانتهاء' : 'End Time'}</label>
+                <input
+                  type="datetime-local"
+                  value={editForm.end_time}
+                  onChange={e => setEditForm(f => ({ ...f, end_time: e.target.value }))}
+                  className="w-full rounded-lg border border-[var(--color-neutral-200)] px-3 py-2 text-sm"
+                />
+              </div>
+
+              {/* Status */}
+              <div>
+                <label className="block text-sm font-medium text-[var(--color-neutral-600)] mb-1">{isAr ? 'الحالة' : 'Status'}</label>
+                <select
+                  value={editForm.status}
+                  onChange={e => setEditForm(f => ({ ...f, status: e.target.value }))}
+                  className="w-full rounded-lg border border-[var(--color-neutral-200)] px-3 py-2 text-sm"
+                >
+                  {['pending', 'confirmed', 'completed', 'cancelled', 'no-show'].map(s => (
+                    <option key={s} value={s}>{isAr ? statusLabels[s]?.ar : statusLabels[s]?.en}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Notes */}
+              <div>
+                <label className="block text-sm font-medium text-[var(--color-neutral-600)] mb-1">{isAr ? 'ملاحظات' : 'Notes'}</label>
+                <textarea
+                  value={editForm.notes}
+                  onChange={e => setEditForm(f => ({ ...f, notes: e.target.value }))}
+                  rows={3}
+                  className="w-full rounded-lg border border-[var(--color-neutral-200)] px-3 py-2 text-sm"
+                  placeholder={isAr ? 'ملاحظات اختيارية...' : 'Optional notes...'}
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => setEditBooking(null)}
+                className="flex-1 px-4 py-2.5 rounded-xl border border-[var(--color-neutral-200)] text-sm font-medium text-[var(--color-neutral-600)] hover:bg-[var(--color-neutral-50)]"
+              >
+                {isAr ? 'إلغاء' : 'Cancel'}
+              </button>
+              <button
+                onClick={saveEdit}
+                disabled={saving}
+                className="flex-1 px-4 py-2.5 rounded-xl bg-[var(--color-primary)] text-white text-sm font-medium hover:bg-[var(--color-primary-600)] disabled:opacity-50"
+              >
+                {saving ? (isAr ? 'جاري الحفظ...' : 'Saving...') : (isAr ? 'حفظ' : 'Save')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
