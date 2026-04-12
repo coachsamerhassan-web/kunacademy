@@ -34,7 +34,7 @@ export async function GET() {
           buffer_minutes: coach_schedules.buffer_minutes,
         })
         .from(coach_schedules)
-        .where(and(eq(coach_schedules.coach_id, inst.id), eq(coach_schedules.is_active, true))),
+        .where(and(eq(coach_schedules.coach_id, user.id), eq(coach_schedules.is_active, true))),
 
       db
         .select({ start_time: bookings.start_time, end_time: bookings.end_time })
@@ -55,7 +55,7 @@ export async function GET() {
           reason: coach_time_off.reason,
         })
         .from(coach_time_off)
-        .where(eq(coach_time_off.coach_id, inst.id))
+        .where(eq(coach_time_off.coach_id, user.id))
         .orderBy(coach_time_off.start_date),
     ]);
 
@@ -94,11 +94,11 @@ export async function PUT(request: NextRequest) {
     if (!instRows[0]) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
     await withAdminContext(async (adminDb) => {
-      await adminDb.delete(coach_schedules).where(eq(coach_schedules.coach_id, instructor_id));
+      await adminDb.delete(coach_schedules).where(eq(coach_schedules.coach_id, user.id));
       if (rows?.length > 0) {
         await adminDb.insert(coach_schedules).values(
           rows.map((r: any) => ({
-            coach_id: instructor_id,
+            coach_id: user.id,
             day_of_week: r.day_of_week,
             start_time: r.start_time,
             end_time: r.end_time,
@@ -144,7 +144,7 @@ export async function POST(request: NextRequest) {
       return adminDb
         .insert(coach_time_off)
         .values({
-          coach_id: instructor_id,
+          coach_id: user.id,
           start_date,
           end_date,
           reason: reason || null,
@@ -188,7 +188,7 @@ export async function DELETE(request: NextRequest) {
     await withAdminContext(async (adminDb) => {
       await adminDb
         .delete(coach_time_off)
-        .where(and(eq(coach_time_off.id, time_off_id), eq(coach_time_off.coach_id, instRows[0].id)));
+        .where(and(eq(coach_time_off.id, time_off_id), eq(coach_time_off.coach_id, user.id)));
     });
 
     return NextResponse.json({ success: true });
