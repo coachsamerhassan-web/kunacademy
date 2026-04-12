@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { withUserContext, sql } from '@kunacademy/db';
+import { withAdminContext, sql } from '@kunacademy/db';
 
 /**
  * GET /api/graduates — Public graduate directory
@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
     const whereClause = conditions.join(' AND ');
 
     // ── Execute list + count in parallel ──
-    const result = await withUserContext(async (userDb: any) => {
+    const result = await withAdminContext(async (userDb: any) => {
       const [dataRows, countRows] = await Promise.all([
         userDb.execute(sql`
           SELECT

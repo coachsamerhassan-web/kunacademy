@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { withUserContext, sql } from '@kunacademy/db';
+import { withAdminContext, sql } from '@kunacademy/db';
 
 /**
  * GET /api/graduates/[slug] — Public graduate profile
@@ -27,7 +27,7 @@ export async function GET(
   try {
     const { slug } = await params;
 
-    const graduate = await withUserContext(async (userDb: any) => {
+    const graduate = await withAdminContext(async (userDb: any) => {
       const rows = await userDb.execute(sql`
         SELECT
           cm.id,
