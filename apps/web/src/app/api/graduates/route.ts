@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@kunacademy/db';
+import { withUserContext } from '../../../../../../packages/db/src/pool';
 import { sql } from 'drizzle-orm';
 
 /**
@@ -59,52 +59,55 @@ export async function GET(request: NextRequest) {
     const whereClause = conditions.join(' AND ');
 
     // ── Execute list + count in parallel ──
-    const [dataRows, countRows] = await Promise.all([
-      db.execute(sql`
-        SELECT
-          cm.id,
-          cm.slug,
-          cm.name_ar,
-          cm.name_en,
-          cm.photo_url,
-          cm.country,
-          cm.member_type,
-          cm.coaching_status,
-          COALESCE(
-            json_agg(
-              json_build_object(
-                'program_slug',    gc.program_slug,
-                'badge_slug',      gc.badge_slug,
-                'badge_image_url', bd.image_url,
-                'badge_label_ar',  gc.badge_label_ar,
-                'badge_label_en',  gc.badge_label_en,
-                'graduation_date', gc.graduation_date,
-                'icf_credential',  gc.icf_credential
-              )
-              ORDER BY gc.graduation_date DESC NULLS LAST
-            ) FILTER (WHERE gc.id IS NOT NULL),
-            '[]'::json
-          ) AS certificates
-        FROM community_members cm
-        LEFT JOIN graduate_certificates gc ON gc.member_id = cm.id
-        LEFT JOIN badge_definitions bd ON bd.slug = gc.badge_slug
-        WHERE ${sql.raw(whereClause)}
-        GROUP BY cm.id
-        ORDER BY cm.name_en ASC
-        LIMIT ${limit} OFFSET ${offset}
-      `),
-      db.execute(sql`
-        SELECT COUNT(DISTINCT cm.id)::int AS total
-        FROM community_members cm
-        WHERE ${sql.raw(whereClause)}
-      `),
-    ]);
+    const result = await withUserContext(async (userDb: any) => {
+      const [dataRows, countRows] = await Promise.all([
+        userDb.execute(sql`
+          SELECT
+            cm.id,
+            cm.slug,
+            cm.name_ar,
+            cm.name_en,
+            cm.photo_url,
+            cm.country,
+            cm.member_type,
+            cm.coaching_status,
+            COALESCE(
+              json_agg(
+                json_build_object(
+                  'program_slug',    gc.program_slug,
+                  'badge_slug',      gc.badge_slug,
+                  'badge_image_url', bd.image_url,
+                  'badge_label_ar',  gc.badge_label_ar,
+                  'badge_label_en',  gc.badge_label_en,
+                  'graduation_date', gc.graduation_date,
+                  'icf_credential',  gc.icf_credential
+                )
+                ORDER BY gc.graduation_date DESC NULLS LAST
+              ) FILTER (WHERE gc.id IS NOT NULL),
+              '[]'::json
+            ) AS certificates
+          FROM community_members cm
+          LEFT JOIN graduate_certificates gc ON gc.member_id = cm.id
+          LEFT JOIN badge_definitions bd ON bd.slug = gc.badge_slug
+          WHERE ${sql.raw(whereClause)}
+          GROUP BY cm.id
+          ORDER BY cm.name_en ASC
+          LIMIT ${limit} OFFSET ${offset}
+        `),
+        userDb.execute(sql`
+          SELECT COUNT(DISTINCT cm.id)::int AS total
+          FROM community_members cm
+          WHERE ${sql.raw(whereClause)}
+        `),
+      ]);
+      return { dataRows, countRows };
+    });
 
-    const total      = (countRows.rows[0] as any)?.total ?? 0;
+    const total      = (result.countRows.rows[0] as any)?.total ?? 0;
     const totalPages = Math.ceil(total / limit);
 
     return NextResponse.json(
-      { graduates: dataRows.rows, total, page, totalPages },
+      { graduates: result.dataRows.rows, total, page, totalPages },
       {
         headers: {
           ...CORS_HEADERS,
