@@ -46,7 +46,6 @@ export async function GET(request: NextRequest) {
         CASE WHEN ins.id IS NOT NULL THEN true ELSE false END AS has_instructor,
         ins.kun_level,
         ins.icf_credential,
-        ins.is_bookable,
         pv.is_visible AS provider_is_visible,
         ins.is_visible AS instructor_is_visible
       FROM profiles p
@@ -185,7 +184,7 @@ export async function PATCH(request: NextRequest) {
         const arrLiteral = `ARRAY[${service_roles.map(r => `'${r.replace(/'/g, "''")}'`).join(',')}]`;
         instructorUpdates.push(`service_roles = ${arrLiteral}`);
       }
-      if (is_bookable !== undefined) instructorUpdates.push(`is_bookable = ${is_bookable}`);
+      // Note: is_bookable column does not exist in instructors table yet — skipped
       if (is_visible !== undefined) {
         instructorUpdates.push(`is_visible = ${is_visible}`);
         // Also mirror is_visible to providers table
