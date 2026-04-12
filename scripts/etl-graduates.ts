@@ -494,7 +494,8 @@ async function seedBadgeDefinitions(adminDb: any): Promise<void> {
       log(`  ok  badge:${badge.slug}`);
       ok++;
     } catch (err: any) {
-      warn(`badge ${badge.slug} failed: ${err?.message}`);
+      const pgErr = err?.cause || err;
+      warn(`badge ${badge.slug} failed: ${pgErr?.message || err?.message}${pgErr?.code ? ' [' + pgErr.code + ']' : ''}`);
     }
   }
 
@@ -554,7 +555,7 @@ async function etlGraduates(adminDb: any): Promise<void> {
       }
       log(`\nPre-loaded ${existingRows.length} existing slugs from DB`);
     } catch (err: any) {
-      warn(`Could not pre-load existing slugs: ${err?.message}`);
+      warn(`Could not pre-load existing slugs: ${(err?.cause || err)?.message || err?.message}`);
     }
   }
 
@@ -708,7 +709,7 @@ async function etlGraduates(adminDb: any): Promise<void> {
             ${email ?? null},
             ${phone ?? null},
             ${country ?? null},
-            ${spokenLangs},
+            ${spokenLangs?.length ? sql`ARRAY[${sql.join(spokenLangs.map((l: string) => sql`${l}`), sql`, `)}]::text[]` : sql`NULL`},
             'alumni',
             'sheet_import',
             ${profileId ? sql`${profileId}::uuid` : sql`NULL`},
@@ -737,7 +738,8 @@ async function etlGraduates(adminDb: any): Promise<void> {
           log(`  ok  ${label} ${nameEn} → member_id=${memberId}${r.inserted ? ' (new)' : ' (updated)'}`);
         }
       } catch (err: any) {
-        warn(`${label} community_members upsert failed: ${err?.message}`);
+        const pgErr = err?.cause || err;
+        warn(`${label} community_members upsert failed: ${pgErr?.message || err?.message}${pgErr?.code ? ' [' + pgErr.code + ']' : ''}`);
         errors++;
         continue;
       }
@@ -820,7 +822,8 @@ async function etlGraduates(adminDb: any): Promise<void> {
           certsCreated++;
         }
       } catch (err: any) {
-        warn(`${label} cert ${opts.programSlug}/${opts.certType} failed: ${err?.message}`);
+        const pgErr2 = err?.cause || err;
+        warn(`${label} cert ${opts.programSlug}/${opts.certType} failed: ${pgErr2?.message || err?.message}${pgErr2?.code ? ' [' + pgErr2.code + ']' : ''}`);
         errors++;
       }
     }
@@ -914,8 +917,11 @@ async function main() {
   log(`Target DB: ${process.env.DATABASE_URL?.replace(/:[^:@]+@/, ':***@') ?? '(DATABASE_URL not set)'}`);
   log('');
 
+  // Separate transactions so badge seed failure doesn't rollback graduates
   await withAdminContext(async (adminDb: any) => {
     await seedBadgeDefinitions(adminDb);
+  });
+  await withAdminContext(async (adminDb: any) => {
     await etlGraduates(adminDb);
   });
 
