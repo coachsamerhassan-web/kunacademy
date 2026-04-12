@@ -199,7 +199,7 @@ async function etlServices(adminDb: any): Promise<void> {
           0,
           ${svc.sessions_count},
           ${svc.validity_days},
-          ${eligibleLevels},
+          ${eligibleLevels ? sql`ARRAY[${sql.join(eligibleLevels.map((l: string) => sql`${l}`), sql`, `)}]::text[]` : sql`NULL`},
           ${isActive}
         )
         ON CONFLICT (slug) DO UPDATE SET
@@ -240,7 +240,7 @@ async function etlServices(adminDb: any): Promise<void> {
                 price_usd         = ${priceUsd},
                 sessions_count    = ${svc.sessions_count},
                 validity_days     = ${svc.validity_days},
-                eligible_kun_levels = ${eligibleLevels},
+                eligible_kun_levels = ${eligibleLevels ? sql`ARRAY[${sql.join(eligibleLevels.map((l: string) => sql`${l}`), sql`, `)}]::text[]` : sql`NULL`},
                 is_active         = ${isActive}
               WHERE slug = ${svc.slug}
             `);
@@ -256,7 +256,7 @@ async function etlServices(adminDb: any): Promise<void> {
                 ${svc.description_ar ?? null}, ${svc.description_en ?? null},
                 ${svc.duration_minutes}, ${priceAed}, ${priceEgp}, ${priceUsd}, 0,
                 ${svc.sessions_count}, ${svc.validity_days},
-                ${eligibleLevels}, ${isActive}
+                ${eligibleLevels ? sql`ARRAY[${sql.join(eligibleLevels.map((l: string) => sql`${l}`), sql`, `)}]::text[]` : sql`NULL`}, ${isActive}
               )
             `);
             log(`  ok (inserted)  ${label}  ${svc.name_en}`);
@@ -267,7 +267,7 @@ async function etlServices(adminDb: any): Promise<void> {
           skipped++;
         }
       } else {
-        warn(`${label} failed: ${err?.message}`);
+        warn(`${label} failed: ${err?.message}${err?.detail ? ' | detail: ' + err.detail : ''}${err?.code ? ' | code: ' + err.code : ''}`);
         skipped++;
       }
     }
