@@ -2,7 +2,8 @@
 
 import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { CheckCircle, Calendar, Clock, User, AlertCircle } from 'lucide-react';
+import { signIn } from 'next-auth/react';
+import { CheckCircle, Calendar, Clock, User, AlertCircle, UserPlus } from 'lucide-react';
 import Link from 'next/link';
 
 interface Booking {
@@ -17,6 +18,7 @@ interface Booking {
   coach_name_en: string | null;
   coach_name_ar: string | null;
   coach_photo: string | null;
+  guest_name?: string | null;
 }
 
 function formatDate(iso: string, locale: string) {
@@ -51,26 +53,225 @@ function generateICS(booking: Booking, locale: string): string {
   ].join('\r\n');
 }
 
+// ─── Guest Account Creation Panel ─────────────────────────────────────────────
+
+interface GuestSignupPanelProps {
+  bookingId: string;
+  guestEmail: string;
+  guestName: string;
+  locale: string;
+}
+
+function GuestSignupPanel({ bookingId, guestEmail, guestName, locale }: GuestSignupPanelProps) {
+  const isAr = locale === 'ar';
+  const [password, setPassword] = useState('');
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [done, setDone] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [alreadyExists, setAlreadyExists] = useState(false);
+
+  async function handleCreateAccount(e: React.FormEvent) {
+    e.preventDefault();
+    if (password.length < 6) {
+      setPasswordError(isAr ? 'كلمة المرور يجب أن تكون 6 أحرف على الأقل' : 'Password must be at least 6 characters');
+      return;
+    }
+    setPasswordError(null);
+    setSubmitting(true);
+    setError(null);
+
+    try {
+      const res = await fetch('/api/auth/guest-signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          booking_id: bookingId,
+          email: guestEmail,
+          name: guestName,
+          password,
+        }),
+      });
+      const data = await res.json();
+
+      if (res.status === 409) {
+        setAlreadyExists(true);
+        return;
+      }
+      if (!res.ok) {
+        setError(data.error || (isAr ? 'حدث خطأ — حاول مرة أخرى' : 'An error occurred — please try again'));
+        return;
+      }
+
+      // Account created — auto sign in
+      const signInResult = await signIn('credentials', {
+        email: guestEmail,
+        password,
+        redirect: false,
+      });
+
+      if (signInResult?.ok) {
+        setDone(true);
+        // Redirect after a brief moment so user sees the confirmation
+        setTimeout(() => { window.location.href = `/${locale}/portal/student/bookings`; }, 1500);
+      } else {
+        // Account was created but auto-sign-in failed — send user to login
+        window.location.href = `/${locale}/auth/login?email=${encodeURIComponent(guestEmail)}&message=account_created`;
+      }
+    } catch {
+      setError(isAr ? 'حدث خطأ في الاتصال — حاول مرة أخرى' : 'Connection error — please try again');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  if (done) {
+    return (
+      <div className="rounded-2xl bg-green-50 border border-green-200 p-5 text-center">
+        <CheckCircle className="w-8 h-8 text-green-600 mx-auto mb-2" />
+        <p className="font-semibold text-green-800">
+          {isAr ? 'تم إنشاء الحساب! جاري التحويل...' : 'Account created! Redirecting...'}
+        </p>
+      </div>
+    );
+  }
+
+  if (alreadyExists) {
+    return (
+      <div className="rounded-2xl border border-[var(--color-neutral-200)] bg-[var(--color-neutral-50)] p-5 text-center space-y-3">
+        <p className="text-sm text-[var(--color-neutral-600)]">
+          {isAr
+            ? 'يوجد حساب بهذا البريد الإلكتروني. سجّل دخولك لرؤية حجزك.'
+            : 'An account with this email already exists. Sign in to view your booking.'}
+        </p>
+        <Link
+          href={`/${locale}/auth/login?email=${encodeURIComponent(guestEmail)}&redirect=/${locale}/portal/student/bookings`}
+          className="inline-flex items-center justify-center rounded-xl bg-[var(--color-primary)] text-white font-semibold px-6 py-3 min-h-[44px] hover:opacity-90 transition-opacity"
+        >
+          {isAr ? 'تسجيل الدخول' : 'Sign In'}
+        </Link>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-2xl border border-[var(--color-primary)] bg-white p-5 space-y-4">
+      <div className="flex items-center gap-2">
+        <UserPlus className="w-5 h-5 text-[var(--color-primary)]" />
+        <h2 className="font-semibold text-[var(--text-primary)]">
+          {isAr ? 'أنشئ حسابك' : 'Create Your Account'}
+        </h2>
+      </div>
+      <p className="text-sm text-[var(--color-neutral-500)]">
+        {isAr
+          ? 'احفظ بياناتك وتابع حجوزاتك — الاسم والبريد جاهزان.'
+          : 'Save your details and track your bookings — name and email are pre-filled.'}
+      </p>
+
+      <form onSubmit={handleCreateAccount} className="space-y-3" dir={isAr ? 'rtl' : 'ltr'}>
+        {/* Pre-filled name */}
+        <div>
+          <label className="block text-xs font-medium text-[var(--color-neutral-500)] mb-1">
+            {isAr ? 'الاسم' : 'Name'}
+          </label>
+          <div className="w-full rounded-xl border border-[var(--color-neutral-200)] bg-[var(--color-neutral-50)] px-4 py-3 text-sm text-[var(--color-neutral-600)] min-h-[44px] flex items-center">
+            {guestName}
+          </div>
+        </div>
+
+        {/* Pre-filled email */}
+        <div>
+          <label className="block text-xs font-medium text-[var(--color-neutral-500)] mb-1">
+            {isAr ? 'البريد الإلكتروني' : 'Email'}
+          </label>
+          <div className="w-full rounded-xl border border-[var(--color-neutral-200)] bg-[var(--color-neutral-50)] px-4 py-3 text-sm text-[var(--color-neutral-600)] min-h-[44px] flex items-center" dir="ltr">
+            {guestEmail}
+          </div>
+        </div>
+
+        {/* Password */}
+        <div>
+          <label className="block text-sm font-medium text-[var(--text-primary)] mb-1" htmlFor="guest-password">
+            {isAr ? 'كلمة المرور' : 'Password'} <span aria-hidden="true" className="text-red-500">*</span>
+          </label>
+          <input
+            id="guest-password"
+            type="password"
+            autoComplete="new-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="w-full rounded-xl border border-[var(--color-neutral-200)] px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] min-h-[44px]"
+            placeholder={isAr ? '٦ أحرف على الأقل' : 'At least 6 characters'}
+            dir="ltr"
+            required
+          />
+          {passwordError && (
+            <p className="mt-1 text-xs text-red-600">{passwordError}</p>
+          )}
+        </div>
+
+        {error && (
+          <div role="alert" className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+            {error}
+          </div>
+        )}
+
+        <button
+          type="submit"
+          disabled={submitting}
+          className="w-full inline-flex items-center justify-center rounded-xl bg-[var(--color-primary)] text-white font-semibold px-6 py-3 min-h-[44px] hover:opacity-90 transition-opacity disabled:opacity-60 disabled:cursor-not-allowed"
+        >
+          {submitting
+            ? (isAr ? 'جاري الإنشاء...' : 'Creating account...')
+            : (isAr ? 'إنشاء الحساب' : 'Create Account')}
+        </button>
+      </form>
+    </div>
+  );
+}
+
+// ─── Success page inner ────────────────────────────────────────────────────────
+
 function SuccessPageInner({ locale }: { locale: string }) {
   const isAr = locale === 'ar';
   const searchParams = useSearchParams();
   const bookingId = searchParams.get('booking_id') || searchParams.get('payment_id');
+  // email param is present when coming from a guest checkout
+  const guestEmailParam = searchParams.get('email');
 
   const [booking, setBooking] = useState<Booking | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // true when the user that landed here is NOT authenticated (guest flow)
+  const [isGuest, setIsGuest] = useState(false);
 
   useEffect(() => {
     if (!bookingId) { setLoading(false); return; }
-    fetch(`/api/bookings/${bookingId}`)
-      .then(r => r.json())
-      .then(data => {
-        if (data.booking) setBooking(data.booking);
-        else setError(data.error || 'Booking not found');
-      })
-      .catch(() => setError('Failed to load booking'))
-      .finally(() => setLoading(false));
-  }, [bookingId]);
+
+    // Determine whether this is a guest (email param present) or authenticated user
+    if (guestEmailParam) {
+      // Guest flow — use the guest-accessible endpoint
+      setIsGuest(true);
+      fetch(`/api/bookings/guest/${bookingId}?email=${encodeURIComponent(guestEmailParam)}`)
+        .then(r => r.json())
+        .then(data => {
+          if (data.booking) setBooking(data.booking);
+          else setError(data.error || 'Booking not found');
+        })
+        .catch(() => setError('Failed to load booking'))
+        .finally(() => setLoading(false));
+    } else {
+      // Authenticated flow — use existing auth-required endpoint
+      fetch(`/api/bookings/${bookingId}`)
+        .then(r => r.json())
+        .then(data => {
+          if (data.booking) setBooking(data.booking);
+          else setError(data.error || 'Booking not found');
+        })
+        .catch(() => setError('Failed to load booking'))
+        .finally(() => setLoading(false));
+    }
+  }, [bookingId, guestEmailParam]);
 
   function downloadICS() {
     if (!booking) return;
@@ -219,7 +420,7 @@ function SuccessPageInner({ locale }: { locale: string }) {
 
       {/* Calendar buttons */}
       {booking && (
-        <div className="flex flex-col sm:flex-row gap-2 mb-4">
+        <div className="flex flex-col sm:flex-row gap-2 mb-6">
           <button
             type="button"
             onClick={downloadICS}
@@ -240,14 +441,28 @@ function SuccessPageInner({ locale }: { locale: string }) {
         </div>
       )}
 
+      {/* ── Guest: Create Account CTA ── */}
+      {isGuest && bookingId && guestEmailParam && booking && (
+        <div className="mb-6">
+          <GuestSignupPanel
+            bookingId={bookingId}
+            guestEmail={guestEmailParam}
+            guestName={(booking.guest_name || '').trim()}
+            locale={locale}
+          />
+        </div>
+      )}
+
       {/* Navigation links */}
       <div className="flex flex-col gap-2">
-        <Link
-          href={`/${locale}/portal/student/bookings`}
-          className="inline-flex items-center justify-center rounded-xl bg-[var(--color-primary)] text-white font-semibold px-6 py-3 min-h-[44px] hover:opacity-90 transition-opacity"
-        >
-          {isAr ? 'عرض جميع حجوزاتي' : 'View My Bookings'}
-        </Link>
+        {!isGuest && (
+          <Link
+            href={`/${locale}/portal/student/bookings`}
+            className="inline-flex items-center justify-center rounded-xl bg-[var(--color-primary)] text-white font-semibold px-6 py-3 min-h-[44px] hover:opacity-90 transition-opacity"
+          >
+            {isAr ? 'عرض جميع حجوزاتي' : 'View My Bookings'}
+          </Link>
+        )}
         <Link
           href={`/${locale}/coaching/book`}
           className="inline-flex items-center justify-center rounded-xl border border-[var(--color-neutral-200)] px-6 py-3 text-sm font-medium text-[var(--color-neutral-600)] hover:border-[var(--color-primary)] hover:text-[var(--color-primary)] transition-colors min-h-[44px]"

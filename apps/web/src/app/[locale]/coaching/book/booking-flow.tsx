@@ -350,6 +350,12 @@ function BookingFlowInner({ locale }: { locale: string }) {
   const [heldUntil, setHeldUntil] = useState<Date | null>(null);
   const [holdError, setHoldError] = useState<string | null>(null);
 
+  // Guest info (collected at confirm step when user is not authenticated)
+  const [guestInfo, setGuestInfo] = useState<{ name: string; email: string; phone: string }>({
+    name: '', email: '', phone: '',
+  });
+  const [guestErrors, setGuestErrors] = useState<{ name?: string; email?: string; phone?: string }>({});
+
   const { remaining, label: countdownLabel } = useCountdown(heldUntil);
 
   // Detect mobile
@@ -506,8 +512,72 @@ function BookingFlowInner({ locale }: { locale: string }) {
     setStep(4);
   }
 
+  // ── Guest info validation ──
+  function validateGuestInfo(): boolean {
+    const errs: { name?: string; email?: string; phone?: string } = {};
+    if (!guestInfo.name.trim() || guestInfo.name.trim().length < 2) {
+      errs.name = isAr ? 'الاسم مطلوب' : 'Full name is required';
+    }
+    if (!guestInfo.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(guestInfo.email)) {
+      errs.email = isAr ? 'بريد إلكتروني صحيح مطلوب' : 'A valid email is required';
+    }
+    if (!guestInfo.phone || !/^\+[1-9]\d{6,14}$/.test(guestInfo.phone)) {
+      errs.phone = isAr ? 'رقم هاتف صحيح مطلوب (مثال: ‎+971XXXXXXXXX)' : 'Valid phone required (e.g. +971XXXXXXXXX)';
+    }
+    setGuestErrors(errs);
+    return Object.keys(errs).length === 0;
+  }
+
   async function handleConfirm() {
-    if (!user || !selectedCoach || !selectedService || !selectedSlot) return;
+    if (!selectedCoach || !selectedService || !selectedSlot) return;
+
+    // ── Guest path (no account) ──
+    if (!user) {
+      if (!validateGuestInfo()) return;
+      setConfirming(true);
+      try {
+        const res = await fetch('/api/bookings/guest-create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            service_id: selectedService.id,
+            coach_id: selectedCoach.provider_id,
+            start_time: `${selectedSlot.date}T${selectedSlot.start_time}:00`,
+            end_time: `${selectedSlot.date}T${selectedSlot.end_time}:00`,
+            guest_name: guestInfo.name.trim(),
+            guest_email: guestInfo.email,
+            guest_phone: guestInfo.phone,
+          }),
+        });
+        const result = await res.json();
+        if (!res.ok) {
+          if (res.status === 409) {
+            setHoldError(isAr ? 'هذا الموعد لم يعد متاحًا — اختر وقتًا آخر' : 'This slot is no longer available — please pick another time');
+            setSelectedSlot(null);
+            setStep(3);
+            return;
+          }
+          throw new Error(result.error || 'Booking failed');
+        }
+        if (result.payment_url) {
+          window.location.href = result.payment_url;
+          return;
+        }
+        // Free session confirmed
+        setDone(true);
+      } catch (e) {
+        console.error('[BookingFlow] guest-create error:', e);
+        setConfirmError(isAr
+          ? 'حدث خطأ أثناء الحجز. تحقق من اتصالك وحاول مرة أخرى.'
+          : 'Something went wrong. Check your connection and try again.'
+        );
+      } finally {
+        setConfirming(false);
+      }
+      return;
+    }
+
+    // ── Authenticated path ──
     setConfirming(true);
 
     try {
@@ -893,16 +963,95 @@ function BookingFlowInner({ locale }: { locale: string }) {
           )}
 
           {!user ? (
-            <div className="text-center py-4">
-              <p className="text-[var(--color-neutral-600)] mb-3 text-sm">
-                {isAr ? 'يرجى تسجيل الدخول لإتمام الحجز' : 'Sign in to complete your booking'}
+            /* ── Guest info form ── */
+            <div className="space-y-4">
+              <p className="text-sm text-[var(--color-neutral-500)]">
+                {isAr
+                  ? 'أدخل بياناتك لإتمام الحجز. يمكنك إنشاء حساب بعد الدفع.'
+                  : 'Enter your details to complete the booking. You can create an account after payment.'}
               </p>
-              <a
-                href={`/${locale}/auth/login?redirect=/${locale}/coaching/book`}
-                className="inline-flex items-center justify-center rounded-xl bg-[var(--color-primary)] text-white font-semibold px-6 py-3 min-h-[44px] hover:opacity-90 transition-opacity"
+
+              {/* Full name */}
+              <div>
+                <label className="block text-sm font-medium text-[var(--text-primary)] mb-1">
+                  {isAr ? 'الاسم الكامل' : 'Full Name'} <span aria-hidden="true" className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  autoComplete="name"
+                  value={guestInfo.name}
+                  onChange={(e) => setGuestInfo(g => ({ ...g, name: e.target.value }))}
+                  className="w-full rounded-xl border border-[var(--color-neutral-200)] px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] min-h-[44px]"
+                  placeholder={isAr ? 'الاسم الكامل' : 'Your full name'}
+                  dir={isAr ? 'rtl' : 'ltr'}
+                />
+                {guestErrors.name && (
+                  <p className="mt-1 text-xs text-red-600">{guestErrors.name}</p>
+                )}
+              </div>
+
+              {/* Email */}
+              <div>
+                <label className="block text-sm font-medium text-[var(--text-primary)] mb-1">
+                  {isAr ? 'البريد الإلكتروني' : 'Email'} <span aria-hidden="true" className="text-red-500">*</span>
+                </label>
+                <input
+                  type="email"
+                  autoComplete="email"
+                  value={guestInfo.email}
+                  onChange={(e) => setGuestInfo(g => ({ ...g, email: e.target.value }))}
+                  className="w-full rounded-xl border border-[var(--color-neutral-200)] px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] min-h-[44px]"
+                  placeholder="you@example.com"
+                  dir="ltr"
+                />
+                {guestErrors.email && (
+                  <p className="mt-1 text-xs text-red-600">{guestErrors.email}</p>
+                )}
+              </div>
+
+              {/* Phone */}
+              <div>
+                <label className="block text-sm font-medium text-[var(--text-primary)] mb-1">
+                  {isAr ? 'رقم الهاتف' : 'Phone'} <span aria-hidden="true" className="text-red-500">*</span>
+                </label>
+                <input
+                  type="tel"
+                  autoComplete="tel"
+                  value={guestInfo.phone}
+                  onChange={(e) => setGuestInfo(g => ({ ...g, phone: e.target.value }))}
+                  className="w-full rounded-xl border border-[var(--color-neutral-200)] px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] min-h-[44px]"
+                  placeholder="+971XXXXXXXXX"
+                  dir="ltr"
+                />
+                {guestErrors.phone && (
+                  <p className="mt-1 text-xs text-red-600">{guestErrors.phone}</p>
+                )}
+              </div>
+
+              {/* Already have an account? */}
+              <p className="text-xs text-[var(--color-neutral-500)]">
+                {isAr ? 'لديك حساب؟ ' : 'Have an account? '}
+                <a
+                  href={`/${locale}/auth/login?redirect=/${locale}/coaching/book`}
+                  className="text-[var(--color-primary)] hover:underline"
+                >
+                  {isAr ? 'تسجيل الدخول' : 'Sign in'}
+                </a>
+              </p>
+
+              <Button
+                variant="primary"
+                size="lg"
+                className="w-full"
+                onClick={() => { setConfirmError(null); handleConfirm(); }}
+                disabled={confirming}
               >
-                {isAr ? 'تسجيل الدخول' : 'Sign In'}
-              </a>
+                {confirming
+                  ? (isAr ? 'جاري الحجز...' : 'Processing...')
+                  : selectedService.price_aed === 0
+                  ? (isAr ? 'تأكيد الحجز' : 'Confirm Booking')
+                  : (isAr ? 'المتابعة للدفع' : 'Proceed to Payment')}
+              </Button>
             </div>
           ) : (
             <Button

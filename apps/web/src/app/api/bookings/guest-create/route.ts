@@ -1,0 +1,197 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { withAdminContext } from '@kunacademy/db';
+import { sql } from 'drizzle-orm';
+import { createCheckoutSession } from '@kunacademy/payments';
+
+// ─── Rate limiting ────────────────────────────────────────────────────────────
+// In-process store: email → [timestamp, ...]. Resets on server restart.
+// Good enough for abuse prevention; replace with Redis if traffic warrants it.
+const rateLimitStore = new Map<string, number[]>();
+const RATE_LIMIT_MAX = 3;
+const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
+
+function checkRateLimit(email: string): boolean {
+  const now = Date.now();
+  const key = email.toLowerCase();
+  const attempts = (rateLimitStore.get(key) || []).filter(
+    (t) => now - t < RATE_LIMIT_WINDOW_MS
+  );
+  if (attempts.length >= RATE_LIMIT_MAX) return false;
+  attempts.push(now);
+  rateLimitStore.set(key, attempts);
+  return true;
+}
+
+// ─── Validation helpers ───────────────────────────────────────────────────────
+function isValidEmail(email: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function isValidPhone(phone: string): boolean {
+  // Accept E.164 format: +[country code][number], 7-15 digits after +
+  return /^\+[1-9]\d{6,14}$/.test(phone);
+}
+
+/**
+ * POST /api/bookings/guest-create
+ *
+ * Creates a booking without an authenticated session. Designed for guests who
+ * want to pay first and create an account afterward.
+ *
+ * Body: { service_id, coach_id (provider_id), start_time, end_time,
+ *         guest_name, guest_email, guest_phone }
+ *
+ * Returns: { booking_id, payment_url } for paid services
+ *          { booking_id, status: 'confirmed' } for free services
+ *
+ * Security:
+ * - Rate limited: 3 requests per email per hour
+ * - Validates email + phone format
+ * - Validates service exists and slot is available
+ * - Guest endpoint only returns data matching the booking's guest_email
+ */
+export async function POST(request: NextRequest) {
+  let body: {
+    service_id?: string;
+    coach_id?: string;
+    start_time?: string;
+    end_time?: string;
+    guest_name?: string;
+    guest_email?: string;
+    guest_phone?: string;
+  };
+
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+  }
+
+  const { service_id, coach_id, start_time, end_time, guest_name, guest_email, guest_phone } = body;
+
+  // ── Field validation ──
+  if (!service_id || !coach_id || !start_time || !end_time) {
+    return NextResponse.json({ error: 'service_id, coach_id, start_time, and end_time are required' }, { status: 400 });
+  }
+  if (!guest_name || guest_name.trim().length < 2) {
+    return NextResponse.json({ error: 'Full name is required (min 2 characters)' }, { status: 400 });
+  }
+  if (!guest_email || !isValidEmail(guest_email)) {
+    return NextResponse.json({ error: 'A valid email address is required' }, { status: 400 });
+  }
+  if (!guest_phone || !isValidPhone(guest_phone)) {
+    return NextResponse.json({ error: 'A valid phone number is required (e.g. +971XXXXXXXXX)' }, { status: 400 });
+  }
+
+  // ── Rate limit ──
+  if (!checkRateLimit(guest_email)) {
+    return NextResponse.json(
+      { error: 'Too many booking attempts. Please wait an hour before trying again.' },
+      { status: 429 }
+    );
+  }
+
+  // ── Validate service exists ──
+  const service = await withAdminContext(async (db) => {
+    const rows = await db.execute(sql`
+      SELECT id, name_en, name_ar, price_aed, duration_minutes
+      FROM services
+      WHERE id = ${service_id} AND is_active = true
+      LIMIT 1
+    `);
+    return rows.rows[0] as {
+      id: string;
+      name_en: string;
+      name_ar: string;
+      price_aed: number | null;
+      duration_minutes: number;
+    } | undefined;
+  });
+
+  if (!service) {
+    return NextResponse.json({ error: 'Service not found or not available' }, { status: 404 });
+  }
+
+  // ── Validate slot is available (no overlapping confirmed/pending/held booking) ──
+  const conflict = await withAdminContext(async (db) => {
+    const rows = await db.execute(sql`
+      SELECT id FROM bookings
+      WHERE provider_id = ${coach_id}
+        AND status IN ('confirmed', 'pending', 'held')
+        AND start_time < ${end_time}
+        AND end_time > ${start_time}
+      LIMIT 1
+    `);
+    return rows.rows[0];
+  });
+
+  if (conflict) {
+    return NextResponse.json({ error: 'This time slot is no longer available' }, { status: 409 });
+  }
+
+  // ── Create booking ──
+  const bookingId = await withAdminContext(async (db) => {
+    const rows = await db.execute(sql`
+      INSERT INTO bookings (
+        service_id, provider_id, start_time, end_time,
+        status, guest_name, guest_email, guest_phone
+      )
+      VALUES (
+        ${service_id}, ${coach_id}, ${start_time}, ${end_time},
+        'pending', ${guest_name.trim()}, ${guest_email.toLowerCase()}, ${guest_phone}
+      )
+      RETURNING id
+    `);
+    return (rows.rows[0] as { id: string }).id;
+  });
+
+  const isFree = !service.price_aed || service.price_aed === 0;
+
+  if (isFree) {
+    await withAdminContext(async (db) => {
+      await db.execute(sql`
+        UPDATE bookings SET status = 'confirmed' WHERE id = ${bookingId}
+      `);
+    });
+    return NextResponse.json({ booking_id: bookingId, status: 'confirmed' });
+  }
+
+  // ── Create Stripe checkout for paid service ──
+  if (!process.env.STRIPE_SECRET_KEY) {
+    return NextResponse.json({ error: 'Payment not configured' }, { status: 503 });
+  }
+
+  const origin = request.headers.get('origin') || process.env.NEXTAUTH_URL || 'https://kuncoaching.me';
+  const acceptLang = request.headers.get('accept-language') || '';
+  const locale = acceptLang.includes('ar') ? 'ar' : 'en';
+
+  try {
+    const session = await createCheckoutSession({
+      lineItems: [{
+        name: service.name_en,
+        amount: service.price_aed!,
+        currency: 'AED',
+        quantity: 1,
+      }],
+      customerEmail: guest_email.toLowerCase(),
+      // Pass email in success URL so the guest success page can verify ownership
+      successUrl: `${origin}/${locale}/coaching/book/success?booking_id=${bookingId}&email=${encodeURIComponent(guest_email.toLowerCase())}`,
+      cancelUrl: `${origin}/${locale}/coaching/book`,
+      metadata: {
+        booking_id: bookingId,
+        item_type: 'booking',
+        item_id: bookingId,
+        guest_email: guest_email.toLowerCase(),
+      },
+    });
+
+    return NextResponse.json({ booking_id: bookingId, payment_url: session.url });
+  } catch (e) {
+    console.error('[bookings/guest-create] stripe error:', e);
+    // Clean up the orphaned booking row so it doesn't block the slot
+    await withAdminContext(async (db) => {
+      await db.execute(sql`DELETE FROM bookings WHERE id = ${bookingId}`);
+    }).catch(() => {});
+    return NextResponse.json({ error: 'Failed to create payment session' }, { status: 500 });
+  }
+}
