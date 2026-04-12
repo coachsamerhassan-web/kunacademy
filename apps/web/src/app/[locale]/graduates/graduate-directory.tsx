@@ -90,11 +90,12 @@ function getGradient(slug: string): string {
 // ── Program filters ───────────────────────────────────────────────────────────
 
 const PROGRAMS = [
-  { slug: 'stce',       ar: 'STIC',      en: 'STIC'      },
-  { slug: 'stce-staic', ar: 'STAIC',     en: 'STAIC'     },
-  { slug: 'stce-stgc',  ar: 'STGC',      en: 'STGC'      },
-  { slug: 'stce-stoc',  ar: 'STOC',      en: 'STOC'      },
-  { slug: 'manhajak',   ar: 'منهجك',     en: 'Manhajak'  },
+  { slug: 'stce',       ar: 'أساسيات كوتشينج الأفراد',   en: 'STIC'      },
+  { slug: 'stce-staic', ar: 'كوتشينج الأفراد المتقدم',    en: 'STAIC'     },
+  { slug: 'stce-stgc',  ar: 'كوتشينج المجموعات',          en: 'STGC'      },
+  { slug: 'stce-stoc',  ar: 'كوتشينج المؤسسات',           en: 'STOC'      },
+  { slug: 'stce-stfc',  ar: 'كوتشينج العائلات والأزواج',   en: 'STFC'      },
+  { slug: 'manhajak',   ar: 'منهجك',                       en: 'Manhajak'  },
 ];
 
 // ── Chip component ────────────────────────────────────────────────────────────
