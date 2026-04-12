@@ -329,7 +329,7 @@ export async function POST(request: NextRequest) {
     }
 
     const country = getCountry(request);
-    const origin = request.headers.get('origin') || '';
+    const origin = request.headers.get('origin') || process.env.NEXTAUTH_URL || 'https://kuncoaching.me';
 
     // ── Server-side geo enforcement ─────────────────────────────────
     // EGP + InstaPay: Egypt only

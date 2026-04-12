@@ -1,9 +1,73 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAdminContext } from '@kunacademy/db';
-import { bookings, services } from '@kunacademy/db/schema';
+import { bookings, services, profiles } from '@kunacademy/db/schema';
 import { eq } from 'drizzle-orm';
 import { getAuthUser } from '@kunacademy/auth/server';
 import { createCheckoutSession } from '@kunacademy/payments';
+import { getCoachCalendarIntegration, createBookingEvent } from '@/lib/google-calendar';
+
+/**
+ * Fire-and-forget: push a calendar event for a confirmed booking.
+ * Never throws — calendar failures must never block the booking response.
+ */
+async function pushCalendarEvent(
+  bookingId: string,
+  coachId: string,
+  customerId: string,
+  service: { name_en: string; duration_minutes: number } | undefined,
+  startTime: string,
+  endTime: string,
+  meetingUrl?: string | null,
+): Promise<void> {
+  try {
+    if (!coachId) return;
+
+    const integration = await getCoachCalendarIntegration(coachId);
+    if (!integration) return;
+
+    // Fetch client profile for name/email
+    const [clientProfile] = await withAdminContext(async (db) => {
+      return db.select({
+        full_name_en: profiles.full_name_en,
+        email: profiles.email,
+      })
+        .from(profiles)
+        .where(eq(profiles.id, customerId))
+        .limit(1);
+    });
+
+    const clientName = clientProfile?.full_name_en || clientProfile?.email || 'Client';
+    const clientEmail = clientProfile?.email || '';
+
+    const calendarEventId = await createBookingEvent({
+      bookingId,
+      coachId,
+      clientName,
+      clientEmail,
+      serviceName: service?.name_en || 'Coaching Session',
+      durationMinutes: service?.duration_minutes || 60,
+      startTime,
+      endTime,
+      meetingUrl,
+      calendarId: integration.calendar_id || 'primary',
+      accessToken: integration.access_token!,
+      refreshToken: integration.refresh_token,
+      tokenExpiresAt: integration.token_expires_at,
+      integrationId: integration.id,
+    });
+
+    if (calendarEventId) {
+      await withAdminContext(async (db) => {
+        await db.update(bookings)
+          .set({ calendar_event_id: calendarEventId })
+          .where(eq(bookings.id, bookingId));
+      });
+    }
+  } catch (err) {
+    // Swallow all errors — calendar push is best-effort
+    console.error('[bookings/confirm] calendar push failed (non-blocking):', err);
+  }
+}
 
 /**
  * POST /api/bookings/confirm
@@ -41,6 +105,8 @@ export async function POST(request: NextRequest) {
       service_id: bookings.service_id,
       start_time: bookings.start_time,
       end_time: bookings.end_time,
+      coach_id: bookings.coach_id,
+      meeting_url: bookings.meeting_url,
     })
       .from(bookings)
       .where(eq(bookings.id, hold_id))
@@ -72,7 +138,7 @@ export async function POST(request: NextRequest) {
   }
 
   // Fetch service to determine price
-  let service: { id: string; name_en: string; name_ar: string; price_aed: number | null } | undefined;
+  let service: { id: string; name_en: string; name_ar: string; price_aed: number | null; duration_minutes: number } | undefined;
   if (booking.service_id) {
     const [svc] = await withAdminContext(async (db) => {
       return db.select({
@@ -80,6 +146,7 @@ export async function POST(request: NextRequest) {
         name_en: services.name_en,
         name_ar: services.name_ar,
         price_aed: services.price_aed,
+        duration_minutes: services.duration_minutes,
       })
         .from(services)
         .where(eq(services.id, booking.service_id!))
@@ -114,6 +181,17 @@ export async function POST(request: NextRequest) {
       // Non-blocking
     }
 
+    // Non-blocking calendar push — fire and forget, never awaited
+    pushCalendarEvent(
+      hold_id,
+      booking.coach_id || '',
+      booking.customer_id,
+      service ? { name_en: service.name_en, duration_minutes: service.duration_minutes } : undefined,
+      booking.start_time,
+      booking.end_time,
+      booking.meeting_url,
+    ).catch(() => {});
+
     return NextResponse.json({ booking_id: hold_id, status: 'confirmed' });
   }
 
@@ -123,7 +201,7 @@ export async function POST(request: NextRequest) {
   }
 
   const userEmail = user.email || '';
-  const origin = request.headers.get('origin') || '';
+  const origin = request.headers.get('origin') || process.env.NEXTAUTH_URL || 'https://kuncoaching.me';
   const locale = request.headers.get('accept-language')?.split(',')[0]?.includes('ar') ? 'ar' : 'en';
 
   try {
