@@ -25,6 +25,11 @@ export const services = pgTable("services", {
    * NULL = all levels. Values: basic | professional | expert | master
    */
   eligible_kun_levels: text("eligible_kun_levels").array(),
+  coach_control: text('coach_control').notNull().default('mandatory'),
+  allows_coach_pricing: boolean('allows_coach_pricing').notNull().default(false),
+  min_price_aed: integer('min_price_aed').notNull().default(0),
+  min_price_egp: integer('min_price_egp').notNull().default(0),
+  min_price_eur: integer('min_price_eur').notNull().default(0),
 });
 
 export type Services = typeof services.$inferSelect;

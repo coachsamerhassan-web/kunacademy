@@ -52,6 +52,8 @@ export async function GET(request: NextRequest) {
           sessions_count: services.sessions_count,
           eligible_kun_levels: services.eligible_kun_levels,
           is_active: services.is_active,
+          coach_control: services.coach_control,
+          allows_coach_pricing: services.allows_coach_pricing,
         })
         .from(services)
         .where(
@@ -96,6 +98,8 @@ export async function GET(request: NextRequest) {
           sessions_count: services.sessions_count,
           eligible_kun_levels: services.eligible_kun_levels,
           is_active: services.is_active,
+          coach_control: services.coach_control,
+          allows_coach_pricing: services.allows_coach_pricing,
         })
         .from(services)
         .where(eq(services.is_active, true));

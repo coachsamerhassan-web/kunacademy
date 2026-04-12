@@ -42,6 +42,8 @@ export * from './products';
 export * from './profiles';
 export * from './providers';
 export * from './referral_codes';
+export * from './coach_services';
+export * from './discount_codes';
 export * from './service_categories';
 export * from './services';
 export * from './testimonials';

@@ -356,6 +356,17 @@ function BookingFlowInner({ locale }: { locale: string }) {
   });
   const [guestErrors, setGuestErrors] = useState<{ name?: string; email?: string; phone?: string }>({});
 
+  // Discount code state (Step 4)
+  const [discountCode, setDiscountCode] = useState('');
+  const [discountApplying, setDiscountApplying] = useState(false);
+  const [discountError, setDiscountError] = useState<string | null>(null);
+  const [discountResult, setDiscountResult] = useState<{
+    code: string;
+    discount_type: 'percentage' | 'fixed';
+    discount_value: number;
+    adjusted_price_aed: number;
+  } | null>(null);
+
   const { remaining, label: countdownLabel } = useCountdown(heldUntil);
 
   // Detect mobile
@@ -639,6 +650,35 @@ function BookingFlowInner({ locale }: { locale: string }) {
       );
     } finally {
       setConfirming(false);
+    }
+  }
+
+  // ── Discount code handler ──
+  async function handleApplyDiscount() {
+    if (!discountCode.trim() || !selectedService) return;
+    setDiscountApplying(true);
+    setDiscountError(null);
+    setDiscountResult(null);
+    try {
+      const res = await fetch('/api/discount-codes/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code: discountCode.trim(),
+          service_id: selectedService.id,
+          provider_id: selectedCoach?.provider_id ?? null,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setDiscountError(data.error ?? (isAr ? 'كود غير صالح' : 'Invalid code'));
+      } else {
+        setDiscountResult(data);
+      }
+    } catch {
+      setDiscountError(isAr ? 'تعذّر التحقق من الكود' : 'Failed to validate code');
+    } finally {
+      setDiscountApplying(false);
     }
   }
 
@@ -935,6 +975,71 @@ function BookingFlowInner({ locale }: { locale: string }) {
               </span>
             </div>
           </div>
+
+          {/* Discount code input — only shown for paid services */}
+          {selectedService.price_aed !== null && selectedService.price_aed > 0 && (
+            <div className="mb-5">
+              <label className="block text-sm font-medium text-[var(--text-primary)] mb-2">
+                {isAr ? 'كود الخصم (اختياري)' : 'Discount Code (optional)'}
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={discountCode}
+                  onChange={(e) => {
+                    setDiscountCode(e.target.value);
+                    setDiscountError(null);
+                    setDiscountResult(null);
+                  }}
+                  disabled={discountApplying}
+                  placeholder={isAr ? 'أدخل الكود' : 'Enter code'}
+                  dir="ltr"
+                  className="flex-1 rounded-xl border border-[var(--color-neutral-200)] px-4 py-3 text-sm uppercase tracking-wider focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] min-h-[44px] disabled:opacity-60"
+                />
+                <button
+                  type="button"
+                  onClick={handleApplyDiscount}
+                  disabled={!discountCode.trim() || discountApplying}
+                  className="rounded-xl border border-[var(--color-primary)] px-4 py-3 text-sm font-medium text-[var(--color-primary)] hover:bg-[var(--color-primary)] hover:text-white transition-colors min-h-[44px] disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {discountApplying
+                    ? (isAr ? '...' : '...')
+                    : (isAr ? 'تطبيق' : 'Apply')}
+                </button>
+              </div>
+
+              {/* Error state */}
+              {discountError && (
+                <p role="alert" className="mt-2 text-xs text-red-600">{discountError}</p>
+              )}
+
+              {/* Success state */}
+              {discountResult && (
+                <div className="mt-2 rounded-xl bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-800">
+                  <div className="flex items-center justify-between">
+                    <span>
+                      {discountResult.discount_type === 'percentage'
+                        ? `${isAr ? 'خصم' : 'Discount'} ${discountResult.discount_value}%`
+                        : `${isAr ? 'خصم' : 'Discount'} ${Math.round(discountResult.discount_value / 100)} AED`}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => { setDiscountCode(''); setDiscountResult(null); setDiscountError(null); }}
+                      className="text-green-600 hover:text-green-800 text-xs underline"
+                    >
+                      {isAr ? 'إزالة' : 'Remove'}
+                    </button>
+                  </div>
+                  <div className="mt-1 font-semibold">
+                    {isAr ? 'المبلغ بعد الخصم:' : 'Price after discount:'}{' '}
+                    <span className="text-[var(--color-primary)]">
+                      {Math.round(discountResult.adjusted_price_aed / 100)} AED
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Payment method note */}
           {selectedService.price_aed !== null && selectedService.price_aed > 0 && (
