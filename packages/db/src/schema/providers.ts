@@ -10,6 +10,7 @@ export const providers = pgTable("providers", {
   languages: text("languages").array(),
   credentials: text("credentials"),
   is_visible: boolean("is_visible").default(true),
+  can_offer_courses: boolean("can_offer_courses").default(false),
 });
 
 export type Providers = typeof providers.$inferSelect;

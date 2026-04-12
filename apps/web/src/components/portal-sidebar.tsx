@@ -55,13 +55,23 @@ const adminNav: NavItem[] = [
 interface PortalSidebarProps {
   locale: string;
   variant: 'dashboard' | 'coach' | 'admin';
+  /** Coach portal only: when false, the Products/Courses link is hidden */
+  canOfferCourses?: boolean;
 }
 
-export function PortalSidebar({ locale, variant }: PortalSidebarProps) {
+export function PortalSidebar({ locale, variant, canOfferCourses }: PortalSidebarProps) {
   const pathname = usePathname();
   const { signOut } = useAuth();
   const isAr = locale === 'ar';
-  const items = variant === 'dashboard' ? dashboardNav : variant === 'coach' ? coachNav : adminNav;
+
+  let baseItems = variant === 'dashboard' ? dashboardNav : variant === 'coach' ? coachNav : adminNav;
+
+  // Gate the products/courses link for coaches: only show when explicitly enabled by admin
+  if (variant === 'coach' && !canOfferCourses) {
+    baseItems = baseItems.filter((item) => item.href !== '/coach/products');
+  }
+
+  const items = baseItems;
 
   return (
     <nav className="w-full md:w-56 shrink-0">
