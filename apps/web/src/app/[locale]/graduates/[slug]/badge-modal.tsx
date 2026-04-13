@@ -64,7 +64,9 @@ export function BadgeModal({
   const name        = isAr ? badge.name_ar        : badge.name_en;
   const description = isAr ? badge.description_ar  : badge.description_en;
   const programUrl  = isAr ? badge.program_url_ar  : badge.program_url_en;
-  const icfMeta     = icf_credential ? ICF_LABELS[icf_credential] : null;
+  // ICF now shown in profile hero — kept for future use
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _icfMeta    = icf_credential ? ICF_LABELS[icf_credential] : null;
 
   // ── Keyboard: Escape closes, focus trap ──────────────────────────────────────
 
@@ -167,11 +169,6 @@ export function BadgeModal({
             {cohort_name && (
               <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-[var(--color-primary-50)] text-[var(--color-primary)]">
                 {cohort_name}
-              </span>
-            )}
-            {icfMeta && (
-              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700">
-                {isAr ? icfMeta.ar : icfMeta.en}
               </span>
             )}
           </div>

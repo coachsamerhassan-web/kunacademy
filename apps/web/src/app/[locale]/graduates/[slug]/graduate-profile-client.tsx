@@ -51,13 +51,6 @@ function formatDate(dateStr: string | null, locale: string): string {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-/** ICF credential image map */
-const ICF_IMAGES: Record<string, string> = {
-  ACC: '/images/badges/icf-acc.png',
-  PCC: '/images/badges/icf-pcc.png',
-  MCC: '/images/badges/icf-mcc.png',
-};
-
 const PROGRAM_URL_MAP: Record<string, string> = {
   'stce':       'stce-level-1-stic',
   'stce-stic':  'stce-level-1-stic',
@@ -134,18 +127,6 @@ export function GraduateProfileClient({ certificates, locale }: Props) {
                   {cert.graduation_date && (
                     <span className="text-xs text-amber-700 font-medium">
                       {isAr ? 'إتمام: ' : 'Completed: '}{formatDate(cert.graduation_date, locale)}
-                    </span>
-                  )}
-                  {cert.icf_credential && ICF_IMAGES[cert.icf_credential] && (
-                    <span className="inline-flex items-center gap-1">
-                      <Image
-                        src={ICF_IMAGES[cert.icf_credential]}
-                        alt={cert.icf_credential}
-                        width={20}
-                        height={20}
-                        className="rounded-full"
-                      />
-                      <span className="text-xs font-semibold text-blue-700">{cert.icf_credential}</span>
                     </span>
                   )}
                   {cert.verified && (

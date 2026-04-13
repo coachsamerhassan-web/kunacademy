@@ -85,6 +85,12 @@ function getFlag(country: string | null): string {
 
 // ── Gradient palette for initials avatar ──────────────────────────────────────
 
+const ICF_IMAGES: Record<string, string> = {
+  ACC: '/images/badges/icf-acc.png',
+  PCC: '/images/badges/icf-pcc.png',
+  MCC: '/images/badges/icf-mcc.png',
+};
+
 const AVATAR_GRADIENTS = [
   'from-amber-400 to-orange-500',
   'from-yellow-400 to-amber-500',
@@ -162,6 +168,14 @@ export default async function GraduateProfilePage({ params }: Props) {
   const isCoach   = graduate.member_type === 'coach' || graduate.member_type === 'both';
   const isClaimed = !!graduate.photo_url; // rough proxy; could use claimed_at if passed
 
+  // Highest ICF credential — personal, not per-certificate
+  const ICF_RANK: Record<string, number> = { ACC: 1, PCC: 2, MCC: 3 };
+  const highestIcf = graduate.certificates.reduce<string | null>((best, cert) => {
+    const cred = cert.icf_credential?.toUpperCase();
+    if (cred && ICF_RANK[cred] && (!best || ICF_RANK[cred] > ICF_RANK[best])) return cred;
+    return best;
+  }, null);
+
   // ── JSON-LD structured data ────────────────────────────────────────────────
 
   const jsonLd = {
@@ -225,6 +239,22 @@ export default async function GraduateProfilePage({ params }: Props) {
                   </div>
                 )}
               </div>
+
+              {/* ICF Credential — personal, not per-certificate */}
+              {highestIcf && ICF_IMAGES[highestIcf] && (
+                <div className="flex flex-col items-center gap-1.5 shrink-0">
+                  <div className="relative h-14 w-14 rounded-full overflow-hidden ring-2 ring-white/30 shadow-lg bg-white/10 backdrop-blur-sm">
+                    <Image
+                      src={ICF_IMAGES[highestIcf]}
+                      alt={`ICF ${highestIcf}`}
+                      fill
+                      className="object-contain p-0.5"
+                      sizes="56px"
+                    />
+                  </div>
+                  <span className="text-xs font-semibold text-amber-300">ICF {highestIcf}</span>
+                </div>
+              )}
 
               {/* Name + meta */}
               <div className="flex-1 min-w-0">

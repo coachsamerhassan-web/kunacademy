@@ -47,7 +47,6 @@ export async function GET(request: NextRequest) {
         ins.id AS instructor_id,
         ins.kun_level,
         ins.icf_credential,
-        ins.is_bookable,
         pv.is_visible AS provider_is_visible,
         ins.is_visible AS instructor_is_visible
       FROM profiles p

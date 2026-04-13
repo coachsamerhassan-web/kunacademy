@@ -541,17 +541,23 @@ export function GraduateDirectory({ locale, initialData }: Props) {
                             +{overflowCount}
                           </span>
                         )}
-                        {/* ICF credential indicator */}
+                        {/* ICF credential indicator — personal credential, separated from program badges */}
                         {icf && (
-                          <div className="relative h-6 w-6 shrink-0" title={`ICF ${icf.credential}`}>
-                            <Image
-                              src={icf.image}
-                              alt={`ICF ${icf.credential}`}
-                              fill
-                              className="object-contain"
-                              sizes="24px"
-                            />
-                          </div>
+                          <>
+                            <div className="self-stretch w-px bg-[var(--color-neutral-200)] shrink-0 mx-0.5" aria-hidden="true" />
+                            <div className="flex flex-col items-center gap-0.5 shrink-0">
+                              <div className="relative h-10 w-10" title={`ICF ${icf.credential}`}>
+                                <Image
+                                  src={icf.image}
+                                  alt={`ICF ${icf.credential}`}
+                                  fill
+                                  className="object-contain"
+                                  sizes="40px"
+                                />
+                              </div>
+                              <span className="text-xs font-semibold text-blue-700 leading-none">{icf.credential}</span>
+                            </div>
+                          </>
                         )}
                       </div>
                     );
