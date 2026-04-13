@@ -1,6 +1,6 @@
 {
   "name": "@kunacademy/email",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "private": true,
   "main": "src/index.ts",
   "types": "src/index.ts",
@@ -10,9 +10,7 @@
     "lint": "eslint src/",
     "clean": "rm -rf dist .turbo"
   },
-  "dependencies": {
-    "resend": "*"
-  },
+  "dependencies": {},
   "devDependencies": {
     "@types/node": "^25.5.0",
     "typescript": "*"

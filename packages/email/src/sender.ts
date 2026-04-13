@@ -8,8 +8,6 @@ function escapeHtml(str: string): string {
     .replace(/'/g, '&#x27;');
 }
 
-import nodemailer from 'nodemailer';
-
 interface Attachment {
   filename: string;
   content: string; // base64 encoded
@@ -22,54 +20,105 @@ interface EmailParams {
   attachments?: Attachment[];
 }
 
-const FROM_EMAIL = process.env.SMTP_FROM || 'Kun Academy <info@kunacademy.com>';
+/* ── Zoho Mail API transport ─────────────────────────────────────────── */
 
-/**
- * SMTP transport — auto-configured from env vars.
- * Set SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS to enable.
- * Falls back to console log when not configured (dev/staging).
- */
-function getTransport() {
-  const host = process.env.SMTP_HOST;
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
+const ZOHO_MAIL_CLIENT_ID = () => process.env.ZOHO_MAIL_CLIENT_ID;
+const ZOHO_MAIL_CLIENT_SECRET = () => process.env.ZOHO_MAIL_CLIENT_SECRET;
+const ZOHO_MAIL_REFRESH_TOKEN = () => process.env.ZOHO_MAIL_REFRESH_TOKEN;
+const ZOHO_MAIL_ACCOUNT_ID = () => process.env.ZOHO_MAIL_ACCOUNT_ID;
+const ZOHO_MAIL_FROM = () => process.env.ZOHO_MAIL_FROM || 'info@kunacademy.com';
 
-  if (!host || !user || !pass) return null;
+/** Cached access token + expiry (module-level singleton). */
+let cachedToken: { token: string; expiresAt: number } | null = null;
 
-  return nodemailer.createTransport({
-    host,
-    port: Number(process.env.SMTP_PORT || '587'),
-    secure: process.env.SMTP_SECURE === 'true',
-    auth: { user, pass },
+/** Refresh the Zoho OAuth access token. Caches with 5-min safety margin. */
+async function getAccessToken(): Promise<string> {
+  if (cachedToken && Date.now() < cachedToken.expiresAt) {
+    return cachedToken.token;
+  }
+
+  const params = new URLSearchParams({
+    refresh_token: ZOHO_MAIL_REFRESH_TOKEN()!,
+    client_id: ZOHO_MAIL_CLIENT_ID()!,
+    client_secret: ZOHO_MAIL_CLIENT_SECRET()!,
+    grant_type: 'refresh_token',
   });
+
+  const res = await fetch('https://accounts.zoho.com/oauth/v2/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: params.toString(),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`[email] Zoho token refresh failed (${res.status}): ${text}`);
+  }
+
+  const data = await res.json();
+  if (!data.access_token) {
+    throw new Error(`[email] Zoho token refresh returned no access_token: ${JSON.stringify(data)}`);
+  }
+
+  // Cache with 5-minute safety margin (tokens last 3600s)
+  const expiresIn = (data.expires_in ?? 3600) as number;
+  cachedToken = {
+    token: data.access_token,
+    expiresAt: Date.now() + (expiresIn - 300) * 1000,
+  };
+
+  return cachedToken.token;
 }
 
-/** Send an email via SMTP (nodemailer). Falls back to console when not configured. */
-export async function sendEmail({ to, subject, html, attachments }: EmailParams) {
-  const transport = getTransport();
+/** Check whether all required Zoho Mail env vars are set. */
+function isZohoConfigured(): boolean {
+  return !!(
+    ZOHO_MAIL_CLIENT_ID() &&
+    ZOHO_MAIL_CLIENT_SECRET() &&
+    ZOHO_MAIL_REFRESH_TOKEN() &&
+    ZOHO_MAIL_ACCOUNT_ID()
+  );
+}
 
-  if (!transport) {
-    console.warn('[email] SMTP not configured, skipping email to:', to, '| subject:', subject);
+/** Send an email via Zoho Mail API. Falls back to mock when not configured. */
+export async function sendEmail({ to, subject, html, attachments }: EmailParams) {
+  if (!isZohoConfigured()) {
+    console.warn('[email] Zoho Mail not configured, skipping email to:', to, '| subject:', subject);
     return { id: 'mock', success: true };
   }
 
-  const mailOptions: nodemailer.SendMailOptions = {
-    from: FROM_EMAIL,
-    to,
-    subject,
-    html,
-  };
-
   if (attachments && attachments.length > 0) {
-    mailOptions.attachments = attachments.map(a => ({
-      filename: a.filename,
-      content: Buffer.from(a.content, 'base64'),
-    }));
+    console.warn('[email] Zoho Mail API: attachments not yet supported, sending without them');
   }
 
-  const info = await transport.sendMail(mailOptions);
-  console.log('[email] sent:', info.messageId, 'to:', to);
-  return { id: info.messageId, success: true };
+  const accessToken = await getAccessToken();
+  const accountId = ZOHO_MAIL_ACCOUNT_ID();
+  const url = `https://mail.zoho.com/api/accounts/${accountId}/messages`;
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Zoho-oauthtoken ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      fromAddress: ZOHO_MAIL_FROM(),
+      toAddress: to,
+      subject,
+      content: html,
+      mailFormat: 'html',
+    }),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`[email] Zoho Mail API error (${res.status}): ${text}`);
+  }
+
+  const data = await res.json();
+  const messageId = data?.data?.messageId ?? data?.messageId ?? 'zoho-sent';
+  console.log('[email] sent:', messageId, 'to:', to);
+  return { id: messageId, success: true };
 }
 
 /** Welcome email after signup */
