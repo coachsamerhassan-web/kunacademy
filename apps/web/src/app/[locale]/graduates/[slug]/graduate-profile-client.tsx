@@ -58,6 +58,21 @@ const ICF_IMAGES: Record<string, string> = {
   MCC: '/images/badges/icf-mcc.png',
 };
 
+const PROGRAM_URL_MAP: Record<string, string> = {
+  'stce':       'stce-level-1-stic',
+  'stce-stic':  'stce-level-1-stic',
+  'stce-staic': 'stce-level-2-staic',
+  'stce-stgc':  'stce-level-3-stgc',
+  'stce-stoc':  'stce-level-4-stoc',
+  'stce-stfc':  'stce-level-5-stfc',
+  'manhajak':   'menhajak-training',
+};
+
+function getProgramUrl(locale: string, programSlug: string): string {
+  const mapped = PROGRAM_URL_MAP[programSlug] || programSlug;
+  return `/${locale}/programs/${mapped}`;
+}
+
 export function GraduateProfileClient({ certificates, locale }: Props) {
   const isAr = locale === 'ar';
 
@@ -118,7 +133,7 @@ export function GraduateProfileClient({ certificates, locale }: Props) {
                 <div className={`flex flex-wrap gap-1.5 mt-2 ${isAr ? 'flex-row-reverse' : ''}`}>
                   {cert.graduation_date && (
                     <span className="text-xs text-amber-700 font-medium">
-                      {formatDate(cert.graduation_date, locale)}
+                      {isAr ? 'إتمام: ' : 'Completed: '}{formatDate(cert.graduation_date, locale)}
                     </span>
                   )}
                   {cert.icf_credential && ICF_IMAGES[cert.icf_credential] && (
@@ -167,8 +182,8 @@ export function GraduateProfileClient({ certificates, locale }: Props) {
             name_en:         activeCert.badge_label_en,
             description_ar:  null,  // not returned by profile API (use badge_definitions for full desc)
             description_en:  null,
-            program_url_ar:  `/${locale}/programs/${activeCert.program_slug}`,
-            program_url_en:  `/${locale}/programs/${activeCert.program_slug}`,
+            program_url_ar:  getProgramUrl(locale, activeCert.program_slug),
+            program_url_en:  getProgramUrl(locale, activeCert.program_slug),
           }}
           graduation_date={activeCert.graduation_date}
           icf_credential={activeCert.icf_credential}

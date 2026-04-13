@@ -67,11 +67,20 @@ const COUNTRY_FLAGS: Record<string, string> = {
   'France':       '🇫🇷',
   'Canada':       '🇨🇦',
   'Australia':    '🇦🇺',
+  'KSA':          '🇸🇦',
+  'Algeria':      '🇩🇿',
+  'Colombia':     '🇨🇴',
+  'Finland':      '🇫🇮',
+  'Belgium':      '🇧🇪',
+  'Sudan':        '🇸🇩',
+  'China':        '🇨🇳',
+  'Taiwan':       '🇹🇼',
 };
 
 function getFlag(country: string | null): string {
   if (!country) return '';
-  return COUNTRY_FLAGS[country] ?? '';
+  const primary = country.split(',')[0].trim();
+  return COUNTRY_FLAGS[primary] ?? '';
 }
 
 // ── Gradient palette for initials avatar ──────────────────────────────────────
@@ -233,10 +242,9 @@ export default async function GraduateProfilePage({ params }: Props) {
 
                 {/* Country + language */}
                 <div className={`flex flex-wrap items-center gap-3 mt-2 ${isAr ? 'flex-row-reverse' : ''}`}>
-                  {graduate.country && (
-                    <span className="flex items-center gap-1.5 text-sm text-white/70">
-                      {flag && <span className="text-base">{flag}</span>}
-                      {graduate.country}
+                  {flag && (
+                    <span className="text-lg leading-none cursor-default" title={graduate.country || ''}>
+                      {flag}
                     </span>
                   )}
                   {graduate.languages && graduate.languages.length > 0 && (

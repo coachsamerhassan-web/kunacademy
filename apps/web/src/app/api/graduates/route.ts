@@ -49,17 +49,23 @@ export async function GET(request: NextRequest) {
     }
 
     if (program) {
-      const escaped = program.replace(/'/g, "''");
-      conditions.push(
-        `EXISTS (SELECT 1 FROM graduate_certificates gc2 WHERE gc2.member_id = cm.id AND gc2.program_slug = '${escaped}')`
-      );
+      if (program === 'stce-stic') {
+        conditions.push(
+          `EXISTS (SELECT 1 FROM graduate_certificates gc2 WHERE gc2.member_id = cm.id AND (gc2.program_slug = 'stce-stic' OR (gc2.program_slug = 'stce' AND gc2.certificate_type = 'level_1')))`
+        );
+      } else {
+        const escaped = program.replace(/'/g, "''");
+        conditions.push(
+          `EXISTS (SELECT 1 FROM graduate_certificates gc2 WHERE gc2.member_id = cm.id AND gc2.program_slug = '${escaped}')`
+        );
+      }
     }
 
     const whereClause = conditions.join(' AND ');
 
-    // ── Execute list + count in parallel ──
+    // ── Execute list + count + programCounts in parallel ──
     const result = await withAdminContext(async (userDb: any) => {
-      const [dataRows, countRows] = await Promise.all([
+      const [dataRows, countRows, programCountRows] = await Promise.all([
         userDb.execute(sql`
           SELECT
             cm.id,
@@ -98,15 +104,29 @@ export async function GET(request: NextRequest) {
           FROM community_members cm
           WHERE ${sql.raw(whereClause)}
         `),
+        userDb.execute(sql`
+          SELECT gc.program_slug, COUNT(DISTINCT gc.member_id)::int AS cnt
+          FROM graduate_certificates gc
+          JOIN community_members cm ON cm.id = gc.member_id AND cm.is_visible = true
+          GROUP BY gc.program_slug
+        `),
       ]);
-      return { dataRows, countRows };
+      return { dataRows, countRows, programCountRows };
     });
 
     const total      = (result.countRows.rows[0] as any)?.total ?? 0;
     const totalPages = Math.ceil(total / limit);
 
+    const programCounts: Record<string, number> = {};
+    for (const row of result.programCountRows.rows as any[]) {
+      programCounts[row.program_slug] = row.cnt;
+    }
+    if (!programCounts['stce-stic'] && programCounts['stce']) {
+      programCounts['stce-stic'] = programCounts['stce'];
+    }
+
     return NextResponse.json(
-      { graduates: result.dataRows.rows, total, page, totalPages },
+      { graduates: result.dataRows.rows, total, page, totalPages, programCounts },
       {
         headers: {
           ...CORS_HEADERS,

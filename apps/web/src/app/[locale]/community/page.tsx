@@ -4,9 +4,12 @@ import { Section } from '@kunacademy/ui/section';
 import { GeometricPattern } from '@kunacademy/ui/patterns';
 import { cms } from '@kunacademy/cms/server';
 import { contentGetter } from '@kunacademy/cms';
-import { CommunityMembers } from './community-members';
+import { CommunityTabs } from './community-tabs';
 
-interface Props { params: Promise<{ locale: string }> }
+interface Props {
+  params: Promise<{ locale: string }>;
+  searchParams: Promise<{ tab?: string }>;
+}
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
@@ -19,8 +22,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export default async function CommunityPage({ params }: { params: Promise<{ locale: string }> }) {
+export default async function CommunityPage({ params, searchParams }: Props) {
   const { locale } = await params;
+  const { tab } = await searchParams;
   setRequestLocale(locale);
   const isAr = locale === 'ar';
 
@@ -28,9 +32,36 @@ export default async function CommunityPage({ params }: { params: Promise<{ loca
   const sections = await cms.getPageContent('community');
   const t = contentGetter(sections, locale);
 
+  // Determine initial tab from URL
+  const initialTab = tab === 'members' ? 'members' as const : 'graduates' as const;
+
+  // SSR-fetch initial graduate data for the default tab
+  let initialGraduateData = {
+    graduates: [] as any[],
+    total: 0,
+    totalPages: 0,
+    programCounts: {} as Record<string, number>,
+  };
+
+  try {
+    const baseUrl =
+      process.env.NEXT_PUBLIC_APP_URL ||
+      process.env.NEXT_PUBLIC_SITE_URL ||
+      process.env.NEXTAUTH_URL || 'http://localhost:3001';
+
+    const res = await fetch(`${baseUrl}/api/graduates?page=1&limit=24`, {
+      next: { revalidate: 300 },
+    });
+    if (res.ok) {
+      initialGraduateData = await res.json();
+    }
+  } catch {
+    // Fall through — client will fetch on mount
+  }
+
   return (
     <main>
-      {/* Hero with community image */}
+      {/* Hero */}
       <section className="relative overflow-hidden py-16 md:py-24">
         <div className="absolute inset-0">
           <img
@@ -55,11 +86,55 @@ export default async function CommunityPage({ params }: { params: Promise<{ loca
               ? 'تواصل مع الكوتشز والمتدربين وعشاق التطوير من حول العالم'
               : 'Connect with coaches, students, and growth enthusiasts from around the world')}
           </p>
+
+          {/* Claim CTA */}
+          <div className="mt-8 inline-flex items-center gap-3 rounded-2xl border border-amber-400/30 bg-amber-500/10 px-5 py-3 backdrop-blur-sm">
+            <svg
+              className="w-5 h-5 text-amber-300 shrink-0"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+            </svg>
+            <p className="text-sm text-amber-200/90">
+              {isAr ? (
+                <>
+                  خريج كُن؟{' '}
+                  <a
+                    href={`/${locale}/auth/login?callbackUrl=/${locale}/dashboard/certificates&claim=true`}
+                    className="font-semibold text-amber-300 hover:text-amber-200 underline underline-offset-2 transition-colors"
+                  >
+                    أضف ملفك الشخصي
+                  </a>
+                </>
+              ) : (
+                <>
+                  A Kun graduate?{' '}
+                  <a
+                    href={`/${locale}/auth/login?callbackUrl=/${locale}/dashboard/certificates&claim=true`}
+                    className="font-semibold text-amber-300 hover:text-amber-200 underline underline-offset-2 transition-colors"
+                  >
+                    Claim your profile
+                  </a>
+                </>
+              )}
+            </p>
+          </div>
         </div>
       </section>
 
+      {/* Tabbed content */}
       <Section variant="white">
-        <CommunityMembers locale={locale} />
+        <CommunityTabs
+          locale={locale}
+          initialTab={initialTab}
+          initialGraduateData={initialGraduateData}
+        />
       </Section>
     </main>
   );

@@ -30,9 +30,10 @@ interface Graduate {
 }
 
 interface DirectoryData {
-  graduates:  Graduate[];
-  total:      number;
-  totalPages: number;
+  graduates:     Graduate[];
+  total:         number;
+  totalPages:    number;
+  programCounts: Record<string, number>;
 }
 
 interface Props {
@@ -64,11 +65,20 @@ const COUNTRY_FLAGS: Record<string, string> = {
   'France':       '🇫🇷',
   'Canada':       '🇨🇦',
   'Australia':    '🇦🇺',
+  'KSA':          '🇸🇦',
+  'Algeria':      '🇩🇿',
+  'Colombia':     '🇨🇴',
+  'Finland':      '🇫🇮',
+  'Belgium':      '🇧🇪',
+  'Sudan':        '🇸🇩',
+  'China':        '🇨🇳',
+  'Taiwan':       '🇹🇼',
 };
 
 function getFlag(country: string | null): string {
   if (!country) return '';
-  return COUNTRY_FLAGS[country] ?? '';
+  const primary = country.split(',')[0].trim();
+  return COUNTRY_FLAGS[primary] ?? '';
 }
 
 // ── Gradient palette for initials avatars ─────────────────────────────────────
@@ -90,12 +100,11 @@ function getGradient(slug: string): string {
 // ── Program filters ───────────────────────────────────────────────────────────
 
 const PROGRAMS = [
-  { slug: 'stce',       ar: 'أساسيات كوتشينج الأفراد',   en: 'STIC'      },
-  { slug: 'stce-staic', ar: 'كوتشينج الأفراد المتقدم',    en: 'STAIC'     },
-  { slug: 'stce-stgc',  ar: 'كوتشينج المجموعات',          en: 'STGC'      },
-  { slug: 'stce-stoc',  ar: 'كوتشينج المؤسسات',           en: 'STOC'      },
-  { slug: 'stce-stfc',  ar: 'كوتشينج العائلات والأزواج',   en: 'STFC'      },
-  { slug: 'manhajak',   ar: 'منهجك',                       en: 'Manhajak'  },
+  { slug: 'stce-stic',  ar: 'مدرب فردي',           en: 'Individual Coach'          },
+  { slug: 'stce-staic', ar: 'مدرب فردي متقدم',     en: 'Advanced Individual Coach'  },
+  { slug: 'stce-stgc',  ar: 'مدرب جماعي',          en: 'Group Coach'                },
+  { slug: 'stce-stoc',  ar: 'مدرب مؤسسي',          en: 'Organisational Coach'       },
+  { slug: 'manhajak',   ar: 'مبتكر منهجية',         en: 'Methodology Creator'        },
 ];
 
 // ── Chip component ────────────────────────────────────────────────────────────
@@ -133,6 +142,7 @@ function mapApiData(raw: any): DirectoryData {
   return {
     total: raw?.total ?? 0,
     totalPages: raw?.totalPages ?? 0,
+    programCounts: raw?.programCounts ?? {},
     graduates: (raw?.graduates ?? []).map((g: any) => ({
       ...g,
       badges: (g.certificates ?? g.badges ?? []).map((c: any) => ({
@@ -221,7 +231,7 @@ export function GraduateDirectory({ locale, initialData }: Props) {
   }, []);
 
   const hasFilters = !!(search || program);
-  const { graduates, total, totalPages } = data;
+  const { graduates, total, totalPages, programCounts } = data;
 
   return (
     <div>
@@ -262,14 +272,17 @@ export function GraduateDirectory({ locale, initialData }: Props) {
               active={program === ''}
               onClick={() => program !== '' && handleProgramChange('')}
             />
-            {PROGRAMS.map((p) => (
-              <Chip
-                key={p.slug}
-                label={isAr ? p.ar : p.en}
-                active={program === p.slug}
-                onClick={() => handleProgramChange(p.slug)}
-              />
-            ))}
+            {PROGRAMS.filter((p) => (programCounts[p.slug] ?? 0) > 0).map((p) => {
+              const count = programCounts[p.slug] ?? 0;
+              return (
+                <Chip
+                  key={p.slug}
+                  label={`${isAr ? p.ar : p.en} (${count})`}
+                  active={program === p.slug}
+                  onClick={() => handleProgramChange(p.slug)}
+                />
+              );
+            })}
           </div>
         </div>
 
@@ -352,17 +365,14 @@ export function GraduateDirectory({ locale, initialData }: Props) {
                         {name}
                       </h3>
 
-                      {/* Country + coaching status */}
-                      <div className={`flex items-center gap-1.5 mt-1 ${isAr ? 'flex-row-reverse' : ''}`}>
-                        {flag && (
-                          <span className="text-base leading-none">{flag}</span>
-                        )}
-                        {graduate.country && (
-                          <span className="text-xs text-[var(--color-neutral-500)]">
-                            {graduate.country}
+                      {/* Country */}
+                      {flag && (
+                        <div className={`mt-1 ${isAr ? 'text-right' : ''}`}>
+                          <span className="text-base leading-none cursor-default" title={graduate.country || ''}>
+                            {flag}
                           </span>
-                        )}
-                      </div>
+                        </div>
+                      )}
 
                       {/* Coach badge */}
                       {isCoach && graduate.coaching_status === 'active' && (

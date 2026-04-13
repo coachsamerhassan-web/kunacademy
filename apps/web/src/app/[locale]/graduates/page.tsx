@@ -27,10 +27,11 @@ export default async function GraduatesPage({ params }: Props) {
   const isAr = locale === 'ar';
 
   // Server-side initial fetch for first page (no filters)
-  let initialData: { graduates: any[]; total: number; totalPages: number } = {
+  let initialData: { graduates: any[]; total: number; totalPages: number; programCounts: Record<string, number> } = {
     graduates: [],
     total: 0,
     totalPages: 0,
+    programCounts: {},
   };
 
   try {
@@ -108,7 +109,7 @@ export default async function GraduatesPage({ params }: Props) {
                 <>
                   خريج كُن؟{' '}
                   <a
-                    href={`/${locale}/graduates/claim`}
+                    href={`/${locale}/auth/login?callbackUrl=/${locale}/dashboard/certificates&claim=true`}
                     className="font-semibold text-amber-300 hover:text-amber-200 underline underline-offset-2 transition-colors"
                   >
                     أضف ملفك الشخصي
@@ -118,7 +119,7 @@ export default async function GraduatesPage({ params }: Props) {
                 <>
                   A Kun graduate?{' '}
                   <a
-                    href={`/${locale}/graduates/claim`}
+                    href={`/${locale}/auth/login?callbackUrl=/${locale}/dashboard/certificates&claim=true`}
                     className="font-semibold text-amber-300 hover:text-amber-200 underline underline-offset-2 transition-colors"
                   >
                     Claim your profile
