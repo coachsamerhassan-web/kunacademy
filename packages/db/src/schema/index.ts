@@ -50,3 +50,4 @@ export * from './discount_codes';
 export * from './service_categories';
 export * from './services';
 export * from './testimonials';
+export * from './claim_requests';

@@ -109,7 +109,7 @@ export default async function GraduatesPage({ params }: Props) {
                 <>
                   خريج كُن؟{' '}
                   <a
-                    href={`/${locale}/auth/login?callbackUrl=/${locale}/dashboard/certificates&claim=true`}
+                    href={`/${locale}/graduates/claim`}
                     className="font-semibold text-amber-300 hover:text-amber-200 underline underline-offset-2 transition-colors"
                   >
                     أضف ملفك الشخصي
@@ -119,7 +119,7 @@ export default async function GraduatesPage({ params }: Props) {
                 <>
                   A Kun graduate?{' '}
                   <a
-                    href={`/${locale}/auth/login?callbackUrl=/${locale}/dashboard/certificates&claim=true`}
+                    href={`/${locale}/graduates/claim`}
                     className="font-semibold text-amber-300 hover:text-amber-200 underline underline-offset-2 transition-colors"
                   >
                     Claim your profile
