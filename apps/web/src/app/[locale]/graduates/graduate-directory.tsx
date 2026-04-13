@@ -100,10 +100,10 @@ function getGradient(slug: string): string {
 // ── Program filters ───────────────────────────────────────────────────────────
 
 const PROGRAMS = [
-  { slug: 'stce-stic',  ar: 'مدرب فردي',           en: 'Individual Coach'          },
-  { slug: 'stce-staic', ar: 'مدرب فردي متقدم',     en: 'Advanced Individual Coach'  },
-  { slug: 'stce-stgc',  ar: 'مدرب جماعي',          en: 'Group Coach'                },
-  { slug: 'stce-stoc',  ar: 'مدرب مؤسسي',          en: 'Organisational Coach'       },
+  { slug: 'stce-stic',  ar: 'كوتش أفراد',           en: 'Individual Coach'          },
+  { slug: 'stce-staic', ar: 'كوتش أفراد متقدم',     en: 'Advanced Individual Coach'  },
+  { slug: 'stce-stgc',  ar: 'كوتش مجموعات',         en: 'Group Coach'                },
+  { slug: 'stce-stoc',  ar: 'كوتش مؤسسات',          en: 'Organisational Coach'       },
   { slug: 'manhajak',   ar: 'مبتكر منهجية',         en: 'Methodology Creator'        },
 ];
 
