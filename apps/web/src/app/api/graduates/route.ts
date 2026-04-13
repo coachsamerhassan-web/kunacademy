@@ -6,15 +6,22 @@ import { withAdminContext, sql } from '@kunacademy/db';
  *
  * Query params:
  *   ?search=<string>   — Name search (AR or EN), case-insensitive
- *   ?program=<slug>    — Filter by program_slug
+ *   ?category=<slug>   — Filter by category (certified-coaches | program-graduates | workshop-alumni)
+ *   ?program=<slug>    — Filter by program_slug (overrides category if both set)
  *   ?page=<number>     — Page number (default 1)
  *   ?limit=<number>    — Page size (default 24, max 100)
  *
- * Returns: { graduates, total, page, totalPages }
+ * Returns: { graduates, total, page, totalPages, programCounts }
  *
  * Each graduate includes certificates joined with badge_definitions.
  * Only is_visible = true members are returned.
  */
+
+const CATEGORY_PROGRAMS: Record<string, string[]> = {
+  'certified-coaches': ['stce-stic', 'stce-staic', 'stce-stgc', 'stce-stoc', 'manhajak', 'stce'],
+  'program-graduates': ['impact-engineering', 'gps', 'ihya'],
+  'workshop-alumni':   ['mini-course', 'retreat', 'open-day'],
+};
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -30,11 +37,12 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
 
-    const search  = searchParams.get('search')?.trim() ?? '';
-    const program = searchParams.get('program')?.trim() ?? '';
-    const page    = Math.max(1, Number(searchParams.get('page') ?? '1'));
-    const limit   = Math.min(100, Math.max(1, Number(searchParams.get('limit') ?? '24')));
-    const offset  = (page - 1) * limit;
+    const search   = searchParams.get('search')?.trim() ?? '';
+    const category = searchParams.get('category')?.trim() ?? '';
+    const program  = searchParams.get('program')?.trim() ?? '';
+    const page     = Math.max(1, Number(searchParams.get('page') ?? '1'));
+    const limit    = Math.min(100, Math.max(1, Number(searchParams.get('limit') ?? '24')));
+    const offset   = (page - 1) * limit;
 
     // ── Build WHERE clauses (parameterised via sql template literals) ──
     // We use sql.raw only for structural AND clauses; user values go through
@@ -49,6 +57,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (program) {
+      // Specific program filter takes precedence over category
       if (program === 'stce-stic') {
         conditions.push(
           `EXISTS (SELECT 1 FROM graduate_certificates gc2 WHERE gc2.member_id = cm.id AND (gc2.program_slug = 'stce-stic' OR (gc2.program_slug = 'stce' AND gc2.certificate_type = 'level_1')))`
@@ -59,6 +68,14 @@ export async function GET(request: NextRequest) {
           `EXISTS (SELECT 1 FROM graduate_certificates gc2 WHERE gc2.member_id = cm.id AND gc2.program_slug = '${escaped}')`
         );
       }
+    } else if (category && CATEGORY_PROGRAMS[category]) {
+      // Category filter: match ANY program in this category
+      const slugs = CATEGORY_PROGRAMS[category]
+        .map((s) => `'${s.replace(/'/g, "''")}'`)
+        .join(',');
+      conditions.push(
+        `EXISTS (SELECT 1 FROM graduate_certificates gc2 WHERE gc2.member_id = cm.id AND gc2.program_slug = ANY(ARRAY[${slugs}]))`
+      );
     }
 
     const whereClause = conditions.join(' AND ');

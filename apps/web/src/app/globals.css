@@ -359,6 +359,16 @@ html.scroll-animated .animate-scale.is-visible,
   animation: pulse-glow 3s ease-in-out 2;
 }
 
+/* Badge enlarge overlay animation */
+@keyframes badge-enlarge {
+  0% { opacity: 0; transform: scale(0); }
+  60% { opacity: 1; transform: scale(1.05); }
+  100% { opacity: 1; transform: scale(1); }
+}
+.animate-badge-enlarge {
+  animation: badge-enlarge 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
 /* Mobile menu drawer animation */
 .mobile-menu-enter {
   animation: slide-down 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
