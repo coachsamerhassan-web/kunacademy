@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAdminContext } from '@kunacademy/db';
 import { bookings } from '@kunacademy/db/schema';
-import { eq, and, lt, gt } from 'drizzle-orm';
+import { eq, and, lt, gt, sql } from 'drizzle-orm';
 import { getAuthUser } from '@kunacademy/auth/server';
 
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
-const RATE_LIMIT_MAX = 10;
+const RATE_LIMIT_MAX = 5;
 const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
 
 function isRateLimited(ip: string): boolean {
@@ -79,35 +79,29 @@ export async function POST(request: NextRequest) {
   const now = new Date();
   const heldUntil = new Date(now.getTime() + 5 * 60 * 1000); // 5 min hold
 
-  // Check for existing active bookings (confirmed, pending) or active holds at this slot
-  const conflicts = await withAdminContext(async (db) => {
-    return db.select({ id: bookings.id, status: bookings.status, held_until: bookings.held_until })
-      .from(bookings)
-      .where(
-        and(
-          eq(bookings.provider_id, coach_id),
-          lt(bookings.start_time, parsedEnd.toISOString()),
-          gt(bookings.end_time, parsedStart.toISOString())
-        )
-      );
-  });
-
-  const hasConflict = (conflicts || []).some((b: { id: string; status: string | null; held_until: string | null }) => {
-    if (b.status === 'pending' || b.status === 'confirmed') return true;
-    if (b.status === 'held' && b.held_until && b.held_until > now.toISOString()) return true;
-    return false;
-  });
-
-  if (hasConflict) {
-    return NextResponse.json(
-      { error: 'Slot is not available' },
-      { status: 409 }
+  // Check for existing active bookings and insert hold in a SINGLE transaction
+  // to prevent double-booking race conditions (FOR UPDATE locks overlapping rows)
+  const result = await withAdminContext(async (db) => {
+    // 1. Check conflicts WITH row lock (FOR UPDATE prevents concurrent reads)
+    const conflicts = await db.execute(
+      sql`SELECT id, status, held_until FROM bookings
+          WHERE provider_id = ${coach_id}
+          AND start_time < ${parsedEnd.toISOString()}
+          AND end_time > ${parsedStart.toISOString()}
+          FOR UPDATE`
     );
-  }
 
-  // Insert hold record
-  const [inserted] = await withAdminContext(async (db) => {
-    return db.insert(bookings).values({
+    // 2. Check if any are blocking
+    const hasConflict = (conflicts.rows || []).some((b: any) => {
+      if (b.status === 'pending' || b.status === 'confirmed') return true;
+      if (b.status === 'held' && b.held_until && new Date(b.held_until) > now) return true;
+      return false;
+    });
+
+    if (hasConflict) return { conflict: true as const };
+
+    // 3. Insert in same transaction
+    const [inserted] = await db.insert(bookings).values({
       customer_id: user.id,
       provider_id: coach_id,
       service_id,
@@ -117,7 +111,18 @@ export async function POST(request: NextRequest) {
       held_until: heldUntil.toISOString(),
       held_by: user.id,
     }).returning({ id: bookings.id, held_until: bookings.held_until });
+
+    return { conflict: false as const, inserted };
   });
+
+  if (result.conflict) {
+    return NextResponse.json(
+      { error: 'Slot is not available' },
+      { status: 409 }
+    );
+  }
+
+  const inserted = result.inserted;
 
   if (!inserted) {
     console.error('[bookings/hold] insert failed');
