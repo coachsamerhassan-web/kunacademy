@@ -11,8 +11,6 @@ export const instructors = pgTable("instructors", {
   bio_en: text("bio_en"),
   photo_url: text("photo_url"),
   credentials: text("credentials"),
-  /** @deprecated Kept for backward compat. Use icf_credential + kun_level instead. */
-  coach_level: text("coach_level"),
   /** Kun internal level: basic / professional / expert / master */
   kun_level: text("kun_level"),
   /** ICF credential: ACC / PCC / MCC */

@@ -245,6 +245,8 @@ export class JsonFileProvider implements ContentProvider {
       languages: Array.isArray(t.languages) ? t.languages : csvToArray(t.languages as unknown as string),
       specialties: Array.isArray(t.specialties) ? t.specialties : csvToArray(t.specialties as unknown as string),
       coaching_styles: Array.isArray(t.coaching_styles) ? t.coaching_styles : csvToArray(t.coaching_styles as unknown as string),
+      // Map legacy coach_level column → icf_credential (unless icf_credential is already set)
+      icf_credential: t.icf_credential ?? t.coach_level,
     };
   }
 

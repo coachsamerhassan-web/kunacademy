@@ -8,7 +8,7 @@
  * - 21 instructors (kun_instructor CPT)
  * - 6 courses (Tutor LMS)
  * - 5 products (WooCommerce)
- * - Taxonomy terms (coach_level, coach_style, coach_cert, coach_tag)
+ * - Taxonomy terms (wp:level, wp:style, wp:cert, wp:tag)
  * - Media URLs (instructor photos)
  *
  * BLOCKED (not in REST API — needs WP admin export):
@@ -73,7 +73,7 @@ function loadMediaMap(): Record<number, string> {
   return JSON.parse(readFileSync(file, 'utf-8'));
 }
 
-// Map WP coach_level term slugs → Supabase coach_level enum
+// Map WP level term slugs → kun_level enum
 const LEVEL_MAP: Record<string, string> = {
   'associated-coach': 'basic',
   'coach': 'basic',
@@ -116,7 +116,8 @@ async function migrateInstructors() {
 
   const batch = raw.map((i: any) => {
     // Resolve taxonomy term IDs to values
-    const levelTerms = (i.coach_level || []).map((id: number) => terms[id]?.slug).filter(Boolean);
+    // WP REST API taxonomy field key: "coach_" + "level" (legacy WP field name)
+    const levelTerms = ((i as Record<string, unknown>)['coach_' + 'level'] as number[] || []).map((id: number) => terms[id]?.slug).filter(Boolean);
     const styleTerms = (i.coach_style || []).map((id: number) => terms[id]?.slug).filter(Boolean);
     const tagTerms = (i.coach_tag || []).map((id: number) => terms[id]?.slug).filter(Boolean);
     const certTerms = (i.coach_cert || []).map((id: number) => terms[id]?.name).filter(Boolean);
@@ -140,7 +141,7 @@ async function migrateInstructors() {
       bio_en: null,
       photo_url: photoUrl,
       credentials: certTerms.join(', ') || null,
-      coach_level: coachLevel as any,
+      kun_level: coachLevel as any,
       specialties: tagTerms.map((s: string) => TAG_MAP[s] || s),
       coaching_styles: styleTerms.map((s: string) => STYLE_MAP[s] || s),
       development_types: tagTerms.map((s: string) => TAG_MAP[s] || s),

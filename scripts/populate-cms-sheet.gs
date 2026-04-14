@@ -38,7 +38,7 @@ function setupCMSSheet() {
 
   // ── Tab 4: Team ──
   setupTab(ss, 'Team', [
-    ['slug', 'name_ar', 'name_en', 'title_ar', 'title_en', 'bio_ar', 'bio_en', 'photo_url', 'coach_level', 'credentials', 'specialties', 'coaching_styles', 'languages', 'is_visible', 'is_bookable', 'display_order', 'published', 'last_edited_by', 'last_edited_at'],
+    ['slug', 'name_ar', 'name_en', 'title_ar', 'title_en', 'bio_ar', 'bio_en', 'photo_url', 'icf_credential', 'credentials', 'specialties', 'coaching_styles', 'languages', 'is_visible', 'is_bookable', 'display_order', 'published', 'last_edited_by', 'last_edited_at'],
     ['samer-hassan', 'سامر حسن', 'Samer Hassan', 'المؤسس والمدرب الرئيسي', 'Founder & Master Coach', 'أول عربي يحصل على اعتماد MCC من ICF. مؤسس منهجية التفكير الحسّي. أكثر من 10,000 ساعة كوتشنج', 'First Arab MCC holder from ICF. Founder of Somatic Thinking methodology. Over 10,000 coaching hours', '/images/team/samer-hassan.jpg', 'master', 'MCC (ICF), ICF Young Leader Award 2019', 'التفكير الحسّي, القيادة, التحول المؤسسي', 'somatic, transformative, systemic', 'ar, en, it', 'TRUE', 'TRUE', '1', 'TRUE', 'samer', '2026-03-24'],
     ['team-placeholder', 'عضو الفريق', 'Team Member', 'كوتش معتمد', 'Certified Coach', 'كوتش معتمد من أكاديمية كُن', 'Certified coach from KUN Academy', '/images/team/placeholder.jpg', 'certified', 'ACC (ICF)', 'التفكير الحسّي', 'somatic', 'ar', 'FALSE', 'FALSE', '99', 'FALSE', 'samer', '2026-03-24'],
   ]);

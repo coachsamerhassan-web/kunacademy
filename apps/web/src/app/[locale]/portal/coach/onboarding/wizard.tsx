@@ -65,7 +65,7 @@ interface CoachData {
   bio_ar: string;
   bio_en: string;
   credentials: string;
-  coach_level: string;
+  icf_credential: string;
   specialties: string[];
   coaching_styles: string[];
   photo_url: string;
@@ -101,7 +101,7 @@ export function OnboardingWizard({ locale }: { locale: string }) {
           setBioAr(inst.bio_ar || '');
           setBioEn(inst.bio_en || '');
           setCredentials(inst.credentials || '');
-          setCoachLevel(inst.coach_level || '');
+          setCoachLevel(inst.icf_credential || '');
           setSelectedSpecialties(inst.specialties || []);
           setSelectedStyles(inst.coaching_styles || []);
           setAvatarPreview(inst.photo_url || null);
@@ -153,7 +153,7 @@ export function OnboardingWizard({ locale }: { locale: string }) {
       if (currentStep.id === 'bio') {
         await updateCoachProfile(coach!.id, { bio_ar: bioAr, bio_en: bioEn });
       } else if (currentStep.id === 'credentials') {
-        await updateCoachProfile(coach!.id, { credentials, coach_level: coachLevel });
+        await updateCoachProfile(coach!.id, { credentials, icf_credential: coachLevel });
       } else if (currentStep.id === 'specialties') {
         await updateCoachProfile(coach!.id, { specialties: selectedSpecialties, coaching_styles: selectedStyles });
       } else if (currentStep.id === 'schedule') {

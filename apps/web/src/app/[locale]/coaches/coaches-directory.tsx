@@ -5,6 +5,7 @@ import { useState, useMemo } from 'react';
 import type { TeamMember } from '@kunacademy/cms';
 import { Card } from '@kunacademy/ui/card';
 import { ArrowRight, ChevronDown } from 'lucide-react';
+import { KUN_LEVELS } from '@kunacademy/db/enums';
 
 interface Props {
   coaches: TeamMember[];
@@ -13,20 +14,13 @@ interface Props {
 
 // ── Kun Level display map ─────────────────────────────────────────────────────
 
-// ── Kun Level (new: from kun_level field in Sheets column V) ────────────────
-const KUN_LEVELS = [
+// ── Kun Level entries (values from canonical enum, labels defined locally for AR/EN display) ──
+const KUN_LEVEL_ENTRIES = [
   { value: 'basic',        ar: 'كوتش أساسي',       en: 'Basic Coach'          },
   { value: 'professional', ar: 'كوتش محترف',        en: 'Professional Coach'   },
   { value: 'expert',       ar: 'كوتش خبير',         en: 'Expert Coach'         },
   { value: 'master',       ar: 'كوتش ماستر',        en: 'Master Coach'         },
-];
-
-// ── ICF Credential (from coach_level field — shown as badge, not filter) ────
-const ICF_CREDENTIALS: Record<string, { ar: string; en: string }> = {
-  ACC: { ar: 'ACC', en: 'ACC' },
-  PCC: { ar: 'PCC', en: 'PCC' },
-  MCC: { ar: 'MCC', en: 'MCC' },
-};
+] as const;
 
 const KUN_LEVEL_COLORS: Record<string, string> = {
   basic:        'bg-green-100 text-green-800',
@@ -36,7 +30,7 @@ const KUN_LEVEL_COLORS: Record<string, string> = {
 };
 
 function getLevelLabel(level: string, isAr: boolean): string {
-  const entry = KUN_LEVELS.find((l) => l.value === level);
+  const entry = KUN_LEVEL_ENTRIES.find((l) => l.value === level);
   if (!entry) return level;
   return isAr ? entry.ar : entry.en;
 }
@@ -150,15 +144,7 @@ export function CoachesDirectory({ coaches, locale }: Props) {
   const availableLevels = useMemo(() => {
     const set = new Set<string>();
     coaches.forEach((c) => { if (c.kun_level) set.add(c.kun_level); });
-    // If no coaches have kun_level yet, fall back to coach_level for backward compat
-    if (set.size === 0) {
-      coaches.forEach((c) => { if (c.coach_level) set.add(c.coach_level); });
-      return KUN_LEVELS.filter((l) => set.has(l.value))
-        .concat(set.size > 0 && !KUN_LEVELS.some(l => set.has(l.value))
-          ? Array.from(set).map(v => ({ value: v, ar: v, en: v }))
-          : []);
-    }
-    return KUN_LEVELS.filter((l) => set.has(l.value));
+    return KUN_LEVEL_ENTRIES.filter((l) => set.has(l.value));
   }, [coaches]);
 
   // Determine which dev types have at least one coach
@@ -186,7 +172,7 @@ export function CoachesDirectory({ coaches, locale }: Props) {
   // Filter coaches with AND logic
   const filtered = useMemo(() => {
     return coaches.filter((c) => {
-      if (level && c.kun_level !== level && c.coach_level !== level) return false;
+      if (level && c.kun_level !== level) return false;
       if (devType && !c.specialties?.includes(devType)) return false;
       if (style) {
         const normalisedStyles = c.coaching_styles?.map(normaliseStyle) ?? [];
@@ -327,17 +313,17 @@ export function CoachesDirectory({ coaches, locale }: Props) {
                       {title && (
                         <p className="text-sm text-[var(--color-neutral-600)] mt-0.5 line-clamp-1">{title}</p>
                       )}
-                      {(coach.kun_level || coach.coach_level) && (
+                      {coach.kun_level && (
                         <span
-                          className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold mt-2 ${KUN_LEVEL_COLORS[coach.kun_level ?? ''] ?? KUN_LEVEL_COLORS[coach.coach_level ?? ''] ?? 'bg-[var(--color-neutral-100)] text-[var(--color-neutral-600)]'}`}
+                          className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold mt-2 ${KUN_LEVEL_COLORS[coach.kun_level] ?? 'bg-[var(--color-neutral-100)] text-[var(--color-neutral-600)]'}`}
                         >
-                          {getLevelLabel(coach.kun_level ?? coach.coach_level ?? '', isAr)}
+                          {getLevelLabel(coach.kun_level, isAr)}
                         </span>
                       )}
-                      {/* ICF credential badge (separate from Kun level) */}
-                      {coach.coach_level && ICF_CREDENTIALS[coach.coach_level] && (
+                      {/* ICF credential badge */}
+                      {coach.icf_credential && coach.icf_credential !== 'none' && (
                         <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-medium ml-1">
-                          {isAr ? ICF_CREDENTIALS[coach.coach_level].ar : ICF_CREDENTIALS[coach.coach_level].en}
+                          {coach.icf_credential.toUpperCase()}
                         </span>
                       )}
                     </div>

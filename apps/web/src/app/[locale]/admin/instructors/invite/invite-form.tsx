@@ -3,12 +3,16 @@
 import { useState } from 'react';
 import { Button } from '@kunacademy/ui/button';
 import { inviteCoach } from './actions';
+import { ICF_CREDENTIALS } from '@kunacademy/db/enums';
 
-const COACH_LEVELS = [
+// ICF credential options for invite form (student_coach is a pre-credential state)
+const ICF_CREDENTIAL_OPTIONS = [
   { value: 'student_coach', labelAr: 'كوتش متدرب', labelEn: 'Student Coach' },
-  { value: 'ACC', labelAr: 'ACC', labelEn: 'ACC' },
-  { value: 'PCC', labelAr: 'PCC', labelEn: 'PCC' },
-  { value: 'MCC', labelAr: 'MCC', labelEn: 'MCC' },
+  ...ICF_CREDENTIALS.filter(c => c !== 'none').map(c => ({
+    value: c,
+    labelAr: c.toUpperCase(),
+    labelEn: c.toUpperCase(),
+  })),
 ];
 
 export function InviteForm({ locale }: { locale: string }) {
@@ -92,17 +96,17 @@ export function InviteForm({ locale }: { locale: string }) {
       </div>
 
       <div>
-        <label htmlFor="coach_level" className="block text-sm font-medium text-[var(--color-neutral-700)]">
-          {isAr ? 'مستوى الكوتش' : 'Coach Level'}
+        <label htmlFor="icf_credential" className="block text-sm font-medium text-[var(--color-neutral-700)]">
+          {isAr ? 'اعتماد ICF' : 'ICF Credential'}
         </label>
         <select
-          id="coach_level"
-          name="coach_level"
+          id="icf_credential"
+          name="icf_credential"
           required
           className="mt-1 block w-full rounded-lg border border-[var(--color-neutral-300)] px-4 py-3 min-h-[44px] focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)] focus:ring-opacity-20 bg-white"
         >
-          <option value="">{isAr ? 'اختر المستوى' : 'Select level'}</option>
-          {COACH_LEVELS.map((level) => (
+          <option value="">{isAr ? 'اختر الاعتماد' : 'Select credential'}</option>
+          {ICF_CREDENTIAL_OPTIONS.map((level) => (
             <option key={level.value} value={level.value}>
               {isAr ? level.labelAr : level.labelEn}
             </option>

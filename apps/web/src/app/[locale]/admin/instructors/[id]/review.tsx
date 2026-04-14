@@ -9,7 +9,8 @@ interface InstructorData {
   title_en: string;
   bio_ar: string | null;
   bio_en: string | null;
-  coach_level: string | null;
+  icf_credential: string | null;
+  kun_level: string | null;
   credentials: string | null;
   specialties: string[] | null;
   coaching_styles: string[] | null;
@@ -82,7 +83,7 @@ export function InstructorReview({ locale, instructorId }: { locale: string; ins
         <div>
           <h2 className="text-lg font-medium">{instructor.title_ar}</h2>
           <p className="text-[var(--color-neutral-600)]">{instructor.title_en}</p>
-          <p className="text-sm text-[var(--color-neutral-500)]">{instructor.coach_level || '-'}</p>
+          <p className="text-sm text-[var(--color-neutral-500)]">{instructor.kun_level || instructor.icf_credential || '-'}</p>
         </div>
       </div>
 

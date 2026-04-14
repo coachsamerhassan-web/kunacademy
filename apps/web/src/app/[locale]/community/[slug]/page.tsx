@@ -20,7 +20,8 @@ async function getProfile(userId: string) {
       bio_ar: instructors.bio_ar,
       bio_en: instructors.bio_en,
       credentials: instructors.credentials,
-      coach_level: instructors.coach_level,
+      icf_credential: instructors.icf_credential,
+      kun_level: instructors.kun_level,
       specialties: instructors.specialties,
       coaching_styles: instructors.coaching_styles,
     })
@@ -73,7 +74,7 @@ export default async function CommunityProfilePage({ params }: { params: Promise
               <span className={`inline-block mt-1 rounded-full px-2 py-0.5 text-xs ${
                 profile.role === 'provider' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'
               }`}>
-                {profile.role === 'provider' ? (profile.instructor?.coach_level || (isAr ? 'كوتش' : 'Coach')) : (isAr ? 'متدرب' : 'Student')}
+                {profile.role === 'provider' ? (profile.instructor?.kun_level || profile.instructor?.icf_credential || (isAr ? 'كوتش' : 'Coach')) : (isAr ? 'متدرب' : 'Student')}
               </span>
               {profile.country && <span className="text-sm text-[var(--color-neutral-500)] block mt-1">{new Intl.DisplayNames([isAr ? 'ar' : 'en'], { type: 'region' }).of(profile.country) ?? profile.country}</span>}
             </div>

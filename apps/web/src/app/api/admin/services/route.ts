@@ -3,13 +3,14 @@ import { db, withAdminContext } from '@kunacademy/db';
 import { getAuthUser } from '@kunacademy/auth/server';
 import { eq, asc, inArray } from 'drizzle-orm';
 import { services, service_categories, bookings } from '@kunacademy/db/schema';
+import { KUN_LEVELS } from '@kunacademy/db/enums';
 
 function isAdmin(role: string | undefined): boolean {
   return role === 'admin' || role === 'super_admin';
 }
 
 const VALID_COACH_CONTROLS = ['optional', 'mandatory', 'admin_only'] as const;
-const VALID_KUN_LEVELS = ['basic', 'professional', 'expert', 'master'] as const;
+const VALID_KUN_LEVELS = KUN_LEVELS;
 
 /**
  * GET /api/admin/services

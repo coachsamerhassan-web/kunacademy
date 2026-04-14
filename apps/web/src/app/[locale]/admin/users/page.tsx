@@ -6,6 +6,7 @@ import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
+import { KUN_LEVELS, ICF_CREDENTIALS } from '@kunacademy/db/enums';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -62,8 +63,7 @@ const ROLE_LABELS: Record<string, { ar: string; en: string }> = {
   super_admin: { ar: 'مدير عام', en: 'Super Admin' },
 };
 
-const KUN_LEVELS = ['basic', 'professional', 'expert', 'master'];
-const ICF_CREDENTIALS = ['none', 'acc', 'pcc', 'mcc'];
+// KUN_LEVELS and ICF_CREDENTIALS imported from @kunacademy/db/enums
 
 const KUN_LEVEL_LABELS: Record<string, { ar: string; en: string }> = {
   basic: { ar: 'أساسي', en: 'Basic' },

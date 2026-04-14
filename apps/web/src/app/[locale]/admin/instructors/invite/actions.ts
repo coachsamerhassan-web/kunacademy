@@ -9,7 +9,7 @@ export async function inviteCoach(formData: FormData) {
   const email = formData.get('email') as string;
   const nameAr = formData.get('name_ar') as string;
   const nameEn = formData.get('name_en') as string;
-  const coachLevel = formData.get('coach_level') as string;
+  const icfCredential = formData.get('icf_credential') as string;
 
   // 1. Create auth user directly in auth_users table
   // TODO Wave 9: Send invite email via Resend with password reset link
@@ -59,8 +59,8 @@ export async function inviteCoach(formData: FormData) {
     await withAdminContext(async (db) => {
       await db.execute(
         sql`
-          INSERT INTO instructors (profile_id, slug, title_ar, title_en, coach_level, is_visible)
-          VALUES (${userId}, ${slug}, ${nameAr}, ${nameEn}, ${coachLevel}, false)
+          INSERT INTO instructors (profile_id, slug, title_ar, title_en, icf_credential, is_visible)
+          VALUES (${userId}, ${slug}, ${nameAr}, ${nameEn}, ${icfCredential}, false)
         `
       );
     });

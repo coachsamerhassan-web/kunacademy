@@ -28,7 +28,6 @@ interface Coach {
   title_ar: string;
   title_en: string;
   photo_url: string | null;
-  coach_level: string | null;
   kun_level: string | null;
   specialties: string[] | null;
 }
@@ -856,8 +855,8 @@ function BookingFlowInner({ locale }: { locale: string }) {
                       <div className="font-semibold text-[var(--text-primary)]">
                         {isAr ? coach.title_ar : coach.title_en}
                       </div>
-                      {coach.coach_level && (
-                        <span className="text-xs text-[var(--color-neutral-500)]">{coach.coach_level}</span>
+                      {coach.kun_level && (
+                        <span className="text-xs text-[var(--color-neutral-500)]">{coach.kun_level}</span>
                       )}
                     </div>
                   </div>

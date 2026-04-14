@@ -113,7 +113,7 @@ function getLangLabel(lang: string, isAr: boolean): string {
 
 // ── Related-coaches algorithm ────────────────────────────────────────────────
 // Match by specialties[0], exclude current coach, limit 3.
-// Fall back to same coach_level if no specialty match.
+// Fall back to same kun_level if no specialty match.
 
 function getRelatedCoaches(
   allCoaches: TeamMember[],
@@ -132,11 +132,10 @@ function getRelatedCoaches(
 
   if (bySpecialty.length >= limit) return bySpecialty.slice(0, limit);
 
-  // Pad with same level coaches (varying style)
+  // Pad with same kun_level coaches (varying style)
   const byLevel = others.filter(
     (c) =>
-      ((current.kun_level && c.kun_level === current.kun_level) ||
-        (!current.kun_level && c.coach_level === current.coach_level)) &&
+      current.kun_level && c.kun_level === current.kun_level &&
       !bySpecialty.some((b) => b.slug === c.slug)
   );
 
@@ -159,8 +158,10 @@ export default async function CoachProfilePage({ params }: Props) {
   const title = isAr ? coach.title_ar : coach.title_en;
   const bio   = isAr ? coach.bio_ar   : coach.bio_en;
 
-  const levelMeta = coach.coach_level
-    ? LEVEL_META[coach.coach_level as CoachLevelKey] ?? null
+  // icf_credential carries ACC/PCC/MCC/instructor/facilitator/guest from the CMS sheet
+  // (W2.A migrates the legacy sheet column to icf_credential on TeamMember)
+  const levelMeta = coach.icf_credential
+    ? LEVEL_META[coach.icf_credential as CoachLevelKey] ?? null
     : null;
 
   // Resolve pricing from kun_level (board-approved tiers)
@@ -288,16 +289,9 @@ export default async function CoachProfilePage({ params }: Props) {
                 )}
 
                 {/* ICF Credential badge (secondary) */}
-                {coach.coach_level && ['ACC', 'PCC', 'MCC'].includes(coach.coach_level) && (
+                {coach.icf_credential && ['ACC', 'PCC', 'MCC'].includes(coach.icf_credential) && (
                   <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-[var(--color-primary-100)] text-[var(--color-primary-800)]">
-                    ICF {coach.coach_level}
-                  </span>
-                )}
-
-                {/* Fallback: if no kun_level yet, show coach_level as before */}
-                {!coach.kun_level && coach.coach_level && levelMeta && (
-                  <span className={`px-3 py-1 rounded-full text-sm font-medium ${levelMeta.badgeClasses}`}>
-                    {isAr ? levelMeta.labelAr : levelMeta.labelEn}
+                    ICF {coach.icf_credential}
                   </span>
                 )}
 
@@ -324,7 +318,7 @@ export default async function CoachProfilePage({ params }: Props) {
               )}
 
               {/* Level description */}
-              {coach.coach_level && levelMeta && (
+              {coach.icf_credential && levelMeta && (
                 <p className="mt-2 text-sm text-white/50">
                   {isAr ? levelMeta.labelAr : levelMeta.labelEn}
                 </p>
@@ -719,7 +713,7 @@ export default async function CoachProfilePage({ params }: Props) {
               {relatedCoaches.map((rc) => {
                 const rcName  = isAr ? rc.name_ar  : rc.name_en;
                 const rcTitle = isAr ? rc.title_ar : rc.title_en;
-                const rcLevel = rc.coach_level;
+                const rcLevel = rc.icf_credential;
 
                 const levelBadgeColors: Record<string, string> = {
                   MCC:         'bg-amber-50 text-amber-700 ring-1 ring-amber-200',

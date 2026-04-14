@@ -105,11 +105,11 @@ export default async function TeamPage({ params }: Props) {
                     )}
 
                     {/* Credential badge */}
-                    {member.coach_level && (
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold mt-3 ${credentialColors[member.coach_level] || 'bg-[var(--color-neutral-100)] text-[var(--color-neutral-600)]'}`}>
-                        {member.coach_level === 'instructor' ? (isAr ? 'مدرّب' : 'Instructor')
-                          : member.coach_level === 'facilitator' ? (isAr ? 'ميسّر' : 'Facilitator')
-                          : `ICF ${member.coach_level}`}
+                    {member.icf_credential && (
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold mt-3 ${credentialColors[member.icf_credential] || 'bg-[var(--color-neutral-100)] text-[var(--color-neutral-600)]'}`}>
+                        {member.icf_credential === 'instructor' ? (isAr ? 'مدرّب' : 'Instructor')
+                          : member.icf_credential === 'facilitator' ? (isAr ? 'ميسّر' : 'Facilitator')
+                          : `ICF ${member.icf_credential}`}
                       </span>
                     )}
 

@@ -7,7 +7,8 @@ interface Instructor {
   slug: string;
   title_ar: string;
   title_en: string;
-  coach_level: string | null;
+  icf_credential: string | null;
+  kun_level: string | null;
   is_visible: boolean;
   photo_url: string | null;
   profile_id: string | null;
@@ -83,7 +84,7 @@ export function InstructorsList({ locale }: { locale: string }) {
               </td>
               <td className="py-3 px-2">
                 <span className="inline-block rounded-full bg-[var(--color-neutral-100)] px-2 py-0.5 text-xs">
-                  {inst.coach_level || '-'}
+                  {inst.kun_level || inst.icf_credential || '-'}
                 </span>
               </td>
               <td className="py-3 px-2">

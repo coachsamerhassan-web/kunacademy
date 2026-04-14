@@ -8,7 +8,7 @@ export async function updateCoachProfile(instructorId: string, data: {
   bio_ar?: string;
   bio_en?: string;
   credentials?: string;
-  coach_level?: string;
+  icf_credential?: string;
   specialties?: string[];
   coaching_styles?: string[];
 }) {
@@ -24,8 +24,8 @@ export async function updateCoachProfile(instructorId: string, data: {
       if (data.credentials !== undefined) {
         await db.execute(sql`UPDATE instructors SET credentials = ${data.credentials} WHERE id = ${instructorId}`);
       }
-      if (data.coach_level !== undefined) {
-        await db.execute(sql`UPDATE instructors SET coach_level = ${data.coach_level} WHERE id = ${instructorId}`);
+      if (data.icf_credential !== undefined) {
+        await db.execute(sql`UPDATE instructors SET icf_credential = ${data.icf_credential} WHERE id = ${instructorId}`);
       }
       if (data.specialties !== undefined) {
         await db.execute(sql`UPDATE instructors SET specialties = ${JSON.stringify(data.specialties)} WHERE id = ${instructorId}`);

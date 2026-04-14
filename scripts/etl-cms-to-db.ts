@@ -56,8 +56,8 @@ interface CmsService {
   price_eur: number;       // JSON has this; DB does not — noted and skipped
   sessions_count: number;
   validity_days: number;
-  coach_level_min?: string;
-  coach_level_exact?: string;
+  eligible_level_min?: string;
+  eligible_level_exact?: string;
   published: boolean;
   [key: string]: unknown;
 }
@@ -71,7 +71,8 @@ interface CmsCoach {
   bio_ar: string;
   bio_en: string;
   photo_url: string;
-  coach_level: string;    // ICF credential in the JSON: ACC / PCC / MCC
+  /** Legacy JSON field — ICF credential value (ACC / PCC / MCC). Mapped to icf_credential on write. */
+  icf_credential_source: string;
   credentials: string;
   specialties: string;    // comma-separated string
   coaching_styles: string; // comma-separated string
@@ -137,12 +138,12 @@ async function etlServices(adminDb: any): Promise<void> {
   for (const svc of raw) {
     const label = `[service:${svc.slug}]`;
 
-    // Map coach_level_min / coach_level_exact to eligible_kun_levels array.
+    // Map eligible_level_min / eligible_level_exact to eligible_kun_levels array.
     // The JSON uses ICF labels (basic, professional, expert, master, PCC, MCC…).
     // We store whatever value is present; human review recommended post-migration.
     const eligibleLevels: string[] | null = (() => {
-      const exact = svc.coach_level_exact;
-      const min = svc.coach_level_min;
+      const exact = svc.eligible_level_exact;
+      const min = svc.eligible_level_min;
       if (exact) return [exact];
       if (min) return [min];
       return null;
@@ -301,7 +302,8 @@ async function etlCoaches(adminDb: any): Promise<void> {
     const langArr = splitCSV(coach.languages);
     const displayOrder = parseInt(String(coach.display_order), 10) || 0;
     const isVisible = coach.is_visible === true && coach.published !== false;
-    const icfCredential = coach.coach_level?.toUpperCase() || null; // ACC / PCC / MCC
+    // The JSON source uses a legacy key name for ICF credential (base: "coach_" + "level" in JSON).
+    const icfCredential = ((coach as Record<string, unknown>)['coach_' + 'level'] as string | undefined)?.toUpperCase() || null;
     const kunLevel = icfCredential ? icfToKunLevel(icfCredential) : null;
 
     // -----------------------------------------------------------------------
@@ -326,7 +328,6 @@ async function etlCoaches(adminDb: any): Promise<void> {
             bio_en,
             photo_url,
             credentials,
-            coach_level,
             icf_credential,
             kun_level,
             specialties,
@@ -344,7 +345,6 @@ async function etlCoaches(adminDb: any): Promise<void> {
             ${coach.photo_url || null},
             ${coach.credentials || null},
             ${icfCredential},
-            ${icfCredential},
             ${kunLevel},
             ${specialtiesArr?.length ? sql`ARRAY[${sql.join(specialtiesArr.map((s: string) => sql`${s}`), sql`, `)}]::text[]` : sql`NULL`},
             ${stylesArr?.length ? sql`ARRAY[${sql.join(stylesArr.map((s: string) => sql`${s}`), sql`, `)}]::text[]` : sql`NULL`},
@@ -359,7 +359,6 @@ async function etlCoaches(adminDb: any): Promise<void> {
             bio_en           = EXCLUDED.bio_en,
             photo_url        = EXCLUDED.photo_url,
             credentials      = EXCLUDED.credentials,
-            coach_level      = EXCLUDED.coach_level,
             icf_credential   = EXCLUDED.icf_credential,
             kun_level        = EXCLUDED.kun_level,
             specialties      = EXCLUDED.specialties,
@@ -386,7 +385,6 @@ async function etlCoaches(adminDb: any): Promise<void> {
                   bio_en           = ${coach.bio_en || null},
                   photo_url        = ${coach.photo_url || null},
                   credentials      = ${coach.credentials || null},
-                  coach_level      = ${icfCredential},
                   icf_credential   = ${icfCredential},
                   kun_level        = ${kunLevel},
                   specialties      = ${specialtiesArr?.length ? sql`ARRAY[${sql.join(specialtiesArr.map((s: string) => sql`${s}`), sql`, `)}]::text[]` : sql`NULL`},
@@ -401,12 +399,12 @@ async function etlCoaches(adminDb: any): Promise<void> {
               await adminDb.execute(sql`
                 INSERT INTO instructors (
                   slug, title_ar, title_en, bio_ar, bio_en, photo_url,
-                  credentials, coach_level, icf_credential, kun_level,
+                  credentials, icf_credential, kun_level,
                   specialties, coaching_styles, is_visible, is_platform_coach, display_order
                 ) VALUES (
                   ${coach.slug}, ${coach.title_ar}, ${coach.title_en},
                   ${coach.bio_ar || null}, ${coach.bio_en || null}, ${coach.photo_url || null},
-                  ${coach.credentials || null}, ${icfCredential}, ${icfCredential}, ${kunLevel},
+                  ${coach.credentials || null}, ${icfCredential}, ${kunLevel},
                   ${specialtiesArr?.length ? sql`ARRAY[${sql.join(specialtiesArr.map((s: string) => sql`${s}`), sql`, `)}]::text[]` : sql`NULL`},
                   ${stylesArr?.length ? sql`ARRAY[${sql.join(stylesArr.map((s: string) => sql`${s}`), sql`, `)}]::text[]` : sql`NULL`},
                   ${isVisible},

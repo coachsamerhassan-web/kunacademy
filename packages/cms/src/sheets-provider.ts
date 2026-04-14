@@ -311,10 +311,19 @@ export class GoogleSheetsProvider implements ContentProvider {
 
   // ── Sheet 4: Team ─────────────────────────────────────────────────────
 
+  private normalizeTeamMember(t: TeamMember): TeamMember {
+    return {
+      ...t,
+      // Map legacy coach_level column → icf_credential (unless icf_credential is already set)
+      icf_credential: t.icf_credential ?? t.coach_level,
+    };
+  }
+
   async getAllTeamMembers(): Promise<TeamMember[]> {
     const rows = await this.loadSheet<TeamMember>('team');
     return this.published(rows)
       .filter((t) => t.is_visible)
+      .map((t) => this.normalizeTeamMember(t))
       .sort((a, b) => a.display_order - b.display_order);
   }
 
@@ -325,7 +334,8 @@ export class GoogleSheetsProvider implements ContentProvider {
 
   async getTeamMember(slug: string): Promise<TeamMember | null> {
     const rows = await this.loadSheet<TeamMember>('team');
-    return this.published(rows).find((t) => t.slug === slug) ?? null;
+    const found = this.published(rows).find((t) => t.slug === slug);
+    return found ? this.normalizeTeamMember(found) : null;
   }
 
   // ── Sheet 5: Settings ─────────────────────────────────────────────────

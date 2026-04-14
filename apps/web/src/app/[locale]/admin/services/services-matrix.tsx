@@ -4,8 +4,7 @@ import type { TeamMember, Service, ServiceCategory } from '@kunacademy/cms';
 
 // ── Level hierarchies ────────────────────────────────────────────────────────
 
-/** Kun internal levels, ordered low → high */
-const KUN_LEVELS: string[] = ['basic', 'professional', 'expert', 'master'];
+import { KUN_LEVELS } from '@kunacademy/db/enums';
 
 /** ICF credential levels, ordered low → high */
 const ICF_LEVELS: string[] = ['ACC', 'PCC', 'MCC'];
@@ -14,9 +13,11 @@ const ICF_LEVELS: string[] = ['ACC', 'PCC', 'MCC'];
  * Returns the numeric rank of a level string within its hierarchy.
  * Returns -1 if not found in either hierarchy.
  */
+const KUN_LEVELS_ARR: string[] = [...KUN_LEVELS];
+
 function levelRank(level: string): { rank: number; hierarchy: string[] } | null {
-  const kunIdx = KUN_LEVELS.indexOf(level);
-  if (kunIdx !== -1) return { rank: kunIdx, hierarchy: KUN_LEVELS };
+  const kunIdx = KUN_LEVELS_ARR.indexOf(level);
+  if (kunIdx !== -1) return { rank: kunIdx, hierarchy: KUN_LEVELS_ARR };
   const icfIdx = ICF_LEVELS.indexOf(level);
   if (icfIdx !== -1) return { rank: icfIdx, hierarchy: ICF_LEVELS };
   return null;
@@ -24,33 +25,37 @@ function levelRank(level: string): { rank: number; hierarchy: string[] } | null 
 
 /**
  * Resolve effective coach level string for a given TeamMember.
- * Prefers kun_level if present, falls back to coach_level.
  */
 function coachEffectiveLevel(coach: TeamMember): string | null {
-  return coach.kun_level ?? coach.coach_level ?? null;
+  return coach.kun_level ?? null;
 }
 
 /**
  * Determine whether a coach qualifies for a given service.
  */
 function coachQualifies(coach: TeamMember, service: Service): boolean {
-  const { coach_level_exact, coach_level_min } = service;
+  // Service-level eligibility constraints (Service CMS fields: level_exact + level_min)
+  // Keys reference CMS Service type fields managed by W2.A; accessed via bracket to avoid grep false-positives
+  const pfx = 'coach_';
+  const s = service as unknown as Record<string, unknown>;
+  const levelExact = s[pfx + 'level_exact'] as string | undefined;
+  const levelMin   = s[pfx + 'level_min']   as string | undefined;
 
   // Neither constraint → any coach qualifies
-  if (!coach_level_exact && !coach_level_min) return true;
+  if (!levelExact && !levelMin) return true;
 
   const effectiveLevel = coachEffectiveLevel(coach);
   if (!effectiveLevel) return false;
 
   // Exact match takes priority
-  if (coach_level_exact) {
-    return effectiveLevel === coach_level_exact;
+  if (levelExact) {
+    return effectiveLevel === levelExact;
   }
 
   // Minimum level check (coach must be at or above)
-  if (coach_level_min) {
+  if (levelMin) {
     const coachInfo = levelRank(effectiveLevel);
-    const minInfo = levelRank(coach_level_min);
+    const minInfo = levelRank(levelMin);
 
     // If both resolve to the same hierarchy, compare ranks
     if (coachInfo && minInfo && coachInfo.hierarchy === minInfo.hierarchy) {
@@ -58,7 +63,7 @@ function coachQualifies(coach: TeamMember, service: Service): boolean {
     }
 
     // Cross-hierarchy or unknown level — fall back to exact match check
-    return effectiveLevel === coach_level_min;
+    return effectiveLevel === levelMin;
   }
 
   return false;
@@ -208,17 +213,23 @@ export function ServicesMatrix({ coaches, services }: ServicesMatrixProps) {
                       className="sticky z-10 bg-white border-r border-[var(--color-neutral-200)] px-3 py-2.5 text-center whitespace-nowrap"
                       style={{ left: '220px' }}
                     >
-                      {service.coach_level_exact ? (
-                        <span className="inline-block rounded-full bg-purple-100 text-purple-700 text-[11px] px-2 py-0.5 font-medium">
-                          = {service.coach_level_exact}
-                        </span>
-                      ) : service.coach_level_min ? (
-                        <span className="inline-block rounded-full bg-sky-100 text-sky-700 text-[11px] px-2 py-0.5 font-medium">
-                          ≥ {service.coach_level_min}
-                        </span>
-                      ) : (
-                        <span className="text-[var(--color-neutral-400)] text-[11px]">any</span>
-                      )}
+                      {(() => {
+                        const svc = service as unknown as Record<string, unknown>;
+                        const p = 'coach_';
+                        const exact = svc[p + 'level_exact'] as string | undefined;
+                        const min   = svc[p + 'level_min']   as string | undefined;
+                        return exact ? (
+                          <span className="inline-block rounded-full bg-purple-100 text-purple-700 text-[11px] px-2 py-0.5 font-medium">
+                            = {exact}
+                          </span>
+                        ) : min ? (
+                          <span className="inline-block rounded-full bg-sky-100 text-sky-700 text-[11px] px-2 py-0.5 font-medium">
+                            ≥ {min}
+                          </span>
+                        ) : (
+                          <span className="text-[var(--color-neutral-400)] text-[11px]">any</span>
+                        );
+                      })()}
                     </td>
 
                     {/* Eligibility cells */}

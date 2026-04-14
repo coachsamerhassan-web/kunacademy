@@ -1,0 +1,216 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1774314000000,
+      "tag": "20260324010000_initial_schema",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1774317600000,
+      "tag": "20260324020000_ems_schema",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1774321200000,
+      "tag": "20260324030000_v2_remaining",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1774324800000,
+      "tag": "20260324040000_add_instapay_gateway",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1774396800000,
+      "tag": "20260325000000_book_access",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1774486800000,
+      "tag": "20260326010000_fix_commission_rls",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1774490400000,
+      "tag": "20260326020000_fix_commission_schema",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1774573200000,
+      "tag": "20260327010000_lms_sections_rls",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1774576800000,
+      "tag": "20260327020000_seed_sti_course",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1774828800000,
+      "tag": "20260330000000_lms_fixes",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1774915200000,
+      "tag": "20260331000000_fix_coach_booking_profiles",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1775005200000,
+      "tag": "20260401010000_add_price_sar_and_fixes",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1775008800000,
+      "tag": "20260401020000_pathfinder_responses",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1775091600000,
+      "tag": "20260402010000_booking_enhancements",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1775095200000,
+      "tag": "20260402020000_corporate_pathfinder",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1775174400000,
+      "tag": "20260403000000_cleanup",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1775260800000,
+      "tag": "20260404000000_booking_cancel_rls",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1775264400000,
+      "tag": "20260404010000_event_capacity",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1775268000000,
+      "tag": "20260404020000_capacity_guard",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1775347200000,
+      "tag": "20260405000000_event_registrations",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1775350800000,
+      "tag": "20260405010000_admin_audit_log",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1775354400000,
+      "tag": "20260405020000_fix_is_admin_and_jwt",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1775358000000,
+      "tag": "20260405030000_webhook_events",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1775361600000,
+      "tag": "20260405040000_hybrid_payout",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1775365200000,
+      "tag": "20260405050000_fix_critical_rls",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1775433600000,
+      "tag": "20260406000000_replace_auth_uid",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1775437200000,
+      "tag": "20260406010000_role_grants",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1775440800000,
+      "tag": "20260406020000_auth_tables",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1775444400000,
+      "tag": "20260406030000_coach_level_split",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1775448000000,
+      "tag": "20260406040000_services_eligible_levels",
+      "breakpoints": true
+    }
+  ]
+}

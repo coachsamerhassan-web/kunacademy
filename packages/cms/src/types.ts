@@ -233,12 +233,6 @@ export type KunLevel = 'basic' | 'professional' | 'expert' | 'master';
 /** Special service roles (beyond standard coaching) */
 export type ServiceRole = 'mentor_coach' | 'advanced_mentor';
 
-/**
- * @deprecated Use IcfCredential or KunLevel instead.
- * Kept for backward compat during migration — maps to coach_level column in Sheets.
- */
-export type CoachLevel = 'ACC' | 'PCC' | 'MCC' | 'instructor' | 'facilitator' | 'guest';
-
 export interface TeamMember extends AuditFields {
   slug: string;
   name_ar: string;
@@ -252,10 +246,16 @@ export interface TeamMember extends AuditFields {
   /** Photo URL (Supabase Storage or external) */
   photo_url?: string;
   /**
-   * ICF credential level — kept as `coach_level` for backward compat with Sheets column name.
-   * New code should also check `kun_level` for Kun's internal assessment.
+   * Legacy Sheets column — raw string value from the coach_level column.
+   * New code should use `icf_credential` (IcfCredential) and `kun_level` (KunLevel) instead.
    */
-  coach_level?: CoachLevel;
+  coach_level?: string;
+  /**
+   * ICF credential level — mapped from the `coach_level` source column at load time.
+   * Possible values: 'ACC' | 'PCC' | 'MCC' (uppercase from CMS) or 'none'.
+   * Kept as `string` to avoid casing conflicts with the db enum (which uses lowercase).
+   */
+  icf_credential?: string;
   /** Kun internal level (basic/professional/expert/master) — column V in Sheets */
   kun_level?: KunLevel;
   /** ICF credential details (free text, e.g. "ICF ACC, 2024") */

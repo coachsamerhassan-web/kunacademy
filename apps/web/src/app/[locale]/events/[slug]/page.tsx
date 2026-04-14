@@ -225,9 +225,9 @@ export default async function EventDetailPage({ params }: Props) {
                                 >
                                   {name}
                                 </span>
-                                {speaker.coach_level && (
+                                {speaker.icf_credential && (
                                   <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-[var(--color-primary)] text-white">
-                                    {speaker.coach_level}
+                                    {speaker.icf_credential}
                                   </span>
                                 )}
                               </div>

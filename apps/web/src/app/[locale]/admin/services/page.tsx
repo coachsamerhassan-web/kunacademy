@@ -73,9 +73,9 @@ export default async function AdminServicesPage({
 
         {/* Footer note */}
         <p className="mt-4 text-xs text-[var(--color-neutral-400)]">
-          Qualification uses <strong>kun_level</strong> when set, falling back to <strong>coach_level</strong> (ICF credential).
+          Qualification uses <strong>kun_level</strong>.
           Kun levels: basic &lt; professional &lt; expert &lt; master.
-          ICF levels: ACC &lt; PCC &lt; MCC.
+          ICF credential tracked separately in <strong>icf_credential</strong>.
         </p>
       </Section>
     </main>

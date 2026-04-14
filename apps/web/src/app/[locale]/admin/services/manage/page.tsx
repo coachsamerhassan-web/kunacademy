@@ -6,6 +6,7 @@ import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, Plus } from 'lucide-react';
+import { KUN_LEVELS } from '@kunacademy/db/enums';
 
 // ─────────────────────────────────────────────
 // Types
@@ -70,7 +71,7 @@ interface ServiceForm {
 // Constants
 // ─────────────────────────────────────────────
 
-const KUN_LEVELS = ['basic', 'professional', 'expert', 'master'] as const;
+// KUN_LEVELS imported from @kunacademy/db/enums
 
 const COACH_CONTROL_OPTIONS = [
   { value: 'optional', ar: 'اختياري', en: 'Optional' },

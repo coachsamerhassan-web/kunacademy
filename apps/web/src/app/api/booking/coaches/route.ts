@@ -54,7 +54,6 @@ export async function GET(request: NextRequest) {
         title_ar: instructors.title_ar,
         title_en: instructors.title_en,
         photo_url: instructors.photo_url,
-        coach_level: instructors.coach_level,
         kun_level: instructors.kun_level,
         specialties: instructors.specialties,
       })
@@ -71,7 +70,6 @@ export async function GET(request: NextRequest) {
       title_ar: string;
       title_en: string;
       photo_url: string | null;
-      coach_level: string | null;
       kun_level: string | null;
       specialties: string[] | null;
       custom_price_aed: number | null;
@@ -88,7 +86,6 @@ export async function GET(request: NextRequest) {
           title_ar: inst.title_ar,
           title_en: inst.title_en,
           photo_url: inst.photo_url,
-          coach_level: inst.coach_level,
           kun_level: inst.kun_level,
           specialties: inst.specialties,
           custom_price_aed: null as number | null,
