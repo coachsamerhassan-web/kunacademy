@@ -59,19 +59,27 @@ export default async function globalSetup(): Promise<void> {
     throw new Error(`[tunnel] Failed to copy SSH key from "${SSH_KEY_PATH}": ${err}`);
   }
 
-  // Use expect to handle the passphrase prompt for ssh -L tunnel
+  // Use expect to handle the passphrase prompt for ssh -L tunnel.
+  // IMPORTANT: set timeout -1 (infinite) so expect does NOT time out and kill the
+  // SSH process while it is silently holding the tunnel open. The previous timeout
+  // of (TUNNEL_READY_TIMEOUT/1000 + 10) seconds caused the tunnel to die mid-run
+  // when the test suite ran longer than that window.
+  // The passphrase prompt has its own 30s window (exp_continue loops back after send).
+  // The outer timeout is set to -1 so the eof wait runs indefinitely.
   const expectScript = `
-set timeout ${Math.ceil(TUNNEL_READY_TIMEOUT / 1000) + 10}
+set timeout 30
 spawn ssh -i ${keyPath} \\
   -o StrictHostKeyChecking=no \\
   -o BatchMode=no \\
   -o ServerAliveInterval=30 \\
+  -o ServerAliveCountMax=999 \\
   -N \\
   -L ${LOCAL_TUNNEL_PORT}:localhost:${VPS_PORT} \\
   root@${VPS_HOST}
 expect {
   "Enter passphrase" { send "${SSH_PASSPHRASE}\\r"; exp_continue }
   eof { exit 0 }
+  timeout { set timeout -1; exp_continue }
 }
 `;
 
