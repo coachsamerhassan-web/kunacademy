@@ -211,6 +211,48 @@
       "when": 1775448000000,
       "tag": "20260406040000_services_eligible_levels",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1776157200000,
+      "tag": "20260414090000_retire_coach_level",
+      "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1776164400000,
+      "tag": "20260414110000_fix_instructors_column_grants",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1776168000000,
+      "tag": "20260414120000_instructors_rls_hardening",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1776254400000,
+      "tag": "20260415120000_kun_level_4value_enum",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1776258000000,
+      "tag": "20260415130000_package_template_tables",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1776261600000,
+      "tag": "20260415140000_profiles_role_immutability",
+      "breakpoints": true
     }
   ]
 }
