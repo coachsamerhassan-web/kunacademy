@@ -20,10 +20,11 @@ export async function getUser() {
   const session = await auth();
   if (!session?.user) return null;
 
+  const user = session.user;
   const { withAdminContext, sql } = await import('@kunacademy/db');
   const profile = await withAdminContext(async (adminDb) => {
     const { rows } = await adminDb.execute(
-      sql`SELECT * FROM profiles WHERE id = ${session.user.id}`
+      sql`SELECT * FROM profiles WHERE id = ${user.id}`
     );
     return rows[0] || null;
   });

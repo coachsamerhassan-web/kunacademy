@@ -10,7 +10,7 @@
   },
   "scripts": {
     "build": "tsc --build",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --project tsconfig.check.json",
     "lint": "eslint src/",
     "clean": "rm -rf dist .turbo"
   },
