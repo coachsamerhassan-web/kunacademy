@@ -253,6 +253,20 @@
       "when": 1776261600000,
       "tag": "20260415140000_profiles_role_immutability",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1776264600000,
+      "tag": "20260415145000_widen_anchor_event_whitelist",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1776265200000,
+      "tag": "20260415150000_stic_l1_seed",
+      "breakpoints": true
     }
   ]
 }
