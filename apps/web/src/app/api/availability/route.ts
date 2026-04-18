@@ -2,7 +2,8 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { db } from '@kunacademy/db';
 import { eq, and, gte, lte } from 'drizzle-orm';
 import { providers, coach_schedules, bookings, coach_time_off } from '@kunacademy/db/schema';
-import { format, parseISO } from 'date-fns-tz';
+import { format } from 'date-fns-tz';
+import { parseISO } from 'date-fns';
 
 // Build IANA timezone allowlist at module load (cached)
 const VALID_TIMEZONES = new Set(Intl.supportedValuesOf('timeZone'));

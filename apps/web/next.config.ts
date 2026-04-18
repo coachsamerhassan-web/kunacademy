@@ -4,7 +4,7 @@ import type { NextConfig } from "next";
 const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
 
 const nextConfig: NextConfig = {
-  output: 'standalone',
+  // output: 'standalone',
   // TypeScript strict checking enabled — 0 errors as of Wave 6.75d
   transpilePackages: ['@kunacademy/ui', '@kunacademy/brand', '@kunacademy/db', '@kunacademy/auth', '@kunacademy/payments', '@kunacademy/i18n', '@kunacademy/seo', '@kunacademy/email'],
   serverExternalPackages: ['pdfjs-dist', 'sharp', 'pg', 'bcryptjs', 'nodemailer', 'googleapis', 'google-auth-library'],
