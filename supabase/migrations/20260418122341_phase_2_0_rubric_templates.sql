@@ -139,6 +139,7 @@ CREATE POLICY rt_admin_all ON rubric_templates
 -- ============================================================================
 
 GRANT SELECT ON rubric_templates TO authenticated;
+GRANT ALL ON rubric_templates TO kunacademy_admin;
 
 -- ============================================================================
 -- SMOKE TESTS

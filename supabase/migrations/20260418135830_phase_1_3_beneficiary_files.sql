@@ -316,6 +316,10 @@ GRANT UPDATE (status, reviewed_at, updated_at)
 GRANT UPDATE (client_alias, first_session_date, updated_at)
   ON beneficiary_files TO authenticated;
 
+-- Admin: full access to both tables
+GRANT ALL ON beneficiary_files TO kunacademy_admin;
+GRANT ALL ON beneficiary_file_sessions TO kunacademy_admin;
+
 
 -- ============================================================================
 -- SMOKE TESTS
