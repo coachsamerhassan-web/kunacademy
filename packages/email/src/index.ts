@@ -31,3 +31,7 @@ export type { NotificationEvent } from './dispatcher';
 
 // Zoho CRM integration
 export { createZohoCrmContact } from './zoho-crm';
+
+// Mentor prep email (Phase 1.6 — wired to cron #9 in Phase 1.4)
+export { sendMentorPrepEmail } from './mentor-prep';
+export type { MentorPrepEmailParams } from './mentor-prep';
