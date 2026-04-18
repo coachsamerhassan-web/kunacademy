@@ -55,3 +55,5 @@ export * from './package-templates';
 export * from './milestone-library';
 export * from './package-instances';
 export * from './package-instance-milestones';
+export * from './beneficiary-files';
+export * from './beneficiary-file-sessions';
