@@ -1199,6 +1199,37 @@ export async function POST(request: NextRequest) {
         }
       }
 
+      // ── P0-#8: Atomic discount code usage increment ───────────────────────────
+      // Runs inside the event-dedup block (duplicate events are already rejected above),
+      // so this executes at most once per Stripe event. The WHERE clause guard
+      // (current_uses < max_uses) prevents over-incrementing if the cap was hit between
+      // /confirm and the webhook — the booking is honored in that edge case (user already
+      // paid), we simply don't increment.
+      if (discountCodeIdForIncrement) {
+        try {
+          const discountIncrResult = await withAdminContext(async (db) => {
+            return db.execute(
+              sql`UPDATE discount_codes
+                  SET current_uses = current_uses + 1
+                  WHERE id = ${discountCodeIdForIncrement}
+                    AND (max_uses IS NULL OR current_uses < max_uses)`
+            );
+          });
+          const rowsAffected = (discountIncrResult as any).rowCount ?? 0;
+          if (rowsAffected === 0) {
+            console.warn(
+              `[payment-webhook] Discount code ${discountCodeIdForIncrement} usage NOT incremented ` +
+              `(max_uses cap hit between /confirm and webhook — booking honored, discount is "free" for this edge case)`
+            );
+          } else {
+            console.log(`[payment-webhook] Discount code ${discountCodeIdForIncrement} current_uses incremented`);
+          }
+        } catch (discountIncrErr: any) {
+          // Non-fatal — log for manual reconciliation; never fail the webhook
+          console.error('[payment-webhook] Discount code increment failed:', discountIncrErr.message);
+        }
+      }
+
       // Create Zoho Books invoice (settlement-triggered, non-blocking — don't fail the webhook)
       try {
         const invoiceResult = await createZohoBooksInvoice({

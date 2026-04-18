@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAdminContext } from '@kunacademy/db';
-import { bookings, services, profiles } from '@kunacademy/db/schema';
-import { eq } from 'drizzle-orm';
+import { bookings, services, profiles, discount_codes } from '@kunacademy/db/schema';
+import { eq, sql } from 'drizzle-orm';
 import { getAuthUser } from '@kunacademy/auth/server';
 import { createCheckoutSession } from '@kunacademy/payments';
 import { getCoachCalendarIntegration, createBookingEvent } from '@/lib/google-calendar';
@@ -81,14 +81,14 @@ export async function POST(request: NextRequest) {
   const user = await getAuthUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  let body: { hold_id?: string; payment_method?: string };
+  let body: { hold_id?: string; payment_method?: string; discount_code?: string };
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
   }
 
-  const { hold_id, payment_method } = body;
+  const { hold_id, payment_method, discount_code } = body;
   if (!hold_id) {
     return NextResponse.json({ error: 'hold_id is required' }, { status: 400 });
   }
@@ -195,7 +195,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ booking_id: hold_id, status: 'confirmed' });
   }
 
-  // Paid booking → create Stripe checkout
+  // Paid booking → optionally re-validate discount, then create Stripe checkout
   if (!process.env.STRIPE_SECRET_KEY) {
     return NextResponse.json({ error: 'Payment not configured' }, { status: 503 });
   }
@@ -204,11 +204,108 @@ export async function POST(request: NextRequest) {
   const origin = request.headers.get('origin') || process.env.NEXTAUTH_URL || 'https://kuncoaching.me';
   const locale = request.headers.get('accept-language')?.split(',')[0]?.includes('ar') ? 'ar' : 'en';
 
+  // ── Server-side discount re-validation (P0-#8) ──────────────────────────────
+  // The client may have applied a discount code. We re-validate it here — never
+  // trust client-side price computation for what gets charged.
+  let chargeAmount = service!.price_aed!;   // default: full price in AED minor units (cents)
+  let discountCodeId: string | null = null;
+  let finalAmountAed: number | null = null;
+
+  if (discount_code && typeof discount_code === 'string') {
+    const upperCode = discount_code.toUpperCase().trim();
+
+    // Fetch the code from DB
+    const [codeRow] = await withAdminContext(async (db) => {
+      return db.select()
+        .from(discount_codes)
+        .where(eq(discount_codes.code, upperCode))
+        .limit(1) as Promise<Array<typeof discount_codes.$inferSelect>>;
+    });
+
+    if (!codeRow) {
+      return NextResponse.json({ error: 'Invalid discount code' }, { status: 400 });
+    }
+
+    // 1. Must be active
+    if (!codeRow.is_active) {
+      return NextResponse.json({ error: 'This discount code is no longer active' }, { status: 400 });
+    }
+
+    // 2. Must be within validity window
+    const now = new Date();
+    const validFrom = new Date(codeRow.valid_from);
+    const validUntil = new Date(codeRow.valid_until);
+    if (now < validFrom) {
+      return NextResponse.json({ error: 'This discount code is not yet valid' }, { status: 400 });
+    }
+    if (now > validUntil) {
+      return NextResponse.json({ error: 'This discount code has expired' }, { status: 400 });
+    }
+
+    // 3. Usage limit check (NULL = infinite)
+    if (codeRow.max_uses !== null && codeRow.current_uses >= codeRow.max_uses) {
+      return NextResponse.json({ error: 'This discount code has reached its usage limit' }, { status: 400 });
+    }
+
+    // 4. Service applicability check (NULL = all services)
+    if (codeRow.applicable_service_ids && codeRow.applicable_service_ids.length > 0) {
+      if (!booking.service_id || !codeRow.applicable_service_ids.includes(booking.service_id)) {
+        return NextResponse.json(
+          { error: 'This discount code is not valid for the selected service' },
+          { status: 400 },
+        );
+      }
+    }
+
+    // 5. Provider check: if code is coach-specific, must match the booking's provider
+    if (codeRow.provider_id) {
+      if (!booking.provider_id || codeRow.provider_id !== booking.provider_id) {
+        return NextResponse.json(
+          { error: 'This discount code is not valid for the selected coach' },
+          { status: 400 },
+        );
+      }
+    }
+
+    // All validations passed — compute final amount
+    const basePrice = service!.price_aed!;
+    let computed: number;
+    if (codeRow.discount_type === 'percentage') {
+      computed = basePrice - Math.round(basePrice * codeRow.discount_value / 100);
+    } else {
+      // fixed discount: reject if currency mismatch (only AED supported for bookings)
+      if (codeRow.currency && codeRow.currency.toLowerCase() !== 'aed') {
+        return NextResponse.json(
+          { error: `Fixed discount currency (${codeRow.currency}) does not match service currency (AED)` },
+          { status: 400 },
+        );
+      }
+      computed = basePrice - codeRow.discount_value;
+    }
+    // Floor at 0 — never charge negative
+    chargeAmount = Math.max(0, computed);
+    discountCodeId = codeRow.id;
+    finalAmountAed = chargeAmount;
+
+    // Update booking with discount_code_id and final_amount_aed before Stripe session
+    await withAdminContext(async (db) => {
+      await db.update(bookings)
+        .set({
+          discount_code_id: discountCodeId,
+          final_amount_aed: finalAmountAed,
+          final_amount_currency: 'aed',
+        })
+        .where(eq(bookings.id, hold_id));
+    });
+
+    console.log(`[bookings/confirm] Discount ${upperCode} applied: ${basePrice} → ${chargeAmount} AED (code_id: ${discountCodeId})`);
+  }
+
   try {
     const session = await createCheckoutSession({
       lineItems: [{
         name: service?.name_en || 'Coaching Session',
-        amount: service!.price_aed!,
+        amount: chargeAmount,   // discounted or full price
         currency: 'AED',
         quantity: 1,
       }],
@@ -220,6 +317,7 @@ export async function POST(request: NextRequest) {
         item_type: 'booking',
         item_id: hold_id,
         user_id: user.id,
+        ...(discountCodeId ? { discount_code_id: discountCodeId } : {}),
       },
     });
 
