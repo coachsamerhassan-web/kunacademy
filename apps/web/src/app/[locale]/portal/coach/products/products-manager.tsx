@@ -235,7 +235,7 @@ export function ProductsManager({ locale }: { locale: string }) {
               <h2 className="text-lg font-bold text-[var(--text-primary)]">
                 {editId ? (isAr ? 'تعديل الخدمة' : 'Edit Service') : (isAr ? 'خدمة جديدة' : 'New Service')}
               </h2>
-              <button onClick={() => setDialogOpen(false)} className="p-1 rounded-lg hover:bg-[var(--color-neutral-100)]">
+              <button onClick={() => setDialogOpen(false)} className="p-1 rounded-lg hover:bg-[var(--color-neutral-100)]" aria-label={isAr ? 'إغلاق' : 'Close'}>
                 <X className="w-5 h-5" />
               </button>
             </div>

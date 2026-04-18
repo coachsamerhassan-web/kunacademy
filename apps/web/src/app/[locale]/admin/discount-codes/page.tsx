@@ -343,6 +343,7 @@ export default function AdminDiscountCodesPage() {
               <button
                 onClick={() => { setShowCreate(false); resetForm(); }}
                 className="p-1 rounded-lg hover:bg-[var(--color-neutral-100)] text-[var(--color-neutral-500)]"
+                aria-label={isAr ? 'إغلاق' : 'Close'}
               >
                 <X className="w-5 h-5" aria-hidden="true" />
               </button>

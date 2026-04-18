@@ -164,7 +164,7 @@ export default function AdminTestimonialsPage() {
           <div className="w-full max-w-md max-h-[70vh] overflow-y-auto rounded-2xl bg-white p-6 shadow-xl" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-bold text-[var(--text-primary)]">{preview.client_name}</h3>
-              <button onClick={() => setPreview(null)} className="p-1 rounded-lg hover:bg-[var(--color-neutral-100)]"><X className="w-5 h-5" /></button>
+              <button onClick={() => setPreview(null)} className="p-1 rounded-lg hover:bg-[var(--color-neutral-100)]" aria-label={isAr ? 'إغلاق' : 'Close'}><X className="w-5 h-5" /></button>
             </div>
             {preview.program_name && <p className="text-xs text-[var(--color-neutral-400)] mb-3">{preview.program_name}</p>}
             {preview.text_ar && <div className="text-sm leading-relaxed mb-3 whitespace-pre-line" dir="rtl">{preview.text_ar}</div>}
