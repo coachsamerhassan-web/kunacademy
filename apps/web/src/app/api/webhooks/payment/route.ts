@@ -23,6 +23,8 @@ export async function POST(request: NextRequest) {
     let tabbyPaymentIdForCapture: string | null = null;
     // 6.5.8 — amount reported by the gateway, in minor units (cents/fils), for mismatch detection
     let gatewayAmount: number | null = null;
+    // P0-#8 — discount code ID extracted from Stripe session metadata for atomic usage increment
+    let discountCodeIdForIncrement: string | null = null;
 
     if (gateway === 'stripe') {
       // Verify Stripe webhook signature
@@ -89,6 +91,8 @@ export async function POST(request: NextRequest) {
       if (event.type === 'checkout.session.completed') {
         const session = event.data.object as any;
         paymentId = session.metadata?.payment_id ?? null;
+        // P0-#8: extract discount_code_id from Stripe metadata for post-settlement increment
+        discountCodeIdForIncrement = session.metadata?.discount_code_id ?? null;
 
         // ── Setup mode: installment card-save → create Stripe Subscription Schedule ──
         // When mode === 'setup', the student has saved their card for future charges.
@@ -912,6 +916,62 @@ export async function POST(request: NextRequest) {
             sql`UPDATE bookings SET status = 'confirmed' WHERE id = ${meta.item_id}`
           );
         });
+
+        // ── Guest booking confirmation email (P0-#7) ──────────────────────────
+        // Paid guest bookings: send magic-link confirmation email after status=confirmed.
+        // Free guest bookings get their email in guest-create/route.ts directly.
+        const guestEmailForBooking = meta.guest_email as string | undefined;
+        const guestTokenForBooking = meta.guest_token as string | undefined;
+        if (guestEmailForBooking && guestTokenForBooking) {
+          try {
+            const { sendEmail } = await import('@kunacademy/email');
+            const bookingOrigin = process.env.NEXTAUTH_URL || 'https://kunacademy.com';
+            const bookingLocale: string = (meta.locale as string | undefined) === 'ar' ? 'ar' : 'en';
+            const isArBooking = bookingLocale === 'ar';
+            const serviceNameForEmail = isArBooking
+              ? (meta.service_name_ar as string | undefined) || (meta.item_name as string | undefined) || ''
+              : (meta.service_name_en as string | undefined) || (meta.item_name as string | undefined) || '';
+            const guestNameForEmail = (meta.guest_name as string | undefined) || guestEmailForBooking.split('@')[0];
+            const magicLinkForBooking = `${bookingOrigin}/${bookingLocale}/coaching/book/success?booking_id=${meta.item_id}&token=${guestTokenForBooking}`;
+
+            await sendEmail({
+              to: guestEmailForBooking,
+              subject: isArBooking
+                ? 'تأكيد حجز جلسة الكوتشينج — أكاديمية كُن'
+                : 'Coaching Session Booking Confirmed — Kun Academy',
+              html: `
+                <div dir="${isArBooking ? 'rtl' : 'ltr'}" style="font-family: system-ui, Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #FFFDF9; border-radius: 12px; overflow: hidden;">
+                  <div style="background: #474099; padding: 28px 36px; text-align: ${isArBooking ? 'right' : 'left'};">
+                    <p style="color: rgba(255,255,255,0.7); font-size: 13px; margin: 0 0 4px;">${isArBooking ? 'أكاديمية كُن للكوتشينج' : 'Kun Coaching Academy'}</p>
+                    <h1 style="color: #ffffff; font-size: 22px; margin: 0; font-weight: 700; line-height: 1.4;">${isArBooking ? 'تم تأكيد حجزك ودفعتك' : 'Booking & Payment Confirmed'}</h1>
+                  </div>
+                  <div style="padding: 32px 36px;">
+                    <p style="color: #333; font-size: 16px; margin: 0 0 20px;">${isArBooking ? `مرحبًا ${guestNameForEmail}،` : `Hi ${guestNameForEmail},`}</p>
+                    <p style="color: #555; font-size: 15px; line-height: 1.7; margin: 0 0 24px;">
+                      ${isArBooking
+                        ? `تم استلام دفعتك وتأكيد جلستك في <strong style="color:#474099;">${serviceNameForEmail}</strong>. استخدم الرابط أدناه للاطلاع على التفاصيل.`
+                        : `Your payment has been received and your session in <strong style="color:#474099;">${serviceNameForEmail}</strong> is confirmed. Use the link below to view your booking details.`
+                      }
+                    </p>
+                    <a href="${magicLinkForBooking}" style="display: inline-block; padding: 14px 32px; background: #474099; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 15px;">
+                      ${isArBooking ? 'عرض تفاصيل الحجز' : 'View Booking Details'}
+                    </a>
+                    <p style="color: #888; font-size: 12px; margin: 24px 0 0;">
+                      ${isArBooking ? 'هذا الرابط صالح لمدة 30 يومًا.' : 'This link is valid for 30 days.'}
+                    </p>
+                  </div>
+                  <div style="background: #2D2860; padding: 20px 36px; text-align: center;">
+                    <p style="color: rgba(255,255,255,0.5); font-size: 11px; margin: 0;">${isArBooking ? 'أكاديمية كُن للكوتشينج — kunacademy.com' : 'Kun Coaching Academy — kunacademy.com'}</p>
+                  </div>
+                </div>
+              `,
+            });
+            console.log(`[payment-webhook] Guest booking confirmation email sent to ${guestEmailForBooking}`);
+          } catch (guestEmailErr: any) {
+            console.error('[payment-webhook] Guest booking confirmation email failed:', guestEmailErr.message);
+            // Non-fatal — booking is confirmed; email failure is logged only
+          }
+        }
       } else if (meta.item_type === 'product' && meta.item_id && meta.user_id) {
         // Handle digital product purchases — generate download tokens
         try {

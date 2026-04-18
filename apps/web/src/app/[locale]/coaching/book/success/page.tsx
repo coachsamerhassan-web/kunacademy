@@ -20,6 +20,7 @@ interface Booking {
   coach_name_ar: string | null;
   coach_photo: string | null;
   guest_name?: string | null;
+  guest_email?: string | null;
 }
 
 function formatDate(iso: string, locale: string) {
@@ -284,8 +285,8 @@ function SuccessPageInner({ locale }: { locale: string }) {
   const isAr = locale === 'ar';
   const searchParams = useSearchParams();
   const bookingId = searchParams.get('booking_id') || searchParams.get('payment_id');
-  // email param is present when coming from a guest checkout
-  const guestEmailParam = searchParams.get('email');
+  // token param is present when coming from a guest checkout (P0-#7 — replaces email param)
+  const guestTokenParam = searchParams.get('token');
 
   const [booking, setBooking] = useState<Booking | null>(null);
   const [loading, setLoading] = useState(true);
@@ -303,8 +304,8 @@ function SuccessPageInner({ locale }: { locale: string }) {
     if (authLoading || loading) return;
     // Only fire once
     if (linkAttempted.current) return;
-    // Must have: authenticated user + booking_id + guest email param + booking loaded
-    if (!authUser || !bookingId || !guestEmailParam) return;
+    // Must have: authenticated user + booking_id + guest token param + booking loaded
+    if (!authUser || !bookingId || !guestTokenParam) return;
     if (!booking) return;
     // Only auto-link when booking has no customer_id yet (guest_name present = guest booking)
     if ((booking as any).customer_id) return;
@@ -328,23 +329,33 @@ function SuccessPageInner({ locale }: { locale: string }) {
         }
       })
       .catch(() => setLinkingBooking(false));
-  }, [authUser, authLoading, loading, booking, bookingId, guestEmailParam, locale]);
+  }, [authUser, authLoading, loading, booking, bookingId, guestTokenParam, locale]);
 
   useEffect(() => {
     if (!bookingId) { setLoading(false); return; }
 
-    // Determine whether this is a guest (email param present) or authenticated user
-    if (guestEmailParam) {
-      // Guest flow — use the guest-accessible endpoint
+    // Determine whether this is a guest (token param present) or authenticated user
+    if (guestTokenParam) {
+      // Guest flow — use the guest-accessible endpoint with opaque token (P0-#7)
       setIsGuest(true);
-      fetch(`/api/bookings/guest/${bookingId}?email=${encodeURIComponent(guestEmailParam)}`)
+      fetch(`/api/bookings/guest/${bookingId}?token=${encodeURIComponent(guestTokenParam)}`)
         .then(r => r.json())
         .then(data => {
           if (data.booking) setBooking(data.booking);
           else setError(data.error || 'Booking not found');
         })
         .catch(() => setError('Failed to load booking'))
-        .finally(() => setLoading(false));
+        .finally(() => {
+          setLoading(false);
+          // Strip token from URL after fetch settles (success or failure)
+          if (typeof window !== 'undefined') {
+            const url = new URL(window.location.href);
+            if (url.searchParams.has('token')) {
+              url.searchParams.delete('token');
+              window.history.replaceState({}, '', url.toString());
+            }
+          }
+        });
     } else {
       // Authenticated flow — use existing auth-required endpoint
       fetch(`/api/bookings/${bookingId}`)
@@ -356,7 +367,7 @@ function SuccessPageInner({ locale }: { locale: string }) {
         .catch(() => setError('Failed to load booking'))
         .finally(() => setLoading(false));
     }
-  }, [bookingId, guestEmailParam]);
+  }, [bookingId, guestTokenParam]);
 
   function downloadICS() {
     if (!booking) return;
@@ -538,11 +549,11 @@ function SuccessPageInner({ locale }: { locale: string }) {
       )}
 
       {/* ── Guest: Create Account CTA ── */}
-      {isGuest && bookingId && guestEmailParam && booking && (
+      {isGuest && bookingId && guestTokenParam && booking && booking.guest_email && (
         <div className="mb-6">
           <GuestSignupPanel
             bookingId={bookingId}
-            guestEmail={guestEmailParam}
+            guestEmail={booking.guest_email}
             guestName={(booking.guest_name || '').trim()}
             locale={locale}
           />
