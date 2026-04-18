@@ -57,3 +57,4 @@ export * from './package-instances';
 export * from './package-instance-milestones';
 export * from './beneficiary-files';
 export * from './beneficiary-file-sessions';
+export * from './rubric-templates';

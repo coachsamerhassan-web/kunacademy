@@ -9,7 +9,8 @@
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
     "clean": "turbo run clean",
-    "seed:discount-codes": "tsx scripts/seed-test-discount-codes.ts"
+    "seed:discount-codes": "tsx scripts/seed-test-discount-codes.ts",
+    "seed:rubric-v1": "tsx scripts/seed-somatic-thinking-rubric-v1.ts"
   },
   "dependencies": {
     "date-fns": "^4.1.0",
