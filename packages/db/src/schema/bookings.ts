@@ -1,8 +1,9 @@
-import { pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, uuid, integer } from 'drizzle-orm/pg-core';
 import { payments } from './payments';
 import { profiles } from './profiles';
 import { providers } from './providers';
 import { services } from './services';
+import { discount_codes } from './discount_codes';
 
 export const bookings = pgTable("bookings", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -27,6 +28,17 @@ export const bookings = pgTable("bookings", {
   guest_name: text("guest_name"),
   guest_email: text("guest_email"),
   guest_phone: text("guest_phone"),
+  // Guest token (P0-#7) — nullable, unique, used for stateless guest session retrieval
+  guest_token: text("guest_token").unique(),
+  guest_token_expires_at: timestamp("guest_token_expires_at", { withTimezone: true, mode: 'string' }),
+  // Server-side discount (P0-#8) — nullable FK to discount_codes
+  discount_code_id: uuid("discount_code_id").references(() => discount_codes.id, { onDelete: 'set null' }),
+  // Final amount in cents; null means use service.price_aed (default)
+  final_amount_aed: integer("final_amount_aed"),
+  final_amount_egp: integer("final_amount_egp"),
+  final_amount_usd: integer("final_amount_usd"),
+  // Which currency is authoritative (aed|egp|usd); null means use service default
+  final_amount_currency: text("final_amount_currency"),
 });
 
 export type Bookings = typeof bookings.$inferSelect;
