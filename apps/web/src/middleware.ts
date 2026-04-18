@@ -51,6 +51,19 @@ export default auth(async function middleware(request) {
     return NextResponse.redirect(new URL(`/${locale}${newPath}`, request.url), 301);
   }
 
+  // ── Redirect /programs/stce → /academy/certifications/stce/ (P0-A) ────
+  if (withoutLocaleForRedirect === '/programs/stce') {
+    const locale = getLocaleFromPath(request.nextUrl.pathname);
+    return NextResponse.redirect(new URL(`/${locale}/academy/certifications/stce/`, request.url), 301);
+  }
+
+  // ── Redirect /corporate → /programs/corporate/ (P0-B) ────────────────
+  // Exact match only: do NOT match /corporate/roi or other subroutes
+  if (withoutLocaleForRedirect === '/corporate') {
+    const locale = getLocaleFromPath(request.nextUrl.pathname);
+    return NextResponse.redirect(new URL(`/${locale}/programs/corporate/`, request.url), 301);
+  }
+
   // ── Never protect auth routes — prevents redirect loops ─────────────
   const withoutLocaleEarly = request.nextUrl.pathname.replace(/^\/(ar|en)/, '');
   if (
