@@ -38,8 +38,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       title,
       description: description?.slice(0, 160) || '',
       type: 'article',
+      siteName: locale === 'ar' ? 'أكاديمية كُن' : 'Kun Academy',
+      locale,
       ...(post.featured_image_url ? { images: [{ url: post.featured_image_url }] } : {}),
       ...(post.published_at ? { publishedTime: post.published_at } : {}),
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description: description?.slice(0, 160) || '',
+      ...(post.featured_image_url ? { images: [post.featured_image_url] } : {}),
     },
   };
 }

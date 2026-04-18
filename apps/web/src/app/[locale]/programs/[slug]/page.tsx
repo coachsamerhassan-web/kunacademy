@@ -45,9 +45,20 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title: isAr ? `${title} | أكاديمية كُن` : `${title} | Kun Academy`,
     description,
-    openGraph: program.og_image_url
-      ? { images: [{ url: program.og_image_url }] }
-      : undefined,
+    openGraph: {
+      title,
+      description,
+      type: 'website',
+      siteName: isAr ? 'أكاديمية كُن' : 'Kun Academy',
+      locale,
+      ...(program.og_image_url ? { images: [{ url: program.og_image_url }] } : {}),
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      ...(program.og_image_url ? { images: [program.og_image_url] } : {}),
+    },
   };
 }
 

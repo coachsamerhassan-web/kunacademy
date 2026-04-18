@@ -30,7 +30,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     openGraph: {
       title,
       description: description?.slice(0, 160) || '',
+      type: 'website',
+      siteName: locale === 'ar' ? 'أكاديمية كُن' : 'Kun Academy',
+      locale,
       ...(event.image_url ? { images: [{ url: event.image_url }] } : {}),
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description: description?.slice(0, 160) || '',
+      ...(event.image_url ? { images: [event.image_url] } : {}),
     },
   };
 }

@@ -40,9 +40,19 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       description: isAr
         ? 'أول أكاديمية عربية للتفكير الحسّي® — ٥٠٠+ كوتش في ١٣ دولة'
         : 'The first Arab academy for Somatic Thinking® — 500+ coaches across 13 countries',
+      type: 'website',
+      siteName: 'Kun Coaching Academy',
+      locale: locale,
       images: [{ url: '/api/og?title=Kun%20Coaching%20Academy&subtitle=%D8%A3%D9%83%D8%A7%D8%AF%D9%8A%D9%85%D9%8A%D8%A9%20%D9%83%D9%8F%D9%86%20%D9%84%D9%84%D9%83%D9%88%D8%AA%D8%B4%D9%8A%D9%86%D8%AC&type=default', width: 1200, height: 630 }],
     },
-    twitter: { card: 'summary_large_image' },
+    twitter: {
+      card: 'summary_large_image',
+      title: isAr ? 'أكاديمية كُن للكوتشينج' : 'Kun Coaching Academy',
+      description: isAr
+        ? 'أول أكاديمية عربية للتفكير الحسّي® — ٥٠٠+ كوتش في ١٣ دولة'
+        : 'The first Arab academy for Somatic Thinking® — 500+ coaches across 13 countries',
+      images: ['/api/og?title=Kun%20Coaching%20Academy&subtitle=%D8%A3%D9%83%D8%A7%D8%AF%D9%8A%D9%85%D9%8A%D8%A9%20%D9%83%D9%8F%D9%86%20%D9%84%D9%84%D9%83%D9%88%D8%AA%D8%B4%D9%8A%D9%86%D8%AC&type=default'],
+    },
   };
 }
 
