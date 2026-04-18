@@ -7,6 +7,8 @@ import { GeometricPattern } from '@kunacademy/ui/patterns';
 import { MarkdownContent } from '@/components/markdown-content';
 import type { Metadata } from 'next';
 import { ArrowLeft } from 'lucide-react';
+import { articleJsonLd } from '@kunacademy/ui/structured-data';
+import { JsonLd } from '@/components/seo/JsonLd';
 
 // Bilingual category label mapping
 const CATEGORY_LABELS: Record<string, { en: string; ar: string }> = {
@@ -63,28 +65,19 @@ export default async function BlogPostPage({ params }: Props) {
   const author = post.author_slug ? await cms.getTeamMember(post.author_slug) : null;
   const authorName = author ? (isAr ? author.name_ar : author.name_en) : null;
 
-  const jsonLd = {
-    '@context': 'https://schema.org',
-    '@type': 'Article',
-    headline: title,
-    description: excerpt || '',
-    ...(post.featured_image_url ? { image: post.featured_image_url } : {}),
-    ...(post.published_at ? { datePublished: post.published_at } : {}),
-    ...(authorName ? { author: { '@type': 'Person', name: authorName } } : {}),
-    publisher: {
-      '@type': 'Organization',
-      name: 'Kun Academy',
-      url: 'https://kunacademy.com',
-    },
-    mainEntityOfPage: {
-      '@type': 'WebPage',
-      '@id': `https://kunacademy.com/${locale}/blog/${slug}`,
-    },
-  };
-
   return (
     <main>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <JsonLd
+        data={articleJsonLd({
+          locale,
+          title,
+          description: excerpt || '',
+          slug,
+          image: post.featured_image_url,
+          publishedAt: post.published_at,
+          modifiedAt: post.last_edited_at || post.published_at,
+        })}
+      />
       {/* Hero */}
       <section className="relative overflow-hidden py-12 md:py-20">
         {post.featured_image_url ? (

@@ -120,3 +120,121 @@ export function websiteJsonLd() {
     },
   };
 }
+
+/** Person schema for coach/team member pages */
+export function personJsonLd(opts: {
+  locale: string;
+  name: string;
+  jobTitle: string;
+  slug: string;
+  image?: string;
+  bio?: string;
+  sameAs?: string[];
+}) {
+  const { locale, name, jobTitle, slug, image, bio, sameAs = [] } = opts;
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'Person',
+    '@id': `${SITE_URL}/${locale}/coaches/${slug}/#person`,
+    name,
+    jobTitle,
+    url: `${SITE_URL}/${locale}/coaches/${slug}`,
+    ...(image && { image }),
+    ...(bio && { description: bio }),
+    ...(sameAs.length > 0 && { sameAs }),
+    affiliation: {
+      '@type': 'EducationalOrganization',
+      '@id': `${SITE_URL}/#organization`,
+      name: locale === 'ar' ? 'أكاديمية كُن للكوتشينج' : 'Kun Coaching Academy',
+    },
+  };
+}
+
+/** Article schema for blog post pages */
+export function articleJsonLd(opts: {
+  locale: string;
+  title: string;
+  description: string;
+  slug: string;
+  image?: string;
+  author?: string;
+  publishedAt?: string;
+  modifiedAt?: string;
+}) {
+  const { locale, title, description, slug, image, author, publishedAt, modifiedAt } = opts;
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BlogPosting',
+    headline: title,
+    description,
+    url: `${SITE_URL}/${locale}/blog/${slug}`,
+    ...(image && { image }),
+    author: {
+      '@type': 'Organization',
+      '@id': `${SITE_URL}/#organization`,
+      name: locale === 'ar' ? 'أكاديمية كُن للكوتشينج' : 'Kun Coaching Academy',
+    },
+    publisher: {
+      '@type': 'EducationalOrganization',
+      '@id': `${SITE_URL}/#organization`,
+      name: locale === 'ar' ? 'أكاديمية كُن للكوتشينج' : 'Kun Coaching Academy',
+      logo: `${SITE_URL}/images/logos/kun-logo-color.png`,
+    },
+    inLanguage: locale === 'ar' ? 'ar' : 'en',
+    ...(publishedAt && { datePublished: publishedAt }),
+    ...(modifiedAt && { dateModified: modifiedAt }),
+  };
+}
+
+/** Event schema for event/retreat pages */
+export function eventJsonLd(opts: {
+  locale: string;
+  name: string;
+  description: string;
+  slug: string;
+  image?: string;
+  startDate: string;
+  endDate?: string;
+  location?: string;
+  locationType?: 'in-person' | 'online' | 'hybrid';
+  priceAed?: number;
+  currency?: string;
+}) {
+  const { locale, name, description, slug, image, startDate, endDate, location, locationType, priceAed, currency = 'AED' } = opts;
+
+  const eventLocation = locationType === 'online'
+    ? { '@type': 'VirtualLocation', url: `${SITE_URL}/${locale}/events/${slug}` }
+    : locationType === 'hybrid'
+    ? [
+        { '@type': 'VirtualLocation', url: `${SITE_URL}/${locale}/events/${slug}` },
+        { '@type': 'Place', name: location || 'Dubai, UAE' },
+      ]
+    : { '@type': 'Place', name: location || 'Dubai, UAE' };
+
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'Event',
+    '@id': `${SITE_URL}/${locale}/events/${slug}/#event`,
+    name,
+    description,
+    url: `${SITE_URL}/${locale}/events/${slug}`,
+    ...(image && { image }),
+    startDate,
+    ...(endDate && { endDate }),
+    location: eventLocation,
+    organizer: {
+      '@type': 'EducationalOrganization',
+      '@id': `${SITE_URL}/#organization`,
+      name: locale === 'ar' ? 'أكاديمية كُن للكوتشينج' : 'Kun Coaching Academy',
+    },
+    inLanguage: locale === 'ar' ? 'ar' : 'en',
+    ...(priceAed != null && {
+      offers: {
+        '@type': 'Offer',
+        price: (priceAed / 100).toFixed(2),
+        priceCurrency: currency,
+        availability: 'https://schema.org/InStock',
+      },
+    }),
+  };
+}

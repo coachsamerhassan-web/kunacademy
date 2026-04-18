@@ -13,6 +13,7 @@ import { buildGpsTabs, buildIeTabs } from '@/components/audience-tabs-data';
 import { LeadCaptureForm } from '@/components/lead-capture-form';
 import { getPricingRegion, getGeoPrice, shouldShowPrice, formatGeoPrice } from '@/lib/geo-pricing';
 import { courseJsonLd } from '@kunacademy/ui/structured-data';
+import { JsonLd } from '@/components/seo/JsonLd';
 
 export const revalidate = 300;
 
@@ -564,23 +565,18 @@ export default async function ProgramDetailPage({ params }: Props) {
       )}
 
       {/* ── Structured Data: Course schema (JSON-LD) ─────────────────────── */}
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify(
-            courseJsonLd({
-              locale,
-              name: isAr ? program.title_ar : program.title_en,
-              description: (isAr ? program.description_ar : program.description_en) ?? '',
-              slug: `programs/${slug}`,
-              hours: parseDurationHours(program.duration ?? ''),
-              // price_aed from CMS is in full AED units; courseJsonLd expects minor units (cents)
-              ...(pricingVisible && !program.is_free && program.price_aed
-                ? { priceAed: program.price_aed * 100, currency: 'AED' }
-                : {}),
-            })
-          ),
-        }}
+      <JsonLd
+        data={courseJsonLd({
+          locale,
+          name: isAr ? program.title_ar : program.title_en,
+          description: (isAr ? program.description_ar : program.description_en) ?? '',
+          slug: `programs/${slug}`,
+          hours: parseDurationHours(program.duration ?? ''),
+          // price_aed from CMS is in full AED units; courseJsonLd expects minor units (cents)
+          ...(pricingVisible && !program.is_free && program.price_aed
+            ? { priceAed: program.price_aed * 100, currency: 'AED' }
+            : {}),
+        })}
       />
     </main>
   );

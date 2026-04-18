@@ -8,6 +8,8 @@ import { MarkdownContent } from '@/components/markdown-content';
 import { ArrowLeft, ArrowRight, Calendar, MessageCircle, Quote } from 'lucide-react';
 import type { Metadata } from 'next';
 import type { TeamMember, Testimonial } from '@kunacademy/cms';
+import { personJsonLd } from '@kunacademy/ui/structured-data';
+import { JsonLd } from '@/components/seo/JsonLd';
 
 interface Props {
   params: Promise<{ locale: string; slug: string }>;
@@ -169,17 +171,6 @@ export default async function CoachProfilePage({ params }: Props) {
     ? KUN_LEVEL_PRICE[coach.kun_level] ?? null
     : null;
 
-  const jsonLd = {
-    '@context': 'https://schema.org',
-    '@type': 'Person',
-    name,
-    ...(title ? { jobTitle: title } : {}),
-    ...(bio ? { description: bio.slice(0, 300) } : {}),
-    ...(coach.photo_url ? { image: coach.photo_url } : {}),
-    url: `https://kunacademy.com/${locale}/coaches/${slug}`,
-    worksFor: { '@type': 'Organization', name: 'Kun Academy', url: 'https://kunacademy.com' },
-  };
-
   // ── Related coaches ────────────────────────────────────────────────────────
   const relatedCoaches = getRelatedCoaches(allCoaches, coach, 3);
 
@@ -241,7 +232,16 @@ export default async function CoachProfilePage({ params }: Props) {
 
   return (
     <main>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <JsonLd
+        data={personJsonLd({
+          locale,
+          name,
+          jobTitle: title || '',
+          slug,
+          image: coach.photo_url || undefined,
+          bio: bio ? bio.slice(0, 300) : undefined,
+        })}
+      />
 
       {/* ── Hero ─────────────────────────────────────────────────────────── */}
       <section className="relative overflow-hidden bg-[var(--color-primary-800)] py-16 md:py-24">

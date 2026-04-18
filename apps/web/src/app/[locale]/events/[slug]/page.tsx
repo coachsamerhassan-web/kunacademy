@@ -9,6 +9,8 @@ import { ArrowLeft } from 'lucide-react';
 import { PromoVideo } from '@/components/promo-video';
 import { EventCountdown } from '@/components/event-countdown';
 import { EventRegistrationForm } from './event-registration-form';
+import { eventJsonLd } from '@kunacademy/ui/structured-data';
+import { JsonLd } from '@/components/seo/JsonLd';
 
 interface Props {
   params: Promise<{ locale: string; slug: string }>;
@@ -73,38 +75,22 @@ export default async function EventDetailPage({ params }: Props) {
   // Fetch featured testimonials (only used when speakers are present)
   const testimonials = await cms.getFeaturedTestimonials();
 
-  const jsonLd = {
-    '@context': 'https://schema.org',
-    '@type': 'Event',
-    name: title,
-    description: description || '',
-    startDate: event.date_start,
-    ...(event.date_end ? { endDate: event.date_end } : {}),
-    ...(event.image_url ? { image: event.image_url } : {}),
-    eventStatus: isPast ? 'https://schema.org/EventCancelled' : 'https://schema.org/EventScheduled',
-    eventAttendanceMode: event.location_type === 'online'
-      ? 'https://schema.org/OnlineEventAttendanceMode'
-      : event.location_type === 'hybrid'
-        ? 'https://schema.org/MixedEventAttendanceMode'
-        : 'https://schema.org/OfflineEventAttendanceMode',
-    location: event.location_type === 'online'
-      ? { '@type': 'VirtualLocation', url: `https://kunacademy.com/${locale}/events/${slug}` }
-      : { '@type': 'Place', name: location || 'TBD' },
-    organizer: { '@type': 'Organization', name: 'Kun Academy', url: 'https://kunacademy.com' },
-    ...(isFree ? { isAccessibleForFree: true } : {
-      offers: {
-        '@type': 'Offer',
-        price: event.price_aed,
-        priceCurrency: 'AED',
-        availability: isDeadlinePassed ? 'https://schema.org/SoldOut' : 'https://schema.org/InStock',
-        url: `https://kunacademy.com/${locale}/events/${slug}`,
-      },
-    }),
-  };
-
   return (
     <main>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <JsonLd
+        data={eventJsonLd({
+          locale,
+          name: title,
+          description: description || '',
+          slug,
+          image: event.image_url || undefined,
+          startDate: event.date_start,
+          endDate: event.date_end || undefined,
+          location: location || 'TBD',
+          locationType: event.location_type as 'in-person' | 'online' | 'hybrid' || 'in-person',
+          priceAed: isFree ? undefined : event.price_aed || undefined,
+        })}
+      />
       {/* Hero */}
       <section className="relative overflow-hidden py-16 md:py-24">
         {event.image_url ? (

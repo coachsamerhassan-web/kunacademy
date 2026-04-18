@@ -9,6 +9,8 @@ import { cms } from '@kunacademy/cms/server';
 import { contentGetter } from '@kunacademy/cms';
 import dynamic from 'next/dynamic';
 import { TreePhase } from '@/components/tree-phase';
+import { organizationJsonLd } from '@kunacademy/ui/structured-data';
+import { JsonLd } from '@/components/seo/JsonLd';
 
 const TreeNarrative = dynamic(
   () => import('@/components/tree-narrative').then((m) => ({ default: m.TreeNarrative })),
@@ -76,6 +78,9 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
 
   return (
     <>
+      {/* ── JSON-LD STRUCTURED DATA ── */}
+      <JsonLd data={organizationJsonLd(locale)} />
+
       {/* ── HERO — Full-viewport with dark gradient overlay ── */}
       <HeroSection locale={locale} />
 
