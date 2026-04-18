@@ -2,14 +2,27 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { db } from '@kunacademy/db';
 import { eq, and, gte, lte } from 'drizzle-orm';
 import { providers, coach_schedules, bookings, coach_time_off } from '@kunacademy/db/schema';
+import { format, parseISO } from 'date-fns-tz';
 
-// GET /api/availability?coach_id=xxx&start=2026-03-25&end=2026-04-22&duration=60
+// Build IANA timezone allowlist at module load (cached)
+const VALID_TIMEZONES = new Set(Intl.supportedValuesOf('timeZone'));
+
+function sanitizeUserTz(raw: string | null | undefined): string {
+  if (!raw || !VALID_TIMEZONES.has(raw)) {
+    if (raw) console.warn('[availability] Invalid user_tz received:', raw);
+    return 'Asia/Dubai';
+  }
+  return raw;
+}
+
+// GET /api/availability?coach_id=xxx&start=2026-03-25&end=2026-04-22&duration=60&user_tz=America/New_York
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const coachId = searchParams.get('coach_id');
   const startDate = searchParams.get('start');
   const endDate = searchParams.get('end');
   const durationMinutes = parseInt(searchParams.get('duration') || '60');
+  const userTz = sanitizeUserTz(searchParams.get('user_tz'));
 
   if (!coachId || !startDate || !endDate) {
     return NextResponse.json({ error: 'coach_id, start, and end are required' }, { status: 400 });
@@ -105,11 +118,24 @@ export async function GET(request: NextRequest) {
     };
   });
 
-  // 5. Generate available slots with buffer
-  const slots: Array<{ date: string; start_time: string; end_time: string }> = [];
+  // 5. Generate available slots with buffer, returning both UTC and local times
+  const coachTz = schedules[0]?.timezone || 'Asia/Dubai';
+
+  interface SlotWithTimes {
+    date: string;
+    start_time: string;
+    end_time: string;
+    start_utc: string;
+    end_utc: string;
+    start_local_coach: string;
+    end_local_coach: string;
+    start_local_user: string;
+    end_local_user: string;
+  }
+
+  const slots: SlotWithTimes[] = [];
   const start = new Date(startDate);
   const end = new Date(endDate);
-  const tz = schedules[0]?.timezone || 'Asia/Dubai';
 
   for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
     const dateStr = d.toISOString().split('T')[0];
@@ -144,7 +170,46 @@ export async function GET(request: NextRequest) {
         );
 
         if (!isBooked) {
-          slots.push({ date: dateStr, start_time: slotStartTime, end_time: slotEndTime });
+          try {
+            // Convert coach local time (dateStr + slotStartTime) in coach TZ to UTC ISO string
+            const localDateTimeStr = `${dateStr}T${slotStartTime}:00`;
+            const utcStartISO = toUTC(localDateTimeStr, coachTz);
+            const utcEndISO = toUTC(`${dateStr}T${slotEndTime}:00`, coachTz);
+
+            // Format UTC instants back to local times for display
+            const userLocalStart = format(parseISO(utcStartISO), 'HH:mm', { timeZone: userTz });
+            const userLocalEnd = format(parseISO(utcEndISO), 'HH:mm', { timeZone: userTz });
+            const coachLocalStart = format(parseISO(utcStartISO), 'HH:mm', { timeZone: coachTz });
+            const coachLocalEnd = format(parseISO(utcEndISO), 'HH:mm', { timeZone: coachTz });
+
+            slots.push({
+              date: dateStr,
+              start_time: slotStartTime,
+              end_time: slotEndTime,
+              start_utc: utcStartISO,
+              end_utc: utcEndISO,
+              start_local_coach: coachLocalStart,
+              end_local_coach: coachLocalEnd,
+              start_local_user: userLocalStart,
+              end_local_user: userLocalEnd,
+            });
+          } catch (error) {
+            console.warn('[availability] Failed to convert slot times for', { dateStr, slotStartTime, coachTz }, error);
+            // Fallback: emit slot in coach TZ ISO format, skip user TZ conversion
+            const fallbackStart = `${dateStr}T${slotStartTime}:00Z`;
+            const fallbackEnd = `${dateStr}T${slotEndTime}:00Z`;
+            slots.push({
+              date: dateStr,
+              start_time: slotStartTime,
+              end_time: slotEndTime,
+              start_utc: fallbackStart,
+              end_utc: fallbackEnd,
+              start_local_coach: slotStartTime,
+              end_local_coach: slotEndTime,
+              start_local_user: slotStartTime,
+              end_local_user: slotEndTime,
+            });
+          }
         }
 
         // Advance by duration + buffer
@@ -153,11 +218,68 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  return NextResponse.json({ slots, timezone: tz, buffer_minutes: bufferMinutes });
+  return NextResponse.json({
+    slots,
+    timezone: coachTz,
+    user_timezone: userTz,
+    buffer_minutes: bufferMinutes,
+  });
 }
 
 function minutesToTime(minutes: number): string {
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
+/**
+ * Convert a local time string (YYYY-MM-DDTHH:mm:ss) in coach's TZ to UTC ISO string
+ * date-fns-tz doesn't have a direct "local to UTC" function, so we:
+ * 1. Create a naive Date from the local string
+ * 2. Parse it as if it's in the coach's TZ using utcToZonedTime logic in reverse
+ * 3. Calculate offset and convert to UTC
+ */
+function toUTC(localDateTimeStr: string, tz: string): string {
+  // e.g. "2026-04-01T09:00:00" in "Asia/Dubai"
+  // We need to find what UTC time corresponds to this local time in Dubai
+  const localDate = parseISO(localDateTimeStr);
+
+  // Use format to get what the UTC time would be if interpreted as the target TZ
+  // Then reverse-calculate: if this UTC gives us localDateTimeStr when formatted in tz, it's correct
+  // Simpler: create a Date in UTC, find its offset in the tz, adjust backwards
+
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+    timeZone: tz,
+  });
+
+  // Binary search or iterative approach: find the UTC time that formats to localDateTimeStr in tz
+  let utcTime = localDate;
+  let attempt = 0;
+  const maxAttempts = 10;
+
+  while (attempt < maxAttempts) {
+    const parts = formatter.formatToParts(utcTime);
+    const partMap = Object.fromEntries(parts.map((p) => [p.type, p.value]));
+    const formatted =
+      `${partMap.year}-${partMap.month}-${partMap.day}T${partMap.hour}:${partMap.minute}:${partMap.second}`;
+
+    if (formatted === localDateTimeStr) {
+      return utcTime.toISOString();
+    }
+
+    // Adjust: if formatted is before target, move utcTime forward; else backward
+    const diff = new Date(formatted).getTime() - new Date(localDateTimeStr).getTime();
+    utcTime = new Date(utcTime.getTime() - diff);
+    attempt++;
+  }
+
+  // Fallback: return original ISO (should not reach here in normal cases)
+  return utcTime.toISOString();
 }

@@ -34,8 +34,14 @@ interface Coach {
 
 interface Slot {
   date: string;         // "2026-04-01"
-  start_time: string;   // "09:00"
-  end_time: string;     // "10:00"
+  start_time: string;   // "09:00" (coach TZ)
+  end_time: string;     // "10:00" (coach TZ)
+  start_utc?: string;   // "2026-04-01T05:00:00.000Z"
+  end_utc?: string;     // "2026-04-01T06:00:00.000Z"
+  start_local_coach?: string;  // "09:00" in coach TZ
+  end_local_coach?: string;    // "10:00" in coach TZ
+  start_local_user?: string;   // "07:00" in user TZ (Cairo example)
+  end_local_user?: string;     // "08:00" in user TZ
 }
 
 type Step = 1 | 2 | 3 | 4;
@@ -70,7 +76,7 @@ function isoDate(d: Date) {
   return d.toISOString().split('T')[0];
 }
 
-function formatTime12(time24: string, locale: string) {
+function formatTime12(time24: string, locale: string): string {
   const [h, m] = time24.split(':').map(Number);
   if (locale === 'ar') return `${h}:${String(m).padStart(2, '0')} ${h < 12 ? 'ص' : 'م'}`;
   const period = h < 12 ? 'AM' : 'PM';
@@ -78,16 +84,23 @@ function formatTime12(time24: string, locale: string) {
   return `${h12}:${String(m).padStart(2, '0')} ${period}`;
 }
 
+function getSlotDisplayTime(slot: Slot, locale: string): string {
+  // Display user's local time as primary (start_local_user if available, fallback to start_time)
+  const timeStr = slot.start_local_user || slot.start_time;
+  return formatTime12(timeStr, locale);
+}
+
 interface WeekCalendarProps {
   slots: Slot[];
   loading: boolean;
   timezone: string;
+  userTimezone: string;
   locale: string;
   onSelect: (slot: Slot) => void;
   isMobile: boolean;
 }
 
-function WeekCalendar({ slots, loading, timezone, locale, onSelect, isMobile }: WeekCalendarProps) {
+function WeekCalendar({ slots, loading, timezone, userTimezone, locale, onSelect, isMobile }: WeekCalendarProps) {
   const isAr = locale === 'ar';
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -186,11 +199,11 @@ function WeekCalendar({ slots, loading, timezone, locale, onSelect, isMobile }: 
                 type="button"
                 onClick={() => onSelect(slot)}
                 aria-label={isAr
-                  ? `${formatTime12(slot.start_time, locale)} — ${activeDay.toLocaleDateString('ar-SA', { weekday: 'long', day: 'numeric', month: 'long' })}`
-                  : `${formatTime12(slot.start_time, locale)} on ${activeDay.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}`}
+                  ? `${getSlotDisplayTime(slot, locale)} — ${activeDay.toLocaleDateString('ar-SA', { weekday: 'long', day: 'numeric', month: 'long' })}`
+                  : `${getSlotDisplayTime(slot, locale)} on ${activeDay.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}`}
                 className="rounded-full border border-[var(--color-neutral-200)] px-4 py-2 text-sm font-medium hover:border-[var(--color-primary)] hover:text-[var(--color-primary)] hover:bg-[var(--color-primary-50)] transition-colors min-h-[44px]"
               >
-                {formatTime12(slot.start_time, locale)}
+                {getSlotDisplayTime(slot, locale)}
               </button>
             ))}
           </div>
@@ -252,12 +265,12 @@ function WeekCalendar({ slots, loading, timezone, locale, onSelect, isMobile }: 
                       type="button"
                       onClick={() => onSelect(slot)}
                       aria-label={isAr
-                        ? `${formatTime12(slot.start_time, locale)} — ${d.toLocaleDateString('ar-SA', { weekday: 'long', day: 'numeric', month: 'long' })}`
-                        : `${formatTime12(slot.start_time, locale)} on ${d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}`}
+                        ? `${getSlotDisplayTime(slot, locale)} — ${d.toLocaleDateString('ar-SA', { weekday: 'long', day: 'numeric', month: 'long' })}`
+                        : `${getSlotDisplayTime(slot, locale)} on ${d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}`}
                       // UX-Pro: touch-target-size — minimum 44px (was 36px)
                       className="rounded-full border border-[var(--color-neutral-200)] px-2 py-1.5 text-xs font-medium hover:border-[var(--color-primary)] hover:text-[var(--color-primary)] hover:bg-[var(--color-primary-50)] transition-colors text-center min-h-[44px]"
                     >
-                      {formatTime12(slot.start_time, locale)}
+                      {getSlotDisplayTime(slot, locale)}
                     </button>
                   ))}
                 </div>
@@ -330,6 +343,7 @@ function BookingFlowInner({ locale }: { locale: string }) {
   const [coaches, setCoaches] = useState<Coach[]>([]);
   const [slots, setSlots] = useState<Slot[]>([]);
   const [timezone, setTimezone] = useState('Asia/Dubai');
+  const [userTimezone, setUserTimezone] = useState('Asia/Dubai');
 
   // Loading states
   const [servicesLoading, setServicesLoading] = useState(true);
@@ -375,6 +389,17 @@ function BookingFlowInner({ locale }: { locale: string }) {
     const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
     mq.addEventListener('change', handler);
     return () => mq.removeEventListener('change', handler);
+  }, []);
+
+  // Detect user timezone on mount
+  useEffect(() => {
+    try {
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      setUserTimezone(tz);
+    } catch {
+      // Fallback to Dubai if detection fails
+      setUserTimezone('Asia/Dubai');
+    }
   }, []);
 
   // Load services on mount
@@ -448,7 +473,7 @@ function BookingFlowInner({ locale }: { locale: string }) {
     const end = isoDate(addDays(new Date(), 28));
     try {
       const res = await fetch(
-        `/api/availability?coach_id=${coach.provider_id}&start=${start}&end=${end}&duration=${service.duration_minutes}`
+        `/api/availability?coach_id=${coach.provider_id}&start=${start}&end=${end}&duration=${service.duration_minutes}&user_tz=${encodeURIComponent(userTimezone)}`
       );
       const data = await res.json();
       setSlots(data.slots || []);
@@ -456,7 +481,7 @@ function BookingFlowInner({ locale }: { locale: string }) {
     } finally {
       setSlotsLoading(false);
     }
-  }, []);
+  }, [userTimezone]);
 
   // ── Step handlers ──
 
@@ -593,13 +618,23 @@ function BookingFlowInner({ locale }: { locale: string }) {
     try {
       if (holdId) {
         // Confirm via hold API — uses session cookie auth
+        // Forward the applied discount code (if any) so the server can re-validate
+        // and charge the correct discounted amount. Client-side price display is UX only.
+        const confirmBody: {
+          hold_id: string;
+          payment_method: string;
+          discount_code?: string;
+        } = {
+          hold_id: holdId,
+          payment_method: selectedService.price_aed === 0 ? 'free' : 'stripe',
+        };
+        if (discountResult?.code) {
+          confirmBody.discount_code = discountResult.code;
+        }
         const res = await fetch('/api/bookings/confirm', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            hold_id: holdId,
-            payment_method: selectedService.price_aed === 0 ? 'free' : 'stripe',
-          }),
+          body: JSON.stringify(confirmBody),
         });
 
         if (!res.ok) {
@@ -672,7 +707,8 @@ function BookingFlowInner({ locale }: { locale: string }) {
       if (!res.ok) {
         setDiscountError(data.error ?? (isAr ? 'كود غير صالح' : 'Invalid code'));
       } else {
-        setDiscountResult(data);
+        // Persist the validated code string so handleConfirm can forward it to the server
+        setDiscountResult({ ...data, code: discountCode.trim().toUpperCase() });
       }
     } catch {
       setDiscountError(isAr ? 'تعذّر التحقق من الكود' : 'Failed to validate code');
@@ -906,6 +942,7 @@ function BookingFlowInner({ locale }: { locale: string }) {
             slots={slots}
             loading={slotsLoading}
             timezone={timezone}
+            userTimezone={userTimezone}
             locale={locale}
             onSelect={handleSelectSlot}
             isMobile={isMobile}
