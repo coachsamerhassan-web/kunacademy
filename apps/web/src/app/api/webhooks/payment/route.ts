@@ -753,6 +753,50 @@ export async function POST(request: NextRequest) {
       } else if (event.type === 'checkout.session.expired') {
         paymentId = event.data.object.metadata?.payment_id;
         status = 'failed';
+
+        // ── P0-#5: Release reserved discount on session timeout ──────────────────
+        // If a discount was reserved at /confirm but payment times out, release the
+        // reservation by decrementing pending_uses. This allows other users to claim
+        // the code's slots.
+        const discountCodeIdForRelease = event.data.object.metadata?.discount_code_id as string | undefined;
+        if (discountCodeIdForRelease) {
+          try {
+            await withAdminContext(async (db) => {
+              await db.execute(
+                sql`UPDATE discount_codes
+                    SET pending_uses = GREATEST(pending_uses - 1, 0)
+                    WHERE id = ${discountCodeIdForRelease}
+                      AND pending_uses > 0`
+              );
+            });
+            console.log(`[payment-webhook] Discount code ${discountCodeIdForRelease} reservation released on session timeout`);
+          } catch (releaseErr: any) {
+            console.error('[payment-webhook] Failed to release discount reservation:', releaseErr.message);
+          }
+        }
+
+        // ── P0-#5: Clear stale discount columns from booking if checkout expired ──
+        // If the booking has a discount reserved, clear it since the session expired
+        // and payment never went through.
+        const bookingIdForExpiry = event.data.object.metadata?.item_id as string | undefined;
+        if (bookingIdForExpiry && event.data.object.metadata?.item_type === 'booking') {
+          try {
+            await withAdminContext(async (db) => {
+              await db.execute(
+                sql`UPDATE bookings
+                    SET discount_code_id = NULL,
+                        final_amount_aed = NULL,
+                        final_amount_egp = NULL,
+                        final_amount_usd = NULL,
+                        final_amount_currency = NULL
+                    WHERE id = ${bookingIdForExpiry}`
+              );
+            });
+            console.log(`[payment-webhook] Cleared discount columns from booking ${bookingIdForExpiry} on session expiry`);
+          } catch (clearErr: any) {
+            console.error('[payment-webhook] Failed to clear discount from booking:', clearErr.message);
+          }
+        }
       }
     } else if (gateway === 'tabby') {
       // Verify Tabby webhook signature using timingSafeEqual to prevent timing attacks.
@@ -1199,34 +1243,34 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      // ── P0-#8: Atomic discount code usage increment ───────────────────────────
-      // Runs inside the event-dedup block (duplicate events are already rejected above),
-      // so this executes at most once per Stripe event. The WHERE clause guard
-      // (current_uses < max_uses) prevents over-incrementing if the cap was hit between
-      // /confirm and the webhook — the booking is honored in that edge case (user already
-      // paid), we simply don't increment.
+      // ── P0-#3: Atomic discount code usage transition (pending → current) ────────
+      // At confirm time, pending_uses was atomically incremented.
+      // At webhook settlement, transition: pending_uses -= 1, current_uses += 1
+      // If pending_uses=0 before this, cap was hit between confirm & webhook.
+      // Runs inside event-dedup block, so executes at most once per Stripe event.
       if (discountCodeIdForIncrement) {
         try {
-          const discountIncrResult = await withAdminContext(async (db) => {
+          const discountTransitionResult = await withAdminContext(async (db) => {
             return db.execute(
               sql`UPDATE discount_codes
-                  SET current_uses = current_uses + 1
+                  SET pending_uses = GREATEST(pending_uses - 1, 0),
+                      current_uses = current_uses + 1
                   WHERE id = ${discountCodeIdForIncrement}
-                    AND (max_uses IS NULL OR current_uses < max_uses)`
+                    AND pending_uses > 0`
             );
           });
-          const rowsAffected = (discountIncrResult as any).rowCount ?? 0;
+          const rowsAffected = (discountTransitionResult as any).rowCount ?? 0;
           if (rowsAffected === 0) {
             console.warn(
-              `[payment-webhook] Discount code ${discountCodeIdForIncrement} usage NOT incremented ` +
-              `(max_uses cap hit between /confirm and webhook — booking honored, discount is "free" for this edge case)`
+              `[payment-webhook] Discount code ${discountCodeIdForIncrement} NOT transitioned ` +
+              `(pending_uses was 0 — cap likely hit between /confirm and webhook; booking honored)`
             );
           } else {
-            console.log(`[payment-webhook] Discount code ${discountCodeIdForIncrement} current_uses incremented`);
+            console.log(`[payment-webhook] Discount code ${discountCodeIdForIncrement} transitioned: pending → current`);
           }
-        } catch (discountIncrErr: any) {
+        } catch (discountTransitionErr: any) {
           // Non-fatal — log for manual reconciliation; never fail the webhook
-          console.error('[payment-webhook] Discount code increment failed:', discountIncrErr.message);
+          console.error('[payment-webhook] Discount code transition failed:', discountTransitionErr.message);
         }
       }
 

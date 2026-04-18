@@ -137,8 +137,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Hold expired' }, { status: 409 });
   }
 
-  // Fetch service to determine price
-  let service: { id: string; name_en: string; name_ar: string; price_aed: number | null; duration_minutes: number } | undefined;
+  // Fetch service to determine price + primary currency (P0-#4: multi-currency support)
+  let service: { id: string; name_en: string; name_ar: string; price_aed: number | null; price_egp: number | null; price_usd: number | null; duration_minutes: number; primary_currency: 'aed' | 'egp' | 'usd' } | undefined;
   if (booking.service_id) {
     const [svc] = await withAdminContext(async (db) => {
       return db.select({
@@ -146,16 +146,34 @@ export async function POST(request: NextRequest) {
         name_en: services.name_en,
         name_ar: services.name_ar,
         price_aed: services.price_aed,
+        price_egp: services.price_egp,
+        price_usd: services.price_usd,
         duration_minutes: services.duration_minutes,
       })
         .from(services)
         .where(eq(services.id, booking.service_id!))
         .limit(1);
     });
-    service = svc;
+
+    // Detect primary currency: first non-zero price (fallback order: AED → EGP → USD)
+    let primaryCurrency: 'aed' | 'egp' | 'usd' = 'aed';
+    if (!svc?.price_aed || svc.price_aed === 0) {
+      if (svc?.price_egp && svc.price_egp > 0) {
+        primaryCurrency = 'egp';
+      } else if (svc?.price_usd && svc.price_usd > 0) {
+        primaryCurrency = 'usd';
+      }
+    }
+
+    service = svc ? { ...svc, primary_currency: primaryCurrency } : undefined;
   }
 
-  const isFree = !service?.price_aed || service.price_aed === 0;
+  // Determine if booking is free (no price in primary currency)
+  let isFree = true;
+  if (service) {
+    const priceForCurrency = service[`price_${service.primary_currency}`];
+    isFree = !priceForCurrency || priceForCurrency === 0;
+  }
 
   if (isFree || payment_method === 'free') {
     // Confirm immediately
@@ -204,9 +222,11 @@ export async function POST(request: NextRequest) {
   const origin = request.headers.get('origin') || process.env.NEXTAUTH_URL || 'https://kuncoaching.me';
   const locale = request.headers.get('accept-language')?.split(',')[0]?.includes('ar') ? 'ar' : 'en';
 
-  // ── Server-side discount re-validation (P0-#8) ──────────────────────────────
+  // ── Server-side discount re-validation (P0-#8) + Hardening #3 ────────────────
   // The client may have applied a discount code. We re-validate it here — never
   // trust client-side price computation for what gets charged.
+  // Hardening #3: Atomic reservation pattern using pending_uses to prevent race
+  // conditions where N concurrent users claim the same slots between confirm & webhook.
   let chargeAmount = service!.price_aed!;   // default: full price in AED minor units (cents)
   let discountCodeId: string | null = null;
   let finalAmountAed: number | null = null;
@@ -214,7 +234,7 @@ export async function POST(request: NextRequest) {
   if (discount_code && typeof discount_code === 'string') {
     const upperCode = discount_code.toUpperCase().trim();
 
-    // Fetch the code from DB
+    // Fetch the code from DB for serializable read + atomic reservation attempt
     const [codeRow] = await withAdminContext(async (db) => {
       return db.select()
         .from(discount_codes)
@@ -242,12 +262,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'This discount code has expired' }, { status: 400 });
     }
 
-    // 3. Usage limit check (NULL = infinite)
-    if (codeRow.max_uses !== null && codeRow.current_uses >= codeRow.max_uses) {
-      return NextResponse.json({ error: 'This discount code has reached its usage limit' }, { status: 400 });
-    }
-
-    // 4. Service applicability check (NULL = all services)
+    // 3. Service applicability check (NULL = all services)
     if (codeRow.applicable_service_ids && codeRow.applicable_service_ids.length > 0) {
       if (!booking.service_id || !codeRow.applicable_service_ids.includes(booking.service_id)) {
         return NextResponse.json(
@@ -257,7 +272,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 5. Provider check: if code is coach-specific, must match the booking's provider
+    // 4. Provider check: if code is coach-specific, must match the booking's provider
     if (codeRow.provider_id) {
       if (!booking.provider_id || codeRow.provider_id !== booking.provider_id) {
         return NextResponse.json(
@@ -267,46 +282,83 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // All validations passed — compute final amount
-    const basePrice = service!.price_aed!;
+    // 5. HARDENING #3: Atomic reservation at confirm time.
+    // Increment pending_uses atomically; if rowCount=0, cap has been hit between
+    // our read and this write → race condition detected.
+    const [reserveResult] = await withAdminContext(async (db) => {
+      return db.execute(
+        sql`UPDATE public.discount_codes
+            SET pending_uses = pending_uses + 1
+            WHERE id = ${codeRow.id}
+              AND is_active = true
+              AND now() BETWEEN valid_from AND valid_until
+              AND (max_uses IS NULL OR current_uses + pending_uses < max_uses)
+            RETURNING *`
+      ).then((res: any) => res.rows as Array<any>);
+    });
+
+    if (!reserveResult || reserveResult.length === 0) {
+      return NextResponse.json(
+        { error: 'Discount code is no longer available' },
+        { status: 400 },
+      );
+    }
+
+    const reservedCode = reserveResult[0];
+
+    // All validations passed — compute final amount (P0-#4: use service's primary currency)
+    const primaryCurrency = service!.primary_currency;
+    const basePrice = service![`price_${primaryCurrency}`]!;
     let computed: number;
-    if (codeRow.discount_type === 'percentage') {
-      computed = basePrice - Math.round(basePrice * codeRow.discount_value / 100);
+    if (reservedCode.discount_type === 'percentage') {
+      computed = basePrice - Math.round(basePrice * reservedCode.discount_value / 100);
     } else {
-      // fixed discount: reject if currency mismatch (only AED supported for bookings)
-      if (codeRow.currency && codeRow.currency.toLowerCase() !== 'aed') {
+      // fixed discount: validate currency match
+      const discountCurrency = (reservedCode.currency || 'aed').toLowerCase();
+      if (discountCurrency !== primaryCurrency) {
         return NextResponse.json(
-          { error: `Fixed discount currency (${codeRow.currency}) does not match service currency (AED)` },
+          { error: `Fixed discount currency (${reservedCode.currency}) does not match service currency (${primaryCurrency.toUpperCase()})` },
           { status: 400 },
         );
       }
-      computed = basePrice - codeRow.discount_value;
+      computed = basePrice - reservedCode.discount_value;
     }
     // Floor at 0 — never charge negative
     chargeAmount = Math.max(0, computed);
-    discountCodeId = codeRow.id;
-    finalAmountAed = chargeAmount;
+    discountCodeId = reservedCode.id;
 
-    // Update booking with discount_code_id and final_amount_aed before Stripe session
+    // Store final amount in the correct currency field (P0-#4)
+    if (primaryCurrency === 'egp') {
+      finalAmountAed = chargeAmount; // Store in AED column even though it's EGP-derived; webhook will use final_amount_currency to interpret
+    } else if (primaryCurrency === 'usd') {
+      finalAmountAed = chargeAmount; // Store in AED column even though it's USD-derived; webhook will use final_amount_currency
+    } else {
+      finalAmountAed = chargeAmount;
+    }
+
+    // Update booking with discount_code_id, final amount, and currency
     await withAdminContext(async (db) => {
       await db.update(bookings)
         .set({
           discount_code_id: discountCodeId,
           final_amount_aed: finalAmountAed,
-          final_amount_currency: 'aed',
+          final_amount_currency: primaryCurrency,
         })
         .where(eq(bookings.id, hold_id));
     });
 
-    console.log(`[bookings/confirm] Discount ${upperCode} applied: ${basePrice} → ${chargeAmount} AED (code_id: ${discountCodeId})`);
+    console.log(`[bookings/confirm] Discount ${upperCode} applied: ${basePrice} → ${chargeAmount} ${primaryCurrency.toUpperCase()} (code_id: ${discountCodeId}) [RESERVED]`);
   }
 
   try {
+    // Determine Stripe currency (P0-#4)
+    const stripeCurrency = service?.primary_currency ? (service.primary_currency === 'egp' ? 'EGP' : service.primary_currency === 'usd' ? 'USD' : 'AED') : 'AED';
+
     const session = await createCheckoutSession({
       lineItems: [{
         name: service?.name_en || 'Coaching Session',
-        amount: chargeAmount,   // discounted or full price
-        currency: 'AED',
+        amount: chargeAmount,   // discounted or full price (already computed in primary currency)
+        currency: stripeCurrency,
         quantity: 1,
       }],
       customerEmail: userEmail,

@@ -11,6 +11,7 @@ export const discount_codes = pgTable('discount_codes', {
   valid_until: timestamp('valid_until', { withTimezone: true, mode: 'string' }).notNull(),
   max_uses: integer('max_uses'),
   current_uses: integer('current_uses').notNull().default(0),
+  pending_uses: integer('pending_uses').notNull().default(0),
   applicable_service_ids: text('applicable_service_ids').array(),
   provider_id: uuid('provider_id').references(() => providers.id, { onDelete: 'set null' }),
   is_active: boolean('is_active').notNull().default(true),
