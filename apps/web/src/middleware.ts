@@ -103,7 +103,11 @@ export default auth(async function middleware(request) {
     const role = (session.user as any).role as string | undefined;
 
     // /admin/escalations — mentor_manager may access for M5 escalation review
-    if (withoutLocale.startsWith('/admin/escalations')) {
+    // /admin/mentor-manager — mentor_manager overview dashboard
+    if (
+      withoutLocale.startsWith('/admin/escalations') ||
+      withoutLocale.startsWith('/admin/mentor-manager')
+    ) {
       const escalationConfirmed =
         role === 'admin' || role === 'super_admin' || role === 'mentor_manager';
       if (!escalationConfirmed) {
