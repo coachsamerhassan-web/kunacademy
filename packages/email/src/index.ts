@@ -51,3 +51,7 @@ export type { AssessorAssignmentEmailParams } from './assessor-assignment';
 // Journey paused notification (M4 — wired to submit handler on 2nd consecutive fail)
 export { sendJourneyPausedEmail } from './journey-paused';
 export type { JourneyPausedEmailParams } from './journey-paused';
+
+// Second-try deadline warning (T-7 / T-3 / T-1 — wired to cron #7)
+export { sendSecondTryDeadlineWarningEmail } from './second-try-deadline-warning';
+export type { SecondTryDeadlineWarningEmailParams } from './second-try-deadline-warning';

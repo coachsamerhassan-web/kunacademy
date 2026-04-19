@@ -38,7 +38,8 @@ export type EmailTemplateKey =
   | 'assessment-result'
   | 'recording-received'
   | 'assessor-assignment'
-  | 'journey-paused';
+  | 'journey-paused'
+  | 'second-try-deadline-warning';
 
 export interface EnqueueEmailParams {
   template_key: EmailTemplateKey;

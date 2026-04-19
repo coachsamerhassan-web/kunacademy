@@ -34,6 +34,8 @@ import {
   type AssessorAssignmentEmailParams,
   sendJourneyPausedEmail,
   type JourneyPausedEmailParams,
+  sendSecondTryDeadlineWarningEmail,
+  type SecondTryDeadlineWarningEmailParams,
 } from '@kunacademy/email';
 
 const MAX_ATTEMPTS = 5;
@@ -80,6 +82,13 @@ async function dispatch(row: OutboxRow): Promise<void> {
       await sendJourneyPausedEmail(
         to_email,
         payload as unknown as JourneyPausedEmailParams,
+      );
+      return;
+
+    case 'second-try-deadline-warning':
+      await sendSecondTryDeadlineWarningEmail(
+        to_email,
+        payload as unknown as SecondTryDeadlineWarningEmailParams,
       );
       return;
 
