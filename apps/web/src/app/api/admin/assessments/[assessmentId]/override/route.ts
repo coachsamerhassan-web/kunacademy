@@ -6,19 +6,28 @@
  *
  * Auth: role in ['admin', 'super_admin', 'mentor_manager']
  *
- * Body: { new_decision: 'pass' | 'fail', reason: string }
+ * Body: {
+ *   new_decision: 'pass' | 'fail',
+ *   reason: string,                        // ≥ 30 chars when clearing ethics flag
+ *   acknowledge_ethics_override?: boolean, // REQUIRED when new_decision='pass' AND ethics_auto_failed=true
+ * }
  *
  * Logic:
  *   1. Validate body (new_decision enum + reason non-empty)
  *   2. Load existing assessment row (must exist)
- *   3. If new_decision === existing decision → 409 (no-op guard)
- *   4. If overriding to 'pass' AND ethics_auto_failed=true →
- *      clear ethics_auto_failed (override explicitly overrules ethics gate;
- *      mentor_manager takes on accountability)
- *   5. UPDATE package_assessments: decision, override_reason, override_by,
- *      decided_at, ethics_auto_failed (cleared if flipping to pass)
- *   6. Enqueue email to student notifying them of revised result (atomic)
- *   7. Audit log: OVERRIDE_ASSESSMENT_DECISION (non-blocking)
+ *   3. Reject if assessment.decision === 'pending' (FIX M4: no pre-review overrides)
+ *   4. If new_decision === existing decision → 409 (no-op guard)
+ *   5. If overriding to 'pass' AND ethics_auto_failed=true:
+ *      - require reason ≥ 30 chars (FIX H2: meaningful justification)
+ *      - require acknowledge_ethics_override === true in body (FIX H2: explicit acknowledgement)
+ *      - clear ethics_auto_failed flag + mark ethics_override_explicit=true in audit log
+ *   6. UPDATE package_assessments: decision, override_reason, override_by,
+ *      decided_at, ethics_auto_failed (cleared if flipping to pass with explicit ack)
+ *   7. If new_decision='pass' AND package_instance.journey_state='paused':
+ *      auto-transition paused → second_try_pending via state machine (FIX M3)
+ *      + audit log OVERRIDE_AUTO_UNPAUSE
+ *   8. Enqueue email to student notifying them of revised result (atomic)
+ *   9. Audit log: OVERRIDE_ASSESSMENT_DECISION (non-blocking)
  *
  * M5 — Mentor-manager escalation review UI
  */
@@ -34,6 +43,7 @@ import {
 import { getAuthUser } from '@kunacademy/auth/server';
 import { logAdminAction } from '@kunacademy/db';
 import { enqueueEmail } from '@/lib/email-outbox';
+import { transitionPackageState } from '@/lib/mentoring/state-machine';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const ALLOWED_ROLES = new Set(['admin', 'super_admin', 'mentor_manager']);
@@ -45,6 +55,7 @@ interface RouteContext {
 interface OverrideBody {
   new_decision: 'pass' | 'fail';
   reason: string;
+  acknowledge_ethics_override?: boolean;
 }
 
 export async function POST(request: NextRequest, context: RouteContext) {
@@ -89,6 +100,11 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
   const trimmedReason = body.reason.trim();
 
+  // FIX H2: When flipping to pass and an ethics override may be involved,
+  // enforce a minimum reason length (checked again below once we know the flag).
+  // Early-reject obviously short reasons for all pass overrides defensively.
+  // (Full 30-char check is enforced below after we load the ethics flag.)
+
   // ── Load existing assessment ────────────────────────────────────────────────
   const rows = await withAdminContext(async (db) => {
     return db
@@ -112,6 +128,42 @@ export async function POST(request: NextRequest, context: RouteContext) {
   const existing = rows[0];
   const priorDecision = existing.decision;
 
+  // FIX M4: Reject override of a pending assessment — assessor must submit first.
+  if (priorDecision === 'pending') {
+    return NextResponse.json(
+      {
+        error: 'Cannot override a pending assessment. Wait for the assessor\'s initial review.',
+        error_ar: 'لا يمكن تجاوز تقييم معلق. انتظر حتى يُكمل المُقيِّم مراجعته الأولية.',
+      },
+      { status: 400 },
+    );
+  }
+
+  // FIX H2: When flipping to 'pass' with ethics_auto_failed=true, require:
+  //   (a) reason ≥ 30 characters — meaningful written justification
+  //   (b) acknowledge_ethics_override === true — explicit acknowledgement
+  const isEthicsOverride = body.new_decision === 'pass' && existing.ethics_auto_failed === true;
+  if (isEthicsOverride) {
+    if (trimmedReason.length < 30) {
+      return NextResponse.json(
+        {
+          error: 'When overriding an ethics-failed assessment, reason must be at least 30 characters.',
+          error_ar: 'عند تجاوز تقييم فشل بسبب الأخلاقيات، يجب أن يكون سبب التجاوز 30 حرفاً على الأقل.',
+        },
+        { status: 400 },
+      );
+    }
+    if (body.acknowledge_ethics_override !== true) {
+      return NextResponse.json(
+        {
+          error: 'acknowledge_ethics_override must be true when overriding an ethics-failed assessment to pass.',
+          error_ar: 'يجب تعيين acknowledge_ethics_override على true عند تجاوز حالة فشل أخلاقي إلى نجاح.',
+        },
+        { status: 400 },
+      );
+    }
+  }
+
   // No-op guard: overriding to the same decision adds no value
   if (priorDecision === body.new_decision) {
     return NextResponse.json(
@@ -126,8 +178,9 @@ export async function POST(request: NextRequest, context: RouteContext) {
   const now = new Date().toISOString();
 
   // If overriding to 'pass' AND ethics_auto_failed=true, the mentor_manager
-  // is explicitly overruling the ethics gate. Clear the flag so the CHECK
-  // constraint (ethics_auto_failed=true → decision IN ('pending','fail')) is satisfied.
+  // has explicitly acknowledged the ethics gate bypass (checked above).
+  // Clear the flag so the CHECK constraint
+  // (ethics_auto_failed=true → decision IN ('pending','fail')) is satisfied.
   const newEthicsAutoFailed =
     body.new_decision === 'pass' ? false : existing.ethics_auto_failed;
 
@@ -187,6 +240,46 @@ export async function POST(request: NextRequest, context: RouteContext) {
     }
   });
 
+  // ── FIX M3: Auto-unpause journey if overriding to 'pass' from 'paused' state ─
+  // Fetch current journey_state and transition paused → second_try_pending.
+  let autoUnpaused = false;
+  if (body.new_decision === 'pass') {
+    try {
+      // We need to read package_instance.journey_state via the instance id
+      // obtained during the assessment load above.
+      const instanceId = existing.package_instance_id;
+      if (instanceId) {
+        const stateRows = await withAdminContext(async (db) => {
+          return db.execute(
+            sql`SELECT journey_state FROM package_instances WHERE id = ${instanceId} LIMIT 1`
+          );
+        });
+        const stateRow = (stateRows.rows as Array<{ journey_state: string }>)[0];
+        if (stateRow?.journey_state === 'paused') {
+          await transitionPackageState(instanceId, 'second_try_pending', user.id);
+          autoUnpaused = true;
+          // Audit log the auto-unpause (non-blocking)
+          void logAdminAction({
+            adminId:    user.id,
+            action:     'OVERRIDE_AUTO_UNPAUSE',
+            targetType: 'package_instance',
+            targetId:   instanceId,
+            metadata:   {
+              assessment_id:    assessmentId,
+              prior_state:      'paused',
+              new_state:        'second_try_pending',
+              triggered_by_override: true,
+            },
+            ipAddress: request.headers.get('x-forwarded-for') ?? undefined,
+          });
+        }
+      }
+    } catch (err) {
+      // Log but do not fail the override — assessment decision already committed.
+      console.error('[override-assessment] auto-unpause failed:', err);
+    }
+  }
+
   // ── Audit log (non-blocking) ────────────────────────────────────────────────
   void logAdminAction({
     adminId:    user.id,
@@ -194,10 +287,12 @@ export async function POST(request: NextRequest, context: RouteContext) {
     targetType: 'package_assessment',
     targetId:   assessmentId,
     metadata:   {
-      prior_decision:      priorDecision,
-      new_decision:        body.new_decision,
-      reason:              trimmedReason,
-      ethics_flag_cleared: existing.ethics_auto_failed && body.new_decision === 'pass',
+      prior_decision:           priorDecision,
+      new_decision:             body.new_decision,
+      reason:                   trimmedReason,
+      ethics_flag_cleared:      isEthicsOverride,
+      ethics_override_explicit: isEthicsOverride ? true : undefined,
+      auto_unpaused:            autoUnpaused,
     },
     ipAddress: request.headers.get('x-forwarded-for') ?? undefined,
   });
@@ -208,6 +303,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       prior_decision: priorDecision,
       new_decision:   body.new_decision,
       override_by:    user.id,
+      auto_unpaused:  autoUnpaused,
     },
     { status: 200 },
   );
