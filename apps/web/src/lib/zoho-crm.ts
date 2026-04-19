@@ -458,8 +458,11 @@ export async function checkZohoCustomFields(): Promise<FieldCheckResult> {
 
     return { ok: missing.length === 0, missing };
   } catch (e) {
-    console.warn(
-      `[zoho-crm] Field health check threw error: ${e instanceof Error ? e.message : String(e)} — continuing anyway`,
+    const errMsg = e instanceof Error ? e.message : String(e);
+    const errStack = e instanceof Error ? e.stack : '';
+    console.error(
+      `[zoho-crm] Field health check threw error: ${errMsg}`,
+      errStack ? `\n${errStack}` : '',
     );
     return { ok: true, missing: [] }; // don't block sync on unexpected errors
   }
