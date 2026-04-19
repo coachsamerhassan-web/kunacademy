@@ -677,16 +677,16 @@ function VoiceRecorder({ isAr, onSave, assessmentId }: VoiceRecorderProps) {
       chunksRef.current = [];
 
       mr.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
+      const startedAt = Date.now();
       mr.onstop = () => {
         stream.getTracks().forEach((t) => t.stop());
         const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
         const previewUrl = URL.createObjectURL(blob);
-        const dur = elapsed;
-        setStatus({ kind: 'recorded', blob, durationSeconds: dur, previewUrl });
+        const durationSeconds = Math.floor((Date.now() - startedAt) / 1000);
+        setStatus({ kind: 'recorded', blob, durationSeconds, previewUrl });
       };
 
       mr.start(1000);
-      const startedAt = Date.now();
       setElapsed(0);
       setStatus({ kind: 'recording', startedAt });
 
@@ -699,7 +699,7 @@ function VoiceRecorder({ isAr, onSave, assessmentId }: VoiceRecorderProps) {
       const msg = err instanceof Error ? err.message : 'Microphone access denied';
       setStatus({ kind: 'error', message: msg });
     }
-  }, [elapsed]);
+  }, []);
 
   const stopRecording = useCallback(() => {
     mediaRecorderRef.current?.stop();
@@ -718,7 +718,7 @@ function VoiceRecorder({ isAr, onSave, assessmentId }: VoiceRecorderProps) {
     setStatus({ kind: 'uploading' });
 
     const formData = new FormData();
-    formData.append('voice_message', blob, 'voice-message.webm');
+    formData.append('voice', blob, 'voice-message.webm');
     formData.append('duration_seconds', String(durationSeconds));
 
     try {

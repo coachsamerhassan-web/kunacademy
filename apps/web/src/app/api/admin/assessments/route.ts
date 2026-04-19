@@ -8,11 +8,13 @@
  * Query params:
  *   ?status=pending|under_review|pass|fail  — filter by decision (default: pending+escalated)
  *   ?assessor_id=<uuid>                     — filter by assessor
+ *   ?needs_second_opinion=1                 — return ONLY rows where second_opinion_requested_at IS NOT NULL
  *   ?limit=<n>                              — max rows (default 50, max 200)
  *
  * Returns: { assessments: Array<EscalationListItem> }
  *
  * M5 — Mentor-manager escalation review UI
+ * M5-gap2-fix — second_opinion filter + counter support
  */
 
 import { NextRequest, NextResponse } from 'next/server';
