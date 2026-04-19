@@ -30,7 +30,27 @@ type SaveStatus =
   | { kind: 'idle' }
   | { kind: 'saving' }
   | { kind: 'saved'; at: Date }
-  | { kind: 'error' };
+  | { kind: 'error' }
+  | { kind: 'locked' };  // 409 — admin decision changed; all further saves blocked
+
+// ─── Shallow diff — returns only top-level keys that changed ─────────────────
+// Sufficient for v1 spec: rubric is one level deep per section at the top level
+// of FormState. Serialises to JSON for reliable comparison.
+function shallowDiff(
+  prev: FormState,
+  curr: FormState,
+): Partial<FormState> | null {
+  const diff: Partial<FormState> = {};
+  let changed = false;
+  for (const k of Object.keys(curr) as (keyof FormState)[]) {
+    if (JSON.stringify(prev[k]) !== JSON.stringify(curr[k])) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (diff as any)[k] = curr[k];
+      changed = true;
+    }
+  }
+  return changed ? diff : null;
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -637,8 +657,10 @@ export default function AssessorWorkspacePage() {
   const [saveStatus, setSaveStatus] = useState<SaveStatus>({ kind: 'idle' });
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const formRef = useRef<FormState>(form);
+  const lastSavedFormRef = useRef<FormState>(form); // tracks the form state at last successful save
   const assessmentIdRef = useRef<string | null>(null);
   const isSubmittedRef = useRef(false);
+  const isLockedRef = useRef(false); // true after a 409 — no more auto-saves this session
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -647,24 +669,40 @@ export default function AssessorWorkspacePage() {
     formRef.current = form;
   }, [form]);
 
-  // Phase 2.5 — fire draft save to API
+  // Phase 2.5 — fire draft save to API (diff-based)
+  // Sends only changed top-level keys relative to lastSavedFormRef.
+  // Server deep-merges the diff, so concurrent tabs writing different fields
+  // don't clobber each other.
   const saveDraft = useCallback(
     async (snapshot: FormState, id: string) => {
       if (isSubmittedRef.current) return; // never overwrite submitted work
+      if (isLockedRef.current) return;    // 409 lock — stop all saves this session
+
+      // FIX 2: compute diff vs last successful save; skip if nothing changed
+      const diff = shallowDiff(lastSavedFormRef.current, snapshot);
+      if (!diff) return;
+
       setSaveStatus({ kind: 'saving' });
       try {
         const res = await fetch(`/api/assessments/${id}/draft`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(snapshot),
+          body: JSON.stringify(diff),
         });
+
+        // FIX 3: 409 = admin changed decision — lock this session permanently
         if (res.status === 409) {
-          // Assessment was submitted by another tab — stop auto-saving
+          isLockedRef.current = true;
           isSubmittedRef.current = true;
-          setSaveStatus({ kind: 'idle' });
+          if (debounceRef.current) clearTimeout(debounceRef.current);
+          setSaveStatus({ kind: 'locked' });
           return;
         }
+
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+        // Success: advance the baseline so next diff is relative to now
+        lastSavedFormRef.current = snapshot;
         setSaveStatus({ kind: 'saved', at: new Date() });
       } catch {
         setSaveStatus({ kind: 'error' });
@@ -675,10 +713,10 @@ export default function AssessorWorkspacePage() {
 
   // Phase 2.5 — debounced trigger on every form change (1500ms idle)
   useEffect(() => {
-    if (!assessmentIdRef.current || isSubmittedRef.current) return;
+    if (!assessmentIdRef.current || isSubmittedRef.current || isLockedRef.current) return;
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
-      if (assessmentIdRef.current) {
+      if (assessmentIdRef.current && !isLockedRef.current) {
         void saveDraft(formRef.current, assessmentIdRef.current);
       }
     }, 1500);
@@ -722,7 +760,10 @@ export default function AssessorWorkspacePage() {
         // Phase 2.5 — seed form from saved draft (rubric_scores JSONB)
         if (data.assessment.rubric_scores && typeof data.assessment.rubric_scores === 'object') {
           const draft = data.assessment.rubric_scores as Partial<FormState>;
-          setForm(prev => ({ ...prev, ...draft }));
+          const seeded = { ...emptyForm(), ...draft };
+          setForm(seeded);
+          // Align lastSavedFormRef so first diff is relative to the loaded draft
+          lastSavedFormRef.current = seeded;
           setSaveStatus({ kind: 'saved', at: new Date() });
         }
         setLoading(false);
@@ -873,7 +914,18 @@ export default function AssessorWorkspacePage() {
           </div>
 
           {/* Phase 2.5 — save status indicator (draft only) */}
-          {!isSubmitted && (
+          {/* FIX 3: locked banner renders even after isSubmitted flips true */}
+          {saveStatus.kind === 'locked' && (
+            <span className="shrink-0 inline-flex items-center gap-1.5 rounded-md border border-red-300 bg-red-50 px-2.5 py-1 text-xs font-medium text-red-700">
+              <svg className="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
+              </svg>
+              {isAr
+                ? 'التقييم مقفل — قرار المسؤول تغيّر. أعد تحميل الصفحة للمتابعة.'
+                : 'Assessment locked — admin decision changed. Reload the page to continue.'}
+            </span>
+          )}
+          {!isSubmitted && saveStatus.kind !== 'locked' && (
             <span className="shrink-0 text-xs text-[var(--color-neutral-500)] min-w-[80px] text-end">
               {saveStatus.kind === 'saving' && (
                 <span className="inline-flex items-center gap-1">

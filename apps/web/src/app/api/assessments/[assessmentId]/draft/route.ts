@@ -18,6 +18,37 @@ import { getAuthUser } from '@kunacademy/auth/server';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+// ── Deep merge helper ────────────────────────────────────────────────────────
+// Recursively merges `override` into `base`. Plain-object keys are walked
+// recursively; arrays and primitives in override replace base entirely (no
+// per-index merge — safer and easier to reason about).
+function deepMerge(
+  base: Record<string, unknown>,
+  override: Record<string, unknown>,
+): Record<string, unknown> {
+  const result: Record<string, unknown> = { ...base };
+  for (const key of Object.keys(override)) {
+    const bv = base[key];
+    const ov = override[key];
+    if (
+      ov !== null &&
+      typeof ov === 'object' &&
+      !Array.isArray(ov) &&
+      bv !== null &&
+      typeof bv === 'object' &&
+      !Array.isArray(bv)
+    ) {
+      result[key] = deepMerge(
+        bv as Record<string, unknown>,
+        ov as Record<string, unknown>,
+      );
+    } else {
+      result[key] = ov;
+    }
+  }
+  return result;
+}
+
 interface RouteContext {
   params: Promise<{ assessmentId: string }>;
 }
@@ -81,11 +112,13 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     return NextResponse.json({ error: 'Body must be a JSON object' }, { status: 400 });
   }
 
-  // ── Shallow-merge into existing rubric_scores ────────────────────────────────
+  // ── Deep-merge into existing rubric_scores ───────────────────────────────────
+  // Replaces the old shallow-merge so concurrent tabs writing independent fields
+  // no longer clobber each other's nested rubric paths.
   const existing: Record<string, unknown> =
     (row.rubric_scores as Record<string, unknown> | null) ?? {};
 
-  const merged: Record<string, unknown> = { ...existing, ...incoming };
+  const merged: Record<string, unknown> = deepMerge(existing, incoming);
   const mergedKeys = Object.keys(incoming);
 
   await withAdminContext(async (db) => {
