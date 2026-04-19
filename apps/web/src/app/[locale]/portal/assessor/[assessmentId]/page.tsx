@@ -691,9 +691,10 @@ export default function AssessorWorkspacePage() {
     { year: 'numeric', month: 'short', day: 'numeric' },
   );
 
-  // Audio src: recordings are stored on VPS filesystem; they're not publicly served.
-  // Phase 2.1 shows metadata only. A streaming endpoint is a Phase 2.2 hardening task.
-  const audioSrc = null;
+  // Audio src: stream via the session-authenticated Range endpoint (Phase 2.2).
+  const audioSrc = assessment.recording_id
+    ? `/api/recordings/${assessment.recording_id}/stream`
+    : null;
 
   const isSubmitted = assessment.decision !== 'pending';
 
