@@ -530,9 +530,20 @@ export default async function MentorManagerDashboard({
         </div>
 
         {/* ── Section 4: Recent activity feed ───────────────────────────────── */}
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-[var(--color-neutral-500)] mb-3">
-          {isAr ? 'آخر النشاطات (20 إدخال)' : 'Recent Activity (last 20)'}
-        </h2>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-[var(--color-neutral-500)]">
+            {isAr ? 'آخر النشاطات (20 إدخال)' : 'Recent Activity (last 20)'}
+          </h2>
+          {/* Audit log link — visible to admin / super_admin only */}
+          {(role === 'admin' || role === 'super_admin') && (
+            <Link
+              href={`/${locale}/admin/audit-log`}
+              className="text-xs text-[var(--color-primary)] underline underline-offset-2 hover:opacity-80 min-h-[44px] inline-flex items-center"
+            >
+              {isAr ? 'عرض السجل الكامل' : 'View full audit log'}
+            </Link>
+          )}
+        </div>
         <div className="rounded-lg border border-[var(--color-neutral-200)] overflow-hidden">
           {recentActivity.length === 0 ? (
             <p className="px-4 py-6 text-sm text-[var(--color-neutral-500)] text-center">
