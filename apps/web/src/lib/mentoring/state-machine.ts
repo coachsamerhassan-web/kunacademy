@@ -59,15 +59,20 @@ const ALLOWED_TRANSITIONS: ReadonlyMap<JourneyState, ReadonlySet<JourneyState>> 
   ['mentoring_2_done',       new Set<JourneyState>(['recording_submitted'])],
   ['recording_submitted',    new Set<JourneyState>(['under_assessment'])],
   ['under_assessment',       new Set<JourneyState>(['assessment_passed', 'assessment_failed'])],
-  ['assessment_failed',      new Set<JourneyState>(['under_escalation'])],
+  ['assessment_failed',      new Set<JourneyState>(['under_escalation', 'paused'])],
   ['under_escalation',       new Set<JourneyState>(['second_try_pending', 'terminated'])],
-  ['second_try_pending',     new Set<JourneyState>(['recording_submitted'])],
+  ['second_try_pending',     new Set<JourneyState>(['recording_submitted', 'paused'])],
+  // M4: paused — admin/mentor_manager unpause sends back to 'assessment_ready'
+  // 'assessment_ready' is an alias for the state before re-submission,
+  // implemented as 'second_try_pending' (student already has a 2nd try slot).
+  ['paused',                 new Set<JourneyState>(['second_try_pending'])],
   ['assessment_passed',      new Set<JourneyState>(['final_mentoring_ready'])],
   ['final_mentoring_ready',  new Set<JourneyState>(['completed'])],
   // Terminal states — no outbound transitions (except via ANY rules below)
   ['completed',              new Set<JourneyState>()],
   ['expired',                new Set<JourneyState>()],
   ['terminated',             new Set<JourneyState>()],
+  // paused has an outbound transition — see above entry
 ]);
 
 // ── Error class ────────────────────────────────────────────────────────────

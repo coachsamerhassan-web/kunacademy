@@ -267,6 +267,17 @@ export async function POST(request: NextRequest, context: RouteContext) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
+  // M4 — block uploads when journey is paused
+  if (instanceRow.journey_state === 'paused') {
+    return NextResponse.json(
+      {
+        error:    'Your journey is currently paused. Please contact your mentor or the Kun Academy team to continue.',
+        error_ar: 'رحلتك التعليمية متوقفة حالياً. يرجى التواصل مع مرشدك أو فريق أكاديمية كُن للمتابعة.',
+      },
+      { status: 409 },
+    );
+  }
+
   // ── Generate a recording UUID for storage path ────────────────────────────
   const recordingId = crypto.randomUUID();
   const ext = mimeToExt(mimeType);

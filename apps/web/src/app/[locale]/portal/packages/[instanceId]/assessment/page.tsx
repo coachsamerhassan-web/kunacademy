@@ -314,6 +314,94 @@ export default function StudentAssessmentResultPage() {
 
   const { assessment, voice_message: voiceMessage, instance } = data;
 
+  // ── PAUSED — journey paused after 2nd consecutive fail ───────────────────────
+  if (instance.journey_state === 'paused') {
+    return (
+      <main dir={isAr ? 'rtl' : 'ltr'}>
+        <Section variant="white">
+          <div className="mx-auto max-w-2xl space-y-6">
+            <Heading level={1}>
+              {isAr ? 'نتيجة التقييم' : 'Assessment Result'}
+            </Heading>
+
+            {/* Paused banner — purple/slate */}
+            <div className="rounded-xl border border-purple-200 bg-purple-50 p-5">
+              <div className="flex items-center gap-3">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-purple-100">
+                  <svg className="h-6 w-6 text-purple-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="M10 15V9M14 15V9" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="font-bold text-purple-900 text-lg">
+                    {isAr ? 'رحلتك متوقفة مؤقتاً' : 'Your Journey is Paused'}
+                  </p>
+                  <p className="text-sm text-purple-700">
+                    {isAr
+                      ? 'تم إيقاف رحلتك بعد محاولتَي تقييم غير ناجحتَين'
+                      : 'Your journey was paused following two unsuccessful assessment attempts'}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Explanation */}
+            <div className="rounded-xl border border-[var(--color-neutral-200)] bg-white p-5 space-y-3">
+              <h2 className="font-semibold text-[var(--text-primary)]">
+                {isAr ? 'ما الذي يعني هذا؟' : 'What does this mean?'}
+              </h2>
+              <p className="text-sm text-[var(--color-neutral-700)] leading-relaxed">
+                {isAr
+                  ? 'بعد مراجعة جلستَيك التدريبيتَين، قرر فريق التقييم إيقاف رحلتك مؤقتاً. هذا ليس قراراً نهائياً — بل هو فرصة للتوقف والتطور قبل الاستمرار.'
+                  : 'After reviewing your two coaching sessions, the assessment team has paused your journey. This is not a final decision — it is an opportunity to reflect and grow before continuing.'}
+              </p>
+              <p className="text-sm text-[var(--color-neutral-700)] leading-relaxed">
+                {isAr
+                  ? 'لا يمكنك رفع تسجيل جديد في هذه المرحلة. يرجى التواصل مع مرشدك أو فريق أكاديمية كُن للمتابعة وتحديد الخطوات التالية.'
+                  : 'You cannot upload a new recording at this stage. Please reach out to your mentor or the Kun Academy team to discuss your next steps.'}
+              </p>
+            </div>
+
+            {/* Contact / next steps */}
+            <div className="rounded-xl border border-[var(--color-neutral-200)] bg-[var(--color-neutral-50)] p-5 space-y-2">
+              <h2 className="font-semibold text-[var(--text-primary)]">
+                {isAr ? 'الخطوات التالية' : 'Next Steps'}
+              </h2>
+              <ul className="list-disc list-inside space-y-1 text-sm text-[var(--color-neutral-700)]">
+                <li>
+                  {isAr
+                    ? 'راجع ملاحظات المقيِّم في تقاريرك السابقة'
+                    : "Review your assessor's feedback from previous reports"}
+                </li>
+                <li>
+                  {isAr
+                    ? 'تواصل مع مرشدك لجدولة جلسة تحضيرية'
+                    : 'Contact your mentor to schedule a preparation session'}
+                </li>
+                <li>
+                  {isAr
+                    ? 'تواصل مع فريق أكاديمية كُن عبر: support@kunacademy.com'
+                    : 'Reach the Kun Academy team at: support@kunacademy.com'}
+                </li>
+              </ul>
+            </div>
+
+            {/* Back to portal */}
+            <div className="pt-2">
+              <button
+                onClick={() => router.push(`/${locale}/portal`)}
+                className="text-sm text-[var(--color-neutral-500)] hover:text-[var(--text-primary)] transition-colors"
+              >
+                {isAr ? '← العودة إلى لوحة التحكم' : '← Back to Dashboard'}
+              </button>
+            </div>
+          </div>
+        </Section>
+      </main>
+    );
+  }
+
   // ── PENDING — no completed assessment yet ────────────────────────────────────
   if (!assessment || !assessment.decided_at) {
     // Estimate SLA: 10 business days from when the instance entered under_assessment.

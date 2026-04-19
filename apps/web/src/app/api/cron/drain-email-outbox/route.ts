@@ -32,6 +32,8 @@ import {
   type RecordingReceivedEmailParams,
   sendAssessorAssignmentEmail,
   type AssessorAssignmentEmailParams,
+  sendJourneyPausedEmail,
+  type JourneyPausedEmailParams,
 } from '@kunacademy/email';
 
 const MAX_ATTEMPTS = 5;
@@ -71,6 +73,13 @@ async function dispatch(row: OutboxRow): Promise<void> {
       await sendAssessorAssignmentEmail(
         to_email,
         payload as unknown as AssessorAssignmentEmailParams,
+      );
+      return;
+
+    case 'journey-paused':
+      await sendJourneyPausedEmail(
+        to_email,
+        payload as unknown as JourneyPausedEmailParams,
       );
       return;
 

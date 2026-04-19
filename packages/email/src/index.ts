@@ -47,3 +47,7 @@ export type { RecordingReceivedEmailParams } from './recording-received';
 // Assessor assignment notification (Phase 2 — wired to assign-assessor.ts)
 export { sendAssessorAssignmentEmail } from './assessor-assignment';
 export type { AssessorAssignmentEmailParams } from './assessor-assignment';
+
+// Journey paused notification (M4 — wired to submit handler on 2nd consecutive fail)
+export { sendJourneyPausedEmail } from './journey-paused';
+export type { JourneyPausedEmailParams } from './journey-paused';

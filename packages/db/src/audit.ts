@@ -13,7 +13,11 @@ export type AuditAction =
   | 'UPDATE_PROFILE_ROLE'
   | 'CREATE_BLOG_POST' | 'UPDATE_BLOG_POST' | 'DELETE_BLOG_POST'
   | 'UPDATE_TESTIMONIAL' | 'DELETE_TESTIMONIAL'
-  | 'SUBMIT_ASSESSMENT';
+  | 'SUBMIT_ASSESSMENT'
+  | 'OVERRIDE_ASSESSMENT_DECISION'
+  | 'REQUEST_SECOND_OPINION'
+  | 'PAUSE_JOURNEY'
+  | 'UNPAUSE_JOURNEY';
 
 /** Manual type matching the admin_audit_log migration schema */
 export interface AdminAuditLog {

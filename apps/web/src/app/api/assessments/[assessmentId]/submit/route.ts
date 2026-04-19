@@ -12,7 +12,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { withAdminContext, eq, logAdminAction } from '@kunacademy/db';
+import { withAdminContext, eq, logAdminAction, sql } from '@kunacademy/db';
 import {
   packageAssessments,
   packageRecordings,
@@ -366,8 +366,82 @@ export async function POST(request: NextRequest, context: RouteContext) {
   const targetState: JourneyState =
     finalVerdict === 'pass' ? 'assessment_passed' : 'assessment_failed';
 
+  let journeyPaused = false;
+
   try {
     await transitionPackageState(row.package_instance_id, targetState, user.id);
+
+    // M4 — pause on 2nd consecutive fail.
+    // Count how many 'fail' decisions exist for this package_instance (including
+    // the one we just committed). If >= 2, transition to 'paused'.
+    if (finalVerdict === 'fail') {
+      const countRows = await withAdminContext(async (db) => {
+        const result = await db.execute(
+          sql`
+            SELECT COUNT(*)::int AS cnt
+            FROM package_assessments pa
+            JOIN package_recordings pr ON pr.id = pa.recording_id
+            WHERE pr.package_instance_id = ${row.package_instance_id}
+              AND pa.decision = 'fail'
+          `
+        );
+        return result.rows as { cnt: number }[];
+      });
+
+      const failCount = countRows[0]?.cnt ?? 0;
+
+      if (failCount >= 2) {
+        await transitionPackageState(row.package_instance_id, 'paused', user.id);
+        journeyPaused = true;
+
+        // Enqueue pause notification email (atomic: own implicit tx is fine here
+        // since the business write is already committed above)
+        const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://kunacademy.com';
+        const pauseStudentRows = await withAdminContext(async (db) => {
+          return db
+            .select({
+              email:              profiles.email,
+              full_name_ar:       profiles.full_name_ar,
+              full_name_en:       profiles.full_name_en,
+              preferred_language: profiles.preferred_language,
+            })
+            .from(packageInstances)
+            .innerJoin(profiles, eq(profiles.id, packageInstances.student_id))
+            .where(eq(packageInstances.id, row.package_instance_id))
+            .limit(1);
+        });
+
+        if (pauseStudentRows.length > 0) {
+          const ps     = pauseStudentRows[0];
+          const locale = (ps.preferred_language === 'en' ? 'en' : 'ar') as 'ar' | 'en';
+          const name   = locale === 'ar'
+            ? (ps.full_name_ar ?? ps.full_name_en ?? '')
+            : (ps.full_name_en ?? ps.full_name_ar ?? '');
+          const result_url = `${APP_URL}/${locale}/portal/packages/${row.package_instance_id}/assessment`;
+
+          await withAdminContext(async (db) => {
+            await enqueueEmail(db, {
+              template_key: 'journey-paused',
+              to_email:     ps.email,
+              payload:      { student_name: name, locale, result_url },
+            });
+          });
+        }
+
+        // Audit log the pause event
+        void logAdminAction({
+          adminId:    user.id,
+          action:     'PAUSE_JOURNEY',
+          targetType: 'package_instance',
+          targetId:   row.package_instance_id,
+          metadata:   {
+            reason:           '2nd consecutive assessment fail',
+            triggered_by:     assessmentId,
+            fail_count:       failCount,
+          },
+        });
+      }
+    }
   } catch (smErr) {
     // Log but don't fail the submission — the assessment is already committed.
     // A cron or admin retry can re-drive the state machine.
@@ -390,9 +464,10 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
   return NextResponse.json(
     {
-      submitted_at: now,
-      decision:     finalVerdict,
+      submitted_at:       now,
+      decision:           finalVerdict,
       ethics_auto_failed: ethicsAutoFailed,
+      journey_paused:     journeyPaused,
     },
     { status: 200 },
   );

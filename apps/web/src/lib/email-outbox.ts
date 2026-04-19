@@ -37,7 +37,8 @@ type DrizzleDb = any;
 export type EmailTemplateKey =
   | 'assessment-result'
   | 'recording-received'
-  | 'assessor-assignment';
+  | 'assessor-assignment'
+  | 'journey-paused';
 
 export interface EnqueueEmailParams {
   template_key: EmailTemplateKey;
