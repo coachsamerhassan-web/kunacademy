@@ -16,9 +16,11 @@
  *   - new_assessor_id must correspond to an active advanced_mentor instructor
  *
  * Transaction (withAdminContext):
- *   1. UPDATE package_assessments SET assessor_id = new_assessor_id, assigned_at = NOW()
- *   2. Enqueue email to new assessor (reuses 'assessor-assignment' template)
- *   3. Enqueue email to old assessor (new 'assessor-reassigned' template)
+ *   1. SELECT FOR UPDATE on package_assessments (row-level lock, serializes concurrent reassigns)
+ *   2. Re-verify decision inside the transaction (prevents stale reads)
+ *   3. UPDATE package_assessments SET assessor_id = new_assessor_id, assigned_at = NOW()
+ *   4. Enqueue email to new assessor (reuses 'assessor-assignment' template)
+ *   5. Enqueue email to old assessor (new 'assessor-reassigned' template)
  *
  * Audit: REASSIGN_ASSESSOR with { prior_assessor_id, new_assessor_id, reason }
  *
@@ -128,97 +130,142 @@ export async function POST(request: NextRequest, context: RouteContext) {
   }
 
   const newAssessor = assessorRows[0];
-
-  // ── Load existing assessment ────────────────────────────────────────────────
-  const assessmentRows = await withAdminContext(async (db) => {
-    return db
-      .select({
-        id:                  packageAssessments.id,
-        decision:            packageAssessments.decision,
-        assessor_id:         packageAssessments.assessor_id,
-        recording_id:        packageAssessments.recording_id,
-        package_instance_id: packageRecordings.package_instance_id,
-        original_filename:   packageRecordings.original_filename,
-        submitted_at:        packageRecordings.submitted_at,
-        duration_seconds:    packageRecordings.duration_seconds,
-      })
-      .from(packageAssessments)
-      .innerJoin(packageRecordings, eq(packageRecordings.id, packageAssessments.recording_id))
-      .where(eq(packageAssessments.id, assessmentId))
-      .limit(1);
-  });
-
-  if (assessmentRows.length === 0) {
-    return NextResponse.json({ error: 'Assessment not found' }, { status: 404 });
-  }
-
-  const existing = assessmentRows[0];
-
-  // ── Pre-condition: only pending assessments can be reassigned ──────────────
-  if (existing.decision !== 'pending') {
-    return NextResponse.json(
-      {
-        error: `Cannot reassign a completed assessment (decision: ${existing.decision}). Only pending assessments can be reassigned.`,
-        error_ar: `لا يمكن إعادة تعيين تقييم مكتمل (القرار: ${existing.decision}). يمكن إعادة تعيين التقييمات المعلقة فقط.`,
-      },
-      { status: 400 },
-    );
-  }
-
-  // ── No-op guard: same assessor ─────────────────────────────────────────────
-  if (existing.assessor_id === newAssessorId) {
-    return NextResponse.json(
-      {
-        error: 'new_assessor_id is already the assigned assessor — no change made',
-        error_ar: 'المُقيِّم الجديد هو نفس المُقيِّم الحالي — لم يتم إجراء أي تغيير',
-      },
-      { status: 409 },
-    );
-  }
-
-  const priorAssessorId = existing.assessor_id;
   const now = new Date().toISOString();
 
-  // ── Fetch old assessor profile for notification ────────────────────────────
-  const oldAssessorRows = await withAdminContext(async (db) => {
-    return db
-      .select({
-        email:              profiles.email,
-        full_name_ar:       profiles.full_name_ar,
-        full_name_en:       profiles.full_name_en,
-        preferred_language: profiles.preferred_language,
-      })
-      .from(profiles)
-      .where(eq(profiles.id, priorAssessorId))
-      .limit(1);
-  });
+  // ── Atomic transaction: SELECT FOR UPDATE + re-verify + UPDATE + emails ────
+  // All reads, validation, and updates happen within a single transaction with
+  // row-level locking via SELECT FOR UPDATE. This serializes concurrent reassigns
+  // on the same assessment and ensures email notifications use fresh data.
+  let transactionResult: {
+    existing: any;
+    priorAssessorId: string;
+    oldAssessorRows: any[];
+    studentRows: any[];
+  };
+  try {
+    transactionResult = await withAdminContext(
+      async (db) => {
+        // 1. Lock the row for the duration of this transaction via SELECT FOR UPDATE
+        //    This serializes concurrent reassigns on the same assessment.
+        const lockedRows = await db.execute(sql`
+          SELECT id, decision, assessor_id, recording_id, package_instance_id
+          FROM package_assessments
+          WHERE id = ${assessmentId}::uuid
+          FOR UPDATE
+        `);
 
-  // ── Fetch student profile for new-assessor notification ───────────────────
-  const studentRows = await withAdminContext(async (db) => {
-    return db
-      .select({
-        full_name_ar:       profiles.full_name_ar,
-        full_name_en:       profiles.full_name_en,
-        preferred_language: profiles.preferred_language,
-      })
-      .from(packageInstances)
-      .innerJoin(profiles, eq(profiles.id, packageInstances.student_id))
-      .where(eq(packageInstances.id, existing.package_instance_id))
-      .limit(1);
-  });
+        if (lockedRows.rows.length === 0) {
+          throw new Error('__ASSESSMENT_NOT_FOUND__');
+        }
 
-  // ── Atomic transaction: UPDATE + enqueue both emails ───────────────────────
+        const locked = lockedRows.rows[0] as any;
+
+        // 2. Re-verify decision inside the transaction (prevents stale reads)
+        if (locked.decision !== 'pending') {
+          throw new Error('__DECISION_NOT_PENDING__');
+        }
+
+        // 3. No-op guard: same assessor
+        if (locked.assessor_id === newAssessorId) {
+          throw new Error('__SAME_ASSESSOR__');
+        }
+
+        const priorAssessorId = locked.assessor_id;
+
+        // 4. Fetch recording details for the email
+        const recordingRows = await db
+          .select({
+            original_filename: packageRecordings.original_filename,
+            submitted_at:      packageRecordings.submitted_at,
+            duration_seconds:  packageRecordings.duration_seconds,
+          })
+          .from(packageRecordings)
+          .where(eq(packageRecordings.id, locked.recording_id))
+          .limit(1);
+
+        const recording = recordingRows[0];
+
+        // 5. Fetch old assessor profile for notification
+        const oldAssessorRows = await db
+          .select({
+            email:              profiles.email,
+            full_name_ar:       profiles.full_name_ar,
+            full_name_en:       profiles.full_name_en,
+            preferred_language: profiles.preferred_language,
+          })
+          .from(profiles)
+          .where(eq(profiles.id, priorAssessorId))
+          .limit(1);
+
+        // 6. Fetch student profile for new-assessor notification
+        const studentRows = await db
+          .select({
+            full_name_ar:       profiles.full_name_ar,
+            full_name_en:       profiles.full_name_en,
+            preferred_language: profiles.preferred_language,
+          })
+          .from(packageInstances)
+          .innerJoin(profiles, eq(profiles.id, packageInstances.student_id))
+          .where(eq(packageInstances.id, locked.package_instance_id))
+          .limit(1);
+
+        // 7. UPDATE the assessor (within the same transaction, so lock persists)
+        await db
+          .update(packageAssessments)
+          .set({
+            assessor_id: newAssessorId,
+            assigned_at: now,
+          })
+          .where(eq(packageAssessments.id, assessmentId));
+
+        return {
+          existing: {
+            id: locked.id,
+            decision: locked.decision,
+            assessor_id: locked.assessor_id,
+            recording_id: locked.recording_id,
+            package_instance_id: locked.package_instance_id,
+            original_filename: recording?.original_filename,
+            submitted_at: recording?.submitted_at,
+            duration_seconds: recording?.duration_seconds,
+          },
+          priorAssessorId,
+          oldAssessorRows,
+          studentRows,
+        };
+      },
+    );
+  } catch (err: any) {
+    // Handle transaction errors
+    if (err.message === '__ASSESSMENT_NOT_FOUND__') {
+      return NextResponse.json({ error: 'Assessment not found' }, { status: 404 });
+    }
+    if (err.message === '__DECISION_NOT_PENDING__') {
+      return NextResponse.json(
+        {
+          error: `Cannot reassign a completed assessment. Only pending assessments can be reassigned.`,
+          error_ar: `لا يمكن إعادة تعيين تقييم مكتمل. يمكن إعادة تعيين التقييمات المعلقة فقط.`,
+        },
+        { status: 400 },
+      );
+    }
+    if (err.message === '__SAME_ASSESSOR__') {
+      return NextResponse.json(
+        {
+          error: 'new_assessor_id is already the assigned assessor — no change made',
+          error_ar: 'المُقيِّم الجديد هو نفس المُقيِّم الحالي — لم يتم إجراء أي تغيير',
+        },
+        { status: 409 },
+      );
+    }
+    throw err;
+  }
+
+  const { existing, priorAssessorId, oldAssessorRows, studentRows } = transactionResult;
+
+  // ── Enqueue emails (outside the transaction to allow async email system) ────
   await withAdminContext(async (db) => {
-    // 1. Reassign the assessor
-    await db
-      .update(packageAssessments)
-      .set({
-        assessor_id: newAssessorId,
-        assigned_at: now,
-      })
-      .where(eq(packageAssessments.id, assessmentId));
-
-    // 2. Enqueue email to NEW assessor (reuse 'assessor-assignment' template)
+    // 1. Enqueue email to NEW assessor (reuse 'assessor-assignment' template)
     const newAssessorLocale =
       (newAssessor.preferred_language === 'en' ? 'en' : 'ar') as 'ar' | 'en';
     const newAssessorName =
@@ -250,7 +297,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       },
     });
 
-    // 3. Enqueue email to OLD assessor (new 'assessor-reassigned' template)
+    // 2. Enqueue email to OLD assessor (new 'assessor-reassigned' template)
     if (oldAssessorRows.length > 0) {
       const oldAssessor = oldAssessorRows[0];
       const oldLocale =
