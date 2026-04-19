@@ -63,6 +63,8 @@ export async function GET(_request: NextRequest, context: RouteContext) {
         student_name_en: profiles.full_name_en,
         student_name_ar: profiles.full_name_ar,
         student_email:   profiles.email,
+        // Package instance state (needed for unpause button)
+        journey_state:   packageInstances.journey_state,
       })
       .from(packageAssessments)
       .innerJoin(

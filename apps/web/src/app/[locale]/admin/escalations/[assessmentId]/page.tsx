@@ -8,8 +8,10 @@
  * Layout:
  *   LEFT pane  (40%) — Audio stream player + transcript viewer
  *   RIGHT pane (60%) — Rubric readout (read-only) + ethics gates status
- *                      + Part 4 summary + override form + 2nd opinion button
- *                      + link to fail-feedback voice recorder
+ *                      + Part 4 summary + override form
+ *                      + Unpause Journey button (when journey_state === 'paused')
+ *                      + Record Voice Feedback widget (inline MediaRecorder)
+ *                      + 2nd opinion button
  *
  * Routes consumed:
  *   GET  /api/assessments/[assessmentId]              — assessment detail
@@ -17,8 +19,12 @@
  *   GET  /api/recordings/[id]/transcript              — transcript (reuse)
  *   POST /api/admin/assessments/[assessmentId]/override
  *   POST /api/admin/assessments/[assessmentId]/request-second-opinion
+ *   POST /api/admin/package-instances/[instanceId]/unpause  — M4 endpoint
+ *   POST /api/assessments/[assessmentId]/voice-message      — Phase 2.6 endpoint
  *
  * M5 — Mentor-manager escalation review UI
+ * M5-gap1 — Unpause Journey button
+ * M5-gap2 — Inline voice feedback recorder for escalation path
  */
 
 import { useAuth } from '@kunacademy/auth';
@@ -70,6 +76,8 @@ interface AssessmentDetail {
   student_email:  string;
   assessor_name:  string | null;
   assessor_email: string;
+  /** Package instance journey state — needed for unpause button (M5-gap1) */
+  journey_state:  string | null;
 }
 
 type OverrideStatus =
@@ -82,6 +90,20 @@ type SecondOpinionStatus =
   | { kind: 'idle' }
   | { kind: 'submitting' }
   | { kind: 'success' }
+  | { kind: 'error'; message: string };
+
+type UnpauseStatus =
+  | { kind: 'idle' }
+  | { kind: 'submitting' }
+  | { kind: 'success' }
+  | { kind: 'error'; message: string };
+
+type RecorderStatus =
+  | { kind: 'idle' }
+  | { kind: 'recording'; startedAt: number }
+  | { kind: 'recorded'; blob: Blob; durationSeconds: number; previewUrl: string }
+  | { kind: 'uploading' }
+  | { kind: 'done'; durationSeconds: number }
   | { kind: 'error'; message: string };
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -124,6 +146,16 @@ export default function EscalationDetailPage() {
   // Second opinion state
   const [secondOpinionStatus, setSecondOpinionStatus] =
     useState<SecondOpinionStatus>({ kind: 'idle' });
+
+  // Unpause journey state (M5-gap1)
+  const [unpauseStatus, setUnpauseStatus] = useState<UnpauseStatus>({ kind: 'idle' });
+
+  // Voice recorder state (M5-gap2)
+  const [recorderStatus, setRecorderStatus] = useState<RecorderStatus>({ kind: 'idle' });
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [elapsed, setElapsed] = useState(0);
 
   // ── Auth guard ─────────────────────────────────────────────────────────────
 
@@ -213,6 +245,107 @@ export default function EscalationDetailPage() {
       });
     }
   }, [assessmentId, fetchDetail]);
+
+  // ── Unpause handler (M5-gap1) ──────────────────────────────────────────────
+
+  const handleUnpause = useCallback(async () => {
+    if (!detail) return;
+    setUnpauseStatus({ kind: 'submitting' });
+    try {
+      const res = await fetch(
+        `/api/admin/package-instances/${detail.package_instance_id}/unpause`,
+        { method: 'POST' },
+      );
+      const body = await res.json().catch(() => ({})) as { error?: string };
+      if (!res.ok) {
+        throw new Error(body.error ?? `HTTP ${res.status}`);
+      }
+      setUnpauseStatus({ kind: 'success' });
+      await fetchDetail();
+    } catch (err: unknown) {
+      setUnpauseStatus({
+        kind: 'error',
+        message: err instanceof Error ? err.message : 'Unpause failed',
+      });
+    }
+  }, [detail, fetchDetail]);
+
+  // ── Voice recorder handlers (M5-gap2) ─────────────────────────────────────
+
+  const MAX_RECORD_SECONDS = 600; // 10 minutes
+
+  const startRecording = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mr = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+      mediaRecorderRef.current = mr;
+      chunksRef.current = [];
+      const startedAt = Date.now();
+
+      mr.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
+      mr.onstop = () => {
+        stream.getTracks().forEach((t) => t.stop());
+        const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
+        const previewUrl = URL.createObjectURL(blob);
+        // Compute actual duration from wall time — avoids stale `elapsed` closure
+        const durationSeconds = Math.floor((Date.now() - startedAt) / 1000);
+        setRecorderStatus({ kind: 'recorded', blob, durationSeconds, previewUrl });
+      };
+
+      mr.start(1000);
+      setElapsed(0);
+      setRecorderStatus({ kind: 'recording', startedAt });
+
+      timerRef.current = setInterval(() => {
+        const secs = Math.floor((Date.now() - startedAt) / 1000);
+        setElapsed(secs);
+        if (secs >= MAX_RECORD_SECONDS) {
+          mr.stop();
+          clearInterval(timerRef.current!);
+        }
+      }, 1000);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Microphone access denied';
+      setRecorderStatus({ kind: 'error', message: msg });
+    }
+  }, []);
+
+  const stopRecording = useCallback(() => {
+    mediaRecorderRef.current?.stop();
+    if (timerRef.current) clearInterval(timerRef.current);
+  }, []);
+
+  const discardRecording = useCallback(() => {
+    if (recorderStatus.kind === 'recorded') URL.revokeObjectURL(recorderStatus.previewUrl);
+    setRecorderStatus({ kind: 'idle' });
+    setElapsed(0);
+  }, [recorderStatus]);
+
+  const uploadRecording = useCallback(async () => {
+    if (recorderStatus.kind !== 'recorded') return;
+    const { blob, durationSeconds, previewUrl } = recorderStatus;
+    setRecorderStatus({ kind: 'uploading' });
+
+    const formData = new FormData();
+    // Field name must be 'voice' — matches POST /api/assessments/[id]/voice-message
+    formData.append('voice', blob, 'voice-feedback.webm');
+
+    try {
+      const res = await fetch(`/api/assessments/${assessmentId}/voice-message`, {
+        method: 'POST',
+        body: formData,
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({})) as { error?: string };
+        throw new Error(d.error ?? `HTTP ${res.status}`);
+      }
+      URL.revokeObjectURL(previewUrl);
+      setRecorderStatus({ kind: 'done', durationSeconds });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Upload failed';
+      setRecorderStatus({ kind: 'error', message: msg });
+    }
+  }, [recorderStatus, assessmentId]);
 
   // ── Loading / error states ─────────────────────────────────────────────────
 
@@ -589,25 +722,139 @@ export default function EscalationDetailPage() {
               )}
             </div>
 
-            {/* Fail feedback link (voice recorder) */}
-            {(detail.decision === 'fail' || newDecision === 'fail' || overrideStatus.kind === 'success' && overrideStatus.new_decision === 'fail') && (
-              <div className="rounded-lg border border-orange-200 bg-orange-50 p-4">
-                <h2 className="text-sm font-semibold text-orange-800 mb-2">
-                  {isAr ? 'ملاحظات الرسوب — رسالة صوتية' : 'Fail Feedback — Voice Message'}
+            {/* Unpause Journey button (M5-gap1) — visible when journey is paused */}
+            {detail.journey_state === 'paused' && (
+              <div className="rounded-lg border border-yellow-300 bg-yellow-50 p-4">
+                <h2 className="text-sm font-semibold text-yellow-900 mb-2">
+                  {isAr ? 'إعادة تفعيل الرحلة' : 'Unpause Journey'}
                 </h2>
-                <p className="text-xs text-orange-700 mb-3">
+                <p className="text-xs text-yellow-800 mb-4">
                   {isAr
-                    ? 'الطالب رسب. يمكنك تسجيل رسالة صوتية من مساحة المُقيِّم.'
-                    : 'The student has failed. Record a voice feedback message from the assessor workspace.'}
+                    ? 'الرحلة موقوفة حالياً. إعادة التفعيل تنقل الطالب إلى حالة "في انتظار المحاولة الثانية" ويمكنه إعادة التسجيل.'
+                    : 'Journey is currently paused. Unpausing moves the student to second_try_pending — they can re-submit.'}
                 </p>
-                <a
-                  href={`/${locale}/portal/assessor/${assessmentId}`}
-                  className="inline-flex items-center min-h-[44px] px-4 py-2 rounded-md bg-orange-600 text-white text-sm font-medium hover:bg-orange-700 transition"
-                >
-                  {isAr ? 'فتح مساحة المُقيِّم ← تسجيل ملاحظة صوتية' : 'Open Assessor Workspace → Record Voice Note'}
-                </a>
+
+                {unpauseStatus.kind === 'success' ? (
+                  <div className="rounded-md bg-green-50 border border-green-200 p-3 text-green-700 text-sm">
+                    {isAr
+                      ? 'تمت إعادة التفعيل. يمكن للطالب الآن إعادة التسجيل.'
+                      : 'Journey unpaused. Student can now resubmit.'}
+                  </div>
+                ) : (
+                  <>
+                    {unpauseStatus.kind === 'error' && (
+                      <p className="text-red-600 text-xs mb-3">{unpauseStatus.message}</p>
+                    )}
+                    <button
+                      onClick={() => void handleUnpause()}
+                      disabled={unpauseStatus.kind === 'submitting'}
+                      className="min-h-[44px] w-full rounded-md bg-yellow-600 text-white text-sm font-semibold px-4 py-2 hover:bg-yellow-700 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      {unpauseStatus.kind === 'submitting'
+                        ? (isAr ? 'جارٍ إعادة التفعيل...' : 'Unpausing...')
+                        : (isAr ? 'إعادة تفعيل الرحلة' : 'Unpause Journey')}
+                    </button>
+                  </>
+                )}
               </div>
             )}
+
+            {/* Voice Feedback Recorder (M5-gap2) — inline MediaRecorder */}
+            {/* Always visible for admin/mentor_manager on this page */}
+            {(() => {
+              const elapsedStr = `${String(Math.floor(elapsed / 60)).padStart(2, '0')}:${String(elapsed % 60).padStart(2, '0')}`;
+              return (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <svg className="h-4 w-4 text-amber-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+                      <path d="M19 10v2a7 7 0 0 1-14 0v-2" /><line x1="12" y1="19" x2="12" y2="23" /><line x1="8" y1="23" x2="16" y2="23" />
+                    </svg>
+                    <h2 className="text-sm font-semibold text-amber-800">
+                      {isAr ? 'تسجيل ملاحظة صوتية للطالب' : 'Record Voice Feedback for Student'}
+                    </h2>
+                  </div>
+
+                  <p className="text-xs text-amber-700">
+                    {isAr
+                      ? 'سجّل رسالة صوتية للطالب (حد أقصى ١٠ دقائق). ستظهر مباشرةً في صفحة نتيجته.'
+                      : 'Record a voice message for the student (max 10 min). Appears directly on their result page.'}
+                  </p>
+
+                  {recorderStatus.kind === 'idle' && (
+                    <button
+                      onClick={() => void startRecording()}
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-amber-600 text-white text-sm font-medium hover:bg-amber-700 transition-colors min-h-[44px]"
+                    >
+                      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                        <circle cx="12" cy="12" r="8" />
+                      </svg>
+                      {isAr ? 'بدء التسجيل' : 'Start Recording'}
+                    </button>
+                  )}
+
+                  {recorderStatus.kind === 'recording' && (
+                    <div className="flex items-center gap-3">
+                      <span className="inline-flex items-center gap-1.5 text-sm font-medium text-red-700">
+                        <span className="h-2 w-2 rounded-full bg-red-600 animate-pulse" />
+                        {isAr ? 'جارٍ التسجيل' : 'Recording'} — {elapsedStr}
+                      </span>
+                      <button
+                        onClick={stopRecording}
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-medium hover:bg-red-700 transition-colors min-h-[44px]"
+                      >
+                        {isAr ? 'إيقاف' : 'Stop'}
+                      </button>
+                    </div>
+                  )}
+
+                  {recorderStatus.kind === 'recorded' && (
+                    <div className="space-y-2">
+                      {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+                      <audio controls src={recorderStatus.previewUrl} className="w-full h-9" />
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => void uploadRecording()}
+                          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-green-600 text-white text-sm font-medium hover:bg-green-700 transition-colors min-h-[44px]"
+                        >
+                          {isAr ? 'حفظ وإرسال للطالب' : 'Save & Send to Student'}
+                        </button>
+                        <button
+                          onClick={discardRecording}
+                          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-[var(--color-neutral-300)] text-sm font-medium hover:border-red-400 hover:text-red-600 transition-colors min-h-[44px]"
+                        >
+                          {isAr ? 'حذف وإعادة التسجيل' : 'Discard & Re-record'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {recorderStatus.kind === 'uploading' && (
+                    <div className="flex items-center gap-2 text-sm text-[var(--color-neutral-500)]">
+                      <div className="h-4 w-4 border-2 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin" />
+                      {isAr ? 'جارٍ الرفع...' : 'Uploading...'}
+                    </div>
+                  )}
+
+                  {recorderStatus.kind === 'done' && (
+                    <div className="flex items-center gap-2 text-sm text-green-700 font-medium">
+                      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                      {isAr
+                        ? `تم إرسال الرسالة الصوتية (${String(Math.floor(recorderStatus.durationSeconds / 60)).padStart(2, '0')}:${String(recorderStatus.durationSeconds % 60).padStart(2, '0')})`
+                        : `Voice message sent (${String(Math.floor(recorderStatus.durationSeconds / 60)).padStart(2, '0')}:${String(recorderStatus.durationSeconds % 60).padStart(2, '0')})`}
+                    </div>
+                  )}
+
+                  {recorderStatus.kind === 'error' && (
+                    <div className="rounded-md border border-red-200 bg-red-50 p-2 text-xs text-red-700">
+                      {isAr ? `خطأ: ${recorderStatus.message}` : `Error: ${recorderStatus.message}`}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
 
           </div>
         </div>
