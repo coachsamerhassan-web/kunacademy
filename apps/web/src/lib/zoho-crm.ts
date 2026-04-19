@@ -441,12 +441,18 @@ export async function checkZohoCustomFields(): Promise<FieldCheckResult> {
       .map((f) => f.api_name)
       .filter((name): name is string => !!name);
 
+    console.log(`[zoho-crm] Metadata check: found ${fieldApiNames.length} fields, checking for Kun_Activity_Status and Contact_Type`);
+
     const required = ['Kun_Activity_Status', 'Contact_Type'];
     const missing = required.filter((name) => !fieldApiNames.includes(name));
 
     if (missing.length > 0) {
       console.warn(
-        `[zoho-crm] Missing custom fields in Contacts: ${missing.join(', ')}`,
+        `[zoho-crm] MISSING custom fields in Zoho CRM Settings: ${missing.join(', ')} — field values will be silently ignored until created.`,
+      );
+    } else {
+      console.log(
+        `[zoho-crm] Custom fields OK: Kun_Activity_Status, Contact_Type present in metadata`,
       );
     }
 
