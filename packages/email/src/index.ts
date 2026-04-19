@@ -55,3 +55,7 @@ export type { JourneyPausedEmailParams } from './journey-paused';
 // Second-try deadline warning (T-7 / T-3 / T-1 — wired to cron #7)
 export { sendSecondTryDeadlineWarningEmail } from './second-try-deadline-warning';
 export type { SecondTryDeadlineWarningEmailParams } from './second-try-deadline-warning';
+
+// Second opinion request (M5 — wired to request-second-opinion endpoint)
+export { sendSecondOpinionRequestEmail } from './second-opinion-request';
+export type { SecondOpinionRequestEmailParams } from './second-opinion-request';
