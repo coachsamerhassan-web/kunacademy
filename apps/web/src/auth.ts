@@ -60,11 +60,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.id = user.id;
         const profile = await withAdminContext(async (adminDb) => {
           const { rows } = await adminDb.execute(
-            sql`SELECT role FROM profiles WHERE id = ${user.id}`
+            sql`SELECT role, preferred_language FROM profiles WHERE id = ${user.id}`
           );
-          return rows[0] as { role: string } | undefined;
+          return rows[0] as { role: string; preferred_language: string } | undefined;
         });
         token.role = profile?.role || 'student';
+        token.preferred_language = profile?.preferred_language || 'ar';
       }
       return token;
     },
@@ -73,6 +74,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (token) {
         session.user.id = token.id as string;
         (session.user as any).role = token.role as string;
+        (session.user as any).preferred_language = token.preferred_language as string;
       }
       return session;
     },

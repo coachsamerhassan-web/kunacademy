@@ -59,3 +59,7 @@ export type { SecondTryDeadlineWarningEmailParams } from './second-try-deadline-
 // Second opinion request (M5 — wired to request-second-opinion endpoint)
 export { sendSecondOpinionRequestEmail } from './second-opinion-request';
 export type { SecondOpinionRequestEmailParams } from './second-opinion-request';
+
+// Assessor reassigned notice (M5-ext — wired to reassign endpoint)
+export { sendAssessorReassignedEmail } from './assessor-reassigned';
+export type { AssessorReassignedEmailParams } from './assessor-reassigned';

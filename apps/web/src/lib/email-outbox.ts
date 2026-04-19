@@ -24,6 +24,7 @@
  *   'assessment-result'    → sendAssessmentResultEmail
  *   'recording-received'   → sendRecordingReceivedEmail
  *   'assessor-assignment'  → sendAssessorAssignmentEmail
+ *   'assessor-reassigned'  → sendAssessorReassignedEmail
  */
 
 import { emailOutbox } from '@kunacademy/db/schema';
@@ -38,6 +39,7 @@ export type EmailTemplateKey =
   | 'assessment-result'
   | 'recording-received'
   | 'assessor-assignment'
+  | 'assessor-reassigned'
   | 'journey-paused'
   | 'second-try-deadline-warning'
   | 'second-opinion-request';

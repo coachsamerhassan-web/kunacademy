@@ -73,6 +73,24 @@ export default auth(async function middleware(request) {
     return response;
   }
 
+  // ── Auto-apply preferred_language on ambiguous paths ────────────────
+  // If user is authenticated and path is / or /ar (the default locale),
+  // redirect to their preferred language if different from current path.
+  const session = (request as any).auth;
+  if (session?.user) {
+    const currentLocale = getLocaleFromPath(request.nextUrl.pathname);
+    const preferredLocale = ((session.user as any).preferred_language as string) || 'ar';
+
+    // Redirect only on ambiguous paths: / or /{default-locale}
+    // Do NOT redirect if user explicitly chose a non-default locale in their URL
+    const isAmbiguousPath = request.nextUrl.pathname === '/' || request.nextUrl.pathname === '/ar';
+
+    if (isAmbiguousPath && preferredLocale !== currentLocale) {
+      const newPath = request.nextUrl.pathname.replace(/^\/?ar?/, `/${preferredLocale}`);
+      return NextResponse.redirect(new URL(newPath || `/${preferredLocale}`, request.url));
+    }
+  }
+
   // ── Set pricing region cookie from Vercel geo header ────────────────
   const country = request.headers.get('x-vercel-ip-country') || null;
   const region = getPricingRegion(country);
@@ -87,8 +105,7 @@ export default auth(async function middleware(request) {
     return response;
   }
 
-  // Auth.js v5 injects session into request via the auth() wrapper
-  const session = (request as any).auth;
+  // Auth.js v5 injects session into request via the auth() wrapper (already declared above)
   const locale = getLocaleFromPath(request.nextUrl.pathname);
 
   if (!session?.user) {

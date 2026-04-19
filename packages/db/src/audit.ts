@@ -19,7 +19,8 @@ export type AuditAction =
   | 'REQUEST_SECOND_OPINION'
   | 'RESOLVE_SECOND_OPINION'
   | 'PAUSE_JOURNEY'
-  | 'UNPAUSE_JOURNEY';
+  | 'UNPAUSE_JOURNEY'
+  | 'REASSIGN_ASSESSOR';
 
 /** Manual type matching the admin_audit_log migration schema */
 export interface AdminAuditLog {

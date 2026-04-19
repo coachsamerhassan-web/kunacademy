@@ -357,5 +357,24 @@ Before going live, verify:
 
 ---
 
-**Deployment Last Updated:** 2026-03-24
+**Deployment Last Updated:** 2026-04-19 — VPS deployment 0814b60
 **Prepared By:** Sani (صانع) — CTO, Kun Academy
+
+---
+
+## Current VPS Deployment (2026-04-19)
+
+**Last Commit Deployed:** `0814b60` (feat: mentor-manager email on second-opinion request)
+**VPS Address:** `ssh kun-vps` → `/var/www/kunacademy-git` (PM2: kunacademy-staging port 3001)
+**Build:** NODE_OPTIONS=--max-old-space-size=6144 pnpm build (33.7s TypeScript + 475ms static gen)
+**Status:** LIVE + SMOKE TESTED
+
+**What Just Shipped:**
+- Second-opinion request endpoint with mentor-manager email notification
+- Template key 'second-opinion-request' added to drain-email-outbox cron
+- 336 lines added across 5 files (email template, outbox drain, request handler)
+
+**Smoke Tests Passed:**
+- POST /api/admin/assessments/{id}/request-second-opinion → 401 (auth enforced)
+- Template 'second-opinion-request' exists in drain cron
+- PM2 restart clean (kunacademy-staging online, 22.1MB mem)
