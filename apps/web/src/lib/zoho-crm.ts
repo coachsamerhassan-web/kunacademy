@@ -417,8 +417,9 @@ export async function checkZohoCustomFields(): Promise<FieldCheckResult> {
   try {
     const token = await getCrmAccessToken();
 
+    // Use v6 API for broader field coverage; fetch directly (metadata is low-volume)
     const res = await fetch(
-      `${ZOHO_CRM_API}/settings/fields?module=Contacts`,
+      'https://www.zohoapis.com/crm/v6/settings/fields?module=Contacts',
       {
         method: 'GET',
         headers: crmHeaders(token),
@@ -442,6 +443,12 @@ export async function checkZohoCustomFields(): Promise<FieldCheckResult> {
 
     const required = ['Kun_Activity_Status', 'Contact_Type'];
     const missing = required.filter((name) => !fieldApiNames.includes(name));
+
+    if (missing.length > 0) {
+      console.warn(
+        `[zoho-crm] Missing custom fields in Contacts: ${missing.join(', ')}`,
+      );
+    }
 
     return { ok: missing.length === 0, missing };
   } catch (e) {
