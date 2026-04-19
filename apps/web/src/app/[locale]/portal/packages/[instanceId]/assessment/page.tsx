@@ -27,6 +27,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
+import { JourneyTimeline } from '@/components/student/JourneyTimeline';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -387,6 +388,9 @@ export default function StudentAssessmentResultPage() {
               </ul>
             </div>
 
+            {/* Journey timeline */}
+            <JourneyTimeline instanceId={instanceId} locale={locale} />
+
             {/* Back to portal */}
             <div className="pt-2">
               <button
@@ -441,6 +445,9 @@ export default function StudentAssessmentResultPage() {
                 </p>
               )}
             </div>
+
+            {/* Journey timeline */}
+            <JourneyTimeline instanceId={instanceId} locale={locale} />
           </div>
         </Section>
       </main>
@@ -510,6 +517,9 @@ export default function StudentAssessmentResultPage() {
                 {isAr ? 'العودة إلى لوحة التحكم' : 'Back to Dashboard'}
               </button>
             </div>
+
+            {/* Journey timeline */}
+            <JourneyTimeline instanceId={instanceId} locale={locale} />
           </div>
         </Section>
       </main>
@@ -604,6 +614,9 @@ export default function StudentAssessmentResultPage() {
               </button>
             </div>
           )}
+
+          {/* Journey timeline */}
+          <JourneyTimeline instanceId={instanceId} locale={locale} />
 
           {/* Back to portal */}
           <div className="pt-2">
