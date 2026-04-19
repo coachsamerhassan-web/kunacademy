@@ -12,7 +12,6 @@ import { checkZohoCustomFields }     from '@/lib/zoho-crm';
  * Authorization: Bearer CRON_SECRET
  */
 export async function GET(req: NextRequest) {
-  console.log('[cron/zoho-crm-sync] GET request received');
   const authHeader = req.headers.get('authorization');
   const cronSecret = process.env.CRON_SECRET;
   if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
@@ -20,10 +19,8 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    console.log('[cron/zoho-crm-sync] Starting health check');
     // Health check: verify custom fields exist in Zoho CRM
     const fieldCheck = await checkZohoCustomFields();
-    console.log('[cron/zoho-crm-sync] Health check result:', fieldCheck);
     if (!fieldCheck.ok) {
       console.warn(
         '[zoho-crm] MISSING custom fields in Zoho CRM Settings:',

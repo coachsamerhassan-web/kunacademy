@@ -414,7 +414,6 @@ export interface FieldCheckResult {
  * Wraps errors gracefully — if metadata API fails, logs warning and allows sync to continue.
  */
 export async function checkZohoCustomFields(): Promise<FieldCheckResult> {
-  console.log('[zoho-crm] checkZohoCustomFields() called');
   try {
     const token = await getCrmAccessToken();
 
@@ -442,28 +441,19 @@ export async function checkZohoCustomFields(): Promise<FieldCheckResult> {
       .map((f) => f.api_name)
       .filter((name): name is string => !!name);
 
-    console.log(`[zoho-crm] Metadata check: found ${fieldApiNames.length} fields, checking for Kun_Activity_Status and Contact_Type`);
-
     const required = ['Kun_Activity_Status', 'Contact_Type'];
     const missing = required.filter((name) => !fieldApiNames.includes(name));
 
     if (missing.length > 0) {
       console.warn(
-        `[zoho-crm] MISSING custom fields in Zoho CRM Settings: ${missing.join(', ')} — field values will be silently ignored until created.`,
-      );
-    } else {
-      console.log(
-        `[zoho-crm] Custom fields OK: Kun_Activity_Status, Contact_Type present in metadata`,
+        `[zoho-crm] MISSING custom fields in Zoho CRM Settings: ${missing.join(', ')}`,
       );
     }
 
     return { ok: missing.length === 0, missing };
   } catch (e) {
-    const errMsg = e instanceof Error ? e.message : String(e);
-    const errStack = e instanceof Error ? e.stack : '';
-    console.error(
-      `[zoho-crm] Field health check threw error: ${errMsg}`,
-      errStack ? `\n${errStack}` : '',
+    console.warn(
+      `[zoho-crm] Field health check threw error: ${e instanceof Error ? e.message : String(e)} — continuing anyway`,
     );
     return { ok: true, missing: [] }; // don't block sync on unexpected errors
   }
