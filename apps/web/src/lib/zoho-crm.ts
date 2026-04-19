@@ -78,7 +78,70 @@ async function getCrmAccessToken(): Promise<string> {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Proactive rate-limit pacing — token bucket, 80 req/min cap
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// Zoho CRM allows 100 req/min per org. We cap at 80 (headroom for manual API
+// use and concurrent processes). Each request costs one token; the bucket
+// refills at 80 tokens/60s. When empty, callers wait until the next refill.
+//
+// This is intentionally simple: no distributed lock (single-process Next.js
+// server), no atomic swap (module-level vars are thread-safe in Node.js).
+//
+// Max throughput: 80 req/min → 1 request per 750ms. The sequential queue
+// below enforces this ceiling. All request paths (upsert, deal, status, reads)
+// share the same queue so the cap applies across all callers.
+
+const BUCKET_CAPACITY   = 80;   // tokens per window
+const BUCKET_WINDOW_MS  = 60_000; // 1 minute window
+
+interface TokenBucket {
+  tokens:        number;
+  windowStartMs: number;
+  /** Serialises concurrent callers through a promise chain */
+  queue:         Promise<void>;
+}
+
+const _bucket: TokenBucket = {
+  tokens:        BUCKET_CAPACITY,
+  windowStartMs: Date.now(),
+  queue:         Promise.resolve(),
+};
+
+/**
+ * Acquire one token from the bucket.
+ * If the bucket is empty, waits for a pro-rated delay before resolving.
+ * Callers are chained — concurrent requests queue up in order.
+ */
+function acquireToken(): Promise<void> {
+  _bucket.queue = _bucket.queue.then(async () => {
+    const now     = Date.now();
+    const elapsed = now - _bucket.windowStartMs;
+
+    if (elapsed >= BUCKET_WINDOW_MS) {
+      // New window — reset
+      _bucket.tokens        = BUCKET_CAPACITY;
+      _bucket.windowStartMs = now;
+    }
+
+    if (_bucket.tokens > 0) {
+      _bucket.tokens--;
+      return;
+    }
+
+    // Bucket empty — wait for the remaining window time then reset
+    const waitMs = BUCKET_WINDOW_MS - elapsed + 50; // +50ms safety margin
+    console.warn(`[zoho-crm] Rate bucket empty — waiting ${waitMs}ms before next request`);
+    await new Promise<void>((r) => setTimeout(r, waitMs));
+    _bucket.tokens        = BUCKET_CAPACITY - 1;
+    _bucket.windowStartMs = Date.now();
+  });
+  return _bucket.queue;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Retry wrapper (exponential backoff: 1s → 2s → 4s → 8s → 16s ≤30s)
+// Second safety layer: reactive 429 backoff, preserved alongside token bucket.
 // ─────────────────────────────────────────────────────────────────────────────
 
 async function crmFetch(
@@ -86,6 +149,9 @@ async function crmFetch(
   options: RequestInit,
   maxRetries = 5,
 ): Promise<Response> {
+  // Proactive pacing — wait for a token before every request
+  await acquireToken();
+
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     const res = await fetch(url, options);
 

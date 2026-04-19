@@ -329,22 +329,48 @@ export async function fireSettlementEffects(
   // ── 3. Zoho CRM Deal (fire-and-forget; never blocks settlement) ───────────
   // Spec: SPEC-zoho-crm-sync.md §3 — service purchase → CRM Deal linked to Contact
   // user_id is the KUN profile_id (NextAuth session ID = profiles.id).
+  //
+  // Dedup: insert a sentinel row into crm_deal_enqueued_for_payment (PK = payment_id).
+  // If settlement fires more than once for the same payment (webhook retry, cron
+  // overlap), the second INSERT hits the PK conflict and we skip the enqueue.
   if (params.user_id && amount_minor > 0) {
-    const dealLabel = `${item_type.charAt(0).toUpperCase() + item_type.slice(1)} — ${payment_id.slice(0, 8)}`;
-    const today     = new Date().toISOString().split('T')[0];
-    // Fire-and-forget: never await in the hot path
-    enqueueCrmDealSync({
-      profile_id:   params.user_id,
-      payment_id,
-      deal_name:    dealLabel,
-      amount_minor,
-      currency,
-      closing_date: today,
-      coach_name:   undefined, // coach name lookup is non-trivial here; CRM queue enriches on drain
-    }).catch((err) => {
-      // Log only — CRM sync failure MUST NOT affect payment settlement
-      console.error(`[settlement-effects] CRM deal enqueue failed for payment ${payment_id}:`, err);
-    });
+    // Attempt sentinel insert — fire-and-forget the whole block
+    void (async () => {
+      try {
+        const inserted = await withAdminContext(async (db) => {
+          const result = await db.execute(sql`
+            INSERT INTO crm_deal_enqueued_for_payment (payment_id, profile_id)
+            VALUES (${payment_id}, ${params.user_id})
+            ON CONFLICT (payment_id) DO NOTHING
+          `);
+          // rowCount > 0 means we own this enqueue; 0 means someone else already did it
+          return (result.rowCount ?? 0) > 0;
+        });
+
+        if (!inserted) {
+          console.log(
+            `[settlement-effects] CRM deal already enqueued for payment ${payment_id} — skipping duplicate`,
+          );
+          return;
+        }
+
+        const dealLabel = `${item_type.charAt(0).toUpperCase() + item_type.slice(1)} — ${payment_id.slice(0, 8)}`;
+        const today     = new Date().toISOString().split('T')[0];
+
+        await enqueueCrmDealSync({
+          profile_id:   params.user_id,
+          payment_id,
+          deal_name:    dealLabel,
+          amount_minor,
+          currency,
+          closing_date: today,
+          coach_name:   undefined, // coach name lookup is non-trivial here; CRM queue enriches on drain
+        });
+      } catch (err) {
+        // Log only — CRM sync failure MUST NOT affect payment settlement
+        console.error(`[settlement-effects] CRM deal enqueue failed for payment ${payment_id}:`, err);
+      }
+    })();
   }
 
   return { commission_written, store_credit_written, errors };

@@ -192,10 +192,16 @@ async function writeToQueue(
   profileId: string,
   payload: QueuePayload,
 ): Promise<void> {
+  // dedup_key:
+  //   create_deal  → payment_id from payload (one pending row per payment)
+  //   everything else → NULL (NULLS NOT DISTINCT collapses to one pending row per profile+op)
+  const dedupKey = operation === 'create_deal' ? (payload.payment_id ?? null) : null;
+
   await withAdminContext(async (db) => {
     await db.execute(sql`
-      INSERT INTO crm_sync_queue (profile_id, operation, payload, attempts, scheduled_at)
-      VALUES (${profileId}, ${operation}, ${JSON.stringify(payload)}::jsonb, 0, NOW())
+      INSERT INTO crm_sync_queue (profile_id, operation, payload, attempts, scheduled_at, dedup_key)
+      VALUES (${profileId}, ${operation}, ${JSON.stringify(payload)}::jsonb, 0, NOW(), ${dedupKey})
+      ON CONFLICT (profile_id, operation, dedup_key) DO NOTHING
     `);
   });
 }

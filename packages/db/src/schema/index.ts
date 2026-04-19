@@ -61,3 +61,4 @@ export * from './rubric-templates';
 export * from './package-recordings';
 export * from './package-assessments';
 export * from './assessor-assignment-tracker';
+export * from './crm_sync';
