@@ -414,6 +414,7 @@ export interface FieldCheckResult {
  * Wraps errors gracefully — if metadata API fails, logs warning and allows sync to continue.
  */
 export async function checkZohoCustomFields(): Promise<FieldCheckResult> {
+  console.log('[zoho-crm] checkZohoCustomFields() called');
   try {
     const token = await getCrmAccessToken();
 
