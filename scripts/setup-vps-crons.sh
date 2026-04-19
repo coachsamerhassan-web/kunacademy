@@ -92,6 +92,14 @@ CRON_ENTRIES="
 # Cron 12: Orphan voice-message reaper — 04:00 Dubai = 00:00 UTC
 # Removes disk files for re-recorded voice messages whose DB row was replaced.
 0 0 * * * curl -s -H \"Authorization: Bearer $CRON_SECRET\" $APP_URL/api/cron/reap-orphan-voice-messages >> /var/log/kunacademy-crons.log 2>&1
+
+# ── Email Outbox Drain ──────────────────────────────────────────────────────
+
+# Cron 13: Drain email outbox — every 1 minute
+# Dispatches pending rows from email_outbox to @kunacademy/email template functions.
+# FOR UPDATE SKIP LOCKED prevents double-drain if cron overlaps.
+# Retries up to 5 attempts per row; permanently failed rows land in status='failed'.
+* * * * * curl -s -H \"Authorization: Bearer $CRON_SECRET\" $APP_URL/api/cron/drain-email-outbox >> /var/log/kunacademy-crons.log 2>&1
 "
 
 # Install crontab entries

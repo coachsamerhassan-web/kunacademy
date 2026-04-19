@@ -24,7 +24,7 @@ import {
   packageRecordings,
   profiles,
 } from '@kunacademy/db/schema';
-import { sendAssessorAssignmentEmail } from '@kunacademy/email';
+import { enqueueEmail } from '@/lib/email-outbox';
 
 interface AssessorRow {
   profile_id: string | null;
@@ -158,77 +158,66 @@ export async function assignAssessor(
       .set({ status: 'under_review', updated_at: new Date().toISOString() })
       .where(eq(packageRecordings.id, recordingId));
 
-    // ── Step 7: Fire-and-forget — notify assessor of new assignment ────────────
-    // Runs outside the transaction return value; errors are logged, not thrown.
-    void (async () => {
-      try {
-        // Fetch assessor profile (email + locale + name)
-        const assessorProfile = await withAdminContext(async (innerDb) => {
-          const rows = await innerDb
-            .select({
-              email:              profiles.email,
-              full_name_ar:       profiles.full_name_ar,
-              full_name_en:       profiles.full_name_en,
-              preferred_language: profiles.preferred_language,
-            })
-            .from(profiles)
-            .where(eq(profiles.id, assessorProfileId))
-            .limit(1);
-          return rows[0] ?? null;
-        });
+    // ── Step 7: Enqueue assessor assignment notification (inside same tx) ────
+    // Fetch assessor + student profiles + recording metadata, then insert one
+    // outbox row. All reads are within the same withAdminContext transaction.
+    const assessorProfile = await db
+      .select({
+        email:              profiles.email,
+        full_name_ar:       profiles.full_name_ar,
+        full_name_en:       profiles.full_name_en,
+        preferred_language: profiles.preferred_language,
+      })
+      .from(profiles)
+      .where(eq(profiles.id, assessorProfileId))
+      .limit(1)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .then((rows: any[]) => rows[0] ?? null);
 
-        if (!assessorProfile?.email) {
-          console.warn('[assign-assessor] assessor-assignment email skipped: no email for', assessorProfileId);
-          return;
-        }
+    if (assessorProfile?.email) {
+      const locale: 'ar' | 'en' =
+        assessorProfile.preferred_language === 'en' ? 'en' : 'ar';
 
-        const locale: 'ar' | 'en' =
-          assessorProfile.preferred_language === 'en' ? 'en' : 'ar';
+      const assessorName =
+        (locale === 'ar' ? assessorProfile.full_name_ar : assessorProfile.full_name_en) ??
+        assessorProfile.full_name_en ??
+        assessorProfile.full_name_ar ??
+        (locale === 'ar' ? 'مقيّم' : 'Assessor');
 
-        const assessorName =
-          (locale === 'ar' ? assessorProfile.full_name_ar : assessorProfile.full_name_en) ??
-          assessorProfile.full_name_en ??
-          assessorProfile.full_name_ar ??
-          (locale === 'ar' ? 'مقيّم' : 'Assessor');
+      const studentProfile = await db
+        .select({ full_name_ar: profiles.full_name_ar, full_name_en: profiles.full_name_en })
+        .from(packageInstances)
+        .innerJoin(profiles, eq(profiles.id, packageInstances.student_id))
+        .where(eq(packageInstances.id, packageInstanceId))
+        .limit(1)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .then((rows: any[]) => rows[0] ?? null);
 
-        // Fetch student profile for name (COALESCE-safe: null handled in template)
-        const studentProfile = await withAdminContext(async (innerDb) => {
-          const rows = await innerDb
-            .select({
-              full_name_ar: profiles.full_name_ar,
-              full_name_en: profiles.full_name_en,
-            })
-            .from(packageInstances)
-            .innerJoin(profiles, eq(profiles.id, packageInstances.student_id))
-            .where(eq(packageInstances.id, packageInstanceId))
-            .limit(1);
-          return rows[0] ?? null;
-        });
+      const studentName =
+        (locale === 'ar' ? studentProfile?.full_name_ar : studentProfile?.full_name_en) ??
+        studentProfile?.full_name_en ??
+        studentProfile?.full_name_ar ??
+        null;
 
-        const studentName =
-          (locale === 'ar' ? studentProfile?.full_name_ar : studentProfile?.full_name_en) ??
-          studentProfile?.full_name_en ??
-          studentProfile?.full_name_ar ??
-          null;
+      const recordingMeta = await db
+        .select({
+          original_filename: packageRecordings.original_filename,
+          duration_seconds:  packageRecordings.duration_seconds,
+          submitted_at:      packageRecordings.submitted_at,
+        })
+        .from(packageRecordings)
+        .where(eq(packageRecordings.id, recordingId))
+        .limit(1)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .then((rows: any[]) => rows[0] ?? null);
 
-        // Fetch recording metadata (filename, duration, submitted_at)
-        const recordingMeta = await withAdminContext(async (innerDb) => {
-          const rows = await innerDb
-            .select({
-              original_filename: packageRecordings.original_filename,
-              duration_seconds:  packageRecordings.duration_seconds,
-              submitted_at:      packageRecordings.submitted_at,
-            })
-            .from(packageRecordings)
-            .where(eq(packageRecordings.id, recordingId))
-            .limit(1);
-          return rows[0] ?? null;
-        });
+      const siteUrl  = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://kunacademy.com';
+      const queueUrl = `${siteUrl}/${locale}/portal/assessor`;
 
-        const siteUrl   = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://kunacademy.com';
-        const queueUrl  = `${siteUrl}/${locale}/portal/assessor`;
-
-        await sendAssessorAssignmentEmail(assessorProfile.email, {
+      await enqueueEmail(db, {
+        template_key: 'assessor-assignment',
+        to_email:     assessorProfile.email,
+        payload:      {
           assessor_name:      assessorName,
           locale,
           student_name:       studentName,
@@ -236,12 +225,11 @@ export async function assignAssessor(
           duration_seconds:   recordingMeta?.duration_seconds,
           submitted_at:       recordingMeta?.submitted_at ?? new Date().toISOString(),
           queue_url:          queueUrl,
-        });
-      } catch (emailErr: unknown) {
-        const msg = emailErr instanceof Error ? emailErr.message : String(emailErr);
-        console.error('[assign-assessor] assessor-assignment email failed:', msg);
-      }
-    })();
+        },
+      });
+    } else {
+      console.warn('[assign-assessor] assessor-assignment email skipped: no email for', assessorProfileId);
+    }
 
     return assessorProfileId;
   });

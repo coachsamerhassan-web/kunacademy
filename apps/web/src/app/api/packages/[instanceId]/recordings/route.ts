@@ -35,7 +35,7 @@ import {
 } from '@kunacademy/db/schema';
 import { getAuthUser } from '@kunacademy/auth/server';
 import { assignAssessor } from '@/lib/mentoring/assign-assessor';
-import { sendRecordingReceivedEmail } from '@kunacademy/email';
+import { enqueueEmail } from '@/lib/email-outbox';
 import { writeFile, mkdir, rm } from 'fs/promises';
 import { exec } from 'child_process';
 import { promisify } from 'util';
@@ -378,38 +378,33 @@ export async function POST(request: NextRequest, context: RouteContext) {
       .where(eq(packageInstances.id, instanceId));
   });
 
-  // ── Fire-and-forget: notify student that recording was received ────────────
-  // Fetch preferred_language from the profile for locale selection.
-  // Falls back to 'ar' if the row is missing or the column is null.
-  void (async () => {
-    try {
-      const profileRow = await withAdminContext(async (db) => {
-        const rows = await db
-          .select({
-            preferred_language: profiles.preferred_language,
-          })
-          .from(profiles)
-          .where(eq(profiles.id, user.id))
-          .limit(1);
-        return rows[0] ?? null;
+  // ── Enqueue student notification: recording received ─────────────────────
+  // Fetch preferred_language, then insert outbox row as its own implicit tx.
+  // No fire-and-forget wrapper — the INSERT is synchronous and durable.
+  {
+    const profileRow = await withAdminContext(async (db) => {
+      const rows = await db
+        .select({ preferred_language: profiles.preferred_language })
+        .from(profiles)
+        .where(eq(profiles.id, user.id))
+        .limit(1);
+      return rows[0] ?? null;
+    });
+
+    const locale: 'ar' | 'en' =
+      profileRow?.preferred_language === 'en' ? 'en' : 'ar';
+
+    const studentName = user.name ?? (locale === 'ar' ? 'طالب' : 'Student');
+    const portalUrl   = `${process.env.NEXT_PUBLIC_SITE_URL ?? 'https://kunacademy.com'}/${locale}/portal/packages/${instanceId}`;
+
+    await withAdminContext(async (db) => {
+      await enqueueEmail(db, {
+        template_key: 'recording-received',
+        to_email:     user.email,
+        payload:      { student_name: studentName, locale, portal_url: portalUrl },
       });
-
-      const locale: 'ar' | 'en' =
-        profileRow?.preferred_language === 'en' ? 'en' : 'ar';
-
-      const studentName = user.name ?? (locale === 'ar' ? 'طالب' : 'Student');
-      const portalUrl   = `${process.env.NEXT_PUBLIC_SITE_URL ?? 'https://kunacademy.com'}/${locale}/portal/packages/${instanceId}`;
-
-      await sendRecordingReceivedEmail(user.email, {
-        student_name: studentName,
-        locale,
-        portal_url:   portalUrl,
-      });
-    } catch (emailErr: unknown) {
-      const msg = emailErr instanceof Error ? emailErr.message : String(emailErr);
-      console.error('[recordings POST] recording-received email failed:', msg);
-    }
-  })();
+    });
+  }
 
   return NextResponse.json(
     { recordingId, assessorAssigned, transcriptFilePath },

@@ -63,3 +63,4 @@ export * from './package-assessments';
 export * from './assessor-assignment-tracker';
 export * from './assessment-voice-messages';
 export * from './crm_sync';
+export * from './email-outbox';
