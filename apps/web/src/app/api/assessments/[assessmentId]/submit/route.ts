@@ -294,12 +294,16 @@ export async function POST(request: NextRequest, context: RouteContext) {
   // withAdminContext wraps the callback in BEGIN/COMMIT/ROLLBACK automatically.
   await withAdminContext(async (db) => {
     // 1. Finalise the assessment row
+    //    ethics_auto_failed is written to BOTH the dedicated column (DB-level
+    //    enforcement via CHECK constraint, migration 0020) and the JSONB blob
+    //    (backward-compat for one release cycle).
     await db
       .update(packageAssessments)
       .set({
-        decision:    finalVerdict,
-        decided_at:  now,
-        rubric_scores: mergedScores,
+        decision:           finalVerdict,
+        decided_at:         now,
+        rubric_scores:      mergedScores,
+        ethics_auto_failed: ethicsAutoFailed,
       })
       .where(eq(packageAssessments.id, assessmentId));
 

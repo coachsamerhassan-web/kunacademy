@@ -51,6 +51,7 @@ export async function GET(_request: NextRequest, context: RouteContext) {
         assigned_at:         packageAssessments.assigned_at,
         escalated_at:        packageAssessments.escalated_at,
         rubric_scores:       packageAssessments.rubric_scores,
+        ethics_auto_failed:  packageAssessments.ethics_auto_failed,
         // Recording fields
         original_filename:   packageRecordings.original_filename,
         mime_type:           packageRecordings.mime_type,

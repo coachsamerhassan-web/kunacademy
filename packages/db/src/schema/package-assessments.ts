@@ -1,4 +1,4 @@
-import { pgTable, jsonb, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { boolean, pgTable, jsonb, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 import { packageRecordings } from './package-recordings';
 import { profiles } from './profiles';
 
@@ -52,6 +52,19 @@ export const packageAssessments = pgTable("package_assessments", {
    * Null until rubric integration is built.
    */
   rubric_scores: jsonb("rubric_scores"),
+
+  /**
+   * DB-level promotion of the ethics auto-fail flag (formerly stored only in
+   * rubric_scores JSONB). Set to TRUE when any ethics gate (G1/G2/G3) is
+   * marked 'disagree' at submission time.
+   *
+   * CHECK constraint: ethics_auto_failed = TRUE → decision IN ('pending', 'fail')
+   * Enforced in migration 0020.
+   *
+   * The JSONB key `ethics_auto_failed` is kept for one release cycle for
+   * backward-compat; both are written by the submit handler.
+   */
+  ethics_auto_failed: boolean("ethics_auto_failed").notNull().default(false),
 
   decided_at: timestamp("decided_at", {
     withTimezone: true,

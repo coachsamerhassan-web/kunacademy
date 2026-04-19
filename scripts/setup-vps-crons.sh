@@ -86,6 +86,12 @@ CRON_ENTRIES="
 # Cron 11: Zoho CRM daily status refresh — 06:00 Dubai = 02:00 UTC
 # Classifies contacts as New/Active/Passive based on booking/payment activity.
 0 2 * * * curl -s -H \"Authorization: Bearer $CRON_SECRET\" $APP_URL/api/cron/zoho-crm-status >> /var/log/kunacademy-crons.log 2>&1
+
+# ── Phase 2.6 — Voice Message Maintenance ──────────────────────────────────
+
+# Cron 12: Orphan voice-message reaper — 04:00 Dubai = 00:00 UTC
+# Removes disk files for re-recorded voice messages whose DB row was replaced.
+0 0 * * * curl -s -H \"Authorization: Bearer $CRON_SECRET\" $APP_URL/api/cron/reap-orphan-voice-messages >> /var/log/kunacademy-crons.log 2>&1
 "
 
 # Install crontab entries
