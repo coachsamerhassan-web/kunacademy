@@ -6,6 +6,11 @@
  *
  * CONVENTION: Counts Mon–Fri days (dayOfWeek 1–5) between start (inclusive) and end (exclusive).
  * Used for SLA badge in assessor portal to match 10-business-day threshold.
+ *
+ * NOTE: Uses UTC-based date methods throughout (getUTCDay, getUTCFullYear, getUTCMonth,
+ * getUTCDate) to avoid locale-dependent day flips when the assessor's timezone differs
+ * from UTC. submitted_at is stored as a UTC ISO string; comparing against local midnight
+ * would miscount business days near midnight in UTC+offset timezones (e.g. Dubai UTC+4).
  */
 
 /**
@@ -18,16 +23,18 @@
  * Matches backend convention in apps/web/src/app/api/cron/assessment-sla-check/route.ts
  */
 export function businessDaysBetween(start: Date, end: Date): number {
-  let current = new Date(start);
+  // Normalise to UTC midnight to avoid partial-day counting and TZ-dependent getDay() results
+  let current = Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), start.getUTCDate());
+  const endMs  = Date.UTC(end.getUTCFullYear(),   end.getUTCMonth(),   end.getUTCDate());
   let count = 0;
 
-  while (current < end) {
-    const dayOfWeek = current.getDay();
+  while (current < endMs) {
+    const dayOfWeek = new Date(current).getUTCDay();
     // Only count Mon-Fri (1-5)
     if (dayOfWeek >= 1 && dayOfWeek <= 5) {
       count++;
     }
-    current.setDate(current.getDate() + 1);
+    current += 86_400_000; // advance by exactly one day in ms
   }
 
   return count;

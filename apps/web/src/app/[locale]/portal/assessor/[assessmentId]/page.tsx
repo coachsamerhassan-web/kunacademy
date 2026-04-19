@@ -853,6 +853,7 @@ export default function AssessorWorkspacePage() {
                   title={isAr ? 'نص الجلسة' : 'Session transcript'}
                   className="w-full rounded-lg border border-[var(--color-neutral-200)]"
                   style={{ height: '480px' }}
+                  sandbox="allow-same-origin"
                 />
               )}
 
