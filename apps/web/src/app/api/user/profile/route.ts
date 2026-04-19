@@ -19,6 +19,7 @@ export async function GET() {
         country: profiles.country,
         avatar_url: profiles.avatar_url,
         role: profiles.role,
+        preferred_language: profiles.preferred_language,
       })
       .from(profiles)
       .where(eq(profiles.id, user.id))

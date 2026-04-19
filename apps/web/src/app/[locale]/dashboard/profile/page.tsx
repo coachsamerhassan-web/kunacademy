@@ -12,6 +12,7 @@ interface Profile {
   phone: string | null;
   country: string | null;
   avatar_url: string | null;
+  preferred_language: string;
 }
 
 export default function ProfilePage({ params }: { params: Promise<{ locale: string }> }) {
@@ -20,6 +21,8 @@ export default function ProfilePage({ params }: { params: Promise<{ locale: stri
   const { user } = useAuth();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
 
   useEffect(() => {
     if (!user) return;
@@ -30,6 +33,37 @@ export default function ProfilePage({ params }: { params: Promise<{ locale: stri
         setLoading(false);
       });
   }, [user]);
+
+  const handleLanguageChange = async (newLanguage: 'ar' | 'en') => {
+    setSaving(true);
+    setSaveStatus('saving');
+
+    try {
+      const res = await fetch('/api/user/profile/preferred-language', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ language: newLanguage }),
+      });
+
+      if (!res.ok) {
+        setSaveStatus('error');
+        setSaving(false);
+        setTimeout(() => setSaveStatus('idle'), 3000);
+        return;
+      }
+
+      const data = await res.json();
+      setProfile(prev => prev ? { ...prev, preferred_language: data.preferred_language } : null);
+      setSaveStatus('saved');
+      setSaving(false);
+      setTimeout(() => setSaveStatus('idle'), 2000);
+    } catch (err) {
+      console.error('Failed to update preferred language:', err);
+      setSaveStatus('error');
+      setSaving(false);
+      setTimeout(() => setSaveStatus('idle'), 3000);
+    }
+  };
 
   if (loading) {
     return (
@@ -87,8 +121,58 @@ export default function ProfilePage({ params }: { params: Promise<{ locale: stri
           ))}
         </div>
 
-        {/* Edit note */}
+        {/* Preferred Language */}
         <div className="mt-8 pt-6 border-t border-[var(--color-neutral-100)]">
+          <div className="mb-4">
+            <label className="text-xs font-medium text-[var(--color-neutral-500)] uppercase tracking-wider block mb-3">
+              {isAr ? 'لغة الإشعارات المفضلة' : 'Preferred notification language'}
+            </label>
+            <div className="flex gap-3">
+              <button
+                onClick={() => handleLanguageChange('ar')}
+                disabled={saving}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                  profile?.preferred_language === 'ar'
+                    ? 'bg-[var(--color-primary)] text-white'
+                    : 'bg-[var(--color-neutral-100)] text-[var(--text-primary)] hover:bg-[var(--color-neutral-200)]'
+                } disabled:opacity-50 disabled:cursor-not-allowed`}
+              >
+                العربية
+              </button>
+              <button
+                onClick={() => handleLanguageChange('en')}
+                disabled={saving}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                  profile?.preferred_language === 'en'
+                    ? 'bg-[var(--color-primary)] text-white'
+                    : 'bg-[var(--color-neutral-100)] text-[var(--text-primary)] hover:bg-[var(--color-neutral-200)]'
+                } disabled:opacity-50 disabled:cursor-not-allowed`}
+              >
+                English
+              </button>
+            </div>
+          </div>
+
+          {/* Status indicator */}
+          {saveStatus === 'saving' && (
+            <p className="text-xs text-[var(--color-neutral-500)]">
+              {isAr ? 'جاري الحفظ...' : 'Saving...'}
+            </p>
+          )}
+          {saveStatus === 'saved' && (
+            <p className="text-xs text-[var(--color-success)]">
+              {isAr ? 'تم الحفظ بنجاح' : 'Saved successfully'}
+            </p>
+          )}
+          {saveStatus === 'error' && (
+            <p className="text-xs text-[var(--color-danger)]">
+              {isAr ? 'فشل الحفظ. حاول مرة أخرى.' : 'Failed to save. Please try again.'}
+            </p>
+          )}
+        </div>
+
+        {/* Edit note */}
+        <div className="mt-6 pt-4 border-t border-[var(--color-neutral-100)]">
           <p className="text-sm text-[var(--color-neutral-500)]">
             {isAr ? 'لتعديل بياناتك تواصل معنا عبر info@kuncoaching.com' : 'To update your details contact us at info@kuncoaching.com'}
           </p>
