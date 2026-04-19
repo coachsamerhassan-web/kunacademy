@@ -20,6 +20,31 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAdminContext, sql } from '@kunacademy/db';
 
+/**
+ * Batched DELETE helper: executes DELETE in chunks to avoid table locks.
+ * @param db Database connection object
+ * @param sqlFn Function that returns the DELETE query with LIMIT applied
+ * @param limit Batch size (default 1000)
+ * @param maxIterations Safety cap to prevent infinite loops (default 100)
+ * @returns Total number of rows deleted
+ */
+async function batchedDelete(
+  db: unknown,
+  sqlFn: (limit: number) => ReturnType<typeof sql>,
+  limit = 1000,
+  maxIterations = 100,
+): Promise<number> {
+  let totalDeleted = 0;
+  for (let i = 0; i < maxIterations; i++) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const result: any = await (db as any).execute(sqlFn(limit));
+    const deleted = result.rowCount ?? 0;
+    totalDeleted += deleted;
+    if (deleted < limit) break; // finished: fewer rows than batch size
+  }
+  return totalDeleted;
+}
+
 export async function GET(req: NextRequest) {
   // ── Auth ────────────────────────────────────────────────────────────────────
   const authHeader = req.headers.get('authorization');
@@ -65,32 +90,35 @@ export async function GET(req: NextRequest) {
 
     // ── Live purge ──────────────────────────────────────────────────────────
     const { sentPurged, failedPurged } = await withAdminContext(async (db) => {
-      // DELETE sent rows older than 30 days
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const sentResult: any = await db.execute(
-        sql`
+      // Batched DELETE: sent rows older than 30 days
+      const sentPurged = await batchedDelete(
+        db,
+        (limit) => sql`
           DELETE FROM email_outbox
-          WHERE  status = 'sent'
-            AND  sent_at < NOW() - INTERVAL '30 days'
-          RETURNING id
+          WHERE  id IN (
+            SELECT id FROM email_outbox
+            WHERE  status = 'sent'
+              AND  sent_at < NOW() - INTERVAL '30 days'
+            LIMIT ${limit}
+          )
         `,
       );
 
-      // DELETE failed rows older than 90 days
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const failedResult: any = await db.execute(
-        sql`
+      // Batched DELETE: failed rows older than 90 days
+      const failedPurged = await batchedDelete(
+        db,
+        (limit) => sql`
           DELETE FROM email_outbox
-          WHERE  status = 'failed'
-            AND  last_attempt_at < NOW() - INTERVAL '90 days'
-          RETURNING id
+          WHERE  id IN (
+            SELECT id FROM email_outbox
+            WHERE  status = 'failed'
+              AND  last_attempt_at < NOW() - INTERVAL '90 days'
+            LIMIT ${limit}
+          )
         `,
       );
 
-      return {
-        sentPurged:   (sentResult.rows   as { id: string }[]).length,
-        failedPurged: (failedResult.rows as { id: string }[]).length,
-      };
+      return { sentPurged, failedPurged };
     });
 
     const result = { sent_purged: sentPurged, failed_purged: failedPurged };
