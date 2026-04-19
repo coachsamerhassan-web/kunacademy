@@ -187,18 +187,25 @@ export async function POST(request: NextRequest, context: RouteContext) {
   const durationSeconds = await probeDurationSeconds(filePath);
 
   // ── Upsert DB row (one voice message per assessment; latest replaces old) ──
-  // Strategy: delete any existing row for this assessment, then insert.
-  // This keeps the table simple (no "latest" flag needed) and the old file
-  // becomes orphaned — acceptable until a retention/cleanup cron is added.
+  // Strategy: write-new → insert-new → delete-old (prevents data loss if INSERT fails).
+  // Only unlink old file after all DB ops succeed.
   const now = new Date().toISOString();
 
   let inserted: { id: string; file_path: string; created_at: string } | null = null;
+  let oldFilePath: string | null = null;
+
   try {
     inserted = await withAdminContext(async (db) => {
-      // Remove prior voice message row (if any) for this assessment
-      await db
-        .delete(assessmentVoiceMessages)
-        .where(eq(assessmentVoiceMessages.assessment_id, assessmentId));
+      // Fetch any existing row for this assessment
+      const existingRows = await db
+        .select({
+          id:        assessmentVoiceMessages.id,
+          file_path: assessmentVoiceMessages.file_path,
+        })
+        .from(assessmentVoiceMessages)
+        .where(eq(assessmentVoiceMessages.assessment_id, assessmentId))
+        .limit(1);
+      const existingRow = existingRows[0] ?? null;
 
       // Insert new row
       const rows = await db
@@ -217,17 +224,37 @@ export async function POST(request: NextRequest, context: RouteContext) {
           file_path:  assessmentVoiceMessages.file_path,
           created_at: assessmentVoiceMessages.created_at,
         });
-      return rows[0] ?? null;
+      const newRow = rows[0] ?? null;
+      if (!newRow) return null;
+
+      // Delete old row only if new row inserted successfully
+      if (existingRow) {
+        oldFilePath = existingRow.file_path;
+        await db
+          .delete(assessmentVoiceMessages)
+          .where(eq(assessmentVoiceMessages.id, existingRow.id));
+      }
+
+      return newRow;
     });
   } catch (dbErr: unknown) {
-    // Best-effort cleanup on DB failure
+    // DB transaction failed: cleanup the newly-written file (orphan prevention)
     await rm(filePath, { force: true }).catch(() => {});
-    throw dbErr;
+    console.error('[voice-message POST] DB error:', dbErr);
+    return NextResponse.json(
+      { error: 'Failed to save voice message to database' },
+      { status: 500 },
+    );
   }
 
   if (!inserted) {
     await rm(filePath, { force: true }).catch(() => {});
     return NextResponse.json({ error: 'Failed to create voice message record' }, { status: 500 });
+  }
+
+  // All DB ops succeeded: now safe to unlink old file from disk
+  if (oldFilePath) {
+    await rm(oldFilePath, { force: true }).catch(() => {});
   }
 
   return NextResponse.json(
