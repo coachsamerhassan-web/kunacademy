@@ -33,6 +33,12 @@ export const beneficiaryFiles = pgTable("beneficiary_files", {
   /** Date the student first coached this volunteer client. */
   first_session_date: date("first_session_date"),
 
+  /**
+   * Phase 1.4: set by mentor-prep-release cron when the 48h gate opens.
+   * NULL = prep materials not yet released to mentor.
+   */
+  mentor_prep_released_at: timestamp("mentor_prep_released_at", { withTimezone: true, mode: 'string' }),
+
   created_at: timestamp("created_at", { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
   updated_at: timestamp("updated_at", { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
 }, (table) => ({

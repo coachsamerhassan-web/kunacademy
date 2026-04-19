@@ -90,6 +90,14 @@ export const beneficiaryFileSessions = pgTable("beneficiary_file_sessions", {
   submitted_at: timestamp("submitted_at", { withTimezone: true, mode: 'string' }),
   reviewed_at:  timestamp("reviewed_at",  { withTimezone: true, mode: 'string' }),
 
+  // ── Phase 1.4 reminder cron columns ────────────────────────────────────────
+  /** Scheduled datetime for this session (Dubai timezone). Used by reminder crons. */
+  scheduled_at: timestamp("scheduled_at", { withTimezone: true, mode: 'string' }),
+  /** Set by cron/upcoming-session-24h after 24h reminder email is sent. */
+  reminder_24h_sent_at: timestamp("reminder_24h_sent_at", { withTimezone: true, mode: 'string' }),
+  /** Set by cron/upcoming-session-1h after 1h reminder email is sent. */
+  reminder_1h_sent_at:  timestamp("reminder_1h_sent_at",  { withTimezone: true, mode: 'string' }),
+
   created_at: timestamp("created_at", { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
   updated_at: timestamp("updated_at", { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
 }, (table) => ({

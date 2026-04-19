@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { withAdminContext } from '@kunacademy/db';
+import { withAdminContext, logAdminAction } from '@kunacademy/db';
 import { getAuthUser } from '@kunacademy/auth/server';
-import { eq } from 'drizzle-orm';
+import { eq, and, isNotNull } from 'drizzle-orm';
 import { bookings } from '@kunacademy/db/schema';
 
 /**
@@ -55,12 +55,24 @@ export async function POST(
 
     if (!wasAlreadyNull) {
       // Only update if token exists; avoid unnecessary DB write
+      // WHERE clause includes isNotNull(guest_token) to prevent TOCTOU race:
+      // if booking is deleted or token already revoked between SELECT and UPDATE,
+      // the update affects 0 rows (safe, not an error)
       await withAdminContext(async (adminDb) => {
         return adminDb
           .update(bookings)
           .set({ guest_token: null, guest_token_expires_at: null })
-          .where(eq(bookings.id, id))
+          .where(and(eq(bookings.id, id), isNotNull(bookings.guest_token)))
           .returning({ id: bookings.id });
+      });
+
+      // Log the revocation to audit trail
+      await logAdminAction({
+        adminId: user.id,
+        action: 'REVOKE_GUEST_TOKEN',
+        targetType: 'booking',
+        targetId: id,
+        metadata: { wasAlreadyNull },
       });
     }
 

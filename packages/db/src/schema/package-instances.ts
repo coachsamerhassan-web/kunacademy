@@ -1,4 +1,4 @@
-import { pgTable, integer, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { pgTable, integer, jsonb, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 import { instructors } from './instructors';
 import { packageTemplates } from './package-templates';
 import { profiles } from './profiles';
@@ -42,6 +42,23 @@ export const packageInstances = pgTable("package_instances", {
   // ── Rubric version lock ────────────────────────────────────────────────────
   /** Pinned at enrollment from package_template.rubric_version */
   rubric_version_locked: integer("rubric_version_locked"),
+
+  // ── Phase 1.4 additions ────────────────────────────────────────────────────
+  /**
+   * Deadline for second_try_pending → cron terminates after this date.
+   * Set by admin when under_escalation → second_try_pending is triggered.
+   */
+  second_try_deadline_at: timestamp("second_try_deadline_at", { withTimezone: true, mode: 'string' }),
+
+  /**
+   * JSONB bag for cron deduplication flags.
+   * Shape: {
+   *   expiry_warned_14d?: ISO, expiry_warned_7d?: ISO, expiry_warned_1d?: ISO,
+   *   second_try_warned_7d?: ISO, second_try_warned_3d?: ISO, second_try_warned_1d?: ISO,
+   *   assessment_sla_notified_at?: ISO
+   * }
+   */
+  cron_metadata: jsonb("cron_metadata").notNull().default({}),
 
   created_at: timestamp("created_at", { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
   updated_at: timestamp("updated_at", { withTimezone: true, mode: 'string' }).notNull().defaultNow(),

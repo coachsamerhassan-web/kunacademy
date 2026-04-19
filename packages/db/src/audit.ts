@@ -2,7 +2,7 @@ import { withAdminContext } from './pool';
 import { sql } from 'drizzle-orm';
 
 export type AuditAction =
-  | 'CREATE_BOOKING' | 'UPDATE_BOOKING' | 'CANCEL_BOOKING'
+  | 'CREATE_BOOKING' | 'UPDATE_BOOKING' | 'CANCEL_BOOKING' | 'REVOKE_GUEST_TOKEN'
   | 'APPROVE_PAYOUT' | 'REJECT_PAYOUT' | 'COMPLETE_PAYOUT'
   | 'UPDATE_ORDER' | 'REFUND_ORDER'
   | 'UPDATE_ENROLLMENT' | 'CREATE_ENROLLMENT'
