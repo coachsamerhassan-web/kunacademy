@@ -76,6 +76,16 @@ CRON_ENTRIES="
 
 # Cron 9: Mentor prep release (48h gate) — 09:35 Dubai = 05:35 UTC
 35 5 * * * curl -s -H \"Authorization: Bearer $CRON_SECRET\" $APP_URL/api/cron/mentor-prep-release >> /var/log/kunacademy-crons.log 2>&1
+
+# ── Zoho CRM Sync ───────────────────────────────────────────────────────────
+
+# Cron 10: Zoho CRM contact batch sync — every 15 minutes
+# Syncs new KUN users to Zoho CRM Contacts and drains the retry queue.
+*/15 * * * * curl -s -H \"Authorization: Bearer $CRON_SECRET\" $APP_URL/api/cron/zoho-crm-sync >> /var/log/kunacademy-crons.log 2>&1
+
+# Cron 11: Zoho CRM daily status refresh — 06:00 Dubai = 02:00 UTC
+# Classifies contacts as New/Active/Passive based on booking/payment activity.
+0 2 * * * curl -s -H \"Authorization: Bearer $CRON_SECRET\" $APP_URL/api/cron/zoho-crm-status >> /var/log/kunacademy-crons.log 2>&1
 "
 
 # Install crontab entries

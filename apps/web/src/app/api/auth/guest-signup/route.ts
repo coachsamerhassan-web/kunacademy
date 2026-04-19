@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { withAdminContext } from '@kunacademy/db';
 import { sql } from 'drizzle-orm';
+import { enqueueCrmContactSync } from '@/lib/crm-sync';
 
 /**
  * POST /api/auth/guest-signup
@@ -112,6 +113,18 @@ export async function POST(request: Request) {
               WHERE id = ${booking_id}`
         );
       }
+
+      // Zoho CRM: fire-and-forget contact sync (never blocks signup response)
+      enqueueCrmContactSync({
+        profile_id: newUserId,
+        full_name:  name.trim(),
+        email:      normalizedEmail,
+        phone:      phone || undefined,
+        role:       'client',
+        activity_status: 'New',
+      }).catch((err) => {
+        console.error('[guest-signup] CRM enqueue failed (non-fatal):', err);
+      });
     });
 
     return NextResponse.json({ success: true });

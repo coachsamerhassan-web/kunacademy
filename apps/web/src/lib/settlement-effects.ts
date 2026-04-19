@@ -3,15 +3,15 @@
  *
  * Called from the payment webhook for EVERY settled payment (installment #1,
  * installment #2..N, event deposit, event full, and all non-installment settled
- * payments). Produces two downstream effects per settlement:
+ * payments). Produces three downstream effects per settlement:
  *
  *   1. Coach earnings row (if coach_id is present)
  *   2. Member store-credit row in credit_transactions (if referrer_id is present
  *      in payment metadata)
+ *   3. Zoho CRM deal (fire-and-forget; failure does not block settlement)
  *
- * Both writes are idempotent: we check for an existing row keyed on
- * (source_id = payment_id AND source_type) before INSERT so that webhook
- * retries never double-credit.
+ * Effects 1 + 2 are idempotent via pre-INSERT existence checks.
+ * Effect 3 is idempotent via the crm_sync_queue (enqueue-once pattern).
  *
  * This helper runs inside the webhook (service-role / admin context), so it
  * can write to any user's earnings or credits. READ endpoints enforce user
@@ -21,10 +21,12 @@
  *   Decision 3 — commission fires on payment.settled only (per-installment for
  *     Stripe Subscription Schedules, once on Tabby capture, once on InstaPay verify)
  *   D4/2026-04-11 — dual-surface: earnings + store credit
+ *   SPEC-zoho-crm-sync.md §3 — service purchase tracking via CRM Deal
  */
 
 import { withAdminContext } from '@kunacademy/db';
 import { sql } from 'drizzle-orm';
+import { enqueueCrmDealSync } from './crm-sync';
 
 /** Source types for earnings rows */
 export type EarningsSourceType =
@@ -322,6 +324,27 @@ export async function fireSettlementEffects(
       errors.push(msg);
       // Non-fatal
     }
+  }
+
+  // ── 3. Zoho CRM Deal (fire-and-forget; never blocks settlement) ───────────
+  // Spec: SPEC-zoho-crm-sync.md §3 — service purchase → CRM Deal linked to Contact
+  // user_id is the KUN profile_id (NextAuth session ID = profiles.id).
+  if (params.user_id && amount_minor > 0) {
+    const dealLabel = `${item_type.charAt(0).toUpperCase() + item_type.slice(1)} — ${payment_id.slice(0, 8)}`;
+    const today     = new Date().toISOString().split('T')[0];
+    // Fire-and-forget: never await in the hot path
+    enqueueCrmDealSync({
+      profile_id:   params.user_id,
+      payment_id,
+      deal_name:    dealLabel,
+      amount_minor,
+      currency,
+      closing_date: today,
+      coach_name:   undefined, // coach name lookup is non-trivial here; CRM queue enriches on drain
+    }).catch((err) => {
+      // Log only — CRM sync failure MUST NOT affect payment settlement
+      console.error(`[settlement-effects] CRM deal enqueue failed for payment ${payment_id}:`, err);
+    });
   }
 
   return { commission_written, store_credit_written, errors };

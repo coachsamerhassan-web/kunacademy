@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { withAdminContext } from '@kunacademy/db';
 import { sql } from 'drizzle-orm';
+import { enqueueCrmContactSync } from '@/lib/crm-sync';
 
 export async function POST(request: Request) {
   try {
@@ -37,6 +38,17 @@ export async function POST(request: Request) {
       await adminDb.execute(
         sql`INSERT INTO profiles (id, email, role) VALUES (${newUser.id}, ${email}, 'student')`
       );
+
+      // Zoho CRM: fire-and-forget contact sync (never blocks signup response)
+      enqueueCrmContactSync({
+        profile_id: newUser.id,
+        full_name:  email.split('@')[0], // name not collected at signup; cron enriches later
+        email,
+        role:       'client',
+        activity_status: 'New',
+      }).catch((err) => {
+        console.error('[signup] CRM enqueue failed (non-fatal):', err);
+      });
     });
 
     return NextResponse.json({ success: true });
