@@ -49,134 +49,75 @@ export async function GET(request: NextRequest) {
     ? DEFAULT_LIMIT
     : Math.min(limitParam, MAX_LIMIT);
 
+  // ?needs_second_opinion=1 — filter to rows where second_opinion_requested_at IS NOT NULL
+  const needsSecondOpinion = searchParams.get('needs_second_opinion') === '1';
+
+  // ── Shared SELECT columns ───────────────────────────────────────────────────
+  // Extracted to a helper to avoid repetition across branches.
+  // All branches share identical SELECT + JOIN; only WHERE differs.
+  const buildQuery = (whereClause: ReturnType<typeof sql>): ReturnType<typeof sql> => sql`
+    SELECT
+      pa.id                   AS assessment_id,
+      pa.decision,
+      pa.decided_at,
+      pa.assigned_at,
+      pa.escalated_at,
+      pa.second_opinion_requested_at,
+      pa.ethics_auto_failed,
+      pa.override_reason,
+      pr.id                   AS recording_id,
+      pr.package_instance_id,
+      pr.submitted_at,
+      pr.original_filename,
+      COALESCE(sp.full_name_en, sp.full_name_ar) AS student_name,
+      sp.email                                   AS student_email,
+      COALESCE(ap.full_name_en, ap.full_name_ar) AS assessor_name,
+      ap.email                                   AS assessor_email
+    FROM package_assessments pa
+    INNER JOIN package_recordings pr ON pr.id = pa.recording_id
+    INNER JOIN package_instances  pi ON pi.id = pr.package_instance_id
+    INNER JOIN profiles           sp ON sp.id = pi.student_id
+    INNER JOIN profiles           ap ON ap.id = pa.assessor_id
+    ${whereClause}
+    ORDER BY pa.second_opinion_requested_at DESC NULLS LAST, pa.assigned_at DESC
+    LIMIT ${limit}
+  `;
+
   // ── Query ───────────────────────────────────────────────────────────────────
   const rows = await withAdminContext(async (db) => {
-    // Build base query. We use parameterized sql`` template to stay safe.
-    // Dynamic WHERE conditions are assembled using and() / separate branches.
-    // The join shape is fixed; only the WHERE changes.
+
+    // ?needs_second_opinion=1 — ignore status/assessor filters, return only pending queue
+    if (needsSecondOpinion) {
+      const result = await db.execute(
+        buildQuery(sql`WHERE pa.second_opinion_requested_at IS NOT NULL`)
+      );
+      return result.rows;
+    }
 
     if (statusFilter && assessorFilter) {
       const result = await db.execute(
-        sql`SELECT
-              pa.id                   AS assessment_id,
-              pa.decision,
-              pa.decided_at,
-              pa.assigned_at,
-              pa.escalated_at,
-              pa.second_opinion_requested_at,
-              pa.ethics_auto_failed,
-              pa.override_reason,
-              pr.id                   AS recording_id,
-              pr.package_instance_id,
-              pr.submitted_at,
-              pr.original_filename,
-              COALESCE(sp.full_name_en, sp.full_name_ar) AS student_name,
-              sp.email                                   AS student_email,
-              COALESCE(ap.full_name_en, ap.full_name_ar) AS assessor_name,
-              ap.email                                   AS assessor_email
-            FROM package_assessments pa
-            INNER JOIN package_recordings pr ON pr.id = pa.recording_id
-            INNER JOIN package_instances  pi ON pi.id = pr.package_instance_id
-            INNER JOIN profiles           sp ON sp.id = pi.student_id
-            INNER JOIN profiles           ap ON ap.id = pa.assessor_id
-            WHERE pa.decision = ${statusFilter}
-              AND pa.assessor_id = ${assessorFilter}::uuid
-            ORDER BY pa.assigned_at DESC
-            LIMIT ${limit}`
+        buildQuery(sql`WHERE pa.decision = ${statusFilter} AND pa.assessor_id = ${assessorFilter}::uuid`)
       );
       return result.rows;
     }
 
     if (statusFilter) {
       const result = await db.execute(
-        sql`SELECT
-              pa.id                   AS assessment_id,
-              pa.decision,
-              pa.decided_at,
-              pa.assigned_at,
-              pa.escalated_at,
-              pa.second_opinion_requested_at,
-              pa.ethics_auto_failed,
-              pa.override_reason,
-              pr.id                   AS recording_id,
-              pr.package_instance_id,
-              pr.submitted_at,
-              pr.original_filename,
-              COALESCE(sp.full_name_en, sp.full_name_ar) AS student_name,
-              sp.email                                   AS student_email,
-              COALESCE(ap.full_name_en, ap.full_name_ar) AS assessor_name,
-              ap.email                                   AS assessor_email
-            FROM package_assessments pa
-            INNER JOIN package_recordings pr ON pr.id = pa.recording_id
-            INNER JOIN package_instances  pi ON pi.id = pr.package_instance_id
-            INNER JOIN profiles           sp ON sp.id = pi.student_id
-            INNER JOIN profiles           ap ON ap.id = pa.assessor_id
-            WHERE pa.decision = ${statusFilter}
-            ORDER BY pa.assigned_at DESC
-            LIMIT ${limit}`
+        buildQuery(sql`WHERE pa.decision = ${statusFilter}`)
       );
       return result.rows;
     }
 
     if (assessorFilter) {
       const result = await db.execute(
-        sql`SELECT
-              pa.id                   AS assessment_id,
-              pa.decision,
-              pa.decided_at,
-              pa.assigned_at,
-              pa.escalated_at,
-              pa.second_opinion_requested_at,
-              pa.ethics_auto_failed,
-              pa.override_reason,
-              pr.id                   AS recording_id,
-              pr.package_instance_id,
-              pr.submitted_at,
-              pr.original_filename,
-              COALESCE(sp.full_name_en, sp.full_name_ar) AS student_name,
-              sp.email                                   AS student_email,
-              COALESCE(ap.full_name_en, ap.full_name_ar) AS assessor_name,
-              ap.email                                   AS assessor_email
-            FROM package_assessments pa
-            INNER JOIN package_recordings pr ON pr.id = pa.recording_id
-            INNER JOIN package_instances  pi ON pi.id = pr.package_instance_id
-            INNER JOIN profiles           sp ON sp.id = pi.student_id
-            INNER JOIN profiles           ap ON ap.id = pa.assessor_id
-            WHERE pa.assessor_id = ${assessorFilter}::uuid
-              AND (pa.decision = 'pending' OR pa.escalated_at IS NOT NULL)
-            ORDER BY pa.assigned_at DESC
-            LIMIT ${limit}`
+        buildQuery(sql`WHERE pa.assessor_id = ${assessorFilter}::uuid AND (pa.decision = 'pending' OR pa.escalated_at IS NOT NULL)`)
       );
       return result.rows;
     }
 
-    // Default: pending decisions OR escalated rows (no assessor filter)
+    // Default: pending decisions OR escalated rows
     const result = await db.execute(
-      sql`SELECT
-            pa.id                   AS assessment_id,
-            pa.decision,
-            pa.decided_at,
-            pa.assigned_at,
-            pa.escalated_at,
-            pa.second_opinion_requested_at,
-            pa.ethics_auto_failed,
-            pa.override_reason,
-            pr.id                   AS recording_id,
-            pr.package_instance_id,
-            pr.submitted_at,
-            pr.original_filename,
-            COALESCE(sp.full_name_en, sp.full_name_ar) AS student_name,
-            sp.email                                   AS student_email,
-            COALESCE(ap.full_name_en, ap.full_name_ar) AS assessor_name,
-            ap.email                                   AS assessor_email
-          FROM package_assessments pa
-          INNER JOIN package_recordings pr ON pr.id = pa.recording_id
-          INNER JOIN package_instances  pi ON pi.id = pr.package_instance_id
-          INNER JOIN profiles           sp ON sp.id = pi.student_id
-          INNER JOIN profiles           ap ON ap.id = pa.assessor_id
-          WHERE (pa.decision = 'pending' OR pa.escalated_at IS NOT NULL)
-          ORDER BY pa.assigned_at DESC
-          LIMIT ${limit}`
+      buildQuery(sql`WHERE (pa.decision = 'pending' OR pa.escalated_at IS NOT NULL)`)
     );
     return result.rows;
   });

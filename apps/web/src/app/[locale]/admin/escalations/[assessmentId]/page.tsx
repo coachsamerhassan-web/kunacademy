@@ -92,6 +92,12 @@ type SecondOpinionStatus =
   | { kind: 'success' }
   | { kind: 'error'; message: string };
 
+type ResolveSecondOpinionStatus =
+  | { kind: 'idle' }
+  | { kind: 'submitting' }
+  | { kind: 'success' }
+  | { kind: 'error'; message: string };
+
 type UnpauseStatus =
   | { kind: 'idle' }
   | { kind: 'submitting' }
@@ -146,6 +152,10 @@ export default function EscalationDetailPage() {
   // Second opinion state
   const [secondOpinionStatus, setSecondOpinionStatus] =
     useState<SecondOpinionStatus>({ kind: 'idle' });
+
+  // Resolve second opinion state
+  const [resolveSecondOpinionStatus, setResolveSecondOpinionStatus] =
+    useState<ResolveSecondOpinionStatus>({ kind: 'idle' });
 
   // Unpause journey state (M5-gap1)
   const [unpauseStatus, setUnpauseStatus] = useState<UnpauseStatus>({ kind: 'idle' });
@@ -242,6 +252,29 @@ export default function EscalationDetailPage() {
       setSecondOpinionStatus({
         kind: 'error',
         message: err instanceof Error ? err.message : 'Request failed',
+      });
+    }
+  }, [assessmentId, fetchDetail]);
+
+  // ── Resolve second opinion handler ────────────────────────────────────────
+
+  const handleResolveSecondOpinion = useCallback(async () => {
+    setResolveSecondOpinionStatus({ kind: 'submitting' });
+    try {
+      const res = await fetch(
+        `/api/admin/assessments/${assessmentId}/resolve-second-opinion`,
+        { method: 'POST' },
+      );
+      const body = await res.json().catch(() => ({})) as { error?: string };
+      if (!res.ok) {
+        throw new Error(body.error ?? `HTTP ${res.status}`);
+      }
+      setResolveSecondOpinionStatus({ kind: 'success' });
+      await fetchDetail();
+    } catch (err: unknown) {
+      setResolveSecondOpinionStatus({
+        kind: 'error',
+        message: err instanceof Error ? err.message : 'Resolve failed',
       });
     }
   }, [assessmentId, fetchDetail]);
@@ -679,25 +712,65 @@ export default function EscalationDetailPage() {
               )}
             </div>
 
-            {/* Second opinion stub */}
-            <div className="rounded-lg border border-[var(--color-neutral-200)] p-4">
-              <h2 className="text-sm font-semibold text-[var(--color-neutral-700)] mb-2">
-                {isAr ? 'طلب رأي ثانٍ' : 'Request Second Opinion'}
+            {/* Second opinion panel */}
+            <div className={`rounded-lg border p-4 ${
+              detail.second_opinion_requested_at
+                ? 'border-amber-400 bg-amber-50'
+                : 'border-[var(--color-neutral-200)]'
+            }`}>
+              <h2 className={`text-sm font-semibold mb-2 ${
+                detail.second_opinion_requested_at ? 'text-amber-900' : 'text-[var(--color-neutral-700)]'
+              }`}>
+                {isAr ? 'رأي ثانٍ' : 'Second Opinion'}
               </h2>
-              <p className="text-xs text-[var(--color-neutral-500)] mb-4">
-                {isAr
-                  ? 'سيُسجَّل الطلب في قاعدة البيانات. سيتم ربط تدفق اختيار المُقيِّم الثاني لاحقاً.'
-                  : 'Flags the assessment for a second opinion. Second-assessor assignment flow to be wired in a future phase.'}
-              </p>
+
+              {/* Prominent notice when second_opinion_requested_at is set */}
+              {detail.second_opinion_requested_at && (
+                <div className="rounded-md bg-amber-100 border border-amber-300 p-3 mb-4">
+                  <p className="text-amber-900 text-sm font-medium">
+                    {isAr ? 'تم طلب رأي ثانٍ في:' : 'Second opinion requested on:'}
+                  </p>
+                  <p className="text-amber-800 text-xs mt-0.5">
+                    {new Date(detail.second_opinion_requested_at).toLocaleString(
+                      isAr ? 'ar-AE' : 'en-GB',
+                      { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }
+                    )}
+                  </p>
+                </div>
+              )}
 
               {detail.second_opinion_requested_at ? (
-                <div className="rounded-md bg-blue-50 border border-blue-200 p-3 text-blue-700 text-xs">
-                  {isAr
-                    ? `تم الطلب في: ${new Date(detail.second_opinion_requested_at).toLocaleString('ar-AE')}`
-                    : `Requested at: ${new Date(detail.second_opinion_requested_at).toLocaleString('en-GB')}`}
-                </div>
-              ) : (
+                /* Resolve button — clears the pending flag */
                 <>
+                  {resolveSecondOpinionStatus.kind === 'success' ? (
+                    <div className="rounded-md bg-green-50 border border-green-200 p-3 text-green-700 text-sm">
+                      {isAr ? 'تم حل طلب الرأي الثاني.' : 'Second opinion request resolved.'}
+                    </div>
+                  ) : (
+                    <>
+                      {resolveSecondOpinionStatus.kind === 'error' && (
+                        <p className="text-red-600 text-xs mb-2">{resolveSecondOpinionStatus.message}</p>
+                      )}
+                      <button
+                        onClick={() => void handleResolveSecondOpinion()}
+                        disabled={resolveSecondOpinionStatus.kind === 'submitting'}
+                        className="min-h-[44px] w-full rounded-md bg-amber-700 text-white text-sm font-semibold px-4 py-2 hover:bg-amber-800 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        {resolveSecondOpinionStatus.kind === 'submitting'
+                          ? (isAr ? 'جارٍ الحل...' : 'Resolving...')
+                          : (isAr ? 'حل طلب الرأي الثاني' : 'Resolve Second Opinion')}
+                      </button>
+                    </>
+                  )}
+                </>
+              ) : (
+                /* Request button — shown when no pending second opinion */
+                <>
+                  <p className="text-xs text-[var(--color-neutral-500)] mb-4">
+                    {isAr
+                      ? 'سيُسجَّل الطلب في قاعدة البيانات. سيتم ربط تدفق اختيار المُقيِّم الثاني لاحقاً.'
+                      : 'Flags the assessment for a second opinion. Second-assessor assignment flow to be wired in a future phase.'}
+                  </p>
                   {secondOpinionStatus.kind === 'success' ? (
                     <div className="rounded-md bg-blue-50 border border-blue-200 p-3 text-blue-700 text-xs">
                       {isAr ? 'تم تسجيل الطلب.' : 'Request recorded.'}
