@@ -6,6 +6,7 @@ import { withAdminContext } from '@kunacademy/db';
 import { sql } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
 import { authConfig } from './auth.config';
+import { enqueueCrmContactSync } from '@/lib/crm-sync';
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
@@ -82,6 +83,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (account?.provider === 'google') {
         const userName = user.name || '';
         const userImage = user.image || '';
+        let isNewProfile = false;
+
         await withAdminContext(async (adminDb) => {
           await adminDb.execute(
             sql`INSERT INTO auth_users (id, email, email_verified, name, image)
@@ -94,14 +97,32 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 RETURNING id`
           );
 
-          await adminDb.execute(
+          // xmax = 0 means the row was freshly inserted (not updated by ON CONFLICT)
+          const { rows: profileRows } = await adminDb.execute(
             sql`INSERT INTO profiles (id, email, full_name_en, avatar_url, role)
                 VALUES (${user.id}, ${user.email}, ${userName}, ${userImage}, 'student')
                 ON CONFLICT (id) DO UPDATE SET
                   avatar_url = COALESCE(NULLIF(${userImage}, ''), profiles.avatar_url),
-                  full_name_en = COALESCE(NULLIF(${userName}, ''), profiles.full_name_en)`
+                  full_name_en = COALESCE(NULLIF(${userName}, ''), profiles.full_name_en)
+                RETURNING xmax::text AS xmax`
           );
+          isNewProfile = (profileRows[0] as { xmax: string } | undefined)?.xmax === '0';
         });
+
+        // Only enqueue on first-time OAuth signup — skip duplicate enqueue on re-auth
+        if (isNewProfile) {
+          try {
+            await enqueueCrmContactSync({
+              profile_id:      user.id!,
+              full_name:       userName || user.email!.split('@')[0],
+              email:           user.email!,
+              role:            'client',
+              activity_status: 'New',
+            });
+          } catch (err) {
+            console.error('[auth] CRM enqueue failed for Google OAuth signup (non-fatal):', err);
+          }
+        }
       }
       return true;
     },
