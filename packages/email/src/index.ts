@@ -35,3 +35,7 @@ export { createZohoCrmContact } from './zoho-crm';
 // Mentor prep email (Phase 1.6 — wired to cron #9 in Phase 1.4)
 export { sendMentorPrepEmail } from './mentor-prep';
 export type { MentorPrepEmailParams } from './mentor-prep';
+
+// Assessment result notification (Phase 2.7 — wired to submit handler)
+export { sendAssessmentResultEmail } from './assessment-result';
+export type { AssessmentResultEmailParams } from './assessment-result';

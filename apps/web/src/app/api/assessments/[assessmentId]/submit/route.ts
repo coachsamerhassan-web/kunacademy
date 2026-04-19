@@ -16,12 +16,15 @@ import { withAdminContext, eq, logAdminAction } from '@kunacademy/db';
 import {
   packageAssessments,
   packageRecordings,
+  packageInstances,
+  profiles,
 } from '@kunacademy/db/schema';
 import { getAuthUser } from '@kunacademy/auth/server';
 import {
   transitionPackageState,
   type JourneyState,
 } from '@/lib/mentoring/state-machine';
+import { sendAssessmentResultEmail } from '@kunacademy/email';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -341,6 +344,53 @@ export async function POST(request: NextRequest, context: RouteContext) {
       package_instance_id: row.package_instance_id,
     },
   });
+
+  // ── Student result notification email ─────────────────────────────────────
+  // Non-blocking: errors are logged but do NOT affect the 200 response.
+  void (async () => {
+    try {
+      // Fetch student email + preferred_language + name via package_instance → profile
+      const studentRows = await withAdminContext(async (db) => {
+        return db
+          .select({
+            email:              profiles.email,
+            full_name_ar:       profiles.full_name_ar,
+            full_name_en:       profiles.full_name_en,
+            preferred_language: profiles.preferred_language,
+            second_try_deadline_at: packageInstances.second_try_deadline_at,
+          })
+          .from(packageInstances)
+          .innerJoin(profiles, eq(profiles.id, packageInstances.student_id))
+          .where(eq(packageInstances.id, row.package_instance_id))
+          .limit(1);
+      });
+
+      if (studentRows.length === 0) {
+        console.warn('[submit-assessment] email skipped: student row not found for instance', row.package_instance_id);
+        return;
+      }
+
+      const student = studentRows[0];
+      const locale  = (student.preferred_language === 'en' ? 'en' : 'ar') as 'ar' | 'en';
+      const name    = locale === 'ar'
+        ? (student.full_name_ar ?? student.full_name_en ?? '')
+        : (student.full_name_en ?? student.full_name_ar ?? '');
+
+      const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://kunacademy.com';
+      const result_url = `${APP_URL}/${locale}/portal/packages/${row.package_instance_id}/assessment`;
+
+      await sendAssessmentResultEmail(student.email, {
+        student_name:        name,
+        locale,
+        decision:            finalVerdict,
+        result_url,
+        is_fail:             finalVerdict === 'fail',
+        second_try_deadline: student.second_try_deadline_at ?? undefined,
+      });
+    } catch (emailErr) {
+      console.error('[submit-assessment] result email failed (non-blocking):', emailErr);
+    }
+  })();
 
   return NextResponse.json(
     {
