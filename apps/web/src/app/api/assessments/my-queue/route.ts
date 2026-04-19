@@ -51,8 +51,6 @@ export async function GET() {
         student_name_en: profiles.full_name_en,
         student_name_ar: profiles.full_name_ar,
         student_email:   profiles.email,
-        // SLA: days since submission
-        days_pending: sql<number>`EXTRACT(EPOCH FROM (now() - ${packageRecordings.submitted_at})) / 86400`,
       })
       .from(packageAssessments)
       .innerJoin(

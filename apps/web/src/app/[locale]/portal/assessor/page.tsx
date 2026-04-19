@@ -8,6 +8,9 @@
  *
  * Role gate: enforced in middleware (assessor path) + re-checked here.
  * Sub-phase: S2-Layer-1 / 2.1 — Assessor Workspace UI
+ *
+ * SLA Badge: Uses businessDaysBetween() to calculate 10-business-day threshold.
+ * Matches backend convention in assessment-sla-check cron.
  */
 
 import { useAuth } from '@kunacademy/auth';
@@ -15,6 +18,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
+import { businessDaysBetween } from '@/lib/business-days';
 
 interface QueueItem {
   assessment_id: string;
@@ -31,7 +35,6 @@ interface QueueItem {
   student_name_en: string | null;
   student_name_ar: string | null;
   student_email: string;
-  days_pending: number;
 }
 
 const ASSESSOR_ROLES = ['admin', 'super_admin', 'mentor_manager', 'provider'];
@@ -48,8 +51,11 @@ function formatBytes(bytes: number): string {
   return `${(bytes / 1024).toFixed(0)} KB`;
 }
 
-function slaBadge(days: number, isAr: boolean) {
-  const remaining = 10 - Math.round(days);
+function slaBadge(submittedAt: string, isAr: boolean) {
+  const businessDaysElapsed = businessDaysBetween(new Date(submittedAt), new Date());
+  const remaining = 10 - businessDaysElapsed;
+
+  // Red: 0-2 business days remaining
   if (remaining <= 2) {
     return (
       <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
@@ -57,6 +63,7 @@ function slaBadge(days: number, isAr: boolean) {
       </span>
     );
   }
+  // Amber: 3-5 business days remaining
   if (remaining <= 5) {
     return (
       <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
@@ -64,6 +71,7 @@ function slaBadge(days: number, isAr: boolean) {
       </span>
     );
   }
+  // Green: >5 business days remaining
   return (
     <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
       {isAr ? `${remaining} أيام` : `${remaining}d left`}
@@ -203,7 +211,6 @@ export default function AssessorQueuePage() {
                 isAr ? 'ar-SA' : 'en-US',
                 { year: 'numeric', month: 'short', day: 'numeric' },
               );
-              const days = Math.round(item.days_pending);
 
               return (
                 <button
@@ -239,7 +246,7 @@ export default function AssessorQueuePage() {
 
                     {/* SLA + assigned */}
                     <div className="flex flex-row sm:flex-col items-center sm:items-end gap-2 shrink-0">
-                      {slaBadge(item.days_pending, isAr)}
+                      {slaBadge(item.submitted_at, isAr)}
                       <span className="text-xs text-[var(--color-neutral-400)]">
                         {isAr ? `أُسند ${assignedDate}` : `Assigned ${assignedDate}`}
                       </span>
