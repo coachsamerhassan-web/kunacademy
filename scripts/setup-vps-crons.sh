@@ -93,6 +93,10 @@ CRON_ENTRIES="
 # Removes disk files for re-recorded voice messages whose DB row was replaced.
 0 0 * * * curl -s -H \"Authorization: Bearer $CRON_SECRET\" $APP_URL/api/cron/reap-orphan-voice-messages >> /var/log/kunacademy-crons.log 2>&1
 
+# Cron 12b: Purge old voice messages — 02:00 Dubai = 06:00 UTC (after orphan reaper)
+# Deletes voice messages older than 180 days (Samer's 6-month retention policy).
+0 2 * * * curl -s -H \"Authorization: Bearer $CRON_SECRET\" $APP_URL/api/cron/purge-old-voice-messages >> /var/log/kunacademy-crons.log 2>&1
+
 # ── Email Outbox Drain ──────────────────────────────────────────────────────
 
 # Cron 13: Drain email outbox — every 1 minute

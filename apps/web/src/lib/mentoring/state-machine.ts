@@ -37,6 +37,9 @@ export const JOURNEY_STATES = [
   'completed',
   'expired',
   'terminated',
+  // M4: set when a second consecutive assessment fail lands.
+  // Student cannot upload recordings. Admin/mentor_manager can unpause.
+  'paused',
 ] as const;
 
 export type JourneyState = typeof JOURNEY_STATES[number];
