@@ -15,11 +15,11 @@
  *    If attempts >= 5 after the increment: status → 'failed' (permanent failure).
  *    Otherwise: row stays 'pending' and will be retried on the next cron fire.
  *
- * Returns: JSON { processed, sent, failed, retrying }
+ * Returns: JSON { processed, sent, failed_this_run, retrying, total_failed_all_time }
  *
- * Observability gap: no alert is fired when rows reach status='failed'. Add a
- * Telegram alert (alertCriticalError) or a separate monitoring cron that counts
- * SELECT count(*) WHERE status='failed' AND sent_at IS NULL to close this gap.
+ * Observability: after drain loop, counts all rows with status='failed' and
+ * logs an error if any exist. The response includes total_failed_all_time for
+ * dashboard monitoring.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -168,7 +168,28 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    const result = { processed: totalProcessed, sent: totalSent, failed: totalFailed, retrying: totalRetrying };
+    // ── Count all-time failed rows for observability ──────────────────────────────
+    const totalFailedAllTime = await withAdminContext(async (db) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const result: any = await db.execute(
+        sql`SELECT COUNT(*) as count FROM email_outbox WHERE status = 'failed'`,
+      );
+      return parseInt(result.rows[0]?.count ?? '0', 10);
+    });
+
+    if (totalFailedAllTime > 0) {
+      console.error(
+        `[email-outbox] ${totalFailedAllTime} emails in FAILED state — investigate`,
+      );
+    }
+
+    const result = {
+      processed: totalProcessed,
+      sent: totalSent,
+      failed_this_run: totalFailed,
+      retrying: totalRetrying,
+      total_failed_all_time: totalFailedAllTime,
+    };
     console.log('[cron/drain-email-outbox]', result);
     return NextResponse.json(result);
   } catch (fatalErr: unknown) {
