@@ -8,7 +8,7 @@ const { auth } = NextAuth(authConfig);
 
 const intlMiddleware = createIntlMiddleware(routing);
 
-const PROTECTED_PATHS = ['/dashboard', '/coach/', '/admin'];
+const PROTECTED_PATHS = ['/dashboard', '/coach/', '/admin', '/portal/assessor'];
 
 function isProtectedPath(pathname: string): boolean {
   // Strip locale prefix: /ar/portal → /portal
@@ -112,6 +112,19 @@ export default auth(async function middleware(request) {
     const role = (session.user as any).role as string | undefined;
     const coachConfirmed = role === 'provider' || role === 'admin' || role === 'super_admin';
     if (!coachConfirmed) {
+      return NextResponse.redirect(new URL(`/${locale}/dashboard`, request.url));
+    }
+  }
+
+  // Assessor workspace protection — advanced_mentor, mentor_manager, admin
+  if (withoutLocale.startsWith('/portal/assessor')) {
+    const role = (session.user as any).role as string | undefined;
+    const assessorConfirmed =
+      role === 'admin' ||
+      role === 'super_admin' ||
+      role === 'mentor_manager' ||
+      role === 'provider'; // provider = advanced_mentor at service-role level; app-layer re-checks
+    if (!assessorConfirmed) {
       return NextResponse.redirect(new URL(`/${locale}/dashboard`, request.url));
     }
   }
