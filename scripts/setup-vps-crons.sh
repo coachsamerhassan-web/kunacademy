@@ -100,6 +100,13 @@ CRON_ENTRIES="
 # FOR UPDATE SKIP LOCKED prevents double-drain if cron overlaps.
 # Retries up to 5 attempts per row; permanently failed rows land in status='failed'.
 * * * * * curl -s -H \"Authorization: Bearer $CRON_SECRET\" $APP_URL/api/cron/drain-email-outbox >> /var/log/kunacademy-crons.log 2>&1
+
+# ── GDPR Retention Purge ────────────────────────────────────────────────────
+
+# Cron 14: Email outbox GDPR purge — 03:00 Dubai = 23:00 UTC
+# Deletes sent rows older than 30 days and failed rows older than 90 days.
+# Removes PII (to_email, payload) that must not be retained indefinitely.
+0 23 * * * curl -s -H \"Authorization: Bearer $CRON_SECRET\" $APP_URL/api/cron/purge-email-outbox >> /var/log/kunacademy-crons.log 2>&1
 "
 
 # Install crontab entries
