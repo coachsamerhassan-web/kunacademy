@@ -77,6 +77,21 @@ export const packageAssessments = pgTable("package_assessments", {
     mode: 'string',
   }),
 
+  /** Set by mentor_manager when a second opinion is requested (M5 stub). */
+  second_opinion_requested_at: timestamp("second_opinion_requested_at", {
+    withTimezone: true,
+    mode: 'string',
+  }),
+
+  /**
+   * Override reason when a mentor_manager changes the assessor's decision.
+   * Required when new_decision differs from the original decision.
+   */
+  override_reason: text("override_reason"),
+
+  /** Who performed the override (profiles.id). */
+  override_by: uuid("override_by").references(() => profiles.id),
+
   created_at: timestamp("created_at", {
     withTimezone: true,
     mode: 'string',

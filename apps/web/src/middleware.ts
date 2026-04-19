@@ -101,9 +101,19 @@ export default auth(async function middleware(request) {
   const withoutLocale = request.nextUrl.pathname.replace(/^\/(ar|en)/, '');
   if (withoutLocale.startsWith('/admin')) {
     const role = (session.user as any).role as string | undefined;
-    const adminConfirmed = role === 'admin' || role === 'super_admin';
-    if (!adminConfirmed) {
-      return NextResponse.redirect(new URL(`/${locale}/dashboard`, request.url));
+
+    // /admin/escalations — mentor_manager may access for M5 escalation review
+    if (withoutLocale.startsWith('/admin/escalations')) {
+      const escalationConfirmed =
+        role === 'admin' || role === 'super_admin' || role === 'mentor_manager';
+      if (!escalationConfirmed) {
+        return NextResponse.redirect(new URL(`/${locale}/dashboard`, request.url));
+      }
+    } else {
+      const adminConfirmed = role === 'admin' || role === 'super_admin';
+      if (!adminConfirmed) {
+        return NextResponse.redirect(new URL(`/${locale}/dashboard`, request.url));
+      }
     }
   }
 
