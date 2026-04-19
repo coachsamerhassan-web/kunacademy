@@ -14,6 +14,7 @@ export const payments = pgTable("payments", {
   amount: integer("amount").notNull(),
   currency: text("currency").notNull(),
   status: text("status").default('pending'),
+  payment_portal_url: text("payment_portal_url"),
   metadata: jsonb("metadata"),
   created_at: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
 });

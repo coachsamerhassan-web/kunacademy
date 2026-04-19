@@ -9,6 +9,7 @@ export const profiles = pgTable("profiles", {
   country: text("country"),
   role: text("role").default('student'),
   avatar_url: text("avatar_url"),
+  preferred_language: text("preferred_language").default('ar'),
   created_at: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow(),
 });
 

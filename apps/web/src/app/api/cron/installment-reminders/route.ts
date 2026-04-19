@@ -15,9 +15,7 @@ import { sql } from 'drizzle-orm';
  * NOTE: `payments` has no `course_id` column. The original JOIN was invalid.
  * Course/program enrollments land via `orders` (order_items → products).
  *
- * Payment portal URL: kuncoaching.me dashboard.
- * TODO: if a `payment_url` or short-link column is added to payment_schedules,
- *       replace the constructed URL below with that column value.
+ * Payment portal URL: kuncoaching.me dashboard (or custom per `payments.payment_portal_url`).
  */
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get('authorization');
@@ -52,6 +50,7 @@ export async function GET(req: NextRequest) {
             ps.currency,
             inst.value            AS installment_data,
             p.id                  AS student_id,
+            COALESCE(p.preferred_language, 'ar') AS preferred_language,
             COALESCE(
               NULLIF(p.full_name_en, ''),
               NULLIF(p.full_name_ar, ''),
@@ -60,7 +59,8 @@ export async function GET(req: NextRequest) {
             p.email               AS student_email,
             'booking'             AS parent_type,
             COALESCE(svc.name_ar, 'جلسة فردية')   AS parent_label_ar,
-            COALESCE(svc.name_en, 'Individual Session') AS parent_label_en
+            COALESCE(svc.name_en, 'Individual Session') AS parent_label_en,
+            pay.payment_portal_url
           FROM payment_schedules ps
           JOIN payments pay        ON pay.id = ps.payment_id
           JOIN bookings bk         ON bk.id  = pay.booking_id
@@ -82,6 +82,7 @@ export async function GET(req: NextRequest) {
             ps.currency,
             inst.value            AS installment_data,
             p.id                  AS student_id,
+            COALESCE(p.preferred_language, 'ar') AS preferred_language,
             COALESCE(
               NULLIF(p.full_name_en, ''),
               NULLIF(p.full_name_ar, ''),
@@ -91,7 +92,8 @@ export async function GET(req: NextRequest) {
             COALESCE(p.email, er.email) AS student_email,
             'event'               AS parent_type,
             er.event_slug         AS parent_label_ar,
-            er.event_slug         AS parent_label_en
+            er.event_slug         AS parent_label_en,
+            pay.payment_portal_url
           FROM payment_schedules ps
           JOIN payments pay              ON pay.id  = ps.payment_id
           JOIN event_registrations er    ON er.id   = pay.event_registration_id
@@ -111,6 +113,7 @@ export async function GET(req: NextRequest) {
             ps.currency,
             inst.value            AS installment_data,
             p.id                  AS student_id,
+            COALESCE(p.preferred_language, 'ar') AS preferred_language,
             COALESCE(
               NULLIF(p.full_name_en, ''),
               NULLIF(p.full_name_ar, ''),
@@ -132,7 +135,8 @@ export async function GET(req: NextRequest) {
                WHERE oi.order_id = ord.id
                ORDER BY pr.name_en LIMIT 1),
               'Order'
-            )                     AS parent_label_en
+            )                     AS parent_label_en,
+            pay.payment_portal_url
           FROM payment_schedules ps
           JOIN payments pay        ON pay.id   = ps.payment_id
           JOIN orders ord          ON ord.id   = pay.order_id
@@ -158,10 +162,8 @@ export async function GET(req: NextRequest) {
     for (const schedule of schedules) {
       const installment = schedule.installment_data;
 
-      // profiles has no preferred_language column — default to 'ar' for Kun's
-      // primarily Arabic-speaking student base.
-      // TODO: add preferred_language to profiles and read it here when added.
-      const locale: 'ar' | 'en' = 'ar';
+      // Use profile's preferred_language or default to 'ar'
+      const locale: 'ar' | 'en' = (schedule.preferred_language as 'ar' | 'en') || 'ar';
       const isAr = locale === 'ar';
 
       const studentEmail = schedule.student_email as string | undefined;
@@ -176,6 +178,10 @@ export async function GET(req: NextRequest) {
         : (schedule.parent_label_en as string);
 
       try {
+        const paymentUrl = schedule.payment_portal_url
+          ? String(schedule.payment_portal_url)
+          : `https://kuncoaching.me/${locale}/dashboard/payments`;
+
         await notify({
           event: 'installment_due',
           locale,
@@ -190,8 +196,8 @@ export async function GET(req: NextRequest) {
               isAr ? 'ar-AE' : 'en-US'
             ),
             // Payment portal — students manage all instalments here.
-            // TODO: replace with payment_schedules.payment_url once that column exists.
-            paymentUrl: `https://kuncoaching.me/${locale}/dashboard/payments`,
+            // Uses payment_portal_url if set; falls back to dashboard.
+            paymentUrl,
             parentType,
           },
         });
