@@ -24,6 +24,14 @@ import { useEffect, useRef, useState, useCallback, KeyboardEvent } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Section } from '@kunacademy/ui/section';
 
+// ─── Auto-save status type ────────────────────────────────────────────────────
+
+type SaveStatus =
+  | { kind: 'idle' }
+  | { kind: 'saving' }
+  | { kind: 'saved'; at: Date }
+  | { kind: 'error' };
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface AssessmentDetail {
@@ -46,6 +54,8 @@ interface AssessmentDetail {
   student_email: string;
   // Phase 2.2 — transcript metadata (may be null for legacy recordings)
   transcript_mime: string | null;
+  // Phase 2.5 — draft rubric scores persisted across sessions
+  rubric_scores: Record<string, unknown> | null;
 }
 
 // ─── Transcript viewer state ──────────────────────────────────────────────────
@@ -623,7 +633,76 @@ export default function AssessorWorkspacePage() {
   // Phase 2.2 — transcript viewer state
   const [transcriptState, setTranscriptState] = useState<TranscriptState>({ kind: 'idle' });
 
+  // Phase 2.5 — auto-save state
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>({ kind: 'idle' });
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const formRef = useRef<FormState>(form);
+  const assessmentIdRef = useRef<string | null>(null);
+  const isSubmittedRef = useRef(false);
+
   const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Phase 2.5 — keep formRef in sync so beforeunload can read latest state
+  useEffect(() => {
+    formRef.current = form;
+  }, [form]);
+
+  // Phase 2.5 — fire draft save to API
+  const saveDraft = useCallback(
+    async (snapshot: FormState, id: string) => {
+      if (isSubmittedRef.current) return; // never overwrite submitted work
+      setSaveStatus({ kind: 'saving' });
+      try {
+        const res = await fetch(`/api/assessments/${id}/draft`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(snapshot),
+        });
+        if (res.status === 409) {
+          // Assessment was submitted by another tab — stop auto-saving
+          isSubmittedRef.current = true;
+          setSaveStatus({ kind: 'idle' });
+          return;
+        }
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        setSaveStatus({ kind: 'saved', at: new Date() });
+      } catch {
+        setSaveStatus({ kind: 'error' });
+      }
+    },
+    [],
+  );
+
+  // Phase 2.5 — debounced trigger on every form change (1500ms idle)
+  useEffect(() => {
+    if (!assessmentIdRef.current || isSubmittedRef.current) return;
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      if (assessmentIdRef.current) {
+        void saveDraft(formRef.current, assessmentIdRef.current);
+      }
+    }, 1500);
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form]);
+
+  // Phase 2.5 — force save on tab close / navigation (keepalive fetch)
+  useEffect(() => {
+    const id = typeof assessmentId === 'string' ? assessmentId : assessmentId;
+    assessmentIdRef.current = id;
+
+    const handleBeforeUnload = () => {
+      if (isSubmittedRef.current || !id) return;
+      navigator.sendBeacon(
+        `/api/assessments/${id}/draft`,
+        new Blob([JSON.stringify(formRef.current)], { type: 'application/json' }),
+      );
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [assessmentId]);
 
   // Fetch assessment details
   useEffect(() => {
@@ -636,6 +715,16 @@ export default function AssessorWorkspacePage() {
       })
       .then((data) => {
         setAssessment(data.assessment);
+        // Phase 2.5 — mark submitted flag so auto-save won't fire on submitted work
+        if (data.assessment.decision !== 'pending') {
+          isSubmittedRef.current = true;
+        }
+        // Phase 2.5 — seed form from saved draft (rubric_scores JSONB)
+        if (data.assessment.rubric_scores && typeof data.assessment.rubric_scores === 'object') {
+          const draft = data.assessment.rubric_scores as Partial<FormState>;
+          setForm(prev => ({ ...prev, ...draft }));
+          setSaveStatus({ kind: 'saved', at: new Date() });
+        }
         setLoading(false);
       })
       .catch((err: Error) => {
@@ -782,6 +871,30 @@ export default function AssessorWorkspacePage() {
             </div>
             <span className="text-xs font-medium">{answeredObs}/{TOTAL_OBSERVATIONS}</span>
           </div>
+
+          {/* Phase 2.5 — save status indicator (draft only) */}
+          {!isSubmitted && (
+            <span className="shrink-0 text-xs text-[var(--color-neutral-500)] min-w-[80px] text-end">
+              {saveStatus.kind === 'saving' && (
+                <span className="inline-flex items-center gap-1">
+                  <span className="h-1.5 w-1.5 rounded-full bg-[var(--color-neutral-400)] animate-pulse" />
+                  {isAr ? 'جارٍ الحفظ…' : 'Saving…'}
+                </span>
+              )}
+              {saveStatus.kind === 'saved' && (
+                <span className="text-green-600">
+                  {isAr
+                    ? `محفوظ ${saveStatus.at.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })}`
+                    : `Saved ${saveStatus.at.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`}
+                </span>
+              )}
+              {saveStatus.kind === 'error' && (
+                <span className="text-amber-600">
+                  {isAr ? 'فشل الحفظ — إعادة المحاولة…' : 'Save failed — retrying…'}
+                </span>
+              )}
+            </span>
+          )}
 
           {isSubmitted && (
             <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
@@ -1144,8 +1257,8 @@ export default function AssessorWorkspacePage() {
                   <div className="rounded-lg border border-[var(--color-neutral-200)] bg-[var(--color-neutral-50)] p-4 text-center">
                     <p className="text-xs text-[var(--color-neutral-400)] mb-2">
                       {isAr
-                        ? 'الحفظ التلقائي والإرسال النهائي سيُتاحان في المرحلة ٢.٥ و٢.٧'
-                        : 'Auto-save and final submit will be wired in Phase 2.5 and 2.7'}
+                        ? 'الإرسال النهائي سيُتاح في المرحلة ٢.٧ — مسودتك تُحفظ تلقائياً'
+                        : 'Final submit will be wired in Phase 2.7 — your draft is auto-saved'}
                     </p>
                     <button
                       disabled
