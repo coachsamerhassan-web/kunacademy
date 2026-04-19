@@ -39,3 +39,11 @@ export type { MentorPrepEmailParams } from './mentor-prep';
 // Assessment result notification (Phase 2.7 — wired to submit handler)
 export { sendAssessmentResultEmail } from './assessment-result';
 export type { AssessmentResultEmailParams } from './assessment-result';
+
+// Recording received confirmation (Phase 2 — wired to upload POST handler)
+export { sendRecordingReceivedEmail } from './recording-received';
+export type { RecordingReceivedEmailParams } from './recording-received';
+
+// Assessor assignment notification (Phase 2 — wired to assign-assessor.ts)
+export { sendAssessorAssignmentEmail } from './assessor-assignment';
+export type { AssessorAssignmentEmailParams } from './assessor-assignment';
