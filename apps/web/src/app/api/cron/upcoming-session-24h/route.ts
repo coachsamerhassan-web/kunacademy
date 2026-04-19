@@ -44,7 +44,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
           bfs.id             AS session_id,
           bfs.scheduled_at,
           p.email            AS student_email,
-          COALESCE(p.full_name_en, p.full_name_ar, p.email) AS student_name,
+          COALESCE(NULLIF(p.full_name_en, ''), NULLIF(p.full_name_ar, ''), NULLIF(p.email, '')) AS student_name,
           ip.email           AS mentor_email,
           i.title_en         AS mentor_name,
           pt.name_en         AS package_name,

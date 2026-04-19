@@ -398,3 +398,56 @@ export async function createCrmDeal(params: CrmDealParams): Promise<CrmDealResul
 
   return { zoho_deal_id: dealId };
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Startup health check — verify custom fields exist in Zoho CRM
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface FieldCheckResult {
+  ok: boolean;
+  missing: string[];
+}
+
+/**
+ * Queries Zoho CRM metadata API to verify required custom fields exist.
+ * Returns { ok: true } if both fields present, or { ok: false, missing: [...] }.
+ * Wraps errors gracefully — if metadata API fails, logs warning and allows sync to continue.
+ */
+export async function checkZohoCustomFields(): Promise<FieldCheckResult> {
+  try {
+    const token = await getCrmAccessToken();
+
+    const res = await fetch(
+      `${ZOHO_CRM_API}/settings/fields?module=Contacts`,
+      {
+        method: 'GET',
+        headers: crmHeaders(token),
+      },
+    );
+
+    if (!res.ok) {
+      console.warn(
+        `[zoho-crm] Metadata API returned ${res.status} — skipping field check`,
+      );
+      return { ok: true, missing: [] }; // don't block sync on metadata failure
+    }
+
+    const raw = await res.json() as {
+      fields?: Array<{ api_name?: string }>;
+    };
+
+    const fieldApiNames = (raw.fields ?? [])
+      .map((f) => f.api_name)
+      .filter((name): name is string => !!name);
+
+    const required = ['Kun_Activity_Status', 'Contact_Type'];
+    const missing = required.filter((name) => !fieldApiNames.includes(name));
+
+    return { ok: missing.length === 0, missing };
+  } catch (e) {
+    console.warn(
+      `[zoho-crm] Field health check threw error: ${e instanceof Error ? e.message : String(e)} — continuing anyway`,
+    );
+    return { ok: true, missing: [] }; // don't block sync on unexpected errors
+  }
+}

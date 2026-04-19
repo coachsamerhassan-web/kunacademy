@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { runBatchContactSync }       from '@/lib/crm-sync';
+import { checkZohoCustomFields }     from '@/lib/zoho-crm';
 
 /**
  * Cron: Zoho CRM contact batch sync.
@@ -18,6 +19,16 @@ export async function GET(req: NextRequest) {
   }
 
   try {
+    // Health check: verify custom fields exist in Zoho CRM
+    const fieldCheck = await checkZohoCustomFields();
+    if (!fieldCheck.ok) {
+      console.warn(
+        '[zoho-crm] MISSING custom fields in Zoho CRM Settings:',
+        fieldCheck.missing.join(', '),
+        '— field values will be silently ignored until created.',
+      );
+    }
+
     const result = await runBatchContactSync(50);
 
     console.log('[cron/zoho-crm-sync]', result);

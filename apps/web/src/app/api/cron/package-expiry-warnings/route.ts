@@ -46,7 +46,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
           SELECT
             pi.id,
             p.email   AS student_email,
-            COALESCE(p.full_name_en, p.full_name_ar, p.email) AS student_name,
+            COALESCE(NULLIF(p.full_name_en, ''), NULLIF(p.full_name_ar, ''), NULLIF(p.email, '')) AS student_name,
             pt.name_en  AS package_name,
             pi.expires_at,
             pi.cron_metadata
