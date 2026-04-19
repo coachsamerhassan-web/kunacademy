@@ -77,6 +77,27 @@ export const packageRecordings = pgTable("package_recordings", {
     withTimezone: true,
     mode: 'string',
   }).notNull().defaultNow(),
+
+  // ── Transcript (Phase 2.2) ──────────────────────────────────────────────────
+  // Student submits a transcript document alongside the audio recording.
+  // Assessors read it in the left-pane while listening.
+  // Accepted: PDF (application/pdf), plain text (text/plain), Markdown (text/markdown).
+  // Max 2 MB. Required by the API layer; nullable in DB for rows pre-migration.
+
+  /** Absolute VPS path: same directory as file_path, with suffix .transcript.{ext} */
+  transcript_file_path: text("transcript_file_path"),
+
+  /** MIME type of the uploaded transcript. One of: application/pdf | text/plain | text/markdown */
+  transcript_mime: text("transcript_mime"),
+
+  /** File size in bytes. API enforces ≤ 2 MB (2,097,152 bytes). */
+  transcript_size_bytes: bigint("transcript_size_bytes", { mode: 'number' }),
+
+  /** Timestamp when the transcript was written to disk and the row was updated. */
+  transcript_uploaded_at: timestamp("transcript_uploaded_at", {
+    withTimezone: true,
+    mode: 'string',
+  }),
 });
 
 export type PackageRecording    = typeof packageRecordings.$inferSelect;

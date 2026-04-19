@@ -9,13 +9,14 @@
  *
  * Per SPEC-somatic-thinking-rubric-v1.md §5:
  *   - Audio: play/pause/seek, speed selector, keyboard shortcuts, timestamp display
- *   - Transcript: scrollable, click-to-seek (if entries have timestamps)
+ *   - Transcript: fetched from /api/recordings/[id]/transcript — PDF via iframe,
+ *     text/md via scrollable <pre>. Live in Phase 2.2.
  *   - Rubric form: section-by-section, progress indicator, evidence field auto-focus
  *   - Auto-save note: draft persistence deferred to Phase 2.5
  *   - Voice message: deferred to Phase 2.6 (fail path only)
  *   - Submit action: deferred to Phase 2.7 (state-machine wiring)
  *
- * Sub-phase: S2-Layer-1 / 2.1 — Assessor Workspace UI
+ * Sub-phase: S2-Layer-1 / 2.1 (workspace) + 2.2 (transcript viewer)
  */
 
 import { useAuth } from '@kunacademy/auth';
@@ -43,7 +44,19 @@ interface AssessmentDetail {
   student_name_en: string | null;
   student_name_ar: string | null;
   student_email: string;
+  // Phase 2.2 — transcript metadata (may be null for legacy recordings)
+  transcript_mime: string | null;
 }
+
+// ─── Transcript viewer state ──────────────────────────────────────────────────
+
+type TranscriptState =
+  | { kind: 'idle' }
+  | { kind: 'loading' }
+  | { kind: 'pdf';  src: string }
+  | { kind: 'text'; content: string }
+  | { kind: 'none' }
+  | { kind: 'error'; message: string };
 
 // ─── Rubric structure (per SPEC §3) ──────────────────────────────────────────
 // Rendered as a local constant for Phase 2.1; Phase 2.3 will drive this from
@@ -607,6 +620,9 @@ export default function AssessorWorkspacePage() {
   const [currentSection, setCurrentSection] = useState(0);
   const [audioTime, setAudioTime] = useState(0);
 
+  // Phase 2.2 — transcript viewer state
+  const [transcriptState, setTranscriptState] = useState<TranscriptState>({ kind: 'idle' });
+
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   // Fetch assessment details
@@ -627,6 +643,40 @@ export default function AssessorWorkspacePage() {
         setLoading(false);
       });
   }, [user, assessmentId]);
+
+  // Phase 2.2 — Fetch transcript after assessment loads
+  useEffect(() => {
+    if (!assessment?.recording_id) return;
+
+    setTranscriptState({ kind: 'loading' });
+
+    const transcriptUrl = `/api/recordings/${assessment.recording_id}/transcript`;
+    const mime = assessment.transcript_mime ?? '';
+
+    if (mime === 'application/pdf') {
+      // PDF: pass the URL directly to the iframe — browser streams it inline
+      setTranscriptState({ kind: 'pdf', src: transcriptUrl });
+      return;
+    }
+
+    // text/plain or text/markdown: fetch and render as text
+    fetch(transcriptUrl)
+      .then(async (r) => {
+        if (r.status === 404) {
+          setTranscriptState({ kind: 'none' });
+          return;
+        }
+        if (!r.ok) {
+          const d = await r.json().catch(() => ({ error: `HTTP ${r.status}` })) as { error?: string };
+          throw new Error(d.error ?? `HTTP ${r.status}`);
+        }
+        const text = await r.text();
+        setTranscriptState({ kind: 'text', content: text });
+      })
+      .catch((err: Error) => {
+        setTranscriptState({ kind: 'error', message: err.message });
+      });
+  }, [assessment?.recording_id, assessment?.transcript_mime]);
 
   // Ethics auto-fail: if any gate is disagree, force verdict = fail
   const ethicsAutoFail = Object.values(form.ethicsGates).some(v => v === 'disagree');
@@ -782,7 +832,7 @@ export default function AssessorWorkspacePage() {
               />
             </div>
 
-            {/* Transcript placeholder */}
+            {/* Transcript viewer (Phase 2.2) */}
             <div className="bg-white rounded-xl border border-[var(--color-neutral-200)] p-4">
               <div className="flex items-center gap-2 mb-3">
                 <svg className="h-4 w-4 text-[var(--color-primary)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -791,14 +841,57 @@ export default function AssessorWorkspacePage() {
                 <h2 className="font-medium text-sm text-[var(--text-primary)]">
                   {isAr ? 'نص الجلسة' : 'Transcript'}
                 </h2>
+                {transcriptState.kind === 'loading' && (
+                  <div className="ms-auto h-3 w-3 rounded-full border border-[var(--color-primary)] border-t-transparent animate-spin" />
+                )}
               </div>
-              <div className="rounded-lg bg-[var(--color-neutral-50)] border border-dashed border-[var(--color-neutral-300)] p-6 text-center">
-                <p className="text-xs text-[var(--color-neutral-400)]">
-                  {isAr
-                    ? 'نص الجلسة يُرفعه الطالب ضمن الحزمة. عرض النص سيُتاح في المرحلة ٢.٢'
-                    : 'Transcript is submitted by the student with the package. Transcript viewer will be wired in Phase 2.2'}
-                </p>
-              </div>
+
+              {/* PDF — embed via iframe */}
+              {transcriptState.kind === 'pdf' && (
+                <iframe
+                  src={transcriptState.src}
+                  title={isAr ? 'نص الجلسة' : 'Session transcript'}
+                  className="w-full rounded-lg border border-[var(--color-neutral-200)]"
+                  style={{ height: '480px' }}
+                />
+              )}
+
+              {/* Text / Markdown — scrollable pre */}
+              {transcriptState.kind === 'text' && (
+                <pre
+                  dir="auto"
+                  className="max-h-[480px] overflow-y-auto rounded-lg bg-[var(--color-neutral-50)] border border-[var(--color-neutral-200)] p-4 text-xs leading-relaxed text-[var(--text-primary)] whitespace-pre-wrap font-[inherit] break-words"
+                >
+                  {transcriptState.content}
+                </pre>
+              )}
+
+              {/* No transcript submitted */}
+              {transcriptState.kind === 'none' && (
+                <div className="rounded-lg bg-[var(--color-neutral-50)] border border-dashed border-[var(--color-neutral-300)] p-6 text-center">
+                  <p className="text-xs text-[var(--color-neutral-400)]">
+                    {isAr
+                      ? 'لم يرفع الطالب نصاً لهذا التسجيل.'
+                      : 'No transcript was submitted for this recording.'}
+                  </p>
+                </div>
+              )}
+
+              {/* Error */}
+              {transcriptState.kind === 'error' && (
+                <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-xs text-red-700">
+                  {isAr ? `خطأ في تحميل النص: ${transcriptState.message}` : `Error loading transcript: ${transcriptState.message}`}
+                </div>
+              )}
+
+              {/* Initial idle — not yet loading (no recording_id yet) */}
+              {transcriptState.kind === 'idle' && (
+                <div className="rounded-lg bg-[var(--color-neutral-50)] border border-dashed border-[var(--color-neutral-300)] p-6 text-center">
+                  <p className="text-xs text-[var(--color-neutral-400)]">
+                    {isAr ? 'جارٍ التحضير…' : 'Loading…'}
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Current timestamp display */}

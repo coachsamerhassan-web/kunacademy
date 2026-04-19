@@ -1,22 +1,26 @@
 /**
  * POST /api/packages/[instanceId]/recordings
- * Submit a coaching recording for assessment.
+ * Submit a coaching recording + transcript for assessment.
  *
  * GET  /api/packages/[instanceId]/recordings
  * List all recordings for this package instance.
  *
- * Sub-phase: S2-Layer-1 / 1.5
+ * Sub-phase: S2-Layer-1 / 1.5 (recording) + 2.2 (transcript)
  *
  * POST body: multipart/form-data
  *   file        — audio/video file (required)
+ *   transcript  — transcript document (required, Phase 2.2)
  *   attestation — JSON array of 6 booleans, all must be true (required)
  *
  * POST constraints:
  *   - Student must own the package instance
- *   - MIME: audio/mp4 | audio/x-m4a | video/webm | audio/webm | audio/mpeg | audio/mp3
- *   - Size: ≤ 500 MB
+ *   - Audio MIME: audio/mp4 | audio/x-m4a | video/webm | audio/webm | audio/mpeg | audio/mp3
+ *   - Audio size: ≤ 500 MB
+ *   - Transcript MIME: application/pdf | text/plain | text/markdown
+ *   - Transcript size: ≤ 2 MB
  *   - All 6 attestation boxes must be true
- *   - File saved to: /var/www/kunacademy-git/uploads/recordings/[instanceId]/[recordingId].[ext]
+ *   - Audio saved to:      uploads/recordings/[instanceId]/[recordingId].[ext]
+ *   - Transcript saved to: uploads/recordings/[instanceId]/[recordingId].transcript.[ext]
  *   - Duration probed via ffprobe (best-effort; null if unavailable)
  *   - journey_state transitioned to 'recording_submitted'
  */
@@ -77,6 +81,16 @@ const ALLOWED_MIME_TYPES = new Set([
   'audio/mp3',
 ]);
 
+// ── Transcript constraints (Phase 2.2) ────────────────────────────────────────
+
+const MAX_TRANSCRIPT_SIZE_BYTES = 2 * 1024 * 1024; // 2 MB
+
+const ALLOWED_TRANSCRIPT_MIME_TYPES = new Set([
+  'application/pdf',
+  'text/plain',
+  'text/markdown',
+]);
+
 const ATTESTATION_COUNT = 6;
 
 /** Root directory for uploaded recordings on the VPS. */
@@ -88,12 +102,15 @@ const UPLOAD_ROOT = process.env.RECORDINGS_UPLOAD_DIR
 /** Map MIME type → canonical file extension for storage path. */
 function mimeToExt(mime: string): string {
   const map: Record<string, string> = {
-    'audio/mp4':   'm4a',
-    'audio/x-m4a': 'm4a',
-    'video/webm':  'webm',
-    'audio/webm':  'webm',
-    'audio/mpeg':  'mp3',
-    'audio/mp3':   'mp3',
+    'audio/mp4':       'm4a',
+    'audio/x-m4a':     'm4a',
+    'video/webm':      'webm',
+    'audio/webm':      'webm',
+    'audio/mpeg':      'mp3',
+    'audio/mp3':       'mp3',
+    'application/pdf': 'pdf',
+    'text/plain':      'txt',
+    'text/markdown':   'md',
   };
   return map[mime] ?? 'bin';
 }
@@ -161,6 +178,12 @@ export async function POST(request: NextRequest, context: RouteContext) {
     return NextResponse.json({ error: 'Missing required field: file' }, { status: 400 });
   }
 
+  // ── Transcript field (Phase 2.2) ───────────────────────────────────────────
+  const transcriptField = formData.get('transcript');
+  if (!(transcriptField instanceof File)) {
+    return NextResponse.json({ error: 'Missing required field: transcript' }, { status: 400 });
+  }
+
   const attestationRaw = formData.get('attestation');
   if (typeof attestationRaw !== 'string') {
     return NextResponse.json({ error: 'Missing required field: attestation' }, { status: 400 });
@@ -202,6 +225,23 @@ export async function POST(request: NextRequest, context: RouteContext) {
     );
   }
 
+  // ── Validate transcript MIME ───────────────────────────────────────────────
+  const transcriptMime = transcriptField.type;
+  if (!ALLOWED_TRANSCRIPT_MIME_TYPES.has(transcriptMime)) {
+    return NextResponse.json(
+      { error: `Transcript type '${transcriptMime}' is not allowed. Accepted: ${[...ALLOWED_TRANSCRIPT_MIME_TYPES].join(', ')}` },
+      { status: 400 },
+    );
+  }
+
+  // ── Validate transcript size ───────────────────────────────────────────────
+  if (transcriptField.size > MAX_TRANSCRIPT_SIZE_BYTES) {
+    return NextResponse.json(
+      { error: `Transcript exceeds the 2 MB limit (received ${(transcriptField.size / 1024 / 1024).toFixed(2)} MB)` },
+      { status: 413 },
+    );
+  }
+
   // ── Verify student owns this package instance ──────────────────────────────
   const isAdmin =
     user.role === 'admin' || user.role === 'super_admin';
@@ -233,7 +273,12 @@ export async function POST(request: NextRequest, context: RouteContext) {
   const filename  = `${recordingId}.${ext}`;
   const filePath  = path.join(uploadDir, filename);
 
-  // ── Write file to disk ─────────────────────────────────────────────────────
+  // Transcript path: same directory, suffix .transcript.[ext]
+  const transcriptExt  = mimeToExt(transcriptMime);
+  const transcriptFilename = `${recordingId}.transcript.${transcriptExt}`;
+  const transcriptFilePath = path.join(uploadDir, transcriptFilename);
+
+  // ── Write audio file to disk ───────────────────────────────────────────────
   try {
     await mkdir(uploadDir, { recursive: true });
     const arrayBuffer = await fileField.arrayBuffer();
@@ -242,6 +287,18 @@ export async function POST(request: NextRequest, context: RouteContext) {
     const msg = fsErr instanceof Error ? fsErr.message : String(fsErr);
     console.error('[recordings POST] File write error:', msg);
     return NextResponse.json({ error: 'Failed to save file' }, { status: 500 });
+  }
+
+  // ── Write transcript file to disk ──────────────────────────────────────────
+  try {
+    const transcriptBuffer = await transcriptField.arrayBuffer();
+    await writeFile(transcriptFilePath, Buffer.from(transcriptBuffer));
+  } catch (fsErr: unknown) {
+    // Clean up the audio file to avoid orphaned files on disk
+    await rm(filePath, { force: true }).catch(() => {});
+    const msg = fsErr instanceof Error ? fsErr.message : String(fsErr);
+    console.error('[recordings POST] Transcript write error:', msg);
+    return NextResponse.json({ error: 'Failed to save transcript' }, { status: 500 });
   }
 
   // ── Probe duration (best-effort, non-blocking) ─────────────────────────────
@@ -270,6 +327,11 @@ export async function POST(request: NextRequest, context: RouteContext) {
           submitted_at:             now,
           created_at:               now,
           updated_at:               now,
+          // Phase 2.2: transcript
+          transcript_file_path:   transcriptFilePath,
+          transcript_mime:        transcriptMime,
+          transcript_size_bytes:  transcriptField.size,
+          transcript_uploaded_at: now,
         })
         .returning({ id: packageRecordings.id });
       return rows[0] ?? null;
@@ -280,12 +342,14 @@ export async function POST(request: NextRequest, context: RouteContext) {
       const msg = cleanupErr instanceof Error ? cleanupErr.message : String(cleanupErr);
       console.error('[recordings POST] Failed to remove orphaned file after DB error:', msg);
     });
+    await rm(transcriptFilePath, { force: true }).catch(() => {});
     throw dbErr;
   }
 
   if (!inserted) {
     // insert returned empty — treat as failure and clean up
     await rm(filePath, { force: true }).catch(() => {});
+    await rm(transcriptFilePath, { force: true }).catch(() => {});
     return NextResponse.json({ error: 'Failed to create recording record' }, { status: 500 });
   }
 
@@ -314,7 +378,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
   });
 
   return NextResponse.json(
-    { recordingId, assessorAssigned },
+    { recordingId, assessorAssigned, transcriptFilePath },
     { status: 201 },
   );
 }

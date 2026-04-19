@@ -1,18 +1,20 @@
 'use client';
 
 /**
- * RecordingSubmitForm — student UI for submitting a coaching recording.
+ * RecordingSubmitForm — student UI for submitting a coaching recording + transcript.
  *
- * Sub-phase: S2-Layer-1 / 1.5
+ * Sub-phase: S2-Layer-1 / 1.5 (recording) + 2.2 (transcript)
  *
  * Features:
  *   - File picker (audio/* + video/webm)
  *   - Client-side MIME + size validation (≤ 500 MB)
  *   - HTML5 Audio/Video element for client-side duration check (< 3600 s)
+ *   - Transcript file picker (PDF / TXT / MD, ≤ 2 MB, required)
  *   - 6 required attestation checkboxes
  *   - XHR upload with progress tracking
- *   - Submit disabled until all attestations checked + valid file selected
+ *   - Submit disabled until all attestations checked + valid file + valid transcript
  *   - Success state shows assessor-assigned confirmation
+ *   - Bilingual (ar + en)
  */
 
 import React, { useRef, useState, useCallback, ChangeEvent } from 'react';
@@ -31,6 +33,16 @@ const ALLOWED_MIME_TYPES = new Set([
   'audio/mp3',
   // Some browsers report slightly different MIME for .m4a
   'audio/aac',
+]);
+
+// ── Transcript constants (Phase 2.2) ──────────────────────────────────────────
+
+const MAX_TRANSCRIPT_SIZE_BYTES = 2 * 1024 * 1024; // 2 MB
+
+const ALLOWED_TRANSCRIPT_MIME_TYPES = new Set([
+  'application/pdf',
+  'text/plain',
+  'text/markdown',
 ]);
 
 const ATTESTATIONS: string[] = [
@@ -59,19 +71,25 @@ interface FileValidation {
 
 interface RecordingSubmitFormProps {
   instanceId: string;
+  locale?: string;
   /** Called after successful submission with the new recording UUID */
   onSuccess?: (recordingId: string) => void;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export function RecordingSubmitForm({ instanceId, onSuccess }: RecordingSubmitFormProps) {
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const mediaRef     = useRef<HTMLAudioElement | null>(null);
+export function RecordingSubmitForm({ instanceId, locale = 'en', onSuccess }: RecordingSubmitFormProps) {
+  const isAr = locale === 'ar';
 
-  const [selectedFile,  setSelectedFile]  = useState<File | null>(null);
-  const [fileError,     setFileError]     = useState<string | null>(null);
-  const [attestations,  setAttestations]  = useState<boolean[]>(
+  const fileInputRef       = useRef<HTMLInputElement>(null);
+  const transcriptInputRef = useRef<HTMLInputElement>(null);
+  const mediaRef           = useRef<HTMLAudioElement | null>(null);
+
+  const [selectedFile,       setSelectedFile]       = useState<File | null>(null);
+  const [fileError,          setFileError]           = useState<string | null>(null);
+  const [selectedTranscript, setSelectedTranscript] = useState<File | null>(null);
+  const [transcriptError,    setTranscriptError]    = useState<string | null>(null);
+  const [attestations,       setAttestations]       = useState<boolean[]>(
     Array(ATTESTATIONS.length).fill(false),
   );
   const [submitState,   setSubmitState]   = useState<SubmitState>({ kind: 'idle' });
@@ -79,8 +97,9 @@ export function RecordingSubmitForm({ instanceId, onSuccess }: RecordingSubmitFo
   // ── Derived ─────────────────────────────────────────────────────────────────
 
   const allAttested = attestations.every(Boolean);
-  const canSubmit   = selectedFile !== null && fileError === null && allAttested &&
-                      submitState.kind !== 'uploading';
+  const canSubmit   = selectedFile !== null && fileError === null &&
+                      selectedTranscript !== null && transcriptError === null &&
+                      allAttested && submitState.kind !== 'uploading';
 
   // ── File selection + validation ──────────────────────────────────────────────
 
@@ -162,6 +181,49 @@ export function RecordingSubmitForm({ instanceId, onSuccess }: RecordingSubmitFo
     [validateFile],
   );
 
+  // ── Transcript selection + validation (Phase 2.2) ────────────────────────────
+
+  const validateTranscript = useCallback((file: File): FileValidation => {
+    if (!ALLOWED_TRANSCRIPT_MIME_TYPES.has(file.type)) {
+      return {
+        valid: false,
+        error: isAr
+          ? `نوع الملف "${file.type}" غير مدعوم. يرجى رفع ملف PDF أو TXT أو MD.`
+          : `File type "${file.type}" is not supported. Please upload a PDF, TXT, or Markdown file.`,
+      };
+    }
+    if (file.size > MAX_TRANSCRIPT_SIZE_BYTES) {
+      const mb = (file.size / 1024 / 1024).toFixed(2);
+      return {
+        valid: false,
+        error: isAr
+          ? `حجم النص كبير جداً (${mb} MB). الحد الأقصى ٢ ميغابايت.`
+          : `Transcript is too large (${mb} MB). Maximum allowed size is 2 MB.`,
+      };
+    }
+    return { valid: true };
+  }, [isAr]);
+
+  const handleTranscriptChange = useCallback(
+    (e: ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0] ?? null;
+      setSelectedTranscript(null);
+      setTranscriptError(null);
+
+      if (!file) return;
+
+      const result = validateTranscript(file);
+      if (!result.valid) {
+        setTranscriptError(result.error ?? 'Invalid transcript');
+        if (transcriptInputRef.current) transcriptInputRef.current.value = '';
+        return;
+      }
+
+      setSelectedTranscript(file);
+    },
+    [validateTranscript],
+  );
+
   // ── Attestation toggle ──────────────────────────────────────────────────────
 
   const handleAttestationChange = useCallback((index: number) => {
@@ -177,12 +239,13 @@ export function RecordingSubmitForm({ instanceId, onSuccess }: RecordingSubmitFo
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
-      if (!canSubmit || !selectedFile) return;
+      if (!canSubmit || !selectedFile || !selectedTranscript) return;
 
       setSubmitState({ kind: 'uploading', progressPct: 0 });
 
       const formData = new FormData();
       formData.append('file', selectedFile);
+      formData.append('transcript', selectedTranscript);
       formData.append('attestation', JSON.stringify(attestations));
 
       try {
@@ -235,7 +298,7 @@ export function RecordingSubmitForm({ instanceId, onSuccess }: RecordingSubmitFo
         setSubmitState({ kind: 'error', message });
       }
     },
-    [canSubmit, selectedFile, attestations, instanceId, onSuccess],
+    [canSubmit, selectedFile, selectedTranscript, attestations, instanceId, onSuccess],
   );
 
   // ── Render ───────────────────────────────────────────────────────────────────
@@ -243,19 +306,21 @@ export function RecordingSubmitForm({ instanceId, onSuccess }: RecordingSubmitFo
   if (submitState.kind === 'success') {
     return (
       <div className="rounded-lg border border-green-200 bg-green-50 p-6 text-center">
-        <div className="mb-3 text-3xl">✓</div>
+        <div className="mb-3 text-3xl">&#10003;</div>
         <h3 className="mb-2 text-lg font-semibold text-green-800">
-          Recording Submitted Successfully
+          {isAr ? 'تم الإرسال بنجاح' : 'Recording Submitted Successfully'}
         </h3>
         {submitState.assessorAssigned ? (
           <p className="text-sm text-green-700">
-            Your recording has been received and an assessor has been assigned. You will be
-            notified once the assessment is complete.
+            {isAr
+              ? 'تم استلام تسجيلك ونصّه، وقد تمّ تعيين مقيّم. ستتلقى إشعاراً فور اكتمال التقييم.'
+              : 'Your recording and transcript have been received and an assessor has been assigned. You will be notified once the assessment is complete.'}
           </p>
         ) : (
           <p className="text-sm text-green-700">
-            Your recording has been received. An assessor will be assigned shortly by the
-            program team.
+            {isAr
+              ? 'تم استلام تسجيلك ونصّه. سيتمّ تعيين مقيّم قريباً من قِبَل الفريق.'
+              : 'Your recording and transcript have been received. An assessor will be assigned shortly by the program team.'}
           </p>
         )}
       </div>
@@ -264,17 +329,19 @@ export function RecordingSubmitForm({ instanceId, onSuccess }: RecordingSubmitFo
 
   return (
     <form onSubmit={handleSubmit} noValidate className="space-y-6">
-      {/* ── File picker ── */}
+      {/* ── Recording file picker ── */}
       <div>
         <label
           htmlFor="recording-file"
           className="mb-1 block text-sm font-medium text-gray-700"
         >
-          Upload your coaching recording
+          {isAr ? 'ارفع تسجيلك الصوتي' : 'Upload your coaching recording'}
           <span className="ml-1 text-red-500" aria-hidden="true">*</span>
         </label>
         <p className="mb-2 text-xs text-gray-500">
-          Accepted formats: M4A, MP3, WebM audio. Maximum size: 500 MB. Maximum duration: 60 minutes.
+          {isAr
+            ? 'الصيغ المقبولة: M4A، MP3، WebM. الحد الأقصى: 500 MB. المدة الأقصى: 60 دقيقة.'
+            : 'Accepted formats: M4A, MP3, WebM audio. Maximum size: 500 MB. Maximum duration: 60 minutes.'}
         </p>
         <input
           ref={fileInputRef}
@@ -292,7 +359,42 @@ export function RecordingSubmitForm({ instanceId, onSuccess }: RecordingSubmitFo
         )}
         {selectedFile && !fileError && (
           <p className="mt-1 text-xs text-gray-500">
-            Selected: {selectedFile.name} ({(selectedFile.size / 1024 / 1024).toFixed(1)} MB)
+            {isAr ? 'المختار:' : 'Selected:'} {selectedFile.name} ({(selectedFile.size / 1024 / 1024).toFixed(1)} MB)
+          </p>
+        )}
+      </div>
+
+      {/* ── Transcript file picker (Phase 2.2) ── */}
+      <div>
+        <label
+          htmlFor="transcript-file"
+          className="mb-1 block text-sm font-medium text-gray-700"
+        >
+          {isAr ? 'ارفع نص الجلسة (Transcript)' : 'Upload session transcript'}
+          <span className="ml-1 text-red-500" aria-hidden="true">*</span>
+        </label>
+        <p className="mb-2 text-xs text-gray-500">
+          {isAr
+            ? 'الصيغ المقبولة: PDF، TXT، MD. الحد الأقصى: 2 MB. يقرأه المقيّم أثناء الاستماع.'
+            : 'Accepted formats: PDF, TXT, MD. Maximum size: 2 MB. The assessor reads this while listening to your recording.'}
+        </p>
+        <input
+          ref={transcriptInputRef}
+          id="transcript-file"
+          type="file"
+          accept="application/pdf,text/plain,text/markdown,.md,.txt,.pdf"
+          onChange={handleTranscriptChange}
+          className="block w-full cursor-pointer rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 file:mr-3 file:cursor-pointer file:rounded file:border-0 file:bg-green-50 file:px-3 file:py-1 file:text-sm file:font-medium file:text-green-700 hover:file:bg-green-100 focus:outline-none focus:ring-2 focus:ring-green-500"
+          aria-describedby={transcriptError ? 'transcript-error' : undefined}
+        />
+        {transcriptError && (
+          <p id="transcript-error" role="alert" className="mt-1 text-sm text-red-600">
+            {transcriptError}
+          </p>
+        )}
+        {selectedTranscript && !transcriptError && (
+          <p className="mt-1 text-xs text-gray-500">
+            {isAr ? 'المختار:' : 'Selected:'} {selectedTranscript.name} ({(selectedTranscript.size / 1024).toFixed(1)} KB)
           </p>
         )}
       </div>
@@ -359,15 +461,19 @@ export function RecordingSubmitForm({ instanceId, onSuccess }: RecordingSubmitFo
         className="inline-flex min-h-[44px] w-full items-center justify-center rounded-lg bg-blue-600 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500"
         aria-describedby={!canSubmit ? 'submit-hint' : undefined}
       >
-        {submitState.kind === 'uploading' ? 'Uploading…' : 'Submit Recording'}
+        {submitState.kind === 'uploading'
+          ? (isAr ? 'جارٍ الرفع…' : 'Uploading…')
+          : (isAr ? 'إرسال التسجيل والنص' : 'Submit Recording & Transcript')}
       </button>
 
       {!canSubmit && submitState.kind === 'idle' && (
         <p id="submit-hint" className="text-center text-xs text-gray-500">
           {!selectedFile
-            ? 'Please select a valid recording file.'
+            ? (isAr ? 'يرجى اختيار ملف تسجيل صالح.' : 'Please select a valid recording file.')
+            : !selectedTranscript
+            ? (isAr ? 'يرجى اختيار ملف النص (Transcript).' : 'Please select a valid transcript file.')
             : !allAttested
-            ? 'Please confirm all attestations above.'
+            ? (isAr ? 'يرجى تأكيد جميع البنود أعلاه.' : 'Please confirm all attestations above.')
             : ''}
         </p>
       )}
