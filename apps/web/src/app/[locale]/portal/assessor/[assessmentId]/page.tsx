@@ -12,11 +12,12 @@
  *   - Transcript: fetched from /api/recordings/[id]/transcript — PDF via iframe,
  *     text/md via scrollable <pre>. Live in Phase 2.2.
  *   - Rubric form: section-by-section, progress indicator, evidence field auto-focus
- *   - Auto-save note: draft persistence deferred to Phase 2.5
- *   - Voice message: deferred to Phase 2.6 (fail path only)
- *   - Submit action: deferred to Phase 2.7 (state-machine wiring)
+ *   - Auto-save: Phase 2.5 (live)
+ *   - Voice message: Phase 2.6 (live — fail path, MediaRecorder)
+ *   - Submit action: Phase 2.7 (live — POST /submit, ethics gate + state machine)
  *
- * Sub-phase: S2-Layer-1 / 2.1 (workspace) + 2.2 (transcript viewer)
+ * Sub-phase: S2-Layer-1 / 2.1 (workspace) + 2.2 (transcript) + 2.5 (auto-save)
+ *            + 2.6 (voice message) + 2.7 (submit handler)
  */
 
 import { useAuth } from '@kunacademy/auth';
@@ -32,6 +33,16 @@ type SaveStatus =
   | { kind: 'saved'; at: Date }
   | { kind: 'error' }
   | { kind: 'locked' };  // 409 — admin decision changed; all further saves blocked
+
+// ─── Submit state type ────────────────────────────────────────────────────────
+
+type SubmitStatus =
+  | { kind: 'idle' }
+  | { kind: 'confirming' }          // modal open, awaiting user confirm
+  | { kind: 'submitting' }          // POST in-flight
+  | { kind: 'success'; at: string; decision: 'pass' | 'fail' }
+  | { kind: 'validation_errors'; errors: Array<{ en: string; ar: string }> }
+  | { kind: 'error'; message: string };  // 5xx or network
 
 // ─── Shallow diff — returns only top-level keys that changed ─────────────────
 // Sufficient for v1 spec: rubric is one level deep per section at the top level
@@ -634,6 +645,280 @@ function EthicsGate({ id, labelAr, labelEn, isAr, value, onChange }: EthicsGateP
   );
 }
 
+// ─── Voice message recorder (Phase 2.6 — fail path only) ─────────────────────
+
+interface VoiceRecorderProps {
+  isAr: boolean;
+  onSave: (url: string, durationSeconds: number) => void;
+  assessmentId: string;
+}
+
+type RecorderStatus =
+  | { kind: 'idle' }
+  | { kind: 'recording'; startedAt: number }
+  | { kind: 'recorded'; blob: Blob; durationSeconds: number; previewUrl: string }
+  | { kind: 'uploading' }
+  | { kind: 'done'; url: string; durationSeconds: number }
+  | { kind: 'error'; message: string };
+
+function VoiceRecorder({ isAr, onSave, assessmentId }: VoiceRecorderProps) {
+  const [status, setStatus] = useState<RecorderStatus>({ kind: 'idle' });
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [elapsed, setElapsed] = useState(0);
+  const MAX_SECONDS = 600; // 10 minutes
+
+  const startRecording = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mr = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+      mediaRecorderRef.current = mr;
+      chunksRef.current = [];
+
+      mr.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
+      mr.onstop = () => {
+        stream.getTracks().forEach((t) => t.stop());
+        const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
+        const previewUrl = URL.createObjectURL(blob);
+        const dur = elapsed;
+        setStatus({ kind: 'recorded', blob, durationSeconds: dur, previewUrl });
+      };
+
+      mr.start(1000);
+      const startedAt = Date.now();
+      setElapsed(0);
+      setStatus({ kind: 'recording', startedAt });
+
+      timerRef.current = setInterval(() => {
+        const secs = Math.floor((Date.now() - startedAt) / 1000);
+        setElapsed(secs);
+        if (secs >= MAX_SECONDS) { mr.stop(); clearInterval(timerRef.current!); }
+      }, 1000);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Microphone access denied';
+      setStatus({ kind: 'error', message: msg });
+    }
+  }, [elapsed]);
+
+  const stopRecording = useCallback(() => {
+    mediaRecorderRef.current?.stop();
+    if (timerRef.current) clearInterval(timerRef.current);
+  }, []);
+
+  const discardRecording = useCallback(() => {
+    if (status.kind === 'recorded') URL.revokeObjectURL(status.previewUrl);
+    setStatus({ kind: 'idle' });
+    setElapsed(0);
+  }, [status]);
+
+  const uploadRecording = useCallback(async () => {
+    if (status.kind !== 'recorded') return;
+    const { blob, durationSeconds, previewUrl } = status;
+    setStatus({ kind: 'uploading' });
+
+    const formData = new FormData();
+    formData.append('voice_message', blob, 'voice-message.webm');
+    formData.append('duration_seconds', String(durationSeconds));
+
+    try {
+      const res = await fetch(`/api/assessments/${assessmentId}/voice-message`, {
+        method: 'POST',
+        body: formData,
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({})) as { error?: string };
+        throw new Error(d.error ?? `HTTP ${res.status}`);
+      }
+      const data = await res.json() as { url: string };
+      URL.revokeObjectURL(previewUrl);
+      setStatus({ kind: 'done', url: data.url, durationSeconds });
+      onSave(data.url, durationSeconds);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Upload failed';
+      setStatus({ kind: 'error', message: msg });
+    }
+  }, [status, assessmentId, onSave]);
+
+  const elapsedStr = `${String(Math.floor(elapsed / 60)).padStart(2, '0')}:${String(elapsed % 60).padStart(2, '0')}`;
+
+  return (
+    <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 space-y-3">
+      <div className="flex items-center gap-2">
+        <svg className="h-4 w-4 text-amber-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+          <path d="M19 10v2a7 7 0 0 1-14 0v-2" /><line x1="12" y1="19" x2="12" y2="23" /><line x1="8" y1="23" x2="16" y2="23" />
+        </svg>
+        <h3 className="text-sm font-medium text-amber-800">
+          {isAr ? 'رسالة صوتية (مسار الرسوب)' : 'Voice Message (Fail Path)'}
+        </h3>
+      </div>
+
+      <p className="text-xs text-amber-700">
+        {isAr
+          ? 'سجّل رسالة صوتية للمستفيد (حد أقصى ١٠ دقائق). هذه الرسالة للكوتش فقط — لا تُنسخ تلقائياً.'
+          : 'Record a voice message for the student (max 10 min). Human-to-human artifact — not auto-transcribed.'}
+      </p>
+
+      {status.kind === 'idle' && (
+        <button
+          onClick={() => void startRecording()}
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-amber-600 text-white text-sm font-medium hover:bg-amber-700 transition-colors min-h-[44px]"
+        >
+          <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+            <circle cx="12" cy="12" r="8" />
+          </svg>
+          {isAr ? 'بدء التسجيل' : 'Start Recording'}
+        </button>
+      )}
+
+      {status.kind === 'recording' && (
+        <div className="flex items-center gap-3">
+          <span className="inline-flex items-center gap-1.5 text-sm font-medium text-red-700">
+            <span className="h-2 w-2 rounded-full bg-red-600 animate-pulse" />
+            {isAr ? 'جارٍ التسجيل' : 'Recording'} — {elapsedStr}
+          </span>
+          <button
+            onClick={stopRecording}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-medium hover:bg-red-700 transition-colors min-h-[44px]"
+          >
+            {isAr ? 'إيقاف' : 'Stop'}
+          </button>
+        </div>
+      )}
+
+      {status.kind === 'recorded' && (
+        <div className="space-y-2">
+          <audio controls src={status.previewUrl} className="w-full h-9" />
+          <div className="flex gap-2">
+            <button
+              onClick={() => void uploadRecording()}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-green-600 text-white text-sm font-medium hover:bg-green-700 transition-colors min-h-[44px]"
+            >
+              {isAr ? 'حفظ الرسالة' : 'Save Message'}
+            </button>
+            <button
+              onClick={discardRecording}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-[var(--color-neutral-300)] text-sm font-medium hover:border-red-400 hover:text-red-600 transition-colors min-h-[44px]"
+            >
+              {isAr ? 'حذف وإعادة التسجيل' : 'Discard & Re-record'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {status.kind === 'uploading' && (
+        <div className="flex items-center gap-2 text-sm text-[var(--color-neutral-500)]">
+          <div className="h-4 w-4 border-2 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin" />
+          {isAr ? 'جارٍ الرفع…' : 'Uploading…'}
+        </div>
+      )}
+
+      {status.kind === 'done' && (
+        <div className="flex items-center gap-2 text-sm text-green-700 font-medium">
+          <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+          {isAr
+            ? `تم حفظ الرسالة الصوتية (${String(Math.floor(status.durationSeconds / 60)).padStart(2,'0')}:${String(status.durationSeconds % 60).padStart(2,'0')})`
+            : `Voice message saved (${String(Math.floor(status.durationSeconds / 60)).padStart(2,'0')}:${String(status.durationSeconds % 60).padStart(2,'0')})`}
+        </div>
+      )}
+
+      {status.kind === 'error' && (
+        <div className="rounded-md border border-red-200 bg-red-50 p-2 text-xs text-red-700">
+          {isAr ? `خطأ: ${status.message}` : `Error: ${status.message}`}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Submit confirmation modal ────────────────────────────────────────────────
+
+interface SubmitConfirmModalProps {
+  isAr: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+  isSubmitting: boolean;
+  ethicsAutoFail: boolean;
+  verdict: 'pass' | 'fail' | null;
+}
+
+function SubmitConfirmModal({
+  isAr,
+  onConfirm,
+  onCancel,
+  isSubmitting,
+  ethicsAutoFail,
+  verdict,
+}: SubmitConfirmModalProps) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+      <div
+        dir={isAr ? 'rtl' : 'ltr'}
+        className="w-full max-w-md rounded-2xl bg-white shadow-2xl p-6 space-y-4"
+      >
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--color-primary)]/10">
+            <svg className="h-5 w-5 text-[var(--color-primary)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
+            </svg>
+          </div>
+          <h2 className="text-base font-semibold text-[var(--text-primary)]">
+            {isAr ? 'تأكيد إرسال التقييم' : 'Confirm Assessment Submission'}
+          </h2>
+        </div>
+
+        <p className="text-sm text-[var(--color-neutral-600)]">
+          {isAr
+            ? 'بمجرد الإرسال، يصبح هذا التقييم مقفلاً ولا يمكن تعديله. راجع عملك قبل المتابعة.'
+            : 'Once submitted, this assessment is permanently locked and cannot be edited. Review your work before proceeding.'}
+        </p>
+
+        {ethicsAutoFail && (
+          <div className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-xs text-red-700 font-medium">
+            {isAr
+              ? 'تنبيه: هذه الجلسة فاشلة تلقائياً بسبب بوابة أخلاقية.'
+              : 'Note: This session will be auto-failed due to an ethics gate violation.'}
+          </div>
+        )}
+
+        <div className="rounded-md bg-[var(--color-neutral-50)] border border-[var(--color-neutral-200)] px-3 py-2 text-sm">
+          <span className="text-[var(--color-neutral-500)]">
+            {isAr ? 'النتيجة النهائية: ' : 'Final verdict: '}
+          </span>
+          <span className={`font-semibold ${verdict === 'pass' ? 'text-green-700' : 'text-red-700'}`}>
+            {verdict === 'pass'
+              ? (isAr ? 'ناجح' : 'Pass')
+              : (isAr ? 'راسب' : 'Fail')}
+          </span>
+        </div>
+
+        <div className="flex gap-3 pt-1">
+          <button
+            onClick={onCancel}
+            disabled={isSubmitting}
+            className="flex-1 px-4 py-2.5 rounded-lg border border-[var(--color-neutral-300)] text-sm font-medium hover:border-[var(--color-neutral-400)] transition-colors disabled:opacity-40 min-h-[44px]"
+          >
+            {isAr ? 'إلغاء' : 'Cancel'}
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={isSubmitting}
+            className="flex-1 px-4 py-2.5 rounded-lg bg-[var(--color-primary)] text-white text-sm font-medium hover:bg-[var(--color-primary)]/90 transition-colors disabled:opacity-60 min-h-[44px] flex items-center justify-center gap-2"
+          >
+            {isSubmitting && (
+              <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            )}
+            {isAr ? 'تأكيد الإرسال' : 'Confirm Submit'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main workspace ───────────────────────────────────────────────────────────
 
 export default function AssessorWorkspacePage() {
@@ -661,6 +946,10 @@ export default function AssessorWorkspacePage() {
   const assessmentIdRef = useRef<string | null>(null);
   const isSubmittedRef = useRef(false);
   const isLockedRef = useRef(false); // true after a 409 — no more auto-saves this session
+
+  // Phase 2.7 — submit state
+  const [submitStatus, setSubmitStatus] = useState<SubmitStatus>({ kind: 'idle' });
+  const [voiceMessageUrl, setVoiceMessageUrl] = useState<string | null>(null);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -810,6 +1099,77 @@ export default function AssessorWorkspacePage() {
 
   // Ethics auto-fail: if any gate is disagree, force verdict = fail
   const ethicsAutoFail = Object.values(form.ethicsGates).some(v => v === 'disagree');
+
+  // Phase 2.7 — submit readiness check (client-side gate for button enable)
+  const isSubmitReady =
+    form.verdict !== null &&
+    form.mentorGuidance.trim() !== '' &&
+    form.strongestCompetencies.trim() !== '' &&
+    form.developmentAreas.trim() !== '';
+
+  // Phase 2.7 — actual verdict sent to server (ethics override applied client-side too)
+  const effectiveVerdict: 'pass' | 'fail' | null = ethicsAutoFail ? 'fail' : form.verdict;
+
+  // Phase 2.7 — submit handler
+  const handleSubmitConfirm = useCallback(async () => {
+    const id = assessmentIdRef.current;
+    if (!id) return;
+
+    setSubmitStatus({ kind: 'submitting' });
+
+    const payload = {
+      sessionDeliveryDate:   form.sessionDeliveryDate,
+      sessionNumber:         form.sessionNumber,
+      sessionLevel:          form.sessionLevel,
+      observations:          form.observations,
+      ethicsGates:           form.ethicsGates,
+      strongestCompetencies: form.strongestCompetencies,
+      developmentAreas:      form.developmentAreas,
+      mentorGuidance:        form.mentorGuidance,
+      verdict:               effectiveVerdict,
+      // Include voice message URL if one was recorded during this session
+      voice_message_url:     voiceMessageUrl ?? undefined,
+    };
+
+    try {
+      const res = await fetch(`/api/assessments/${id}/submit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (res.status === 409) {
+        // Already submitted (race condition or double-click)
+        isLockedRef.current = true;
+        isSubmittedRef.current = true;
+        setSaveStatus({ kind: 'locked' });
+        setSubmitStatus({ kind: 'error', message: isAr ? 'التقييم مُرسَل مسبقاً' : 'Assessment already submitted' });
+        return;
+      }
+
+      if (res.status === 400) {
+        const d = await res.json() as { errors?: Array<{ en: string; ar: string }> };
+        setSubmitStatus({ kind: 'validation_errors', errors: d.errors ?? [] });
+        return;
+      }
+
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
+
+      const data = await res.json() as { submitted_at: string; decision: 'pass' | 'fail' };
+
+      // Lock the form permanently
+      isSubmittedRef.current = true;
+      isLockedRef.current = true;
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+
+      setSubmitStatus({ kind: 'success', at: data.submitted_at, decision: data.decision });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Submission failed';
+      setSubmitStatus({ kind: 'error', message: msg });
+    }
+  }, [form, effectiveVerdict, isAr]);
 
   const updateObs = useCallback((id: number, entry: ObsEntry) => {
     setForm(prev => ({ ...prev, observations: { ...prev.observations, [id]: entry } }));
@@ -1305,20 +1665,80 @@ export default function AssessorWorkspacePage() {
                     />
                   </div>
 
-                  {/* Submit placeholder — Phase 2.7 will wire this to state machine */}
-                  <div className="rounded-lg border border-[var(--color-neutral-200)] bg-[var(--color-neutral-50)] p-4 text-center">
-                    <p className="text-xs text-[var(--color-neutral-400)] mb-2">
-                      {isAr
-                        ? 'الإرسال النهائي سيُتاح في المرحلة ٢.٧ — مسودتك تُحفظ تلقائياً'
-                        : 'Final submit will be wired in Phase 2.7 — your draft is auto-saved'}
-                    </p>
-                    <button
-                      disabled
-                      className="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg bg-[var(--color-primary)]/30 text-white text-sm font-medium cursor-not-allowed"
-                    >
-                      {isAr ? 'إرسال التقييم (قريباً)' : 'Submit Assessment (coming soon)'}
-                    </button>
-                  </div>
+                  {/* Phase 2.6 — Voice message recorder (fail path only) */}
+                  {form.verdict === 'fail' && !isSubmitted && submitStatus.kind !== 'success' && (
+                    <VoiceRecorder
+                      isAr={isAr}
+                      assessmentId={typeof assessmentId === 'string' ? assessmentId : assessmentId[0]}
+                      onSave={(url) => setVoiceMessageUrl(url)}
+                    />
+                  )}
+
+                  {/* Phase 2.7 — Validation errors panel */}
+                  {submitStatus.kind === 'validation_errors' && submitStatus.errors.length > 0 && (
+                    <div className="rounded-lg border border-red-300 bg-red-50 p-4 space-y-1.5">
+                      <p className="text-sm font-semibold text-red-800">
+                        {isAr ? 'يجب تصحيح الأخطاء التالية قبل الإرسال:' : 'Fix the following errors before submitting:'}
+                      </p>
+                      <ul className="space-y-1">
+                        {submitStatus.errors.map((e, i) => (
+                          <li key={i} className="text-xs text-red-700 flex items-start gap-1.5">
+                            <span className="shrink-0 mt-0.5">•</span>
+                            {isAr ? e.ar : e.en}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {/* Phase 2.7 — 5xx / network error */}
+                  {submitStatus.kind === 'error' && (
+                    <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800">
+                      {isAr ? `خطأ في الإرسال: ${submitStatus.message}. حاول مرة أخرى.` : `Submission error: ${submitStatus.message}. Please try again.`}
+                    </div>
+                  )}
+
+                  {/* Phase 2.7 — Success state */}
+                  {submitStatus.kind === 'success' && (
+                    <div className={`rounded-lg border p-4 ${submitStatus.decision === 'pass' ? 'border-green-300 bg-green-50' : 'border-red-300 bg-red-50'}`}>
+                      <div className="flex items-center gap-2">
+                        <svg className={`h-5 w-5 ${submitStatus.decision === 'pass' ? 'text-green-600' : 'text-red-600'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                          <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                        <p className={`text-sm font-semibold ${submitStatus.decision === 'pass' ? 'text-green-800' : 'text-red-800'}`}>
+                          {isAr
+                            ? `تم إرسال التقييم بنجاح — النتيجة: ${submitStatus.decision === 'pass' ? 'ناجح' : 'راسب'}`
+                            : `Assessment submitted — Verdict: ${submitStatus.decision === 'pass' ? 'Pass' : 'Fail'}`}
+                        </p>
+                      </div>
+                      <p className="mt-1 text-xs text-[var(--color-neutral-500)]">
+                        {isAr ? 'هذا التقييم مقفل الآن ولا يمكن تعديله.' : 'This assessment is now locked and cannot be edited.'}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Phase 2.7 — Submit button (hidden on success or already-submitted) */}
+                  {!isSubmitted && submitStatus.kind !== 'success' && (
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={() => setSubmitStatus({ kind: 'confirming' })}
+                        disabled={!isSubmitReady || submitStatus.kind === 'submitting'}
+                        className="flex-1 inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg bg-[var(--color-primary)] text-white text-sm font-semibold hover:bg-[var(--color-primary)]/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed min-h-[44px]"
+                      >
+                        <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M22 2 11 13" /><polygon points="22 2 15 22 11 13 2 9 22 2" />
+                        </svg>
+                        {isAr ? 'إرسال التقييم' : 'Submit Assessment'}
+                      </button>
+                      {!isSubmitReady && (
+                        <p className="text-xs text-[var(--color-neutral-400)]">
+                          {isAr
+                            ? 'أكمل النتيجة + الكفاءات + التوجيه لتفعيل الإرسال'
+                            : 'Complete verdict + competencies + guidance to enable submit'}
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -1354,6 +1774,28 @@ export default function AssessorWorkspacePage() {
           </div>
         </div>
       </div>
+
+      {/* Phase 2.7 — Confirmation modal (portal-level) */}
+      {submitStatus.kind === 'confirming' && effectiveVerdict !== null && (
+        <SubmitConfirmModal
+          isAr={isAr}
+          ethicsAutoFail={ethicsAutoFail}
+          verdict={effectiveVerdict}
+          isSubmitting={false}
+          onCancel={() => setSubmitStatus({ kind: 'idle' })}
+          onConfirm={() => void handleSubmitConfirm()}
+        />
+      )}
+      {submitStatus.kind === 'submitting' && effectiveVerdict !== null && (
+        <SubmitConfirmModal
+          isAr={isAr}
+          ethicsAutoFail={ethicsAutoFail}
+          verdict={effectiveVerdict}
+          isSubmitting={true}
+          onCancel={() => {}}
+          onConfirm={() => {}}
+        />
+      )}
     </main>
   );
 }

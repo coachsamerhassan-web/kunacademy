@@ -12,7 +12,8 @@ export type AuditAction =
   | 'DECRYPT_BANK_DETAILS'
   | 'UPDATE_PROFILE_ROLE'
   | 'CREATE_BLOG_POST' | 'UPDATE_BLOG_POST' | 'DELETE_BLOG_POST'
-  | 'UPDATE_TESTIMONIAL' | 'DELETE_TESTIMONIAL';
+  | 'UPDATE_TESTIMONIAL' | 'DELETE_TESTIMONIAL'
+  | 'SUBMIT_ASSESSMENT';
 
 /** Manual type matching the admin_audit_log migration schema */
 export interface AdminAuditLog {
