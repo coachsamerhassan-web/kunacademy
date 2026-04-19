@@ -55,7 +55,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       const result = await db.execute(sql`
         SELECT
           p.email            AS student_email,
-          p.full_name        AS student_name,
+          COALESCE(p.full_name_en, p.full_name_ar) AS student_name,
           ml.title_ar        AS milestone_title,
           ml.code            AS milestone_code,
           pim.due_at,

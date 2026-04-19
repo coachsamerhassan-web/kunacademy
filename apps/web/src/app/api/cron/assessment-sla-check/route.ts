@@ -71,7 +71,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       const rows = await db.execute(sql`
         SELECT
           pi.id,
-          p.full_name  AS student_name,
+          COALESCE(p.full_name_en, p.full_name_ar) AS student_name,
           pt.name_en   AS package_name,
           pi.updated_at,
           pi.cron_metadata,
