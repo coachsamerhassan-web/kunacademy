@@ -10,7 +10,7 @@
  *   1. KPI cards — pending assessments, second-opinion queue, failed 2nd-try, paused journeys
  *   2. SLA watch — top 5 assessments >8 business days elapsed (5+ days overdue on 10-day SLA)
  *   3. Email outbox health — failed email count + warning
- *   4. Recent override activity — last 5 audit log rows for override/opinion actions
+ *   4. Recent activity feed — last 20 audit rows covering 7 action types with icons + context
  *
  * Cache: revalidate = 30 seconds (ISR)
  */
@@ -52,6 +52,9 @@ interface AuditRow {
   action: string;
   actor_name: string | null;
   actor_email: string;
+  target_type: string | null;
+  target_id: string | null;
+  metadata: Record<string, unknown>;
   created_at: string;
 }
 
@@ -147,13 +150,16 @@ async function fetchEmailHealth(): Promise<EmailOutboxHealth> {
   });
 }
 
-async function fetchRecentOverrides(): Promise<AuditRow[]> {
+async function fetchRecentActivity(): Promise<AuditRow[]> {
   return withAdminContext(async (db) => {
     const result = await db.execute(sql`
       SELECT
         al.id,
         al.action,
         al.created_at,
+        al.target_type,
+        al.target_id,
+        al.metadata,
         COALESCE(p.full_name_en, p.full_name_ar) AS actor_name,
         COALESCE(p.email, '')                     AS actor_email
       FROM admin_audit_log al
@@ -161,31 +167,150 @@ async function fetchRecentOverrides(): Promise<AuditRow[]> {
       WHERE al.action IN (
         'OVERRIDE_ASSESSMENT_DECISION',
         'REQUEST_SECOND_OPINION',
-        'RESOLVE_SECOND_OPINION'
+        'RESOLVE_SECOND_OPINION',
+        'OVERRIDE_AUTO_UNPAUSE',
+        'PAUSE_JOURNEY',
+        'UNPAUSE_JOURNEY',
+        'SUBMIT_ASSESSMENT'
       )
       ORDER BY al.created_at DESC
-      LIMIT 5
+      LIMIT 20
     `);
     return result.rows as AuditRow[];
   });
 }
 
-// ── Label helpers ──────────────────────────────────────────────────────────────
+// ── Action metadata ────────────────────────────────────────────────────────────
 
-const ACTION_LABELS: Record<string, { ar: string; en: string }> = {
-  OVERRIDE_ASSESSMENT_DECISION: { ar: 'تجاوز قرار التقييم',   en: 'Override Assessment Decision' },
-  REQUEST_SECOND_OPINION:       { ar: 'طلب رأي ثانٍ',         en: 'Request Second Opinion'       },
-  RESOLVE_SECOND_OPINION:       { ar: 'حسم الرأي الثاني',     en: 'Resolve Second Opinion'       },
+interface ActionMeta {
+  ar: string;
+  en: string;
+  /** Tailwind bg + text for the pill */
+  pillClass: string;
+  /** SVG path(s) for the icon (24×24 viewBox) */
+  iconPath: string;
+}
+
+const ACTION_META: Record<string, ActionMeta> = {
+  OVERRIDE_ASSESSMENT_DECISION: {
+    ar: 'تجاوز قرار التقييم',
+    en: 'Override Decision',
+    pillClass: 'bg-purple-100 text-purple-800',
+    iconPath: 'M11 5H6a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-5M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z',
+  },
+  REQUEST_SECOND_OPINION: {
+    ar: 'طلب رأي ثانٍ',
+    en: 'Request 2nd Opinion',
+    pillClass: 'bg-blue-100 text-blue-800',
+    iconPath: 'M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-5l-4 4v-4z',
+  },
+  RESOLVE_SECOND_OPINION: {
+    ar: 'حسم الرأي الثاني',
+    en: 'Resolve 2nd Opinion',
+    pillClass: 'bg-green-100 text-green-800',
+    iconPath: 'M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 0 0 1.946-.806 3.42 3.42 0 0 1 4.438 0 3.42 3.42 0 0 0 1.946.806 3.42 3.42 0 0 1 3.138 3.138 3.42 3.42 0 0 0 .806 1.946 3.42 3.42 0 0 1 0 4.438 3.42 3.42 0 0 0-.806 1.946 3.42 3.42 0 0 1-3.138 3.138 3.42 3.42 0 0 0-1.946.806 3.42 3.42 0 0 1-4.438 0 3.42 3.42 0 0 0-1.946-.806 3.42 3.42 0 0 1-3.138-3.138 3.42 3.42 0 0 0-.806-1.946 3.42 3.42 0 0 1 0-4.438 3.42 3.42 0 0 0 .806-1.946 3.42 3.42 0 0 1 3.138-3.138z',
+  },
+  OVERRIDE_AUTO_UNPAUSE: {
+    ar: 'تجاوز الاستئناف التلقائي',
+    en: 'Override Auto-Unpause',
+    pillClass: 'bg-orange-100 text-orange-800',
+    iconPath: 'M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z',
+  },
+  PAUSE_JOURNEY: {
+    ar: 'إيقاف الرحلة مؤقتاً',
+    en: 'Pause Journey',
+    pillClass: 'bg-amber-100 text-amber-800',
+    iconPath: 'M10 9v6m4-6v6M9 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2h-3M9 3a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 3a2 2 0 0 0 2-2h2a2 2 0 0 0 2 2',
+  },
+  UNPAUSE_JOURNEY: {
+    ar: 'استئناف الرحلة',
+    en: 'Unpause Journey',
+    pillClass: 'bg-teal-100 text-teal-800',
+    iconPath: 'M14.752 11.168l-3.197-2.132A1 1 0 0 0 10 9.87v4.263a1 1 0 0 0 1.555.832l3.197-2.132a1 1 0 0 0 0-1.664zM21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z',
+  },
+  SUBMIT_ASSESSMENT: {
+    ar: 'تقديم تقييم',
+    en: 'Submit Assessment',
+    pillClass: 'bg-sky-100 text-sky-800',
+    iconPath: 'M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 0 2-2h2a2 2 0 0 0 2 2m-6 9l2 2 4-4',
+  },
 };
 
-function fmtDate(iso: string, locale: string): string {
-  return new Date(iso).toLocaleDateString(locale === 'ar' ? 'ar-AE' : 'en-GB', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+/** Relative time: "5m ago" / "منذ 5د" */
+function relativeTime(iso: string, locale: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const seconds = Math.floor(diff / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const hours   = Math.floor(minutes / 60);
+  const days    = Math.floor(hours / 24);
+
+  if (locale === 'ar') {
+    if (days   >= 1) return `منذ ${days} يوم`;
+    if (hours  >= 1) return `منذ ${hours} س`;
+    if (minutes >= 1) return `منذ ${minutes} د`;
+    return 'الآن';
+  } else {
+    if (days   >= 1) return `${days}d ago`;
+    if (hours  >= 1) return `${hours}h ago`;
+    if (minutes >= 1) return `${minutes}m ago`;
+    return 'just now';
+  }
+}
+
+/** Extract a brief human-readable description from audit metadata */
+function descriptionFromMetadata(
+  action: string,
+  metadata: Record<string, unknown>,
+  locale: string
+): string | null {
+  const isAr = locale === 'ar';
+  if (action === 'OVERRIDE_ASSESSMENT_DECISION') {
+    const prev = metadata.previous_decision as string | undefined;
+    const next = metadata.new_decision as string | undefined;
+    if (prev && next) {
+      return isAr
+        ? `${prev} ← ${next}`
+        : `${prev} → ${next}`;
+    }
+  }
+  if (action === 'PAUSE_JOURNEY' || action === 'UNPAUSE_JOURNEY') {
+    const reason = metadata.reason as string | undefined;
+    return reason ?? null;
+  }
+  if (action === 'SUBMIT_ASSESSMENT') {
+    const decision = metadata.decision as string | undefined;
+    return decision
+      ? (isAr ? `القرار: ${decision}` : `Decision: ${decision}`)
+      : null;
+  }
+  return null;
+}
+
+/** Build a link to the relevant admin page if we have a target */
+function targetLink(
+  action: string,
+  targetId: string | null,
+  locale: string
+): string | null {
+  if (!targetId) return null;
+  // Assessment-related actions → escalations detail page
+  if (
+    action === 'OVERRIDE_ASSESSMENT_DECISION' ||
+    action === 'REQUEST_SECOND_OPINION'       ||
+    action === 'RESOLVE_SECOND_OPINION'       ||
+    action === 'SUBMIT_ASSESSMENT'
+  ) {
+    return `/${locale}/admin/escalations/${targetId}`;
+  }
+  // Journey-related actions → package-instances page (if it exists)
+  if (
+    action === 'PAUSE_JOURNEY'        ||
+    action === 'UNPAUSE_JOURNEY'      ||
+    action === 'OVERRIDE_AUTO_UNPAUSE'
+  ) {
+    return `/${locale}/admin/escalations?instance=${targetId}`;
+  }
+  return null;
 }
 
 // ── Page ───────────────────────────────────────────────────────────────────────
@@ -208,11 +333,11 @@ export default async function MentorManagerDashboard({
   }
 
   // ── Parallel data fetch ─────────────────────────────────────────────────────
-  const [kpis, slaRows, emailHealth, overrides] = await Promise.all([
+  const [kpis, slaRows, emailHealth, recentActivity] = await Promise.all([
     fetchKpis(),
     fetchSlaWatch(),
     fetchEmailHealth(),
-    fetchRecentOverrides(),
+    fetchRecentActivity(),
   ]);
 
   // ── KPI card definitions ────────────────────────────────────────────────────
@@ -404,53 +529,81 @@ export default async function MentorManagerDashboard({
           </Link>
         </div>
 
-        {/* ── Section 4: Recent override activity ───────────────────────────── */}
+        {/* ── Section 4: Recent activity feed ───────────────────────────────── */}
         <h2 className="text-sm font-semibold uppercase tracking-wide text-[var(--color-neutral-500)] mb-3">
-          {isAr ? 'آخر نشاط التجاوزات والآراء' : 'Recent Override Activity'}
+          {isAr ? 'آخر النشاطات (20 إدخال)' : 'Recent Activity (last 20)'}
         </h2>
         <div className="rounded-lg border border-[var(--color-neutral-200)] overflow-hidden">
-          {overrides.length === 0 ? (
+          {recentActivity.length === 0 ? (
             <p className="px-4 py-6 text-sm text-[var(--color-neutral-500)] text-center">
               {isAr ? 'لا يوجد نشاط مؤخراً.' : 'No recent activity.'}
             </p>
           ) : (
-            <table className="w-full text-sm border-collapse">
-              <thead>
-                <tr className="border-b border-[var(--color-neutral-200)] bg-[var(--color-surface-dim)] text-[var(--color-neutral-500)] text-xs uppercase tracking-wide">
-                  <th className="py-2 px-4 text-start font-medium">{isAr ? 'الوقت' : 'Time'}</th>
-                  <th className="py-2 px-4 text-start font-medium">{isAr ? 'المنفِّذ' : 'Actor'}</th>
-                  <th className="py-2 px-4 text-start font-medium">{isAr ? 'الإجراء' : 'Action'}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {overrides.map((row) => {
-                  const actionLabel = ACTION_LABELS[row.action] ?? { ar: row.action, en: row.action };
-                  return (
-                    <tr
-                      key={row.id}
-                      className="border-b border-[var(--color-neutral-100)] hover:bg-[var(--color-surface-dim)] transition"
-                    >
-                      <td className="py-3 px-4 text-[var(--color-neutral-500)] whitespace-nowrap">
-                        {fmtDate(row.created_at, locale)}
-                      </td>
-                      <td className="py-3 px-4">
-                        <div className="font-medium text-[var(--color-neutral-900)]">
-                          {row.actor_name ?? row.actor_email}
-                        </div>
-                        {row.actor_name && (
-                          <div className="text-xs text-[var(--color-neutral-500)]">{row.actor_email}</div>
-                        )}
-                      </td>
-                      <td className="py-3 px-4">
-                        <span className="inline-block rounded px-2 py-0.5 text-xs font-medium bg-purple-100 text-purple-800">
-                          {isAr ? actionLabel.ar : actionLabel.en}
+            <ul className="divide-y divide-[var(--color-neutral-100)]">
+              {recentActivity.map((row) => {
+                const meta        = ACTION_META[row.action] ?? {
+                  ar: row.action, en: row.action,
+                  pillClass: 'bg-neutral-100 text-neutral-700',
+                  iconPath: 'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z',
+                };
+                const desc   = descriptionFromMetadata(row.action, row.metadata ?? {}, locale);
+                const href   = targetLink(row.action, row.target_id, locale);
+                const relTs  = relativeTime(row.created_at, locale);
+                const absTs  = new Date(row.created_at).toLocaleString(
+                  locale === 'ar' ? 'ar-AE' : 'en-GB',
+                  { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }
+                );
+
+                return (
+                  <li
+                    key={row.id}
+                    className="flex items-start gap-3 px-4 py-3 hover:bg-[var(--color-surface-low)] transition"
+                  >
+                    {/* Icon */}
+                    <span className={`mt-0.5 flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center ${meta.pillClass}`}>
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <path d={meta.iconPath} />
+                      </svg>
+                    </span>
+
+                    {/* Content */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className={`inline-block rounded px-2 py-0.5 text-xs font-medium ${meta.pillClass}`}>
+                          {isAr ? meta.ar : meta.en}
                         </span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                        {href && (
+                          <Link
+                            href={href}
+                            className="text-xs text-[var(--color-primary)] underline underline-offset-2 hover:opacity-80 min-h-[44px] inline-flex items-center"
+                          >
+                            {isAr ? 'عرض' : 'View'}
+                          </Link>
+                        )}
+                      </div>
+                      <p className="mt-1 text-sm text-[var(--color-neutral-900)] truncate">
+                        <span className="font-medium">{row.actor_name ?? row.actor_email}</span>
+                        {row.actor_name && (
+                          <span className="text-[var(--color-neutral-500)] text-xs ms-1">({row.actor_email})</span>
+                        )}
+                      </p>
+                      {desc && (
+                        <p className="mt-0.5 text-xs text-[var(--color-neutral-500)] truncate">{desc}</p>
+                      )}
+                    </div>
+
+                    {/* Timestamp */}
+                    <time
+                      dateTime={row.created_at}
+                      title={absTs}
+                      className="flex-shrink-0 text-xs text-[var(--color-neutral-400)] whitespace-nowrap pt-1"
+                    >
+                      {relTs}
+                    </time>
+                  </li>
+                );
+              })}
+            </ul>
           )}
         </div>
 
