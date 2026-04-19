@@ -104,6 +104,18 @@ type UnpauseStatus =
   | { kind: 'success' }
   | { kind: 'error'; message: string };
 
+type ReassignStatus =
+  | { kind: 'idle' }
+  | { kind: 'submitting' }
+  | { kind: 'success' }
+  | { kind: 'error'; message: string };
+
+interface AssessorOption {
+  profile_id: string;
+  name: string;
+  email: string;
+}
+
 type RecorderStatus =
   | { kind: 'idle' }
   | { kind: 'recording'; startedAt: number }
@@ -159,6 +171,13 @@ export default function EscalationDetailPage() {
 
   // Unpause journey state (M5-gap1)
   const [unpauseStatus, setUnpauseStatus] = useState<UnpauseStatus>({ kind: 'idle' });
+
+  // Reassign assessor state (M5-ext)
+  const [showReassignModal, setShowReassignModal] = useState(false);
+  const [availableAssessors, setAvailableAssessors] = useState<AssessorOption[]>([]);
+  const [selectedAssessorId, setSelectedAssessorId] = useState('');
+  const [reassignReason, setReassignReason] = useState('');
+  const [reassignStatus, setReassignStatus] = useState<ReassignStatus>({ kind: 'idle' });
 
   // Voice recorder state (M5-gap2)
   const [recorderStatus, setRecorderStatus] = useState<RecorderStatus>({ kind: 'idle' });
@@ -302,6 +321,56 @@ export default function EscalationDetailPage() {
       });
     }
   }, [detail, fetchDetail]);
+
+  // ── Reassign assessor handlers (M5-ext) ───────────────────────────────────
+
+  const openReassignModal = useCallback(async () => {
+    setShowReassignModal(true);
+    setSelectedAssessorId('');
+    setReassignReason('');
+    setReassignStatus({ kind: 'idle' });
+    try {
+      const res = await fetch('/api/admin/assessors');
+      if (!res.ok) return;
+      const data = await res.json() as { assessors: AssessorOption[] };
+      setAvailableAssessors(data.assessors ?? []);
+    } catch {
+      // Non-critical — dropdown will be empty; user can dismiss and retry
+    }
+  }, []);
+
+  const handleReassign = useCallback(async () => {
+    if (!selectedAssessorId || !reassignReason.trim()) {
+      setReassignStatus({
+        kind: 'error',
+        message: isAr
+          ? 'يرجى اختيار المُقيِّم وكتابة السبب'
+          : 'Please select an assessor and provide a reason',
+      });
+      return;
+    }
+    setReassignStatus({ kind: 'submitting' });
+    try {
+      const res = await fetch(`/api/admin/assessments/${assessmentId}/reassign`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({
+          new_assessor_id: selectedAssessorId,
+          reason:          reassignReason.trim(),
+        }),
+      });
+      const body = await res.json().catch(() => ({})) as { error?: string };
+      if (!res.ok) throw new Error(body.error ?? `HTTP ${res.status}`);
+      setReassignStatus({ kind: 'success' });
+      setShowReassignModal(false);
+      await fetchDetail();
+    } catch (err: unknown) {
+      setReassignStatus({
+        kind: 'error',
+        message: err instanceof Error ? err.message : 'Reassignment failed',
+      });
+    }
+  }, [assessmentId, selectedAssessorId, reassignReason, isAr, fetchDetail]);
 
   // ── Voice recorder handlers (M5-gap2) ─────────────────────────────────────
 
@@ -712,6 +781,27 @@ export default function EscalationDetailPage() {
               )}
             </div>
 
+            {/* Reassign Assessor — only available when assessment is pending */}
+            {detail.decision === 'pending' && (
+              <div className="rounded-lg border border-[var(--color-neutral-200)] p-4">
+                <h2 className="text-sm font-semibold text-[var(--color-neutral-700)] mb-2">
+                  {isAr ? 'إعادة تعيين المُقيِّم' : 'Reassign Assessor'}
+                </h2>
+                <p className="text-xs text-[var(--color-neutral-500)] mb-4">
+                  {isAr
+                    ? 'المُقيِّم الحالي: '
+                    : 'Current assessor: '}
+                  <strong>{detail.assessor_name ?? detail.assessor_email}</strong>
+                </p>
+                <button
+                  onClick={() => void openReassignModal()}
+                  className="min-h-[44px] px-4 py-2 rounded-md border border-[var(--color-primary)] text-[var(--color-primary)] text-sm font-semibold hover:bg-[var(--color-primary)] hover:text-white transition"
+                >
+                  {isAr ? 'إعادة تعيين المُقيِّم' : 'Reassign Assessor'}
+                </button>
+              </div>
+            )}
+
             {/* Second opinion panel */}
             <div className={`rounded-lg border p-4 ${
               detail.second_opinion_requested_at
@@ -932,6 +1022,88 @@ export default function EscalationDetailPage() {
           </div>
         </div>
       </Section>
+
+      {/* ── Reassign Assessor Modal ── */}
+      {showReassignModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+          dir={dir}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowReassignModal(false);
+          }}
+        >
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 p-6">
+            <h2 className="text-base font-semibold text-[var(--color-neutral-900)] mb-4">
+              {isAr ? 'إعادة تعيين المُقيِّم' : 'Reassign Assessor'}
+            </h2>
+
+            {/* Assessor dropdown */}
+            <label className="block text-xs text-[var(--color-neutral-600)] mb-1">
+              {isAr ? 'اختر المُقيِّم الجديد' : 'Select new assessor'}
+            </label>
+            <select
+              value={selectedAssessorId}
+              onChange={(e) => setSelectedAssessorId(e.target.value)}
+              className="w-full rounded-md border border-[var(--color-neutral-300)] p-2 text-sm mb-4 focus:outline-none focus:border-[var(--color-primary)] min-h-[44px]"
+            >
+              <option value="">
+                {isAr ? '-- اختر مُقيِّمًا --' : '-- Choose an assessor --'}
+              </option>
+              {availableAssessors
+                .filter((a) => a.profile_id !== detail?.assessor_id)
+                .map((a) => (
+                  <option key={a.profile_id} value={a.profile_id}>
+                    {a.name} ({a.email})
+                  </option>
+                ))}
+            </select>
+
+            {/* Reason textarea */}
+            <label className="block text-xs text-[var(--color-neutral-600)] mb-1">
+              {isAr ? 'سبب إعادة التعيين (إلزامي)' : 'Reason for reassignment (required)'}
+            </label>
+            <textarea
+              value={reassignReason}
+              onChange={(e) => setReassignReason(e.target.value)}
+              rows={4}
+              className="w-full rounded-md border border-[var(--color-neutral-300)] p-3 text-sm resize-none focus:outline-none focus:border-[var(--color-primary)] mb-4"
+              placeholder={
+                isAr
+                  ? 'مثال: المُقيِّم في إجازة مرضية...'
+                  : 'e.g. Assessor is on sick leave...'
+              }
+            />
+
+            {/* Error */}
+            {reassignStatus.kind === 'error' && (
+              <p className="text-red-600 text-xs mb-3">{reassignStatus.message}</p>
+            )}
+
+            {/* Actions */}
+            <div className="flex gap-3">
+              <button
+                onClick={() => void handleReassign()}
+                disabled={
+                  !selectedAssessorId ||
+                  !reassignReason.trim() ||
+                  reassignStatus.kind === 'submitting'
+                }
+                className="flex-1 min-h-[44px] rounded-md bg-[var(--color-primary)] text-white text-sm font-semibold px-4 py-2 hover:opacity-90 transition disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {reassignStatus.kind === 'submitting'
+                  ? (isAr ? 'جارٍ الحفظ...' : 'Saving...')
+                  : (isAr ? 'تأكيد إعادة التعيين' : 'Confirm Reassignment')}
+              </button>
+              <button
+                onClick={() => setShowReassignModal(false)}
+                className="min-h-[44px] px-4 py-2 rounded-md border border-[var(--color-neutral-300)] text-sm text-[var(--color-neutral-700)] hover:border-[var(--color-neutral-400)] transition"
+              >
+                {isAr ? 'إلغاء' : 'Cancel'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

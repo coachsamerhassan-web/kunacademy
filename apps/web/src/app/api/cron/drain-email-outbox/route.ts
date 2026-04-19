@@ -32,6 +32,8 @@ import {
   type RecordingReceivedEmailParams,
   sendAssessorAssignmentEmail,
   type AssessorAssignmentEmailParams,
+  sendAssessorReassignedEmail,
+  type AssessorReassignedEmailParams,
   sendJourneyPausedEmail,
   type JourneyPausedEmailParams,
   sendSecondTryDeadlineWarningEmail,
@@ -77,6 +79,13 @@ async function dispatch(row: OutboxRow): Promise<void> {
       await sendAssessorAssignmentEmail(
         to_email,
         payload as unknown as AssessorAssignmentEmailParams,
+      );
+      return;
+
+    case 'assessor-reassigned':
+      await sendAssessorReassignedEmail(
+        to_email,
+        payload as unknown as AssessorReassignedEmailParams,
       );
       return;
 
