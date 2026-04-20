@@ -28,6 +28,10 @@ import { emailOutbox } from '@kunacademy/db/schema';
 import {
   sendAssessmentResultEmail,
   type AssessmentResultEmailParams,
+  sendAssessmentResultPassEmail,
+  type AssessmentResultPassEmailParams,
+  sendAssessmentResultFailEmail,
+  type AssessmentResultFailEmailParams,
   sendRecordingReceivedEmail,
   type RecordingReceivedEmailParams,
   sendAssessorAssignmentEmail,
@@ -67,6 +71,23 @@ async function dispatch(row: OutboxRow): Promise<void> {
       await sendAssessmentResultEmail(
         to_email,
         payload as unknown as AssessmentResultEmailParams,
+      );
+      return;
+
+    case 'assessment-result-pass':
+      await sendAssessmentResultPassEmail(
+        to_email,
+        payload as unknown as AssessmentResultPassEmailParams,
+      );
+      return;
+
+    case 'assessment-result-fail':
+      await sendAssessmentResultFailEmail(
+        to_email,
+        {
+          ...(payload as unknown as AssessmentResultFailEmailParams),
+          is_ethics_fail: payload['is_ethics_fail'] === true,
+        },
       );
       return;
 
@@ -130,7 +151,7 @@ export async function GET(req: NextRequest) {
   // Auth
   const authHeader = req.headers.get('authorization');
   const cronSecret = process.env.CRON_SECRET;
-  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

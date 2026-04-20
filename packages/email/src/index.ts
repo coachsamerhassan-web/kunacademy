@@ -40,6 +40,14 @@ export type { MentorPrepEmailParams } from './mentor-prep';
 export { sendAssessmentResultEmail } from './assessment-result';
 export type { AssessmentResultEmailParams } from './assessment-result';
 
+// Assessment result — PASS variant (distinct celebratory copy, template key: 'assessment-result-pass')
+export { sendAssessmentResultPassEmail } from './assessment-result-pass';
+export type { AssessmentResultPassEmailParams } from './assessment-result-pass';
+
+// Assessment result — FAIL variant (supportive/growth-framing copy, template key: 'assessment-result-fail')
+export { sendAssessmentResultFailEmail } from './assessment-result-fail';
+export type { AssessmentResultFailEmailParams } from './assessment-result-fail';
+
 // Recording received confirmation (Phase 2 — wired to upload POST handler)
 export { sendRecordingReceivedEmail } from './recording-received';
 export type { RecordingReceivedEmailParams } from './recording-received';

@@ -37,6 +37,8 @@ type DrizzleDb = any;
 
 export type EmailTemplateKey =
   | 'assessment-result'
+  | 'assessment-result-pass'
+  | 'assessment-result-fail'
   | 'recording-received'
   | 'assessor-assignment'
   | 'assessor-reassigned'

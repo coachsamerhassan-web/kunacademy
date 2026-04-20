@@ -17,6 +17,7 @@ import {
   packageAssessments,
   packageRecordings,
   packageInstances,
+  packageTemplates,
   profiles,
 } from '@kunacademy/db/schema';
 import { getAuthUser } from '@kunacademy/auth/server';
@@ -318,7 +319,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       .set({ status: 'assessed', updated_at: now })
       .where(eq(packageRecordings.id, row.recording_id));
 
-    // 3. Fetch student profile for email payload (inside same tx)
+    // 3. Fetch student profile + package title for email payload (inside same tx)
     const studentRows = await db
       .select({
         email:              profiles.email,
@@ -326,6 +327,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
         full_name_en:       profiles.full_name_en,
         preferred_language: profiles.preferred_language,
         second_try_deadline_at: packageInstances.second_try_deadline_at,
+        package_template_id:    packageInstances.package_template_id,
       })
       .from(packageInstances)
       .innerJoin(profiles, eq(profiles.id, packageInstances.student_id))
@@ -339,22 +341,53 @@ export async function POST(request: NextRequest, context: RouteContext) {
         ? (student.full_name_ar ?? student.full_name_en ?? '')
         : (student.full_name_en ?? student.full_name_ar ?? '');
 
-      const APP_URL   = process.env.NEXT_PUBLIC_APP_URL ?? 'https://kunacademy.com';
+      // 3b. Fetch package title for subject line
+      let packageTitle = '';
+      try {
+        const templateRows = await db
+          .select({ name_ar: packageTemplates.name_ar, name_en: packageTemplates.name_en })
+          .from(packageTemplates)
+          .where(eq(packageTemplates.id, student.package_template_id))
+          .limit(1);
+        if (templateRows.length > 0) {
+          packageTitle = locale === 'ar'
+            ? (templateRows[0].name_ar ?? templateRows[0].name_en ?? '')
+            : (templateRows[0].name_en ?? templateRows[0].name_ar ?? '');
+        }
+      } catch (titleErr) {
+        console.warn('[submit-assessment] could not fetch package title:', titleErr);
+      }
+
+      const APP_URL    = process.env.NEXT_PUBLIC_APP_URL ?? 'https://kunacademy.com';
       const result_url = `${APP_URL}/${locale}/portal/packages/${row.package_instance_id}/assessment`;
 
-      // 4. Enqueue result email — atomic with business writes above
-      await enqueueEmail(db, {
-        template_key: 'assessment-result',
-        to_email:     student.email,
-        payload:      {
-          student_name:        name,
-          locale,
-          decision:            finalVerdict,
-          result_url,
-          is_fail:             finalVerdict === 'fail',
-          second_try_deadline: student.second_try_deadline_at ?? undefined,
-        },
-      });
+      // 4. Branch on verdict — enqueue PASS or FAIL template (atomic with business writes above)
+      if (finalVerdict === 'pass') {
+        await enqueueEmail(db, {
+          template_key: 'assessment-result-pass',
+          to_email:     student.email,
+          payload:      {
+            student_name:  name,
+            locale,
+            package_title: packageTitle,
+            result_url,
+          },
+        });
+      } else {
+        // fail (including ethics_auto_failed)
+        await enqueueEmail(db, {
+          template_key: 'assessment-result-fail',
+          to_email:     student.email,
+          payload:      {
+            student_name:        name,
+            locale,
+            package_title:       packageTitle,
+            result_url,
+            second_try_deadline: student.second_try_deadline_at ?? undefined,
+            is_ethics_fail:      ethicsAutoFailed === true,
+          },
+        });
+      }
     } else {
       console.warn('[submit-assessment] email skipped: student row not found for instance', row.package_instance_id);
     }
