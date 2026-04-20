@@ -52,6 +52,7 @@ export default function AdminDashboard() {
     { href: `/${locale}/admin/community`, labelAr: 'المجتمع', labelEn: 'Community', count: '-', icon: '👥' },
     { href: `/${locale}/admin/pathfinder`, labelAr: 'تقييمات المُرشد', labelEn: 'Pathfinder Leads', count: '-', icon: '🧭' },
     { href: `/${locale}/admin/email-outbox`, labelAr: 'رسائل فاشلة', labelEn: 'Failed Emails', count: '-', icon: '⚠️' },
+    { href: `/${locale}/admin/quizzes`, labelAr: 'الاختبارات', labelEn: 'Quizzes', count: '-', icon: '📝' },
   ];
 
   const statCards = [

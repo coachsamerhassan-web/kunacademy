@@ -1,18 +1,17 @@
 /**
- * POST /api/admin/quizzes/[quizId]/questions
- *
- * Add a question (+ options) to a quiz in a single transaction.
- * Touches quiz.updated_at on success.
+ * GET  /api/admin/quizzes/[quizId]/questions — list questions + options + has_submitted_attempts flag
+ * POST /api/admin/quizzes/[quizId]/questions — add a question + options
  *
  * Wave S9 — 2026-04-20
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { withAdminContext, eq } from '@kunacademy/db';
+import { withAdminContext, eq, and, sql } from '@kunacademy/db';
 import { getAuthUser } from '@kunacademy/auth/server';
-import { profiles, quizzes, quiz_questions, quiz_options } from '@kunacademy/db/schema';
+import { profiles, quizzes, quiz_questions, quiz_options, quiz_attempts } from '@kunacademy/db/schema';
 import type { QuizQuestions, QuizOptions } from '@kunacademy/db/schema';
 import { db } from '@kunacademy/db';
+import { asc } from 'drizzle-orm';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const ADMIN_ROLES = new Set(['admin', 'super_admin']);

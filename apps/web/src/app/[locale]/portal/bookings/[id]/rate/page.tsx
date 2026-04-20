@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * /[locale]/portal/bookings/[bookingId]/rate
+ * /[locale]/portal/bookings/[id]/rate
  *
  * Client-side rating page for a completed coaching session.
  * Deep-linked from the rating-request email.
@@ -105,7 +105,7 @@ function StarDisplay({ value }: { value: number }) {
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function RatingPage() {
-  const { locale, bookingId } = useParams<{ locale: string; bookingId: string }>();
+  const { locale, id: bookingId } = useParams<{ locale: string; id: string }>();
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const isAr = locale === 'ar';

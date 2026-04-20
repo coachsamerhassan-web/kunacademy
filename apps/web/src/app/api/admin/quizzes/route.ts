@@ -1,5 +1,6 @@
 /**
  * POST /api/admin/quizzes — create a quiz for a lesson
+ * GET  /api/admin/quizzes — list all quizzes with question_count, ordered updated_at DESC
  *
  * requireAdmin pattern copied verbatim from /api/admin/coach-ratings/route.ts.
  * UNIQUE constraint on lesson_id enforces one-quiz-per-lesson at DB level.
@@ -10,9 +11,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAdminContext, eq } from '@kunacademy/db';
 import { getAuthUser } from '@kunacademy/auth/server';
-import { profiles, quizzes } from '@kunacademy/db/schema';
+import { profiles, quizzes, quiz_questions } from '@kunacademy/db/schema';
 import type { Quizzes } from '@kunacademy/db/schema';
 import { db } from '@kunacademy/db';
+import { desc, sql, count } from 'drizzle-orm';
 
 const ADMIN_ROLES = new Set(['admin', 'super_admin']);
 
@@ -35,6 +37,47 @@ async function requireAdmin(): Promise<AdminAuthResult> {
   return { kind: 'ok', user };
 }
 
+// ─── GET ──────────────────────────────────────────────────────────────────────
+export async function GET(_request: NextRequest) {
+  try {
+    const authResult = await requireAdmin();
+    if (authResult.kind === 'unauthenticated') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    if (authResult.kind === 'forbidden') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    const rows = await withAdminContext(async (adminDb) =>
+      adminDb
+        .select({
+          id: quizzes.id,
+          lesson_id: quizzes.lesson_id,
+          title_ar: quizzes.title_ar,
+          title_en: quizzes.title_en,
+          is_published: quizzes.is_published,
+          attempts_allowed: quizzes.attempts_allowed,
+          time_limit_seconds: quizzes.time_limit_seconds,
+          shuffle_questions: quizzes.shuffle_questions,
+          pass_threshold: quizzes.pass_threshold,
+          created_at: quizzes.created_at,
+          updated_at: quizzes.updated_at,
+          question_count: sql<number>`count(${quiz_questions.id})::int`,
+        })
+        .from(quizzes)
+        .leftJoin(quiz_questions, eq(quiz_questions.quiz_id, quizzes.id))
+        .groupBy(quizzes.id)
+        .orderBy(desc(quizzes.updated_at))
+    );
+
+    return NextResponse.json({ quizzes: rows });
+  } catch (err: any) {
+    console.error('[api/admin/quizzes GET]', err);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
+// ─── POST ─────────────────────────────────────────────────────────────────────
 export async function POST(request: NextRequest) {
   try {
     const authResult = await requireAdmin();
