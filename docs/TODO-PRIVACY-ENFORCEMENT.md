@@ -4,6 +4,24 @@
 **Added:** 2026-04-20
 **Schema:** `packages/db/src/schema/coach_ratings.ts` — `privacy` column
 
+**Status 2026-04-20 13:25Z:** Primary spec SHIPPED (99049c5). 4 endpoints live with privacy enforcement. Remaining defense-in-depth follow-up below.
+
+## Remaining hardening (future migration)
+
+Adversarial QA surfaced that public endpoints currently rely solely on WHERE-clause filtering — no RLS policy backstops. Future work:
+
+```sql
+-- Add anon read policy that only exposes public rows
+ALTER TABLE coach_ratings ENABLE ROW LEVEL SECURITY;
+CREATE POLICY coach_ratings_anon_public_read
+  ON coach_ratings FOR SELECT
+  TO anon
+  USING (privacy = 'public');
+-- Then swap withAdminContext → default db in public GET routes
+```
+
+This lets a future bug in the WHERE clause not leak private rows — belt-and-suspenders. Deferred because public endpoints now correctly filter; this is defense-in-depth, not a live security hole.
+
 ## Requirement
 
 When any rating display or aggregation endpoint is built, it MUST enforce the `privacy` column:
