@@ -45,7 +45,8 @@ export type EmailTemplateKey =
   | 'journey-paused'
   | 'second-try-deadline-warning'
   | 'second-opinion-request'
-  | 'password-reset';
+  | 'password-reset'
+  | 'coach-new-rating';
 
 export interface EnqueueEmailParams {
   template_key: EmailTemplateKey;

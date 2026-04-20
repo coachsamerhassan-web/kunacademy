@@ -79,3 +79,7 @@ export type { RatingRequestEmailParams } from './rating-request';
 // Password reset (wired to POST /api/auth/reset-password)
 export { sendPasswordResetEmail } from './password-reset';
 export type { PasswordResetEmailParams } from './password-reset';
+
+// Coach new rating notification (wired to POST /api/bookings/[id]/rate)
+export { sendCoachNewRatingEmail } from './coach-new-rating';
+export type { CoachNewRatingEmailParams } from './coach-new-rating';

@@ -27,8 +27,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db, withAdminContext, eq } from '@kunacademy/db';
 import { getAuthUser } from '@kunacademy/auth/server';
-import { bookings, coach_ratings } from '@kunacademy/db/schema';
+import { bookings, coach_ratings, profiles } from '@kunacademy/db/schema';
 import { logAdminAction } from '@kunacademy/db';
+import { enqueueEmail } from '@/lib/email-outbox';
 
 const ADMIN_ROLES = new Set(['admin', 'super_admin']);
 
@@ -161,6 +162,59 @@ export async function POST(
     },
     ipAddress: request.headers.get('x-forwarded-for') ?? undefined,
   });
+
+  // ── Notify coach (fire-and-forget) ────────────────────────────────────────
+  // Enqueue is the last step — rating is already committed at this point.
+  // Any enqueue failure MUST NOT surface to the client; rating submit always wins.
+  void (async () => {
+    try {
+      const coachRows = await withAdminContext(async (adminDb) => {
+        return adminDb
+          .select({
+            email:              profiles.email,
+            full_name_en:       profiles.full_name_en,
+            full_name_ar:       profiles.full_name_ar,
+            preferred_language: profiles.preferred_language,
+          })
+          .from(profiles)
+          .where(eq(profiles.id, booking.coach_id!))
+          .limit(1);
+      });
+
+      const coach = coachRows[0] ?? null;
+
+      if (!coach?.email) {
+        console.warn(
+          `[rate] Skipping coach-new-rating enqueue: no email for coach_id=${booking.coach_id}`,
+        );
+        return;
+      }
+
+      const locale = (coach.preferred_language === 'en' ? 'en' : 'ar') as 'ar' | 'en';
+      const coachName = locale === 'ar'
+        ? (coach.full_name_ar ?? coach.full_name_en ?? 'Coach')
+        : (coach.full_name_en ?? coach.full_name_ar ?? 'Coach');
+
+      const portalBaseUrl = process.env.NEXTAUTH_URL ?? 'https://kuncoaching.me';
+
+      await withAdminContext(async (adminDb) => {
+        await enqueueEmail(adminDb, {
+          template_key: 'coach-new-rating',
+          to_email:     coach.email,
+          payload: {
+            coach_name:          coachName,
+            stars:               ratingRaw,
+            privacy,
+            review_text:         feedback ?? null,
+            preferred_language:  locale,
+            portal_base_url:     portalBaseUrl,
+          },
+        });
+      });
+    } catch (enqueueErr) {
+      console.error('[rate] Failed to enqueue coach-new-rating email:', enqueueErr);
+    }
+  })();
 
   return NextResponse.json({ rating: created }, { status: 201 });
 }
