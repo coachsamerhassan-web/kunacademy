@@ -116,8 +116,10 @@ export async function GET(
     );
     const attemptsUsed = attemptsUsedRows[0]?.cnt ?? 0;
 
-    // Fetch questions (excluding is_correct — not in questions table anyway)
-    const questions: Pick<QuizQuestions, 'id' | 'type' | 'prompt_ar' | 'prompt_en' | 'points' | 'sort_order'>[] =
+    // Fetch questions. is_correct lives on options, not questions — safe to omit.
+    // Explanations ARE returned: the post-submit review UI displays them, and the
+    // student-side quiz player hides them during the attempt (gated at UI layer).
+    const questions: Pick<QuizQuestions, 'id' | 'type' | 'prompt_ar' | 'prompt_en' | 'explanation_ar' | 'explanation_en' | 'points' | 'sort_order'>[] =
       await withAdminContext(async (adminDb) =>
         adminDb
           .select({
@@ -125,6 +127,8 @@ export async function GET(
             type: quiz_questions.type,
             prompt_ar: quiz_questions.prompt_ar,
             prompt_en: quiz_questions.prompt_en,
+            explanation_ar: quiz_questions.explanation_ar,
+            explanation_en: quiz_questions.explanation_en,
             points: quiz_questions.points,
             sort_order: quiz_questions.sort_order,
           })
