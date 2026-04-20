@@ -27,7 +27,9 @@ export type AuditAction =
   | 'ADMIN_FORCE_COMPLETE_SESSION'
   | 'RETRY_FAILED_EMAIL'
   // Track A — MM shadow rubric
-  | 'SUBMIT_MM_SHADOW_SCORE';
+  | 'SUBMIT_MM_SHADOW_SCORE'
+  // Wave S9 — Admin rating moderation
+  | 'RATING_PUBLISH_TOGGLE';
 
 /** Manual type matching the admin_audit_log migration schema */
 export interface AdminAuditLog {

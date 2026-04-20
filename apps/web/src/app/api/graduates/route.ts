@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
     const search   = searchParams.get('search')?.trim() ?? '';
     const category = searchParams.get('category')?.trim() ?? '';
     const program  = searchParams.get('program')?.trim() ?? '';
-    const page     = Math.max(1, Number(searchParams.get('page') ?? '1'));
+    const page     = Math.min(1000, Math.max(1, Number(searchParams.get('page') ?? '1')));
     const limit    = Math.min(100, Math.max(1, Number(searchParams.get('limit') ?? '24')));
     const offset   = (page - 1) * limit;
 

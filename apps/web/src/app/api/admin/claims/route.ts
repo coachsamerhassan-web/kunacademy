@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status') ?? 'pending';
-    const page = Math.max(1, Number(searchParams.get('page') ?? '1'));
+    const page = Math.min(1000, Math.max(1, Number(searchParams.get('page') ?? '1')));
     const per_page = Math.min(200, Math.max(1, Number(searchParams.get('per_page') ?? '50')));
     const offset = (page - 1) * per_page;
 

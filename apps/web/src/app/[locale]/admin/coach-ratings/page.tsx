@@ -146,6 +146,10 @@ export default function CoachRatingsAdminPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Per-row publish/unpublish mutation state
+  const [mutatingId, setMutatingId] = useState<string | null>(null);
+  const [mutationError, setMutationError] = useState<{ id: string; msg: string } | null>(null);
+
   // Filter state — initialised from URL
   const [coachIdInput, setCoachIdInput] = useState(searchParams.get('coach_id') ?? '');
   const [privacyInput, setPrivacyInput] = useState(searchParams.get('privacy') ?? '');
@@ -225,6 +229,31 @@ export default function CoachRatingsAdminPage() {
     setPrivacyInput('');
     setCoachIdError('');
     router.push(pathname);
+  }
+
+  // ── Publish / Unpublish mutation ───────────────────────────────────────────
+  async function togglePublish(row: RatingRow) {
+    setMutatingId(row.id);
+    setMutationError(null);
+    try {
+      const res = await fetch(`/api/admin/coach-ratings/${row.id}/publish`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_published: !row.is_published }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error((data as { error?: string }).error ?? `HTTP ${res.status}`);
+      }
+      // Optimistic update — flip the row in local state
+      setRows((prev) =>
+        prev.map((r) => r.id === row.id ? { ...r, is_published: !row.is_published } : r)
+      );
+    } catch (err: unknown) {
+      setMutationError({ id: row.id, msg: err instanceof Error ? err.message : String(err) });
+    } finally {
+      setMutatingId(null);
+    }
   }
 
   // ── Pagination ─────────────────────────────────────────────────────────────
@@ -437,9 +466,42 @@ export default function CoachRatingsAdminPage() {
                       </time>
                     </td>
 
-                    {/* Actions — empty, future wave */}
+                    {/* Actions — publish / unpublish */}
                     <td className="py-3 px-4 align-top">
-                      <span className="text-xs text-[var(--color-neutral-300)]">—</span>
+                      <button
+                        type="button"
+                        disabled={mutatingId === row.id}
+                        onClick={() => togglePublish(row)}
+                        className={`min-h-[36px] px-3 py-1 rounded-md text-xs font-semibold transition focus:outline-none focus:ring-2 focus:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed ${
+                          row.is_published
+                            ? 'border border-amber-400 text-amber-700 bg-amber-50 hover:bg-amber-100 focus:ring-amber-400'
+                            : 'border border-green-500 text-green-700 bg-green-50 hover:bg-green-100 focus:ring-green-400'
+                        }`}
+                        aria-label={
+                          row.is_published
+                            ? (isAr ? 'إخفاء التقييم' : 'Unpublish rating')
+                            : (isAr ? 'نشر التقييم' : 'Publish rating')
+                        }
+                      >
+                        {mutatingId === row.id ? (
+                          <span className="inline-flex items-center gap-1">
+                            <svg className="animate-spin w-3 h-3" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                            </svg>
+                            {isAr ? '...' : '...'}
+                          </span>
+                        ) : row.is_published ? (
+                          isAr ? 'إخفاء' : 'Unpublish'
+                        ) : (
+                          isAr ? 'نشر' : 'Publish'
+                        )}
+                      </button>
+                      {mutationError?.id === row.id && (
+                        <p className="mt-1 text-xs text-red-600 max-w-[140px] break-words">
+                          {mutationError.msg}
+                        </p>
+                      )}
                     </td>
                   </tr>
                 ))}

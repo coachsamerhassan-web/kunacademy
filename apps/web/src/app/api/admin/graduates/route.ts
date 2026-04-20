@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search') ?? '';
     const member_type = searchParams.get('member_type') ?? '';
     const has_email = searchParams.get('has_email') ?? '';
-    const page = Math.max(1, Number(searchParams.get('page') ?? '1'));
+    const page = Math.min(1000, Math.max(1, Number(searchParams.get('page') ?? '1')));
     const per_page = Math.min(200, Math.max(1, Number(searchParams.get('per_page') ?? '50')));
     const offset = (page - 1) * per_page;
 

@@ -26,6 +26,7 @@ import { desc, sql } from 'drizzle-orm';
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const DEFAULT_PAGE_SIZE = 10;
 const MAX_PAGE_SIZE = 50;
+const MAX_PAGE = 1000; // L10 pagination hardening — clamp OFFSET-based page attacks
 
 // Honorifics to strip (case-insensitive). Both English and Arabic forms.
 const HONORIFICS = new Set([
@@ -76,7 +77,7 @@ export async function GET(
     const pageRaw = parseInt(searchParams.get('page') ?? '1', 10);
     const pageSizeRaw = parseInt(searchParams.get('pageSize') ?? String(DEFAULT_PAGE_SIZE), 10);
 
-    const page = Number.isFinite(pageRaw) && pageRaw >= 1 ? pageRaw : 1;
+    const page = Number.isFinite(pageRaw) && pageRaw >= 1 ? Math.min(pageRaw, MAX_PAGE) : 1;
     const pageSize = Number.isFinite(pageSizeRaw) && pageSizeRaw >= 1
       ? Math.min(pageSizeRaw, MAX_PAGE_SIZE)
       : DEFAULT_PAGE_SIZE;

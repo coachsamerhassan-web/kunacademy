@@ -29,6 +29,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 const ADMIN_ROLES = new Set(['admin', 'super_admin']);
 const DEFAULT_PAGE_SIZE = 20;
 const MAX_PAGE_SIZE = 100;
+const MAX_PAGE = 1000; // L10 pagination hardening — clamp OFFSET-based page attacks
 
 // Aliased profile tables for the two LEFT JOINs
 const coachProfile = alias(profiles, 'coach_profile');
@@ -74,7 +75,7 @@ export async function GET(request: NextRequest) {
     // Pagination
     const pageRaw = parseInt(searchParams.get('page') ?? '1', 10);
     const pageSizeRaw = parseInt(searchParams.get('pageSize') ?? String(DEFAULT_PAGE_SIZE), 10);
-    const page = Number.isFinite(pageRaw) && pageRaw >= 1 ? pageRaw : 1;
+    const page = Number.isFinite(pageRaw) && pageRaw >= 1 ? Math.min(pageRaw, MAX_PAGE) : 1;
     const pageSize = Number.isFinite(pageSizeRaw) && pageSizeRaw >= 1
       ? Math.min(pageSizeRaw, MAX_PAGE_SIZE)
       : DEFAULT_PAGE_SIZE;

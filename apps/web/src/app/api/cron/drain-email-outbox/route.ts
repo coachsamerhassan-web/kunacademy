@@ -46,6 +46,8 @@ import {
   type SecondOpinionRequestEmailParams,
   sendRatingRequestEmail,
   type RatingRequestEmailParams,
+  sendPasswordResetEmail,
+  type PasswordResetEmailParams,
 } from '@kunacademy/email';
 
 const MAX_ATTEMPTS = 5;
@@ -137,6 +139,13 @@ async function dispatch(row: OutboxRow): Promise<void> {
       await sendRatingRequestEmail(
         to_email,
         payload as unknown as RatingRequestEmailParams,
+      );
+      return;
+
+    case 'password-reset':
+      await sendPasswordResetEmail(
+        to_email,
+        payload as unknown as PasswordResetEmailParams,
       );
       return;
 

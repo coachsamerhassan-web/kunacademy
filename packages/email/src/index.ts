@@ -75,3 +75,7 @@ export type { AssessorReassignedEmailParams } from './assessor-reassigned';
 // Rating request (Wave S9 — wired to mark-completed endpoint via email_outbox)
 export { sendRatingRequestEmail } from './rating-request';
 export type { RatingRequestEmailParams } from './rating-request';
+
+// Password reset (wired to POST /api/auth/reset-password)
+export { sendPasswordResetEmail } from './password-reset';
+export type { PasswordResetEmailParams } from './password-reset';

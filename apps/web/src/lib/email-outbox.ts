@@ -44,7 +44,8 @@ export type EmailTemplateKey =
   | 'assessor-reassigned'
   | 'journey-paused'
   | 'second-try-deadline-warning'
-  | 'second-opinion-request';
+  | 'second-opinion-request'
+  | 'password-reset';
 
 export interface EnqueueEmailParams {
   template_key: EmailTemplateKey;

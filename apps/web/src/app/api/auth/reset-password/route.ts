@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { withAdminContext } from '@kunacademy/db';
 import { sql } from 'drizzle-orm';
 import crypto from 'crypto';
+import { enqueueEmail } from '@/lib/email-outbox';
 
 /**
  * POST /api/auth/reset-password
@@ -88,9 +89,19 @@ export async function POST(request: Request) {
     const origin = process.env.NEXTAUTH_URL || 'https://kuncoaching.me';
     const resetUrl = `${origin}/en/auth/reset-password/confirm?token=${encodeURIComponent(token)}`;
 
-    // TODO: wire email sending (Resend / SES / etc.)
-    console.log(`[reset-password] Reset URL for ${normalizedEmail}:`);
-    console.log(resetUrl);
+    try {
+      await withAdminContext(async (db) => {
+        await enqueueEmail(db, {
+          template_key: 'password-reset',
+          to_email:     normalizedEmail,
+          payload:      { email: normalizedEmail, reset_url: resetUrl },
+        });
+      });
+    } catch (enqueueErr) {
+      // Never surface outbox failures to the client — the "always 200" contract
+      // must hold to prevent email enumeration. Log for ops visibility only.
+      console.error('[reset-password] Failed to enqueue reset email:', enqueueErr);
+    }
   }
 
   // Always return success to prevent email enumeration
