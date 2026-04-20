@@ -36,6 +36,89 @@ async function requireAdmin(): Promise<AdminAuthResult> {
   return { kind: 'ok', user };
 }
 
+// ─── GET ──────────────────────────────────────────────────────────────────────
+export async function GET(
+  _request: NextRequest,
+  { params }: { params: Promise<{ quizId: string }> }
+) {
+  try {
+    const authResult = await requireAdmin();
+    if (authResult.kind === 'unauthenticated') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    if (authResult.kind === 'forbidden') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    const { quizId } = await params;
+    if (!UUID_RE.test(quizId)) {
+      return NextResponse.json({ error: 'Invalid quizId' }, { status: 400 });
+    }
+
+    // Verify quiz exists
+    const quizRows: { id: string }[] = await withAdminContext(async (adminDb) =>
+      adminDb.select({ id: quizzes.id }).from(quizzes).where(eq(quizzes.id, quizId)).limit(1)
+    );
+    if (!quizRows[0]) return NextResponse.json({ error: 'Quiz not found' }, { status: 404 });
+
+    // Check for submitted attempts
+    const attemptRows: { cnt: number }[] = await withAdminContext(async (adminDb) =>
+      adminDb
+        .select({ cnt: sql<number>`count(*)::int` })
+        .from(quiz_attempts)
+        .where(
+          and(
+            eq(quiz_attempts.quiz_id, quizId),
+            sql`${quiz_attempts.submitted_at} IS NOT NULL`
+          )
+        )
+    );
+    const hasSubmittedAttempts = (attemptRows[0]?.cnt ?? 0) > 0;
+
+    // Fetch questions ordered by sort_order
+    const questionRows: QuizQuestions[] = await withAdminContext(async (adminDb) =>
+      adminDb
+        .select()
+        .from(quiz_questions)
+        .where(eq(quiz_questions.quiz_id, quizId))
+        .orderBy(asc(quiz_questions.sort_order))
+    );
+
+    // Fetch options for all questions in one query
+    const questionIds = questionRows.map((q) => q.id);
+    let optionRows: QuizOptions[] = [];
+    if (questionIds.length > 0) {
+      // Drizzle inArray helper
+      const { inArray } = await import('drizzle-orm');
+      optionRows = await withAdminContext(async (adminDb) =>
+        adminDb
+          .select()
+          .from(quiz_options)
+          .where(inArray(quiz_options.question_id, questionIds))
+          .orderBy(asc(quiz_options.sort_order))
+      );
+    }
+
+    // Group options by question_id
+    const optionsByQuestion: Record<string, QuizOptions[]> = {};
+    for (const opt of optionRows) {
+      if (!optionsByQuestion[opt.question_id]) optionsByQuestion[opt.question_id] = [];
+      optionsByQuestion[opt.question_id].push(opt);
+    }
+
+    const questions = questionRows.map((q) => ({
+      ...q,
+      options: optionsByQuestion[q.id] ?? [],
+    }));
+
+    return NextResponse.json({ questions, has_submitted_attempts: hasSubmittedAttempts });
+  } catch (err: any) {
+    console.error('[api/admin/quizzes/[quizId]/questions GET]', err);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
+// ─── POST ─────────────────────────────────────────────────────────────────────
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ quizId: string }> }

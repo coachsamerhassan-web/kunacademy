@@ -45,6 +45,13 @@ interface AllProgress {
   playback_position_seconds: number;
 }
 
+interface LessonQuiz {
+  id: string;
+  title_ar: string;
+  title_en: string;
+  is_published: boolean;
+}
+
 export default function LessonPlayerPage({
   params,
 }: {
@@ -64,6 +71,7 @@ export default function LessonPlayerPage({
   const [completing, setCompleting] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
+  const [lessonQuiz, setLessonQuiz] = useState<LessonQuiz | null>(null);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const progressTimer = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -175,6 +183,18 @@ export default function LessonPlayerPage({
       if (progressTimer.current) clearInterval(progressTimer.current);
     };
   }, [lesson, progress, saveProgress, lessonId]);
+
+  // Fetch quiz for this lesson — only when lesson is completed
+  useEffect(() => {
+    const isCompleted = progress?.completed || allProgress.some((p) => p.lesson_id === lessonId && p.completed);
+    if (!isCompleted || !lessonId) return;
+    fetch(`/api/lms/lessons/${lessonId}/quiz`)
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (data?.quiz) setLessonQuiz(data.quiz as LessonQuiz);
+      })
+      .catch(() => {/* non-critical — quiz CTA is optional */});
+  }, [progress?.completed, allProgress, lessonId]);
 
   const handleMarkComplete = async () => {
     setCompleting(true);
@@ -416,6 +436,29 @@ export default function LessonPlayerPage({
               </a>
             )}
           </div>
+
+          {/* Quiz CTA — shown after lesson is completed and a quiz exists */}
+          {lessonQuiz && (
+            <div className="mt-6 rounded-2xl border-2 border-[var(--color-primary)] bg-[var(--color-primary-50)] p-5 flex items-center justify-between gap-4">
+              <div className="space-y-0.5">
+                <p className="text-xs font-semibold text-[var(--color-primary)] uppercase tracking-wider">
+                  {isAr ? 'اختبار هذا الدرس' : 'Lesson Quiz'}
+                </p>
+                <p className="font-bold text-[var(--text-primary)]">
+                  {isAr ? lessonQuiz.title_ar : lessonQuiz.title_en}
+                </p>
+              </div>
+              <a
+                href={`/${locale}/portal/quiz/${lessonQuiz.id}`}
+                className="shrink-0 inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[var(--color-accent)] text-white text-sm font-semibold hover:bg-[var(--color-accent-500)] hover:scale-[1.02] transition-all min-h-[44px]"
+              >
+                {isAr ? 'ابدأ الاختبار' : 'Take Quiz'}
+                <svg className="w-4 h-4 rtl:rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                </svg>
+              </a>
+            </div>
+          )}
         </div>
 
         {/* Sidebar — lesson list grouped by section */}
