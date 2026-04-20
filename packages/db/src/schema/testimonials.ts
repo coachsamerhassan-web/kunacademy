@@ -22,6 +22,8 @@ export const testimonials = pgTable("testimonials", {
   // ISO-3166 2-letter country code, e.g. "EG", "SA" — validated by DB CHECK constraint
   country_code: text("country_code"),
   display_order: integer("display_order").notNull().default(0),
+  // Phase 1b: preserves CMS slug-style id ("nizar", "scott-mcconnell") for migration idempotency + external link continuity. Admin-created testimonials leave this null.
+  legacy_slug: text("legacy_slug"),
 });
 
 export type Testimonials = typeof testimonials.$inferSelect;

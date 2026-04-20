@@ -190,14 +190,19 @@ async function migrateTestimonials(): Promise<Counts> {
   const cmsTestimonials = await cms.getAllTestimonials();
   console.log(`[migrate] testimonials: ${cmsTestimonials.length} rows from CMS`);
 
-  // Fetch existing IDs from DB
+  // Match by legacy_slug (CMS id is a slug like "nizar", not a UUID).
+  // Migration 0030 added legacy_slug column for this purpose.
   const existing = await db
-    .select({ id: testimonials.id })
+    .select({ id: testimonials.id, legacy_slug: testimonials.legacy_slug })
     .from(testimonials);
-  const existingIds = new Set(existing.map((r) => r.id));
+  const existingSlugMap = new Map(
+    existing
+      .filter((r) => r.legacy_slug)
+      .map((r) => [r.legacy_slug as string, r.id])
+  );
 
   const toInsert: typeof cmsTestimonials = [];
-  const toUpdateNew: typeof cmsTestimonials = [];  // exist in DB, only fill new nullable cols
+  const toUpdateNew: Array<{ cms: typeof cmsTestimonials[number]; dbId: string }> = [];
   const toSkip: typeof cmsTestimonials = [];
 
   for (const t of cmsTestimonials) {
@@ -207,23 +212,24 @@ async function migrateTestimonials(): Promise<Counts> {
       toSkip.push(t);
       continue;
     }
-    if (existingIds.has(t.id)) {
-      console.log(`[migrate] testimonials UPDATE new-cols only (id=${t.id}, name_ar=${t.name_ar})`);
-      toUpdateNew.push(t);
+    const existingDbId = existingSlugMap.get(t.id);
+    if (existingDbId) {
+      console.log(`[migrate] testimonials UPDATE new-cols only (slug=${t.id}, name_ar=${t.name_ar})`);
+      toUpdateNew.push({ cms: t, dbId: existingDbId });
     } else {
-      console.log(`[migrate] testimonials INSERT (id=${t.id}, name_ar=${t.name_ar})`);
+      console.log(`[migrate] testimonials INSERT (slug=${t.id}, name_ar=${t.name_ar})`);
       toInsert.push(t);
     }
   }
 
   if (APPLY && (toInsert.length > 0 || toUpdateNew.length > 0)) {
     await withAdminContext(async (adminDb) => {
-      // INSERT full rows for new testimonials
+      // INSERT full rows for new testimonials — let DB auto-generate UUID; preserve CMS id in legacy_slug
       if (toInsert.length > 0) {
         await adminDb.insert(testimonials).values(
           toInsert.map((t) => ({
-            // Use the CMS id as the PK (it's a UUID from CMS)
-            id: t.id,
+            // id omitted — DB gen_random_uuid() default fires
+            legacy_slug: t.id,
             author_name_ar: t.name_ar,
             author_name_en: t.name_en,
             content_ar: t.content_ar,
@@ -244,7 +250,7 @@ async function migrateTestimonials(): Promise<Counts> {
 
       // UPDATE existing rows: only fill in the 6 new nullable columns.
       // Do NOT overwrite author_name_ar/en, content_ar/en, photo_url — already populated.
-      for (const t of toUpdateNew) {
+      for (const { cms: t, dbId } of toUpdateNew) {
         await adminDb
           .update(testimonials)
           .set({
@@ -255,7 +261,7 @@ async function migrateTestimonials(): Promise<Counts> {
             country_code: t.country_code ?? null,
             display_order: t.display_order ?? 0,
           })
-          .where(eq(testimonials.id, t.id));
+          .where(eq(testimonials.id, dbId));
       }
     });
   }
