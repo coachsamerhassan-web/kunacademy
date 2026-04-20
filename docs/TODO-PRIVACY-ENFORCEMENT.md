@@ -22,6 +22,8 @@ CREATE POLICY coach_ratings_anon_public_read
 
 This lets a future bug in the WHERE clause not leak private rows — belt-and-suspenders. Deferred because public endpoints now correctly filter; this is defense-in-depth, not a live security hole.
 
+**Correction 2026-04-20:** Adversarial QA H1 said "no RLS policy exists on coach_ratings" — this was incorrect. 4 policies are LIVE (`coach_ratings_public_select`, `_admin`, `_own_select`, `_own_insert`). The public endpoints now filter by BOTH `privacy='public'` AND `is_published=true` to match the RLS gate exactly, eliminating drift risk. No new migration required.
+
 ## Requirement
 
 When any rating display or aggregation endpoint is built, it MUST enforce the `privacy` column:

@@ -74,6 +74,7 @@ export async function GET(
           and(
             eq(coach_ratings.coach_id, coachId),
             eq(coach_ratings.privacy, 'public'),
+            eq(coach_ratings.is_published, true),
           ),
         );
     });

@@ -112,6 +112,7 @@ export async function GET(
           and(
             eq(coach_ratings.coach_id, coachId),
             eq(coach_ratings.privacy, 'public'),
+            eq(coach_ratings.is_published, true),
           ),
         )
         .orderBy(desc(coach_ratings.rated_at))
@@ -128,6 +129,7 @@ export async function GET(
           and(
             eq(coach_ratings.coach_id, coachId),
             eq(coach_ratings.privacy, 'public'),
+            eq(coach_ratings.is_published, true),
           ),
         );
     });
