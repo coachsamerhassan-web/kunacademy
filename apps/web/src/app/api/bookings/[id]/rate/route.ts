@@ -34,9 +34,9 @@ const ADMIN_ROLES = new Set(['admin', 'super_admin']);
 
 export async function POST(
   request: NextRequest,
-  context: { params: Promise<{ bookingId: string }> },
+  context: { params: Promise<{ id: string }> },
 ) {
-  const { bookingId } = await context.params;
+  const { id: bookingId } = await context.params;
 
   // ── Auth ──────────────────────────────────────────────────────────────────
   const user = await getAuthUser();
