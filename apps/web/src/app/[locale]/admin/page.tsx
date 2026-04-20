@@ -45,6 +45,7 @@ export default function AdminDashboard() {
     { href: `/${locale}/admin/courses`, labelAr: 'الدورات', labelEn: 'Courses', count: '-', icon: '🎓' },
     { href: `/${locale}/admin/products`, labelAr: 'المنتجات', labelEn: 'Products', count: '-', icon: '📦' },
     { href: `/${locale}/admin/testimonials`, labelAr: 'التوصيات', labelEn: 'Testimonials', count: '-', icon: '⭐' },
+    { href: `/${locale}/admin/coach-ratings`, labelAr: 'تقييمات المدربين', labelEn: 'Coach Ratings', count: '-', icon: '🌟' },
     { href: `/${locale}/admin/referrals`, labelAr: 'الإحالات', labelEn: 'Referrals', count: '-', icon: '🔗' },
     { href: `/${locale}/admin/payouts`, labelAr: 'المستحقات', labelEn: 'Payouts', count: '-', icon: '💰' },
     { href: `/${locale}/admin/content`, labelAr: 'المحتوى', labelEn: 'Content CMS', count: '-', icon: '📄' },
