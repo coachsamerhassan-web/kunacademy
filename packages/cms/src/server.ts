@@ -9,11 +9,13 @@ import { join } from 'path';
 import type { ContentProvider } from './content-provider';
 import { JsonFileProvider } from './json-provider';
 import { GoogleSheetsProvider } from './sheets-provider';
+import { DbContentProvider } from './db-provider';
 
 // ── Re-export server-only modules ────────────────────────────────────────────
 
 export { GoogleSheetsProvider } from './sheets-provider';
 export { JsonFileProvider } from './json-provider';
+export { DbContentProvider } from './db-provider';
 export { fetchDocAsHtml, invalidateDocCache } from './google-docs-fetcher';
 export { AsyncDocRenderer } from './doc-renderer.server';
 
@@ -43,8 +45,15 @@ function createProvider(): ContentProvider {
     });
   }
 
-  // Fallback: local JSON files
+  // Default: DB-backed provider (reads migrated entities from Postgres,
+  // delegates un-migrated entities to JsonFileProvider).
+  // Falls through to pure JSON if DATABASE_URL is also absent (local dev without DB).
   const dataDir = process.env.CMS_DATA_DIR ?? join(process.cwd(), 'data', 'cms');
+  if (process.env.DATABASE_URL) {
+    console.log(`[cms] Using DbContentProvider (DB + JSON fallback from ${dataDir})`);
+    return new DbContentProvider(dataDir);
+  }
+
   console.log(`[cms] Using JsonFileProvider from ${dataDir}`);
   return new JsonFileProvider(dataDir);
 }

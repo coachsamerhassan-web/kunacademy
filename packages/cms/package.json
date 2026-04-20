@@ -24,6 +24,7 @@
     "typescript": "*"
   },
   "dependencies": {
-    "isomorphic-dompurify": "^3.7.1"
+    "isomorphic-dompurify": "^3.7.1",
+    "@kunacademy/db": "workspace:*"
   }
 }

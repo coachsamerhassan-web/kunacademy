@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { withAdminContext, withUserContext, eq } from '@kunacademy/db';
+import { withAdminContext, withUserContext, eq, sql } from '@kunacademy/db';
 import { beneficiaryFiles, packageInstances } from '@kunacademy/db/schema';
 import { getAuthUser } from '@kunacademy/auth/server';
 
@@ -53,6 +53,78 @@ function validateCreateBody(raw: unknown): { data: CreateBody } | { error: strin
       first_session_date:  b.first_session_date as string | undefined,
     },
   };
+}
+
+/**
+ * GET /api/beneficiary-files
+ * List beneficiary files visible to the requesting user.
+ *
+ * Authorization:
+ *   - Admin / super_admin: sees all files (capped at 100).
+ *   - Student: sees their own files (package_instances.student_id = user.id).
+ *   - Mentor:  sees files where they are the assigned_mentor on the package_instance.
+ *
+ * Returns: { files: BeneficiaryFileListItem[] }
+ * Sorted: updated_at DESC. Max 100 rows.
+ */
+export async function GET(_req: NextRequest) {
+  const user = await getAuthUser();
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const isAdmin = user.role === 'admin' || user.role === 'super_admin';
+
+  const rows = await withAdminContext(async (db) => {
+    if (isAdmin) {
+      return db.execute(sql`
+        SELECT
+          bf.id,
+          bf.client_number,
+          bf.client_alias,
+          bf.first_session_date,
+          bf.updated_at,
+          pi.student_id,
+          (
+            SELECT COUNT(*)::int
+            FROM beneficiary_file_sessions bfs
+            WHERE bfs.beneficiary_file_id = bf.id
+          ) AS session_count
+        FROM beneficiary_files bf
+        JOIN package_instances pi ON pi.id = bf.package_instance_id
+        ORDER BY bf.updated_at DESC
+        LIMIT 100
+      `);
+    }
+
+    // Student: own files
+    // Mentor: files where they are the assigned mentor (via instructors.profile_id)
+    return db.execute(sql`
+      SELECT
+        bf.id,
+        bf.client_number,
+        bf.client_alias,
+        bf.first_session_date,
+        bf.updated_at,
+        pi.student_id,
+        (
+          SELECT COUNT(*)::int
+          FROM beneficiary_file_sessions bfs
+          WHERE bfs.beneficiary_file_id = bf.id
+        ) AS session_count
+      FROM beneficiary_files bf
+      JOIN package_instances pi ON pi.id = bf.package_instance_id
+      WHERE
+        pi.student_id = ${user.id}
+        OR EXISTS (
+          SELECT 1 FROM instructors i
+          WHERE i.id = pi.assigned_mentor_id
+            AND i.profile_id = ${user.id}
+        )
+      ORDER BY bf.updated_at DESC
+      LIMIT 100
+    `);
+  });
+
+  return NextResponse.json({ files: rows.rows });
 }
 
 export async function POST(request: NextRequest) {
