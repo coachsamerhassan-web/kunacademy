@@ -281,13 +281,31 @@ export async function POST(request: NextRequest, context: RouteContext) {
     }
   }
 
-  // ── Attach shadow_score_id to audit metadata if reviewer submitted one ───────
-  // Track A: enrich the audit trail with the shadow review evidence when present.
-  let shadowScoreId: string | null = null;
+  // ── Snapshot full shadow row for immutable audit evidence ──────────────────
+  // Track A: Instead of storing only shadow_score_id (which becomes a dangling
+  // reference after CASCADE delete of the assessment), we snapshot the entire
+  // shadow row at override time. This preserves compliance evidence even if the
+  // assessment (and its shadow rows) are later deleted.
+  interface ShadowSnapshot {
+    id: string;
+    shadow_scores: unknown;
+    agreement_level: string | null;
+    agreement_notes: string | null;
+    submitted_at: string | null;
+    reviewer_id: string;
+  }
+  let shadowSnapshot: ShadowSnapshot | null = null;
   try {
     const shadowRows = await withAdminContext(async (db) => {
       return db
-        .select({ id: assessmentMmShadowScores.id })
+        .select({
+          id:              assessmentMmShadowScores.id,
+          shadow_scores:   assessmentMmShadowScores.shadow_scores,
+          agreement_level: assessmentMmShadowScores.agreement_level,
+          agreement_notes: assessmentMmShadowScores.agreement_notes,
+          submitted_at:    assessmentMmShadowScores.submitted_at,
+          reviewer_id:     assessmentMmShadowScores.reviewer_id,
+        })
         .from(assessmentMmShadowScores)
         .where(
           and(
@@ -297,7 +315,17 @@ export async function POST(request: NextRequest, context: RouteContext) {
         )
         .limit(1);
     });
-    shadowScoreId = shadowRows[0]?.id ?? null;
+    if (shadowRows[0]) {
+      const r = shadowRows[0];
+      shadowSnapshot = {
+        id:              r.id,
+        shadow_scores:   r.shadow_scores,
+        agreement_level: r.agreement_level,
+        agreement_notes: r.agreement_notes,
+        submitted_at:    r.submitted_at,
+        reviewer_id:     r.reviewer_id,
+      };
+    }
   } catch {
     // Non-critical — shadow lookup failure must never break the override response.
   }
@@ -315,8 +343,8 @@ export async function POST(request: NextRequest, context: RouteContext) {
       ethics_flag_cleared:      isEthicsOverride,
       ethics_override_explicit: isEthicsOverride ? true : undefined,
       auto_unpaused:            autoUnpaused,
-      // Track A: shadow evidence trail (null when manager skipped shadow review)
-      shadow_score_id:          shadowScoreId,
+      // Track A: full snapshot — immutable even after assessment/shadow deletion
+      shadow_snapshot:          shadowSnapshot,
     },
     ipAddress: request.headers.get('x-forwarded-for') ?? undefined,
   });

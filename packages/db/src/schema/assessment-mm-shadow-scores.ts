@@ -20,9 +20,11 @@ import { profiles } from './profiles';
 export const assessmentMmShadowScores = pgTable('assessment_mm_shadow_scores', {
   id: uuid('id').primaryKey().defaultRandom(),
 
+  // Nullable: SET NULL when parent assessment is deleted, preserving shadow row
+  // as orphan evidence. Audit snapshot in OVERRIDE_ASSESSMENT_DECISION metadata
+  // is the primary immutable record; orphan row is belt-and-suspenders.
   assessment_id: uuid('assessment_id')
-    .notNull()
-    .references(() => packageAssessments.id, { onDelete: 'cascade' }),
+    .references(() => packageAssessments.id, { onDelete: 'set null' }),
 
   reviewer_id: uuid('reviewer_id')
     .notNull()
