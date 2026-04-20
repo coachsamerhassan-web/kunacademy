@@ -1,0 +1,28 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2022"],
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "resolveJsonModule": true,
+    "composite": false,
+    "declaration": false,
+    "declarationMap": false,
+    "sourceMap": false,
+    "jsx": "react-jsx",
+    "paths": {
+      "@kunacademy/cms/server": ["./packages/cms/src/server.ts"],
+      "@kunacademy/cms": ["./packages/cms/src/index.ts"],
+      "@kunacademy/db": ["./packages/db/src/index.ts"],
+      "@kunacademy/db/schema": ["./packages/db/src/schema/index.ts"],
+      "drizzle-orm": ["./packages/db/node_modules/drizzle-orm/index.d.ts"],
+      "drizzle-orm/*": ["./packages/db/node_modules/drizzle-orm/*"]
+    }
+  },
+  "include": ["scripts/**/*.ts"],
+  "exclude": ["node_modules", "apps", "packages"]
+}
