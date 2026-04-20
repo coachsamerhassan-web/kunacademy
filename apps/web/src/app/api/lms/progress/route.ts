@@ -1,8 +1,57 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db, withAdminContext } from '@kunacademy/db';
 import { getAuthUser } from '@kunacademy/auth/server';
-import { eq, and, inArray } from 'drizzle-orm';
-import { lessons, enrollments, lesson_progress, certificates } from '@kunacademy/db/schema';
+import { eq, and, inArray, sql } from 'drizzle-orm';
+import { lessons, enrollments, lesson_progress, certificates, quizzes, quiz_questions, quiz_attempts } from '@kunacademy/db/schema';
+
+/**
+ * Returns quiz IDs that are published, have ≥ 1 question, and the user has NOT yet passed.
+ * An empty array means no gate — cert can proceed.
+ */
+async function getPendingQuizzes(courseId: string, userId: string): Promise<string[]> {
+  // Find all published quizzes for this course's lessons that have ≥ 1 question
+  const publishedQuizRows = await db
+    .select({ id: quizzes.id })
+    .from(quizzes)
+    .innerJoin(lessons, eq(quizzes.lesson_id, lessons.id))
+    .where(
+      and(
+        eq(lessons.course_id, courseId),
+        eq(quizzes.is_published, true)
+      )
+    );
+
+  if (!publishedQuizRows.length) return [];
+
+  const allPublishedIds = publishedQuizRows.map((q) => q.id);
+
+  // Filter to those with ≥ 1 question (exclude empty stubs)
+  const quizzesWithQuestions = await db
+    .select({ quiz_id: quiz_questions.quiz_id })
+    .from(quiz_questions)
+    .where(inArray(quiz_questions.quiz_id, allPublishedIds))
+    .groupBy(quiz_questions.quiz_id)
+    .having(sql`COUNT(${quiz_questions.id}) > 0`);
+
+  if (!quizzesWithQuestions.length) return [];
+
+  const gatingQuizIds = quizzesWithQuestions.map((q) => q.quiz_id);
+
+  // Find which of those the user has already passed
+  const passedAttempts = await db
+    .select({ quiz_id: quiz_attempts.quiz_id })
+    .from(quiz_attempts)
+    .where(
+      and(
+        eq(quiz_attempts.user_id, userId),
+        eq(quiz_attempts.passed, true),
+        inArray(quiz_attempts.quiz_id, gatingQuizIds)
+      )
+    );
+
+  const passedIds = new Set(passedAttempts.map((a) => a.quiz_id));
+  return gatingQuizIds.filter((id) => !passedIds.has(id));
+}
 
 // GET /api/lms/progress?courseId=xxx — get all lesson progress for a course
 export async function GET(request: NextRequest) {
@@ -157,6 +206,16 @@ export async function POST(request: NextRequest) {
           .set({ status: 'completed', completed_at: completedAt })
           .where(eq(enrollments.id, enrollment.id));
       });
+
+      // Quiz-pass gate: check if any published quizzes with questions remain unpasssed
+      const pendingQuizzes = await getPendingQuizzes(courseId, user.id);
+      if (pendingQuizzes.length > 0) {
+        return NextResponse.json({
+          progress: progressRow,
+          certificate_pending: 'quiz_not_passed',
+          pending_quizzes: pendingQuizzes,
+        });
+      }
 
       // Auto-generate certificate if not already existing
       const existingCert = await db
