@@ -1,5 +1,14 @@
 'use client';
 
+/**
+ * Coach Bookings Page
+ * Path: /[locale]/portal/coach/bookings
+ *
+ * Updated in Wave S9: added "Mark session completed" button for past sessions
+ * where session_completed_at IS NULL and status is confirmed/completed.
+ * Button opens an inline form with optional notes textarea.
+ */
+
 import { useAuth } from '@kunacademy/auth';
 import { useEffect, useState } from 'react';
 import { Section } from '@kunacademy/ui/section';
@@ -16,17 +25,117 @@ interface Booking {
   status: string | null;
   notes: string | null;
   meeting_url: string | null;
+  session_completed_at: string | null;
   service: { name_ar: string; name_en: string; duration_minutes: number } | null;
   customer: { full_name_ar: string | null; full_name_en: string | null; email: string } | null;
 }
 
 const statusConfig: Record<BookingStatus, { labelAr: string; labelEn: string; className: string }> = {
-  pending: { labelAr: 'بانتظار التأكيد', labelEn: 'Pending', className: 'bg-amber-100 text-amber-700' },
-  confirmed: { labelAr: 'مؤكّد', labelEn: 'Confirmed', className: 'bg-green-100 text-green-700' },
-  completed: { labelAr: 'مكتمل', labelEn: 'Completed', className: 'bg-blue-100 text-blue-700' },
-  cancelled: { labelAr: 'ملغي', labelEn: 'Cancelled', className: 'bg-red-100 text-red-700' },
-  no_show: { labelAr: 'لم يحضر', labelEn: 'No Show', className: 'bg-gray-100 text-gray-700' },
+  pending:   { labelAr: 'بانتظار التأكيد', labelEn: 'Pending',   className: 'bg-amber-100 text-amber-700' },
+  confirmed: { labelAr: 'مؤكّد',           labelEn: 'Confirmed', className: 'bg-green-100 text-green-700' },
+  completed: { labelAr: 'مكتمل',           labelEn: 'Completed', className: 'bg-blue-100 text-blue-700'  },
+  cancelled: { labelAr: 'ملغي',            labelEn: 'Cancelled', className: 'bg-red-100 text-red-700'    },
+  no_show:   { labelAr: 'لم يحضر',         labelEn: 'No Show',   className: 'bg-gray-100 text-gray-700'  },
 };
+
+// ── Inline mark-completed form ────────────────────────────────────────────────
+
+function MarkCompletedForm({
+  bookingId,
+  isAr,
+  onSuccess,
+}: {
+  bookingId: string;
+  isAr: boolean;
+  onSuccess: (completedAt: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [notes, setNotes] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleConfirm() {
+    setSubmitting(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/bookings/${bookingId}/mark-completed`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notes: notes.trim() || undefined }),
+      });
+
+      if (res.status === 200) {
+        const data = await res.json();
+        onSuccess(data.session_completed_at);
+        setOpen(false);
+      } else if (res.status === 409) {
+        const data = await res.json();
+        onSuccess(data.session_completed_at);
+        setOpen(false);
+      } else {
+        const data = await res.json();
+        setError(data.error ?? (isAr ? 'حدث خطأ' : 'An error occurred'));
+      }
+    } catch {
+      setError(isAr ? 'تعذّر الإرسال. حاول مجدداً.' : 'Request failed. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  if (!open) {
+    return (
+      <button
+        onClick={() => setOpen(true)}
+        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--color-primary)] text-[var(--color-primary)] text-xs font-medium hover:bg-[var(--color-primary)]/5 transition-colors min-h-[36px]"
+      >
+        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M9 12l2 2 4-4" />
+          <circle cx="12" cy="12" r="10" />
+        </svg>
+        {isAr ? 'تحديد كمكتملة' : 'Mark completed'}
+      </button>
+    );
+  }
+
+  return (
+    <div className="mt-3 w-full rounded-xl border border-[var(--color-neutral-200)] bg-[var(--color-neutral-50)] p-4 space-y-3">
+      <p className="text-sm font-medium text-[var(--text-primary)]">
+        {isAr ? 'تأكيد اكتمال الجلسة' : 'Confirm session completion'}
+      </p>
+      <textarea
+        value={notes}
+        onChange={(e) => setNotes(e.target.value)}
+        maxLength={1000}
+        rows={2}
+        placeholder={isAr ? 'ملاحظات (اختياري)...' : 'Notes (optional)...'}
+        className="w-full rounded-lg border border-[var(--color-neutral-200)] bg-white px-3 py-2 text-sm text-[var(--text-primary)] placeholder:text-[var(--color-neutral-400)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] resize-none"
+      />
+      {error && (
+        <p className="text-xs text-red-600">{error}</p>
+      )}
+      <div className="flex gap-2">
+        <button
+          onClick={handleConfirm}
+          disabled={submitting}
+          className="flex-1 bg-[var(--color-primary)] text-white py-2 rounded-lg text-sm font-medium hover:bg-[var(--color-primary-600)] transition-colors disabled:opacity-50 min-h-[40px]"
+        >
+          {submitting
+            ? (isAr ? 'جاري...' : 'Saving...')
+            : (isAr ? 'تأكيد' : 'Confirm')}
+        </button>
+        <button
+          onClick={() => { setOpen(false); setError(null); }}
+          className="px-4 py-2 rounded-lg border border-[var(--color-neutral-200)] text-sm text-[var(--color-neutral-600)] hover:bg-[var(--color-neutral-100)] transition-colors min-h-[40px]"
+        >
+          {isAr ? 'إلغاء' : 'Cancel'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function CoachBookingsPage() {
   const { locale } = useParams<{ locale: string }>();
@@ -48,6 +157,15 @@ export default function CoachBookingsPage() {
       });
   }, [user]);
 
+  // When coach marks a session complete, update local state
+  function handleSessionCompleted(bookingId: string, completedAt: string) {
+    setBookings((prev) =>
+      prev.map((b) =>
+        b.id === bookingId ? { ...b, session_completed_at: completedAt } : b,
+      ),
+    );
+  }
+
   const today = new Date().toISOString().split('T')[0];
 
   const filtered = bookings.filter((b) => {
@@ -55,6 +173,17 @@ export default function CoachBookingsPage() {
     if (tab === 'past') return b.start_time.split('T')[0] < today || b.status === 'completed';
     return true;
   });
+
+  // Determine if a booking should show the "Mark completed" button:
+  // - Past session (start_time < now + 15 min buffer)
+  // - Status is confirmed or completed (not cancelled/no_show/pending)
+  // - session_completed_at IS NULL
+  function shouldShowMarkCompleted(b: Booking): boolean {
+    if (b.session_completed_at) return false;
+    if (b.status === 'cancelled' || b.status === 'no_show' || b.status === 'pending') return false;
+    const buffer = 15 * 60 * 1000; // 15 minutes in ms
+    return new Date(b.end_time).getTime() < Date.now() + buffer;
+  }
 
   if (authLoading || loading) {
     return (
@@ -124,56 +253,79 @@ export default function CoachBookingsPage() {
                 return d.toLocaleTimeString(isAr ? 'ar-SA' : 'en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
               };
               const timeStr = `${fmtTime(b.start_time)} – ${fmtTime(b.end_time)}`;
+              const showMarkCompleted = shouldShowMarkCompleted(b);
 
               return (
                 <div
                   key={b.id}
-                  className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 rounded-xl border border-[var(--color-neutral-200)] p-4 hover:border-[var(--color-primary)]/30 transition-colors"
+                  className="flex flex-col gap-3 rounded-xl border border-[var(--color-neutral-200)] p-4 hover:border-[var(--color-primary)]/30 transition-colors"
                 >
-                  {/* Date block */}
-                  <div className="shrink-0 text-center sm:text-start sm:w-28">
-                    <div className="text-sm font-medium text-[var(--text-primary)]">{dateStr}</div>
-                    <div className="text-xs text-[var(--color-neutral-500)]">
-                      {timeStr}
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+                    {/* Date block */}
+                    <div className="shrink-0 text-center sm:text-start sm:w-28">
+                      <div className="text-sm font-medium text-[var(--text-primary)]">{dateStr}</div>
+                      <div className="text-xs text-[var(--color-neutral-500)]">{timeStr}</div>
+                    </div>
+
+                    {/* Client & Service */}
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-[var(--text-primary)]">{clientName}</div>
+                      {serviceName && (
+                        <div className="text-sm text-[var(--color-neutral-600)] mt-0.5">
+                          {serviceName}
+                          {b.service?.duration_minutes && (
+                            <span className="text-[var(--color-neutral-400)] mx-1">·</span>
+                          )}
+                          {b.service?.duration_minutes && (
+                            <span>{b.service.duration_minutes} {isAr ? 'د' : 'min'}</span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Status & Actions */}
+                    <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                      <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${s.className}`}>
+                        {isAr ? s.labelAr : s.labelEn}
+                      </span>
+
+                      {/* Join button */}
+                      {b.meeting_url && b.status === 'confirmed' && (
+                        <a
+                          href={b.meeting_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[var(--color-primary)] text-white text-xs font-medium hover:bg-[var(--color-primary-600)] transition-colors min-h-[36px]"
+                        >
+                          <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M15 10l5-3v10l-5-3z" />
+                            <rect x="1" y="5" width="14" height="14" rx="2" />
+                          </svg>
+                          {isAr ? 'انضم' : 'Join'}
+                        </a>
+                      )}
+
+                      {/* Session completed badge */}
+                      {b.session_completed_at && (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-teal-50 text-teal-700">
+                          <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M9 12l2 2 4-4" />
+                            <circle cx="12" cy="12" r="10" />
+                          </svg>
+                          {isAr ? 'تم التسليم' : 'Marked complete'}
+                        </span>
+                      )}
                     </div>
                   </div>
 
-                  {/* Client & Service */}
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium text-[var(--text-primary)]">{clientName}</div>
-                    {serviceName && (
-                      <div className="text-sm text-[var(--color-neutral-600)] mt-0.5">
-                        {serviceName}
-                        {b.service?.duration_minutes && (
-                          <span className="text-[var(--color-neutral-400)] mx-1">·</span>
-                        )}
-                        {b.service?.duration_minutes && (
-                          <span>{b.service.duration_minutes} {isAr ? 'د' : 'min'}</span>
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Status & Actions */}
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${s.className}`}>
-                      {isAr ? s.labelAr : s.labelEn}
-                    </span>
-                    {b.meeting_url && b.status === 'confirmed' && (
-                      <a
-                        href={b.meeting_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[var(--color-primary)] text-white text-xs font-medium hover:bg-[var(--color-primary-600)] transition-colors min-h-[36px]"
-                      >
-                        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M15 10l5-3v10l-5-3z" />
-                          <rect x="1" y="5" width="14" height="14" rx="2" />
-                        </svg>
-                        {isAr ? 'انضم' : 'Join'}
-                      </a>
-                    )}
-                  </div>
+                  {/* Mark completed inline form */}
+                  {showMarkCompleted && (
+                    <MarkCompletedForm
+                      bookingId={b.id}
+                      isAr={isAr}
+                      onSuccess={(completedAt) => handleSessionCompleted(b.id, completedAt)}
+                    />
+                  )}
                 </div>
               );
             })}

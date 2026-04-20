@@ -39,6 +39,10 @@ export const bookings = pgTable("bookings", {
   final_amount_usd: integer("final_amount_usd"),
   // Which currency is authoritative (aed|egp|usd); null means use service default
   final_amount_currency: text("final_amount_currency"),
+  // Session completion signal (Wave S9) — explicit, coach-triggered, not time-inferred
+  session_completed_at:     timestamp("session_completed_at", { withTimezone: true, mode: 'string' }),
+  session_completed_by:     uuid("session_completed_by").references(() => profiles.id),
+  session_completion_notes: text("session_completion_notes"),
 });
 
 export type Bookings = typeof bookings.$inferSelect;

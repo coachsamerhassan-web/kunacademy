@@ -43,6 +43,8 @@ export async function GET() {
         customer_id: bookings.customer_id,
         service_id: bookings.service_id,
         provider_id: bookings.provider_id,
+        // Wave S9: session completion signal
+        session_completed_at: bookings.session_completed_at,
       })
       .from(bookings)
       .where(eq(bookings.provider_id, provider.id))

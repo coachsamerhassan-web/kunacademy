@@ -40,6 +40,8 @@ import {
   type SecondTryDeadlineWarningEmailParams,
   sendSecondOpinionRequestEmail,
   type SecondOpinionRequestEmailParams,
+  sendRatingRequestEmail,
+  type RatingRequestEmailParams,
 } from '@kunacademy/email';
 
 const MAX_ATTEMPTS = 5;
@@ -107,6 +109,13 @@ async function dispatch(row: OutboxRow): Promise<void> {
       await sendSecondOpinionRequestEmail(
         to_email,
         payload as unknown as SecondOpinionRequestEmailParams,
+      );
+      return;
+
+    case 'rating-request':
+      await sendRatingRequestEmail(
+        to_email,
+        payload as unknown as RatingRequestEmailParams,
       );
       return;
 

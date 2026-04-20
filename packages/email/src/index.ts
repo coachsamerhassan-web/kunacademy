@@ -63,3 +63,7 @@ export type { SecondOpinionRequestEmailParams } from './second-opinion-request';
 // Assessor reassigned notice (M5-ext — wired to reassign endpoint)
 export { sendAssessorReassignedEmail } from './assessor-reassigned';
 export type { AssessorReassignedEmailParams } from './assessor-reassigned';
+
+// Rating request (Wave S9 — wired to mark-completed endpoint via email_outbox)
+export { sendRatingRequestEmail } from './rating-request';
+export type { RatingRequestEmailParams } from './rating-request';

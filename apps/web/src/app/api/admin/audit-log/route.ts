@@ -51,6 +51,10 @@ const VALID_ACTIONS = new Set<string>([
   'RESOLVE_SECOND_OPINION',
   'PAUSE_JOURNEY',
   'UNPAUSE_JOURNEY',
+  // Wave S9 — Coach Ratings
+  'MARK_SESSION_COMPLETED',
+  'SUBMIT_COACH_RATING',
+  'ADMIN_FORCE_COMPLETE_SESSION',
 ]);
 
 export interface AuditLogRow {
