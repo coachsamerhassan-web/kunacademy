@@ -32,9 +32,9 @@ const ALLOWED_ROLES = new Set(['admin', 'super_admin']);
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { bookingId: string } },
+  context: { params: Promise<{ bookingId: string }> },
 ) {
-  const { bookingId } = params;
+  const { bookingId } = await context.params;
 
   // ── Auth ──────────────────────────────────────────────────────────────────
   const user = await getAuthUser();

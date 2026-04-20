@@ -23,9 +23,9 @@ const ADMIN_ROLES = new Set(['admin', 'super_admin']);
 
 export async function GET(
   _request: NextRequest,
-  { params }: { params: { bookingId: string } },
+  context: { params: Promise<{ bookingId: string }> },
 ) {
-  const { bookingId } = params;
+  const { bookingId } = await context.params;
 
   const user = await getAuthUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

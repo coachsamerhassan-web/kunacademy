@@ -21,7 +21,7 @@ interface EmailOutboxRow {
 
 export async function POST(
   _req: NextRequest,
-  { params }: { params: { id: string } },
+  context: { params: Promise<{ id: string }> },
 ) {
   try {
     // Auth check
@@ -41,7 +41,7 @@ export async function POST(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const { id } = params;
+    const { id } = await context.params;
 
     // Fetch and validate row
     const row = await withAdminContext(async (dbConn) => {
