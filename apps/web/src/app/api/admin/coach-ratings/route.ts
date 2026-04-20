@@ -21,6 +21,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db, withAdminContext, eq, and } from '@kunacademy/db';
 import { getAuthUser } from '@kunacademy/auth/server';
 import { coach_ratings, profiles } from '@kunacademy/db/schema';
+import { alias } from 'drizzle-orm/pg-core';
 import { desc, sql } from 'drizzle-orm';
 import type { SQL } from 'drizzle-orm';
 
@@ -29,28 +30,38 @@ const ADMIN_ROLES = new Set(['admin', 'super_admin']);
 const DEFAULT_PAGE_SIZE = 20;
 const MAX_PAGE_SIZE = 100;
 
-async function requireAdmin() {
+// Aliased profile tables for the two LEFT JOINs
+const coachProfile = alias(profiles, 'coach_profile');
+const clientProfile = alias(profiles, 'client_profile');
+
+// Discriminated result — avoids calling getAuthUser() twice (M4 fix)
+type AdminAuthResult =
+  | { kind: 'ok'; user: Awaited<ReturnType<typeof getAuthUser>> & {} }
+  | { kind: 'unauthenticated' }
+  | { kind: 'forbidden' };
+
+async function requireAdmin(): Promise<AdminAuthResult> {
   const user = await getAuthUser();
-  if (!user) return null;
+  if (!user) return { kind: 'unauthenticated' };
   // Prefer role on auth user; fall back to profiles table query
-  if (user.role && ADMIN_ROLES.has(user.role)) return user;
+  if (user.role && ADMIN_ROLES.has(user.role)) return { kind: 'ok', user };
   const rows = await db
     .select({ role: profiles.role })
     .from(profiles)
     .where(eq(profiles.id, user.id))
     .limit(1);
   const role = rows[0]?.role ?? '';
-  if (!ADMIN_ROLES.has(role)) return null;
-  return user;
+  if (!ADMIN_ROLES.has(role)) return { kind: 'forbidden' };
+  return { kind: 'ok', user };
 }
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await requireAdmin();
-    if (!user) {
-      // Distinguish 401 vs 403 properly
-      const rawUser = await getAuthUser().catch(() => null);
-      if (!rawUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const authResult = await requireAdmin();
+    if (authResult.kind === 'unauthenticated') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    if (authResult.kind === 'forbidden') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -87,7 +98,7 @@ export async function GET(request: NextRequest) {
       ? conditions.length === 1 ? conditions[0] : and(...conditions)
       : undefined;
 
-    // Fetch ratings (all — no privacy filter)
+    // Fetch ratings (all — no privacy filter) with coach + client name enrichment
     const rows = await withAdminContext(async (adminDb) => {
       const q = adminDb
         .select({
@@ -101,8 +112,15 @@ export async function GET(request: NextRequest) {
           is_published: coach_ratings.is_published,
           rated_at: coach_ratings.rated_at,
           created_at: coach_ratings.created_at,
+          // Name enrichment via LEFT JOINs — nullable
+          coach_full_name_en: coachProfile.full_name_en,
+          coach_full_name_ar: coachProfile.full_name_ar,
+          client_full_name_en: clientProfile.full_name_en,
+          client_full_name_ar: clientProfile.full_name_ar,
         })
         .from(coach_ratings)
+        .leftJoin(coachProfile, eq(coach_ratings.coach_id, coachProfile.id))
+        .leftJoin(clientProfile, eq(coach_ratings.user_id, clientProfile.id))
         .orderBy(desc(coach_ratings.rated_at))
         .limit(pageSize)
         .offset(offset);

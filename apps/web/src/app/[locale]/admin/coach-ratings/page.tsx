@@ -38,9 +38,11 @@ interface RatingRow {
   is_published: boolean;
   rated_at: string;
   created_at: string;
-  // Resolved names (fetched via enrichment)
-  coach_name?: string | null;
-  client_name?: string | null;
+  // Name enrichment — joined from profiles (nullable — LEFT JOIN)
+  coach_full_name_en: string | null;
+  coach_full_name_ar: string | null;
+  client_full_name_en: string | null;
+  client_full_name_ar: string | null;
 }
 
 interface RatingsResponse {
@@ -379,21 +381,27 @@ export default function CoachRatingsAdminPage() {
                     className="border-b border-[var(--color-neutral-100)] hover:bg-[var(--color-surface-low)] transition"
                   >
                     {/* Coach */}
-                    <td className="py-3 px-4 align-top">
-                      <span
-                        className="font-mono text-xs text-[var(--color-neutral-600)]"
-                        title={row.coach_id}
-                      >
+                    <td className="py-3 px-4 align-top" title={row.coach_id}>
+                      <span className="block text-sm text-[var(--color-neutral-800)]">
+                        {(isAr
+                          ? (row.coach_full_name_ar ?? row.coach_full_name_en)
+                          : (row.coach_full_name_en ?? row.coach_full_name_ar)
+                        ) ?? '—'}
+                      </span>
+                      <span className="block font-mono text-[11px] text-[var(--color-neutral-400)] mt-0.5">
                         {row.coach_id.slice(0, 8)}…
                       </span>
                     </td>
 
                     {/* Client */}
-                    <td className="py-3 px-4 align-top">
-                      <span
-                        className="font-mono text-xs text-[var(--color-neutral-600)]"
-                        title={row.user_id}
-                      >
+                    <td className="py-3 px-4 align-top" title={row.user_id}>
+                      <span className="block text-sm text-[var(--color-neutral-800)]">
+                        {(isAr
+                          ? (row.client_full_name_ar ?? row.client_full_name_en)
+                          : (row.client_full_name_en ?? row.client_full_name_ar)
+                        ) ?? '—'}
+                      </span>
+                      <span className="block font-mono text-[11px] text-[var(--color-neutral-400)] mt-0.5">
                         {row.user_id.slice(0, 8)}…
                       </span>
                     </td>
