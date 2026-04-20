@@ -25,7 +25,9 @@ export type AuditAction =
   | 'MARK_SESSION_COMPLETED'
   | 'SUBMIT_COACH_RATING'
   | 'ADMIN_FORCE_COMPLETE_SESSION'
-  | 'RETRY_FAILED_EMAIL';
+  | 'RETRY_FAILED_EMAIL'
+  // Track A — MM shadow rubric
+  | 'SUBMIT_MM_SHADOW_SCORE';
 
 /** Manual type matching the admin_audit_log migration schema */
 export interface AdminAuditLog {

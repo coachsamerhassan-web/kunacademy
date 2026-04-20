@@ -64,3 +64,4 @@ export * from './assessor-assignment-tracker';
 export * from './assessment-voice-messages';
 export * from './crm_sync';
 export * from './email-outbox';
+export * from './assessment-mm-shadow-scores';

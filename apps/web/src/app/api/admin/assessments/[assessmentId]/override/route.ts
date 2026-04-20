@@ -33,12 +33,13 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { withAdminContext, eq, sql } from '@kunacademy/db';
+import { withAdminContext, eq, and, sql } from '@kunacademy/db';
 import {
   packageAssessments,
   packageRecordings,
   packageInstances,
   profiles,
+  assessmentMmShadowScores,
 } from '@kunacademy/db/schema';
 import { getAuthUser } from '@kunacademy/auth/server';
 import { logAdminAction } from '@kunacademy/db';
@@ -280,6 +281,27 @@ export async function POST(request: NextRequest, context: RouteContext) {
     }
   }
 
+  // ── Attach shadow_score_id to audit metadata if reviewer submitted one ───────
+  // Track A: enrich the audit trail with the shadow review evidence when present.
+  let shadowScoreId: string | null = null;
+  try {
+    const shadowRows = await withAdminContext(async (db) => {
+      return db
+        .select({ id: assessmentMmShadowScores.id })
+        .from(assessmentMmShadowScores)
+        .where(
+          and(
+            eq(assessmentMmShadowScores.assessment_id, assessmentId),
+            eq(assessmentMmShadowScores.reviewer_id, user.id),
+          ),
+        )
+        .limit(1);
+    });
+    shadowScoreId = shadowRows[0]?.id ?? null;
+  } catch {
+    // Non-critical — shadow lookup failure must never break the override response.
+  }
+
   // ── Audit log (non-blocking) ────────────────────────────────────────────────
   void logAdminAction({
     adminId:    user.id,
@@ -293,6 +315,8 @@ export async function POST(request: NextRequest, context: RouteContext) {
       ethics_flag_cleared:      isEthicsOverride,
       ethics_override_explicit: isEthicsOverride ? true : undefined,
       auto_unpaused:            autoUnpaused,
+      // Track A: shadow evidence trail (null when manager skipped shadow review)
+      shadow_score_id:          shadowScoreId,
     },
     ipAddress: request.headers.get('x-forwarded-for') ?? undefined,
   });
