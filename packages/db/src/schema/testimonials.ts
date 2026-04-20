@@ -14,6 +14,14 @@ export const testimonials = pgTable("testimonials", {
   is_featured: boolean("is_featured").default(false),
   source_type: text("source_type"),
   migrated_at: timestamp("migrated_at", { withTimezone: true, mode: 'string' }),
+  // Phase 1a: CMS→DB extension columns
+  role_ar: text("role_ar"),
+  role_en: text("role_en"),
+  location_ar: text("location_ar"),
+  location_en: text("location_en"),
+  // ISO-3166 2-letter country code, e.g. "EG", "SA" — validated by DB CHECK constraint
+  country_code: text("country_code"),
+  display_order: integer("display_order").notNull().default(0),
 });
 
 export type Testimonials = typeof testimonials.$inferSelect;

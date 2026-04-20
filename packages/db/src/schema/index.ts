@@ -69,3 +69,5 @@ export * from './quizzes';
 export * from './quiz_questions';
 export * from './quiz_options';
 export * from './quiz_attempts';
+export * from './site_settings';
+export * from './quotes';
