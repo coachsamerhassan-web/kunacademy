@@ -20,7 +20,12 @@ export type AuditAction =
   | 'RESOLVE_SECOND_OPINION'
   | 'PAUSE_JOURNEY'
   | 'UNPAUSE_JOURNEY'
-  | 'REASSIGN_ASSESSOR';
+  | 'REASSIGN_ASSESSOR'
+  // Wave S9 — Coach Ratings
+  | 'MARK_SESSION_COMPLETED'
+  | 'SUBMIT_COACH_RATING'
+  | 'ADMIN_FORCE_COMPLETE_SESSION'
+  | 'RETRY_FAILED_EMAIL';
 
 /** Manual type matching the admin_audit_log migration schema */
 export interface AdminAuditLog {
