@@ -156,9 +156,13 @@ export async function PATCH(request: NextRequest) {
     }
 
     if (type === 'course') {
-      const { is_published } = body;
+      const { is_published, min_completion_pct, require_quiz_pass } = body;
+      const updateFields: Partial<typeof courses.$inferInsert> = {};
+      if (is_published !== undefined) updateFields.is_published = is_published;
+      if (min_completion_pct !== undefined) updateFields.min_completion_pct = min_completion_pct;
+      if (require_quiz_pass !== undefined) updateFields.require_quiz_pass = require_quiz_pass;
       await withAdminContext(async (adminDb) =>
-        adminDb.update(courses).set({ is_published }).where(eq(courses.id, id))
+        adminDb.update(courses).set(updateFields).where(eq(courses.id, id))
       );
       return NextResponse.json({ success: true });
     }

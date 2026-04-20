@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db, withAdminContext } from '@kunacademy/db';
 import { getAuthUser } from '@kunacademy/auth/server';
 import { eq, and, inArray, sql } from 'drizzle-orm';
-import { lessons, enrollments, lesson_progress, certificates, quizzes, quiz_questions, quiz_attempts } from '@kunacademy/db/schema';
+import { lessons, enrollments, lesson_progress, certificates, quizzes, quiz_questions, quiz_attempts, courses } from '@kunacademy/db/schema';
 
 /**
  * Returns quiz IDs that are published, have ≥ 1 question, and the user has NOT yet passed.
@@ -178,8 +178,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: e?.message ?? 'Progress update failed' }, { status: 500 });
   }
 
-  // Check if ALL lessons are completed → mark enrollment as completed
+  // Check if enough lessons are completed → mark enrollment as completed
   if (completed) {
+    // Fetch course-level cert gate config
+    const courseRows = await db
+      .select({ min_completion_pct: courses.min_completion_pct, require_quiz_pass: courses.require_quiz_pass })
+      .from(courses)
+      .where(eq(courses.id, courseId))
+      .limit(1);
+    const courseConfig = courseRows[0] ?? { min_completion_pct: 100, require_quiz_pass: true };
+
     const allLessons = await db
       .select({ id: lessons.id })
       .from(lessons)
@@ -198,7 +206,13 @@ export async function POST(request: NextRequest) {
         )
       );
 
-    if (allLessons.length > 0 && completedLessons.length >= allLessons.length) {
+    // Divide-by-zero guard: if course has no lessons, skip completion check.
+    // Otherwise use Math.floor to avoid fractional pct granting cert early.
+    const completionPct = allLessons.length === 0
+      ? 100
+      : Math.floor((completedLessons.length / allLessons.length) * 100);
+
+    if (completionPct >= courseConfig.min_completion_pct) {
       const completedAt = new Date();
       await withAdminContext(async (adminDb) => {
         await adminDb
@@ -207,14 +221,16 @@ export async function POST(request: NextRequest) {
           .where(eq(enrollments.id, enrollment.id));
       });
 
-      // Quiz-pass gate: check if any published quizzes with questions remain unpasssed
-      const pendingQuizzes = await getPendingQuizzes(courseId, user.id);
-      if (pendingQuizzes.length > 0) {
-        return NextResponse.json({
-          progress: progressRow,
-          certificate_pending: 'quiz_not_passed',
-          pending_quizzes: pendingQuizzes,
-        });
+      // Quiz-pass gate: only enforced when course.require_quiz_pass === true
+      if (courseConfig.require_quiz_pass) {
+        const pendingQuizzes = await getPendingQuizzes(courseId, user.id);
+        if (pendingQuizzes.length > 0) {
+          return NextResponse.json({
+            progress: progressRow,
+            certificate_pending: 'quiz_not_passed',
+            pending_quizzes: pendingQuizzes,
+          });
+        }
       }
 
       // Auto-generate certificate if not already existing

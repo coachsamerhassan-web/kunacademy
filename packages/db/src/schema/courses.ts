@@ -31,6 +31,8 @@ export const courses = pgTable("courses", {
   price_sar: integer("price_sar").default(0),
   total_lessons: integer("total_lessons").default(0),
   total_video_minutes: integer("total_video_minutes").default(0),
+  min_completion_pct: integer("min_completion_pct").notNull().default(100),
+  require_quiz_pass: boolean("require_quiz_pass").notNull().default(true),
 });
 
 export type Courses = typeof courses.$inferSelect;
