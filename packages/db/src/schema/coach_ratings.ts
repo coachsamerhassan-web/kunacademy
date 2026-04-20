@@ -14,7 +14,10 @@ export const coach_ratings = pgTable("coach_ratings", {
   // booking_id links rating to the specific session (UNIQUE — one rating per booking)
   booking_id: uuid("booking_id").references(() => bookings.id, { onDelete: 'set null' }),
   is_published: boolean("is_published").default(false),
-  // privacy: 'public' (default, can be promoted to testimonial) | 'private'
+  // privacy: 'public' | 'private'
+  // CRITICAL: When a rating display/aggregation endpoint is built (e.g., /api/coaches/[id]/ratings),
+  // it MUST filter by privacy='public' OR expose only to the client who gave the rating OR admin.
+  // Private ratings should appear only in admin audit views and aggregate averages.
   privacy: text("privacy").default('public'),
   // rated_at: explicit timestamp when client submitted (separate from created_at)
   rated_at: timestamp("rated_at", { withTimezone: true, mode: 'string' }).defaultNow(),

@@ -82,10 +82,15 @@ export async function POST(
     );
   }
 
-  // ── Reject cancelled / no_show ────────────────────────────────────────────
-  if (booking.status === 'cancelled' || booking.status === 'no_show') {
+  // ── Reject cancelled / no_show / refunded ────────────────────────────────
+  const TERMINAL_STATUSES = new Set(['cancelled', 'no_show', 'refunded']);
+  if (TERMINAL_STATUSES.has(booking.status ?? '')) {
     return NextResponse.json(
-      { error: `Cannot force-complete a ${booking.status} booking` },
+      {
+        error:
+          'Cannot force-complete a cancelled/refunded booking. Restore the booking first.',
+        booking_status: booking.status,
+      },
       { status: 400 },
     );
   }

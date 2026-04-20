@@ -43,3 +43,10 @@ For full project rules (methodology, CMS, security, orchestration): `apps/web/CL
 - NEVER give medical, psychological, or therapeutic advice. Coaching only.
 - Payment webhooks MUST verify signatures. RLS MUST be tested.
 - Never expose credentials in code, logs, comments, or docs.
+
+## Visual work protocol
+- Visual / UI / component changes MUST land on branches named `visual/YYYY-MM-DD-feature`.
+- Check `/Users/samer/Claude Code/Project Memory/KUN-Design-Partnership/design-briefs/00-INDEX.md` for briefs.
+- Look for `.claude-design/YYYY-MM-DD-feature/` bundles before starting any visual work.
+- Respect boundary-contract: never modify route.ts, lib/, packages/db/, middleware.ts, or scripts/ from a visual/ branch.
+- If a visual/ branch approaches 48h old without merge, flag for review (drift risk).

@@ -50,19 +50,25 @@ export async function POST() {
       return NextResponse.json({ ok: true, reset_count: 0 });
     }
 
-    // Bulk reset
-    await withAdminContext(async (dbConn) => {
-      await dbConn.execute(
-        sql`
+    // Batched reset — mirror purge-email-outbox pattern (max 10k rows/run)
+    let totalReset = 0;
+    for (let i = 0; i < 20; i++) {
+      const result = await withAdminContext(async (dbConn) => {
+        return dbConn.execute(sql`
           UPDATE email_outbox
           SET    status          = 'pending',
                  attempts        = 0,
                  last_error      = NULL,
                  last_attempt_at = NULL
-          WHERE  status = 'failed'
-        `,
-      );
-    });
+          WHERE  id IN (
+            SELECT id FROM email_outbox WHERE status = 'failed' LIMIT 500
+          )
+        `);
+      });
+      const resetCount = (result as { rowCount?: number }).rowCount ?? 0;
+      totalReset += resetCount;
+      if (resetCount < 500) break;
+    }
 
     // Audit each row (non-blocking, fire-and-forget pattern)
     await Promise.allSettled(
@@ -82,7 +88,7 @@ export async function POST() {
       ),
     );
 
-    return NextResponse.json({ ok: true, reset_count: failedRows.length });
+    return NextResponse.json({ ok: true, reset_count: totalReset });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error('[api/admin/email-outbox/retry-all]', msg);
