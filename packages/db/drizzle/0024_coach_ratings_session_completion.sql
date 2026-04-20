@@ -1,4 +1,4 @@
--- 0023: Coach Ratings — session completion signal + rating linkage
+-- 0024: Coach Ratings — session completion signal + rating linkage
 -- Wave S9: Coach marks session completed → client receives rating prompt
 -- Created: 2026-04-20
 
