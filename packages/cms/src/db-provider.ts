@@ -903,49 +903,33 @@ export class DbContentProvider implements ContentProvider {
   }
 
   async getAllTeamMembers(): Promise<TeamMember[]> {
-    try {
-      const { db, and, eq, asc } = await import('@kunacademy/db');
-      const { instructors } = await import('@kunacademy/db/schema');
-      const rows = await db
-        .select()
-        .from(instructors)
-        .where(and(eq(instructors.published, true), eq(instructors.is_visible, true)))
-        .orderBy(asc(instructors.display_order));
-      return rows.map((r) => this.mapInstructorRow(r));
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.error(`[cms/db] DB read failed for getAllTeamMembers; falling back to JSON: ${msg}`);
-      return this.fallback.getAllTeamMembers();
-    }
+    // Phase 3b (2026-04-21): DB-only. team.json archived.
+    const { db, and, eq, asc } = await import('@kunacademy/db');
+    const { instructors } = await import('@kunacademy/db/schema');
+    const rows = await db
+      .select()
+      .from(instructors)
+      .where(and(eq(instructors.published, true), eq(instructors.is_visible, true)))
+      .orderBy(asc(instructors.display_order));
+    return rows.map((r) => this.mapInstructorRow(r));
   }
 
   async getBookableCoaches(): Promise<TeamMember[]> {
-    try {
-      const all = await this.getAllTeamMembers();
-      return all.filter((t) => t.is_bookable);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.error(`[cms/db] DB read failed for getBookableCoaches; falling back to JSON: ${msg}`);
-      return this.fallback.getBookableCoaches();
-    }
+    const all = await this.getAllTeamMembers();
+    return all.filter((t) => t.is_bookable);
   }
 
   async getTeamMember(slug: string): Promise<TeamMember | null> {
-    try {
-      const { db, and, eq } = await import('@kunacademy/db');
-      const { instructors } = await import('@kunacademy/db/schema');
-      const rows = await db
-        .select()
-        .from(instructors)
-        .where(and(eq(instructors.slug, slug), eq(instructors.published, true)))
-        .limit(1);
-      const row = rows[0];
-      return row ? this.mapInstructorRow(row) : null;
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.error(`[cms/db] DB read failed for getTeamMember; falling back to JSON: ${msg}`);
-      return this.fallback.getTeamMember(slug);
-    }
+    // Phase 3b (2026-04-21): DB-only. team.json archived.
+    const { db, and, eq } = await import('@kunacademy/db');
+    const { instructors } = await import('@kunacademy/db/schema');
+    const rows = await db
+      .select()
+      .from(instructors)
+      .where(and(eq(instructors.slug, slug), eq(instructors.published, true)))
+      .limit(1);
+    const row = rows[0];
+    return row ? this.mapInstructorRow(row) : null;
   }
 
   /**

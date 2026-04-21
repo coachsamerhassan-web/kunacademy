@@ -21,12 +21,8 @@ import type {
   BlogPost,
 } from './types';
 
-/** Parse comma-separated string into string[] (for specialties, languages, etc.) */
-function csvToArray(value: string | undefined): string[] {
-  if (!value) return [];
-  return value.split(',').map((s) => s.trim()).filter(Boolean);
-}
-
+// Phase 3b (2026-04-21): csvToArray helper removed — team/specialties/languages
+// normalization now happens in DbContentProvider.mapInstructorRow.
 // Phase 3 PARTIAL (2026-04-21): program/event asset maps removed — now live
 // in DbContentProvider normalizers (rowToProgram / rowToEvent). See db-provider.ts.
 
@@ -132,36 +128,18 @@ export class JsonFileProvider implements ContentProvider {
     this.migrated('getService');
   }
 
-  // ── Sheet 4: Team ─────────────────────────────────────────────────────
-
-  private normalizeTeamMember(t: TeamMember): TeamMember {
-    return {
-      ...t,
-      languages: Array.isArray(t.languages) ? t.languages : csvToArray(t.languages as unknown as string),
-      specialties: Array.isArray(t.specialties) ? t.specialties : csvToArray(t.specialties as unknown as string),
-      coaching_styles: Array.isArray(t.coaching_styles) ? t.coaching_styles : csvToArray(t.coaching_styles as unknown as string),
-      // Map legacy coach_level column → icf_credential (unless icf_credential is already set)
-      icf_credential: t.icf_credential ?? t.coach_level,
-    };
-  }
+  // ── Sheet 4: Team (MIGRATED → instructors) ──────────────────────────────
 
   async getAllTeamMembers(): Promise<TeamMember[]> {
-    const rows = await this.loadSheet<TeamMember>('team');
-    return this.published(rows)
-      .filter((t) => t.is_visible)
-      .map((t) => this.normalizeTeamMember(t))
-      .sort((a, b) => a.display_order - b.display_order);
+    this.migrated('getAllTeamMembers');
   }
 
   async getBookableCoaches(): Promise<TeamMember[]> {
-    const all = await this.getAllTeamMembers();
-    return all.filter((t) => t.is_bookable);
+    this.migrated('getBookableCoaches');
   }
 
-  async getTeamMember(slug: string): Promise<TeamMember | null> {
-    const rows = await this.loadSheet<TeamMember>('team');
-    const member = this.published(rows).find((t) => t.slug === slug);
-    return member ? this.normalizeTeamMember(member) : null;
+  async getTeamMember(_slug: string): Promise<TeamMember | null> {
+    this.migrated('getTeamMember');
   }
 
   // ── Sheet 5: Settings (MIGRATED → site_settings) ────────────────────────
