@@ -73,3 +73,4 @@ export * from './site_settings';
 export * from './quotes';
 export * from './landing_pages';
 export * from './programs';
+export * from './events';

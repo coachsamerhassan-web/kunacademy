@@ -1045,16 +1045,166 @@ export class DbContentProvider implements ContentProvider {
     return this.fallback.getPathfinderChildren(parentAnswerId);
   }
 
+  // ── MIGRATED: Events (Phase 2e) ───────────────────────────────────────────
+
+  /**
+   * DB row → CMS Event mapper. Numeric columns come back as strings from pg;
+   * date columns as YYYY-MM-DD strings; text[] as string[]. We coerce pricing
+   * to numbers (Event type requires number) and keep optional fields nullable
+   * via `?? undefined`.
+   */
+  private rowToEvent(r: {
+    slug: string;
+    title_ar: string;
+    title_en: string;
+    description_ar: string | null;
+    description_en: string | null;
+    date_start: string;
+    date_end: string | null;
+    location_ar: string | null;
+    location_en: string | null;
+    location_type: string;
+    capacity: number | null;
+    price_aed: string | number;
+    price_egp: string | number;
+    price_usd: string | number;
+    image_url: string | null;
+    promo_video_url: string | null;
+    program_slug: string | null;
+    speaker_slugs: string[] | null;
+    registration_url: string | null;
+    registration_deadline: string | null;
+    status: string;
+    is_featured: boolean;
+    display_order: number;
+    published: boolean;
+    last_edited_by: string | null;
+    last_edited_at: Date | string | null;
+  }): Event {
+    const num = (v: string | number | null | undefined): number => {
+      if (v === null || v === undefined || v === '') return 0;
+      return typeof v === 'number' ? v : Number(v);
+    };
+    return {
+      slug: r.slug,
+      title_ar: r.title_ar,
+      title_en: r.title_en,
+      description_ar: r.description_ar ?? undefined,
+      description_en: r.description_en ?? undefined,
+      date_start: r.date_start,
+      date_end: r.date_end ?? undefined,
+      location_ar: r.location_ar ?? undefined,
+      location_en: r.location_en ?? undefined,
+      location_type: r.location_type as Event['location_type'],
+      capacity: r.capacity ?? undefined,
+      price_aed: num(r.price_aed),
+      price_egp: num(r.price_egp),
+      price_usd: num(r.price_usd),
+      image_url: r.image_url ?? undefined,
+      promo_video_url: r.promo_video_url ?? undefined,
+      program_slug: r.program_slug ?? undefined,
+      registration_url: r.registration_url ?? undefined,
+      status: r.status as Event['status'],
+      speaker_slugs: r.speaker_slugs ?? [],
+      registration_deadline: r.registration_deadline ?? undefined,
+      is_featured: r.is_featured,
+      display_order: r.display_order,
+      published: r.published,
+      last_edited_by: r.last_edited_by ?? undefined,
+      last_edited_at:
+        r.last_edited_at instanceof Date
+          ? r.last_edited_at.toISOString()
+          : r.last_edited_at ?? undefined,
+    };
+  }
+
   async getAllEvents(): Promise<Event[]> {
-    return this.fallback.getAllEvents();
+    try {
+      const { db, eq, asc } = await import('@kunacademy/db');
+      const { events } = await import('@kunacademy/db/schema');
+      const rows = await db
+        .select()
+        .from(events)
+        .where(eq(events.published, true))
+        .orderBy(asc(events.display_order));
+      return rows.map((r) => this.rowToEvent(r));
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[cms/db] DB read failed for getAllEvents; falling back to JSON: ${msg}`);
+      return this.fallback.getAllEvents();
+    }
   }
 
   async getUpcomingEvents(): Promise<Event[]> {
-    return this.fallback.getUpcomingEvents();
+    try {
+      const all = await this.getAllEvents();
+      const today = new Date().toISOString().split('T')[0];
+      return all
+        .filter((e) => e.date_start >= today)
+        .sort((a, b) => a.date_start.localeCompare(b.date_start));
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[cms/db] DB read failed for getUpcomingEvents; falling back to JSON: ${msg}`);
+      return this.fallback.getUpcomingEvents();
+    }
   }
 
   async getEvent(slug: string): Promise<Event | null> {
-    return this.fallback.getEvent(slug);
+    try {
+      const { db, and, eq } = await import('@kunacademy/db');
+      const { events } = await import('@kunacademy/db/schema');
+      const rows = await db
+        .select()
+        .from(events)
+        .where(and(eq(events.slug, slug), eq(events.published, true)))
+        .limit(1);
+      const r = rows[0];
+      return r ? this.rowToEvent(r) : null;
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[cms/db] DB read failed for getEvent(${slug}); falling back to JSON: ${msg}`);
+      return this.fallback.getEvent(slug);
+    }
+  }
+
+  /**
+   * Admin helper — list every events row including unpublished (for /admin/events).
+   */
+  async getAllEventsAdmin(): Promise<
+    Array<Event & { id: string; published_at: string | null }>
+  > {
+    try {
+      const { db, asc } = await import('@kunacademy/db');
+      const { events } = await import('@kunacademy/db/schema');
+      const rows = await db.select().from(events).orderBy(asc(events.display_order));
+      return rows.map((r) => ({
+        ...this.rowToEvent(r),
+        id: r.id,
+        published_at: r.published_at ?? null,
+      }));
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[cms/db] DB read failed for getAllEventsAdmin: ${msg}`);
+      return [];
+    }
+  }
+
+  /** Admin helper — fetch one event by UUID (admin edit). */
+  async getEventById(
+    id: string,
+  ): Promise<(Event & { id: string; published_at: string | null }) | null> {
+    try {
+      const { db, eq } = await import('@kunacademy/db');
+      const { events } = await import('@kunacademy/db/schema');
+      const rows = await db.select().from(events).where(eq(events.id, id)).limit(1);
+      const r = rows[0];
+      if (!r) return null;
+      return { ...this.rowToEvent(r), id: r.id, published_at: r.published_at ?? null };
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[cms/db] DB read failed for getEventById(${id}): ${msg}`);
+      return null;
+    }
   }
 
   async getAllBlogPosts(): Promise<BlogPost[]> {
