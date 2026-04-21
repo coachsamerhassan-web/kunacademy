@@ -221,16 +221,150 @@ export class DbContentProvider implements ContentProvider {
     return this.fallback.getFeaturedPrograms();
   }
 
+  // ── MIGRATED: Services (Phase 2a) ────────────────────────────────────────
   async getAllServices(): Promise<Service[]> {
-    return this.fallback.getAllServices();
+    try {
+      const { db, eq, asc } = await import('@kunacademy/db');
+      const { services, service_categories } = await import('@kunacademy/db/schema');
+      // Left-join to get the category slug (CMS Service.category is ServiceCategory enum)
+      const rows = await db
+        .select({
+          slug: services.slug,
+          name_ar: services.name_ar,
+          name_en: services.name_en,
+          description_ar: services.description_ar,
+          description_en: services.description_en,
+          duration_minutes: services.duration_minutes,
+          price_aed: services.price_aed,
+          price_egp: services.price_egp,
+          price_usd: services.price_usd,
+          price_eur: services.price_eur,
+          price_sar: services.price_sar,
+          sessions_count: services.sessions_count,
+          validity_days: services.validity_days,
+          discount_percentage: services.discount_percentage,
+          discount_valid_until: services.discount_valid_until,
+          installment_enabled: services.installment_enabled,
+          bundle_id: services.bundle_id,
+          display_order: services.display_order,
+          is_free: services.is_free,
+          coach_slug: services.coach_slug,
+          coach_level_min: services.coach_level_min,
+          coach_level_exact: services.coach_level_exact,
+          student_only: services.student_only,
+          icf_credential_target: services.icf_credential_target,
+          program_slug: services.program_slug,
+          published: services.published,
+          last_edited_by: services.last_edited_by,
+          last_edited_at: services.last_edited_at,
+          category_slug: service_categories.slug,
+        })
+        .from(services)
+        .leftJoin(service_categories, eq(services.category_id, service_categories.id))
+        .where(eq(services.published, true))
+        .orderBy(asc(services.display_order));
+
+      return rows.map((r) => this.rowToService(r));
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[cms/db] DB read failed for getAllServices; falling back to JSON: ${msg}`);
+      return this.fallback.getAllServices();
+    }
   }
 
   async getServicesByCategory(category: ServiceCategory): Promise<Service[]> {
-    return this.fallback.getServicesByCategory(category);
+    try {
+      const all = await this.getAllServices();
+      return all.filter((s) => s.category === category);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[cms/db] DB read failed for getServicesByCategory; falling back to JSON: ${msg}`);
+      return this.fallback.getServicesByCategory(category);
+    }
   }
 
   async getService(slug: string): Promise<Service | null> {
-    return this.fallback.getService(slug);
+    try {
+      const all = await this.getAllServices();
+      return all.find((s) => s.slug === slug) ?? null;
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[cms/db] DB read failed for getService; falling back to JSON: ${msg}`);
+      return this.fallback.getService(slug);
+    }
+  }
+
+  /**
+   * Map a DB row (with joined category_slug) into the CMS Service type.
+   * Category fallback: if no service_categories row exists (legacy rows), default to 'seeker'.
+   */
+  private rowToService(r: {
+    slug: string | null;
+    name_ar: string;
+    name_en: string;
+    description_ar: string | null;
+    description_en: string | null;
+    duration_minutes: number;
+    price_aed: number | null;
+    price_egp: number | null;
+    price_usd: number | null;
+    price_eur: number | null;
+    price_sar: number | null;
+    sessions_count: number | null;
+    validity_days: number | null;
+    discount_percentage: number | null;
+    discount_valid_until: string | null;
+    installment_enabled: boolean;
+    bundle_id: string | null;
+    display_order: number;
+    is_free: boolean;
+    coach_slug: string | null;
+    coach_level_min: string | null;
+    coach_level_exact: string | null;
+    student_only: boolean;
+    icf_credential_target: string | null;
+    program_slug: string | null;
+    published: boolean;
+    last_edited_by: string | null;
+    last_edited_at: Date | string | null;
+    category_slug: string | null;
+  }): Service {
+    const cat = (r.category_slug ?? 'seeker') as ServiceCategory;
+    return {
+      slug: r.slug ?? '',
+      name_ar: r.name_ar,
+      name_en: r.name_en,
+      description_ar: r.description_ar ?? undefined,
+      description_en: r.description_en ?? undefined,
+      category: cat,
+      duration_minutes: r.duration_minutes,
+      // TheaterPricing (price_aed/egp/usd/eur) — coerce nulls to 0
+      // price_sar exists in DB but not in CMS TheaterPricing — intentionally not emitted
+      price_aed: r.price_aed ?? 0,
+      price_egp: r.price_egp ?? 0,
+      price_usd: r.price_usd ?? 0,
+      price_eur: r.price_eur ?? 0,
+      coach_slug: r.coach_slug ?? undefined,
+      sessions_count: r.sessions_count ?? undefined,
+      validity_days: r.validity_days ?? undefined,
+      discount_percentage: r.discount_percentage ?? undefined,
+      discount_valid_until: r.discount_valid_until ?? undefined,
+      installment_enabled: r.installment_enabled,
+      bundle_id: r.bundle_id ?? undefined,
+      display_order: r.display_order,
+      is_free: r.is_free,
+      coach_level_min: r.coach_level_min ?? undefined,
+      coach_level_exact: r.coach_level_exact ?? undefined,
+      student_only: r.student_only,
+      icf_credential_target: r.icf_credential_target ?? undefined,
+      program_slug: r.program_slug ?? undefined,
+      published: r.published,
+      last_edited_by: r.last_edited_by ?? undefined,
+      last_edited_at:
+        r.last_edited_at instanceof Date
+          ? r.last_edited_at.toISOString()
+          : r.last_edited_at ?? undefined,
+    };
   }
 
   async getAllTeamMembers(): Promise<TeamMember[]> {
