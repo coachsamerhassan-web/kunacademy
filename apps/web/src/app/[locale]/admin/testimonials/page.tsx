@@ -6,18 +6,37 @@ import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
 import { Button } from '@kunacademy/ui/button';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Star, Eye, X } from 'lucide-react';
+import Link from 'next/link';
+import { ArrowLeft, Star, Eye, X, Plus, Pencil } from 'lucide-react';
 
 interface Testimonial {
   id: string;
-  client_name: string;
-  program_name: string | null;
-  text_ar: string | null;
-  text_en: string | null;
+  author_name_ar: string | null;
+  author_name_en: string | null;
+  content_ar: string | null;
+  content_en: string | null;
+  coach_id: string | null;
+  program: string | null;
+  rating: number | null;
+  video_url: string | null;
   is_featured: boolean;
-  is_approved: boolean;
+  source_type: string | null;
+  migrated_at: string | null;
+  role_ar: string | null;
+  role_en: string | null;
+  location_ar: string | null;
+  location_en: string | null;
+  country_code: string | null;
+  display_order: number;
+  legacy_slug: string | null;
   language: string;
-  created_at: string;
+}
+
+// Country flag emoji from ISO-3166 code
+function flagFromCode(code: string | null): string {
+  if (!code || code.length !== 2) return '';
+  const c = code.toUpperCase();
+  return String.fromCodePoint(c.charCodeAt(0) + 127397, c.charCodeAt(1) + 127397);
 }
 
 export default function AdminTestimonialsPage() {
@@ -39,16 +58,17 @@ export default function AdminTestimonialsPage() {
     const res = await fetch(`/api/admin/testimonials?${params}`);
     const data = await res.json();
     let rows = data.testimonials ?? [];
-    if (filter.language) rows = rows.filter((t: Testimonial) => t.language === filter.language);
+    if (filter.language) rows = rows.filter((t: Testimonial) => t.language === filter.language || t.language === 'both');
     setItems(rows);
     setLoading(false);
   }, [filter]);
 
   useEffect(() => {
     if (authLoading) return;
-    if (!user || profile?.role !== 'admin') { router.push('/' + locale + '/auth/login'); return; }
+    const role = (profile as { role?: string } | null)?.role;
+    if (!user || (role !== 'admin' && role !== 'super_admin')) { router.push('/' + locale + '/auth/login'); return; }
     load();
-  }, [user, profile, authLoading, load]);
+  }, [user, profile, authLoading, load, locale, router]);
 
   async function toggleFeatured(t: Testimonial) {
     await fetch('/api/admin/testimonials', {
@@ -64,7 +84,7 @@ export default function AdminTestimonialsPage() {
     await fetch('/api/admin/testimonials', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ids: [...selected], is_featured: featured }),
+      body: JSON.stringify({ ids: [...selected], action: featured ? 'feature' : 'unfeature' }),
     });
     setSelected(new Set());
     await load();
@@ -78,18 +98,35 @@ export default function AdminTestimonialsPage() {
     setSelected(prev => prev.size === items.length ? new Set() : new Set(items.map(t => t.id)));
   }
 
+  function displayName(t: Testimonial): string {
+    return (isAr ? t.author_name_ar : t.author_name_en) || t.author_name_en || t.author_name_ar || '—';
+  }
+
+  function displayRole(t: Testimonial): string {
+    return (isAr ? t.role_ar : t.role_en) || t.role_en || t.role_ar || '';
+  }
+
+  function displayLocation(t: Testimonial): string {
+    return (isAr ? t.location_ar : t.location_en) || t.location_en || t.location_ar || '';
+  }
+
   if (authLoading || loading) return <Section><p className="text-center py-12">Loading...</p></Section>;
 
-  const programs = [...new Set(items.map(t => t.program_name).filter(Boolean))] as string[];
+  const programs = [...new Set(items.map(t => t.program).filter(Boolean))] as string[];
 
   return (
     <main>
       <Section variant="white">
         <div className="flex items-center justify-between">
           <Heading level={1}>{isAr ? 'إدارة الشهادات' : 'Testimonials'}</Heading>
-          <a href={'/' + locale + '/admin'} className="text-[var(--color-primary)] text-sm hover:underline">
-            <ArrowLeft className="w-4 h-4 inline-block rtl:rotate-180" /> {isAr ? 'لوحة الإدارة' : 'Dashboard'}
-          </a>
+          <div className="flex items-center gap-3">
+            <Link href={`/${locale}/admin/testimonials/new`} className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--color-primary)] text-white px-3 py-1.5 text-sm hover:opacity-90">
+              <Plus className="w-4 h-4" /> {isAr ? 'إضافة شهادة' : 'New Testimonial'}
+            </Link>
+            <a href={'/' + locale + '/admin'} className="text-[var(--color-primary)] text-sm hover:underline">
+              <ArrowLeft className="w-4 h-4 inline-block rtl:rotate-180" /> {isAr ? 'لوحة الإدارة' : 'Dashboard'}
+            </a>
+          </div>
         </div>
 
         {/* Filters + Bulk */}
@@ -123,33 +160,45 @@ export default function AdminTestimonialsPage() {
             <thead>
               <tr className="bg-[var(--color-neutral-50)] border-b border-[var(--color-neutral-200)]">
                 <th className="px-3 py-2.5 w-8"><input type="checkbox" checked={selected.size === items.length && items.length > 0} onChange={toggleAll} className="rounded" aria-label={isAr ? 'تحديد كل الشهادات' : 'Select all testimonials'} /></th>
+                <th className="px-3 py-2.5 text-center font-medium text-[var(--color-neutral-500)] w-14" title={isAr ? 'ترتيب العرض' : 'Display order'}>{isAr ? 'ترتيب' : 'Order'}</th>
                 <th className="px-3 py-2.5 text-start font-medium text-[var(--color-neutral-500)]">{isAr ? 'الاسم' : 'Name'}</th>
+                <th className="px-3 py-2.5 text-start font-medium text-[var(--color-neutral-500)]">{isAr ? 'الدور' : 'Role'}</th>
+                <th className="px-3 py-2.5 text-start font-medium text-[var(--color-neutral-500)]">{isAr ? 'الموقع' : 'Location'}</th>
+                <th className="px-3 py-2.5 text-center font-medium text-[var(--color-neutral-500)] w-14">{isAr ? 'الدولة' : 'Country'}</th>
                 <th className="px-3 py-2.5 text-start font-medium text-[var(--color-neutral-500)]">{isAr ? 'البرنامج' : 'Program'}</th>
                 <th className="px-3 py-2.5 text-start font-medium text-[var(--color-neutral-500)]">{isAr ? 'اللغة' : 'Lang'}</th>
                 <th className="px-3 py-2.5 text-center font-medium text-[var(--color-neutral-500)]">{isAr ? 'مميّز' : 'Featured'}</th>
-                <th className="px-3 py-2.5 text-start font-medium text-[var(--color-neutral-500)]">{isAr ? 'مقتطف' : 'Preview'}</th>
                 <th className="px-3 py-2.5"></th>
               </tr>
             </thead>
             <tbody>
               {items.map(t => (
                 <tr key={t.id} className="border-b border-[var(--color-neutral-100)] hover:bg-[var(--color-neutral-50)]">
-                  <td className="px-3 py-2.5"><input type="checkbox" checked={selected.has(t.id)} onChange={() => toggleSelect(t.id)} className="rounded" aria-label={isAr ? `تحديد شهادة ${t.client_name}` : `Select testimonial by ${t.client_name}`} /></td>
-                  <td className="px-3 py-2.5 font-medium text-[var(--text-primary)]">{t.client_name}</td>
-                  <td className="px-3 py-2.5 text-[var(--color-neutral-500)] text-xs">{t.program_name || '—'}</td>
+                  <td className="px-3 py-2.5"><input type="checkbox" checked={selected.has(t.id)} onChange={() => toggleSelect(t.id)} className="rounded" aria-label={isAr ? `تحديد شهادة ${displayName(t)}` : `Select testimonial by ${displayName(t)}`} /></td>
+                  <td className="px-3 py-2.5 text-center text-[var(--color-neutral-500)] tabular-nums">{t.display_order}</td>
+                  <td className="px-3 py-2.5 font-medium text-[var(--text-primary)]">{displayName(t)}</td>
+                  <td className="px-3 py-2.5 text-[var(--color-neutral-500)] text-xs">{displayRole(t) || '—'}</td>
+                  <td className="px-3 py-2.5 text-[var(--color-neutral-500)] text-xs">{displayLocation(t) || '—'}</td>
+                  <td className="px-3 py-2.5 text-center" title={t.country_code || ''}>
+                    <span className="text-lg leading-none">{flagFromCode(t.country_code)}</span>
+                    {!t.country_code && <span className="text-[var(--color-neutral-300)] text-xs">—</span>}
+                  </td>
+                  <td className="px-3 py-2.5 text-[var(--color-neutral-500)] text-xs">{t.program || '—'}</td>
                   <td className="px-3 py-2.5">
-                    <span className={`inline-block px-1.5 py-0.5 rounded text-xs font-medium ${t.language === 'ar' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'}`}>
-                      {t.language === 'ar' ? 'AR' : 'EN'}
+                    <span className={`inline-block px-1.5 py-0.5 rounded text-xs font-medium ${t.language === 'ar' ? 'bg-blue-100 text-blue-700' : t.language === 'en' ? 'bg-purple-100 text-purple-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                      {t.language === 'ar' ? 'AR' : t.language === 'en' ? 'EN' : 'AR+EN'}
                     </span>
                   </td>
                   <td className="px-3 py-2.5 text-center">
-                    <button onClick={() => toggleFeatured(t)} className="p-1">
+                    <button onClick={() => toggleFeatured(t)} className="p-1" aria-label={isAr ? 'تبديل التمييز' : 'Toggle featured'}>
                       <Star className={`w-4 h-4 ${t.is_featured ? 'text-amber-500 fill-amber-500' : 'text-[var(--color-neutral-300)]'}`} />
                     </button>
                   </td>
-                  <td className="px-3 py-2.5 text-[var(--color-neutral-500)] text-xs max-w-[200px] truncate">{(t.text_ar || t.text_en || '').slice(0, 80)}...</td>
                   <td className="px-3 py-2.5">
-                    <button onClick={() => setPreview(t)} className="p-1.5 rounded-lg hover:bg-[var(--color-neutral-100)]"><Eye className="w-3.5 h-3.5 text-[var(--color-neutral-500)]" /></button>
+                    <div className="flex items-center gap-1">
+                      <button onClick={() => setPreview(t)} className="p-1.5 rounded-lg hover:bg-[var(--color-neutral-100)]" aria-label={isAr ? 'معاينة' : 'Preview'}><Eye className="w-3.5 h-3.5 text-[var(--color-neutral-500)]" /></button>
+                      <Link href={`/${locale}/admin/testimonials/${t.id}`} className="p-1.5 rounded-lg hover:bg-[var(--color-neutral-100)]" aria-label={isAr ? 'تعديل' : 'Edit'}><Pencil className="w-3.5 h-3.5 text-[var(--color-neutral-500)]" /></Link>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -163,12 +212,17 @@ export default function AdminTestimonialsPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setPreview(null)}>
           <div className="w-full max-w-md max-h-[70vh] overflow-y-auto rounded-2xl bg-white p-6 shadow-xl" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-[var(--text-primary)]">{preview.client_name}</h3>
+              <h3 className="font-bold text-[var(--text-primary)]">{displayName(preview)}</h3>
               <button onClick={() => setPreview(null)} className="p-1 rounded-lg hover:bg-[var(--color-neutral-100)]" aria-label={isAr ? 'إغلاق' : 'Close'}><X className="w-5 h-5" /></button>
             </div>
-            {preview.program_name && <p className="text-xs text-[var(--color-neutral-400)] mb-3">{preview.program_name}</p>}
-            {preview.text_ar && <div className="text-sm leading-relaxed mb-3 whitespace-pre-line" dir="rtl">{preview.text_ar}</div>}
-            {preview.text_en && <div className="text-sm leading-relaxed whitespace-pre-line">{preview.text_en}</div>}
+            <div className="text-xs text-[var(--color-neutral-400)] mb-3 flex flex-wrap gap-2">
+              {displayRole(preview) && <span>{displayRole(preview)}</span>}
+              {displayLocation(preview) && <span>· {displayLocation(preview)}</span>}
+              {preview.country_code && <span>· {flagFromCode(preview.country_code)} {preview.country_code}</span>}
+              {preview.program && <span>· {preview.program}</span>}
+            </div>
+            {preview.content_ar && <div className="text-sm leading-relaxed mb-3 whitespace-pre-line" dir="rtl">{preview.content_ar}</div>}
+            {preview.content_en && <div className="text-sm leading-relaxed whitespace-pre-line">{preview.content_en}</div>}
           </div>
         </div>
       )}
