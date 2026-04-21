@@ -1184,20 +1184,156 @@ export class DbContentProvider implements ContentProvider {
     }
   }
 
+  // ── MIGRATED: Blog Posts ──────────────────────────────────────────────────
+
+  private rowToBlogPost(r: {
+    slug: string;
+    title_ar: string;
+    title_en: string | null;
+    excerpt_ar: string | null;
+    excerpt_en: string | null;
+    content_ar: string | null;
+    content_en: string | null;
+    content_doc_id: string | null;
+    featured_image_url: string | null;
+    category: string | null;
+    tags: string[] | null;
+    author_slug: string | null;
+    published_at: string | null;
+    reading_time_minutes: number | null;
+    is_featured: boolean;
+    display_order: number;
+    published: boolean | null;
+    meta_title_ar: string | null;
+    meta_title_en: string | null;
+    meta_description_ar: string | null;
+    meta_description_en: string | null;
+    last_edited_by: string | null;
+    last_edited_at: Date | string | null;
+  }): BlogPost {
+    return {
+      slug: r.slug,
+      title_ar: r.title_ar,
+      title_en: r.title_en ?? '',
+      excerpt_ar: r.excerpt_ar ?? undefined,
+      excerpt_en: r.excerpt_en ?? undefined,
+      content_ar: r.content_ar ?? undefined,
+      content_en: r.content_en ?? undefined,
+      content_doc_id: r.content_doc_id ?? undefined,
+      featured_image_url: r.featured_image_url ?? undefined,
+      category: r.category ?? undefined,
+      tags: r.tags ?? [],
+      author_slug: r.author_slug ?? undefined,
+      // published_at stored as TIMESTAMPTZ; downstream UI uses date-only prefix.
+      published_at:
+        r.published_at != null && typeof r.published_at === 'string'
+          ? r.published_at.slice(0, 10)
+          : r.published_at ?? undefined,
+      reading_time_minutes: r.reading_time_minutes ?? undefined,
+      is_featured: r.is_featured,
+      display_order: r.display_order,
+      published: r.published ?? false,
+      meta_title_ar: r.meta_title_ar ?? undefined,
+      meta_title_en: r.meta_title_en ?? undefined,
+      meta_description_ar: r.meta_description_ar ?? undefined,
+      meta_description_en: r.meta_description_en ?? undefined,
+      last_edited_by: r.last_edited_by ?? undefined,
+      last_edited_at:
+        r.last_edited_at instanceof Date
+          ? r.last_edited_at.toISOString()
+          : r.last_edited_at ?? undefined,
+    };
+  }
+
   async getAllBlogPosts(): Promise<BlogPost[]> {
-    return this.fallback.getAllBlogPosts();
+    // DB-only since Phase 3c (2026-04-21). No JSON fallback.
+    const { db, eq, asc, desc } = await import('@kunacademy/db');
+    const { blog_posts } = await import('@kunacademy/db/schema');
+    const rows = await db
+      .select()
+      .from(blog_posts)
+      .where(eq(blog_posts.published, true))
+      .orderBy(asc(blog_posts.display_order), desc(blog_posts.published_at));
+    return rows.map((r) => this.rowToBlogPost(r));
   }
 
   async getBlogPost(slug: string): Promise<BlogPost | null> {
-    return this.fallback.getBlogPost(slug);
+    // DB-only since Phase 3c (2026-04-21). No JSON fallback.
+    const { db, and, eq } = await import('@kunacademy/db');
+    const { blog_posts } = await import('@kunacademy/db/schema');
+    const rows = await db
+      .select()
+      .from(blog_posts)
+      .where(and(eq(blog_posts.slug, slug), eq(blog_posts.published, true)))
+      .limit(1);
+    const r = rows[0];
+    return r ? this.rowToBlogPost(r) : null;
   }
 
   async getFeaturedBlogPosts(): Promise<BlogPost[]> {
-    return this.fallback.getFeaturedBlogPosts();
+    const { db, and, eq, asc, desc } = await import('@kunacademy/db');
+    const { blog_posts } = await import('@kunacademy/db/schema');
+    const rows = await db
+      .select()
+      .from(blog_posts)
+      .where(and(eq(blog_posts.published, true), eq(blog_posts.is_featured, true)))
+      .orderBy(asc(blog_posts.display_order), desc(blog_posts.published_at));
+    return rows.map((r) => this.rowToBlogPost(r));
   }
 
   async getBlogPostsByCategory(category: string): Promise<BlogPost[]> {
-    return this.fallback.getBlogPostsByCategory(category);
+    const { db, and, eq, asc, desc, sql } = await import('@kunacademy/db');
+    const { blog_posts } = await import('@kunacademy/db/schema');
+    // Case-insensitive match; blog.json has mixed-case categories.
+    const rows = await db
+      .select()
+      .from(blog_posts)
+      .where(
+        and(
+          eq(blog_posts.published, true),
+          sql`LOWER(${blog_posts.category}) = LOWER(${category})`,
+        ),
+      )
+      .orderBy(asc(blog_posts.display_order), desc(blog_posts.published_at));
+    return rows.map((r) => this.rowToBlogPost(r));
+  }
+
+  /** Admin helper — list every blog_posts row including unpublished. */
+  async getAllBlogPostsAdmin(): Promise<
+    Array<BlogPost & { id: string; published_at_raw: string | null }>
+  > {
+    try {
+      const { db, asc } = await import('@kunacademy/db');
+      const { blog_posts } = await import('@kunacademy/db/schema');
+      const rows = await db.select().from(blog_posts).orderBy(asc(blog_posts.display_order));
+      return rows.map((r) => ({
+        ...this.rowToBlogPost(r),
+        id: r.id,
+        published_at_raw: r.published_at ?? null,
+      }));
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[cms/db] DB read failed for getAllBlogPostsAdmin: ${msg}`);
+      return [];
+    }
+  }
+
+  /** Admin helper — fetch one blog post by UUID. */
+  async getBlogPostById(
+    id: string,
+  ): Promise<(BlogPost & { id: string; published_at_raw: string | null }) | null> {
+    try {
+      const { db, eq } = await import('@kunacademy/db');
+      const { blog_posts } = await import('@kunacademy/db/schema');
+      const rows = await db.select().from(blog_posts).where(eq(blog_posts.id, id)).limit(1);
+      const r = rows[0];
+      if (!r) return null;
+      return { ...this.rowToBlogPost(r), id: r.id, published_at_raw: r.published_at ?? null };
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[cms/db] DB read failed for getBlogPostById(${id}): ${msg}`);
+      return null;
+    }
   }
 
   async invalidateCache(): Promise<void> {

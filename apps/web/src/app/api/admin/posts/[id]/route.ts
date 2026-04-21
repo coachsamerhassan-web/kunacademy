@@ -14,7 +14,7 @@ async function requireAdmin() {
   return user;
 }
 
-/** PATCH /api/admin/posts/[id] — update blog post metadata */
+/** PATCH /api/admin/posts/[id] — update blog post */
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -28,32 +28,47 @@ export async function PATCH(
     const {
       slug, title_ar, title_en, category,
       excerpt_ar, excerpt_en,
-      content_doc_id, featured_image,
-      is_published, published_at,
-      tags,
+      content_ar, content_en,
+      content_doc_id, featured_image_url,
+      published, published_at,
+      tags, author_slug,
+      reading_time_minutes, is_featured, display_order,
+      meta_title_ar, meta_title_en, meta_description_ar, meta_description_en,
     } = body;
 
     const row = await withAdminContext(async (adminDb) => {
-      // Compute published_at: set on publish, clear on unpublish
-      const pubAt = is_published !== undefined
-        ? (is_published ? (published_at ?? new Date().toISOString()) : null)
+      // Compute published_at: set on publish, clear on unpublish, preserve on no-change
+      const pubAt = published !== undefined
+        ? (published ? (published_at ?? new Date().toISOString()) : null)
         : undefined;
 
       const result = await adminDb.execute(
         sql`
           UPDATE blog_posts SET
-            slug            = COALESCE(${slug ?? null}, slug),
-            title_ar        = COALESCE(${title_ar ?? null}, title_ar),
-            title_en        = COALESCE(${title_en ?? null}, title_en),
-            category        = COALESCE(${category ?? null}, category),
-            excerpt_ar      = COALESCE(${excerpt_ar ?? null}, excerpt_ar),
-            excerpt_en      = COALESCE(${excerpt_en ?? null}, excerpt_en),
-            content_doc_id  = COALESCE(${content_doc_id ?? null}, content_doc_id),
-            featured_image  = COALESCE(${featured_image ?? null}, featured_image),
-            is_published    = COALESCE(${is_published ?? null}, is_published),
-            published_at    = ${pubAt !== undefined ? pubAt : sql`published_at`},
-            tags            = COALESCE(${tags !== undefined ? JSON.stringify(tags) : null}::text[], tags),
-            updated_at      = NOW()
+            slug                 = COALESCE(${slug ?? null}, slug),
+            title_ar             = COALESCE(${title_ar ?? null}, title_ar),
+            title_en             = COALESCE(${title_en ?? null}, title_en),
+            category             = COALESCE(${category ?? null}, category),
+            excerpt_ar           = COALESCE(${excerpt_ar ?? null}, excerpt_ar),
+            excerpt_en           = COALESCE(${excerpt_en ?? null}, excerpt_en),
+            content_ar           = COALESCE(${content_ar ?? null}, content_ar),
+            content_en           = COALESCE(${content_en ?? null}, content_en),
+            content_doc_id       = COALESCE(${content_doc_id ?? null}, content_doc_id),
+            featured_image_url   = COALESCE(${featured_image_url ?? null}, featured_image_url),
+            published            = COALESCE(${published ?? null}, published),
+            published_at         = ${pubAt !== undefined ? pubAt : sql`published_at`},
+            tags                 = COALESCE(${tags !== undefined ? JSON.stringify(tags) : null}::text[], tags),
+            author_slug          = COALESCE(${author_slug ?? null}, author_slug),
+            reading_time_minutes = COALESCE(${reading_time_minutes ?? null}, reading_time_minutes),
+            is_featured          = COALESCE(${is_featured ?? null}, is_featured),
+            display_order        = COALESCE(${display_order ?? null}, display_order),
+            meta_title_ar        = COALESCE(${meta_title_ar ?? null}, meta_title_ar),
+            meta_title_en        = COALESCE(${meta_title_en ?? null}, meta_title_en),
+            meta_description_ar  = COALESCE(${meta_description_ar ?? null}, meta_description_ar),
+            meta_description_en  = COALESCE(${meta_description_en ?? null}, meta_description_en),
+            last_edited_by       = ${user.id},
+            last_edited_at       = NOW(),
+            updated_at           = NOW()
           WHERE id = ${id}
           RETURNING *
         `

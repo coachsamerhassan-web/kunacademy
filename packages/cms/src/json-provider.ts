@@ -38,8 +38,8 @@ export class JsonFileProvider implements ContentProvider {
   }
 
   // ── Phase 3 PARTIAL cutover (2026-04-21) ────────────────────────────────
-  // 7 entities are DB-only. JsonFileProvider is retained only as a legacy
-  // fallback path for blog + pathfinder (un-migrated).
+  // 8 entities are DB-only after Phase 3c. JsonFileProvider is retained only
+  // as a legacy fallback path for pathfinder (un-migrated).
   // Calls to migrated-entity methods throw to surface misconfiguration.
   private migrated(method: string): never {
     throw new Error(
@@ -214,28 +214,19 @@ export class JsonFileProvider implements ContentProvider {
   }
 
   async getAllBlogPosts(): Promise<BlogPost[]> {
-    const rows = await this.loadSheet<BlogPost>('blog');
-    return rows
-      .filter((p) => p.published !== false)
-      .sort((a, b) => {
-        if (a.display_order !== b.display_order) return a.display_order - b.display_order;
-        return (b.published_at ?? '').localeCompare(a.published_at ?? '');
-      });
+    this.migrated('getAllBlogPosts');
   }
 
-  async getBlogPost(slug: string): Promise<BlogPost | null> {
-    const all = await this.getAllBlogPosts();
-    return all.find((p) => p.slug === slug) ?? null;
+  async getBlogPost(_slug: string): Promise<BlogPost | null> {
+    this.migrated('getBlogPost');
   }
 
   async getFeaturedBlogPosts(): Promise<BlogPost[]> {
-    const all = await this.getAllBlogPosts();
-    return all.filter((p) => p.is_featured);
+    this.migrated('getFeaturedBlogPosts');
   }
 
-  async getBlogPostsByCategory(category: string): Promise<BlogPost[]> {
-    const all = await this.getAllBlogPosts();
-    return all.filter((p) => p.category?.toLowerCase() === category.toLowerCase());
+  async getBlogPostsByCategory(_category: string): Promise<BlogPost[]> {
+    this.migrated('getBlogPostsByCategory');
   }
 
   async invalidateCache(): Promise<void> {

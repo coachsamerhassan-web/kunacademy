@@ -215,8 +215,8 @@ export class GoogleSheetsProvider implements ContentProvider {
   }
 
   // ── Phase 3 PARTIAL cutover (2026-04-21) ────────────────────────────────
-  // 7 entities are DB-only. GoogleSheetsProvider is retained only as a
-  // legacy fallback path for pathfinder + blog (un-migrated).
+  // 8 entities are DB-only after Phase 3c. GoogleSheetsProvider is retained
+  // only as a legacy fallback path for pathfinder (un-migrated).
   // Calls to migrated-entity methods throw to surface misconfiguration.
   private migrated(method: string): never {
     throw new Error(
@@ -391,29 +391,22 @@ export class GoogleSheetsProvider implements ContentProvider {
     this.migrated('getEvent');
   }
 
-  // ── Sheet 9: Blog ─────────────────────────────────────────────────
+  // ── Sheet 9: Blog (MIGRATED → blog_posts) ──────────────────────────────
 
   async getAllBlogPosts(): Promise<BlogPost[]> {
-    const rows = await this.loadSheet<BlogPost>('blog');
-    return this.published(rows).sort((a, b) => {
-      if (a.published_at && b.published_at) return b.published_at.localeCompare(a.published_at);
-      return a.display_order - b.display_order;
-    });
+    this.migrated('getAllBlogPosts');
   }
 
-  async getBlogPost(slug: string): Promise<BlogPost | null> {
-    const rows = await this.loadSheet<BlogPost>('blog');
-    return this.published(rows).find((p) => p.slug === slug) ?? null;
+  async getBlogPost(_slug: string): Promise<BlogPost | null> {
+    this.migrated('getBlogPost');
   }
 
   async getFeaturedBlogPosts(): Promise<BlogPost[]> {
-    const all = await this.getAllBlogPosts();
-    return all.filter((p) => p.is_featured);
+    this.migrated('getFeaturedBlogPosts');
   }
 
-  async getBlogPostsByCategory(category: string): Promise<BlogPost[]> {
-    const all = await this.getAllBlogPosts();
-    return all.filter((p) => p.category === category);
+  async getBlogPostsByCategory(_category: string): Promise<BlogPost[]> {
+    this.migrated('getBlogPostsByCategory');
   }
 
   // ── Cache ─────────────────────────────────────────────────────────────

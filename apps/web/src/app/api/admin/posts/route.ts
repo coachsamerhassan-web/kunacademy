@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db, withAdminContext } from '@kunacademy/db';
 import { getAuthUser } from '@kunacademy/auth/server';
-import { eq, desc, asc } from 'drizzle-orm';
-import { profiles, blog_posts } from '@kunacademy/db/schema';
+import { eq } from 'drizzle-orm';
+import { profiles } from '@kunacademy/db/schema';
 import { sql } from 'drizzle-orm';
 
 async function requireAdmin() {
@@ -21,46 +21,54 @@ export async function GET(request: NextRequest) {
     if (!user) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
     const { searchParams } = new URL(request.url);
-    const status = searchParams.get('status'); // 'published' | 'draft'
-    const category = searchParams.get('category');
-    const sortBy = searchParams.get('sortBy') || 'created_at'; // 'created_at' | 'title_en'
+    const statusParam = searchParams.get('status'); // 'published' | 'draft' | ''
+    const categoryParam = searchParams.get('category');
+    const searchParam = searchParams.get('search');
+    const sortBy = searchParams.get('sortBy') || 'created_at';
     const sortDir = searchParams.get('sortDir') || 'desc';
 
+    const validSortCols: Record<string, string> = {
+      created_at: 'created_at',
+      published_at: 'published_at',
+      title_en: 'title_en',
+      title_ar: 'title_ar',
+      display_order: 'display_order',
+    };
+    const col = validSortCols[sortBy] ?? 'created_at';
+    const dir = sortDir === 'asc' ? 'ASC' : 'DESC';
+
     const rows = await withAdminContext(async (adminDb) => {
-      let query = `
+      // Use drizzle sql`` template for parameter safety; dynamic ORDER BY via sql.raw (whitelisted).
+      const statusFilter =
+        statusParam === 'published'
+          ? sql` AND published = true`
+          : statusParam === 'draft'
+            ? sql` AND published = false`
+            : sql``;
+      const categoryFilter = categoryParam
+        ? sql` AND category = ${categoryParam}`
+        : sql``;
+      const searchFilter = searchParam
+        ? sql` AND (title_ar ILIKE ${'%' + searchParam + '%'} OR title_en ILIKE ${'%' + searchParam + '%'})`
+        : sql``;
+
+      const result = await adminDb.execute(sql`
         SELECT
           id, slug, title_ar, title_en, category, tags,
-          is_published, published_at, created_at, updated_at,
+          published, published_at, created_at, updated_at,
+          content_ar, content_en,
           content_doc_id, excerpt_ar, excerpt_en,
           meta_title_ar, meta_title_en, meta_description_ar, meta_description_en,
-          featured_image, author_id
+          featured_image_url, author_id, author_slug,
+          reading_time_minutes, is_featured, display_order
         FROM blog_posts
         WHERE 1=1
-      `;
-      const params: any[] = [];
-
-      if (status === 'published') {
-        query += ` AND is_published = true`;
-      } else if (status === 'draft') {
-        query += ` AND is_published = false`;
-      }
-
-      if (category) {
-        params.push(category);
-        query += ` AND category = $${params.length}`;
-      }
-
-      const validSortCols: Record<string, string> = {
-        created_at: 'created_at',
-        published_at: 'published_at',
-        title_en: 'title_en',
-        title_ar: 'title_ar',
-      };
-      const col = validSortCols[sortBy] ?? 'created_at';
-      const dir = sortDir === 'asc' ? 'ASC' : 'DESC';
-      query += ` ORDER BY ${col} ${dir} NULLS LAST LIMIT 200`;
-
-      const result = await adminDb.execute(sql.raw(query));
+        ${statusFilter}
+        ${categoryFilter}
+        ${searchFilter}
+        ORDER BY ${sql.raw(col)} ${sql.raw(dir)} NULLS LAST
+        LIMIT 500
+      `);
       return result.rows as any[];
     });
 
@@ -81,9 +89,12 @@ export async function POST(request: NextRequest) {
     const {
       slug, title_ar, title_en, category,
       excerpt_ar, excerpt_en,
-      content_doc_id, featured_image,
-      is_published, published_at,
-      tags,
+      content_ar, content_en,
+      content_doc_id, featured_image_url,
+      published, published_at,
+      tags, author_slug,
+      reading_time_minutes, is_featured, display_order,
+      meta_title_ar, meta_title_en, meta_description_ar, meta_description_en,
     } = body;
 
     if (!slug || !title_ar) {
@@ -94,17 +105,32 @@ export async function POST(request: NextRequest) {
       const result = await adminDb.execute(
         sql`
           INSERT INTO blog_posts
-            (slug, title_ar, title_en, category, excerpt_ar, excerpt_en,
-             content_doc_id, featured_image, is_published, published_at, tags, author_id,
+            (slug, title_ar, title_en, category,
+             excerpt_ar, excerpt_en,
+             content_ar, content_en,
+             content_doc_id, featured_image_url,
+             published, published_at,
+             tags, author_id, author_slug,
+             reading_time_minutes, is_featured, display_order,
+             meta_title_ar, meta_title_en, meta_description_ar, meta_description_en,
+             last_edited_by, last_edited_at,
              created_at, updated_at)
           VALUES
             (${slug}, ${title_ar}, ${title_en ?? null}, ${category ?? null},
              ${excerpt_ar ?? null}, ${excerpt_en ?? null},
-             ${content_doc_id ?? null}, ${featured_image ?? null},
-             ${is_published ?? false},
-             ${is_published && published_at ? published_at : is_published ? new Date().toISOString() : null},
+             ${content_ar ?? null}, ${content_en ?? null},
+             ${content_doc_id ?? null}, ${featured_image_url ?? null},
+             ${published ?? false},
+             ${published && published_at ? published_at : published ? new Date().toISOString() : null},
              ${tags ? JSON.stringify(tags) : null}::text[],
              ${user.id},
+             ${author_slug ?? null},
+             ${reading_time_minutes ?? null},
+             ${is_featured ?? false},
+             ${display_order ?? 0},
+             ${meta_title_ar ?? null}, ${meta_title_en ?? null},
+             ${meta_description_ar ?? null}, ${meta_description_en ?? null},
+             ${user.id}, NOW(),
              NOW(), NOW())
           RETURNING *
         `
