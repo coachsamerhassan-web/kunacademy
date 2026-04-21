@@ -7,9 +7,15 @@
 //   Step 2: Modulo total quotes → loops indefinitely after exhausting all 200
 //   header quote → index for today
 //   footer quote → index + 1 (always the next quote, guaranteeing a different one)
+//
+// Source of truth: @kunacademy/cms singleton (DbContentProvider in production,
+// JsonFileProvider in local dev without DATABASE_URL). Previously bypassed the
+// CMS abstraction by reading quotes.json directly from disk — rewired in
+// Phase 1b-Step3 so quotes flow through the provider layer like all other CMS
+// entities and stay DB-driven after Phase 1b-Step1 migration.
 
-import { readFileSync } from 'fs';
-import { join } from 'path';
+import { cms } from '@kunacademy/cms/server';
+import type { Quote } from '@kunacademy/cms';
 
 export interface DailyQuoteData {
   content_ar: string;
@@ -26,7 +32,7 @@ const QUOTE_EPOCH = '2026-04-07';
  * `offset` shifts the index (footer = +1 so it's always a different quote).
  */
 function pickQuote(
-  quotes: Array<{ date?: string }>,
+  quotes: Array<Pick<Quote, 'date'>>,
   offset: number
 ): number {
   if (quotes.length === 0) return 0;
@@ -48,10 +54,7 @@ export async function getDailyQuotes(): Promise<{
   footer: DailyQuoteData | null;
 }> {
   try {
-    // Load directly from the master quotes JSON (source of truth from Google Drive CSVs).
-    // Bypasses Google Sheets CMS which may have stale/old data.
-    const quotesPath = join(process.cwd(), 'data', 'cms', 'quotes.json');
-    const quotes: Array<{ quote_id: string; content_ar: string; content_en: string; author_ar: string; author_en: string; date?: string }> = JSON.parse(readFileSync(quotesPath, 'utf-8'));
+    const quotes = await cms.getAllQuotes();
     if (!quotes || quotes.length === 0) {
       return { header: null, footer: null };
     }
@@ -59,7 +62,7 @@ export async function getDailyQuotes(): Promise<{
     const headerIdx = pickQuote(quotes, 0);
     const footerIdx = pickQuote(quotes, 1);
 
-    const toData = (q: typeof quotes[number]): DailyQuoteData => ({
+    const toData = (q: Quote): DailyQuoteData => ({
       content_ar: q.content_ar,
       content_en: q.content_en,
       author_ar: q.author_ar,
