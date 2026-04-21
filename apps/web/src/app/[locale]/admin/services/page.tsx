@@ -2,11 +2,10 @@ import { cms } from '@kunacademy/cms/server';
 import { setRequestLocale } from 'next-intl/server';
 import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Pencil, Plus } from 'lucide-react';
+import Link from 'next/link';
 import type { Metadata } from 'next';
-import type { Service } from '@kunacademy/cms';
 import { ServicesMatrix } from './services-matrix';
-import servicesData from '../../../../../data/cms/services.json';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,12 +20,14 @@ export default async function AdminServicesPage({
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
+  const isAr = locale === 'ar';
 
-  // Load coaches from CMS (live source — Sheets or JSON fallback)
-  const coaches = await cms.getBookableCoaches();
-
-  // Load services directly from local JSON (static source of truth)
-  const services = (servicesData as Service[]).filter(s => s.published);
+  // Load coaches + services from CMS (DbContentProvider when DATABASE_URL set, JSON fallback otherwise).
+  // Phase 2a (CMS→DB): services is now DB-backed; dropped the direct services.json import.
+  const [coaches, services] = await Promise.all([
+    cms.getBookableCoaches(),
+    cms.getAllServices(),
+  ]);
 
   return (
     <main>
@@ -39,13 +40,29 @@ export default async function AdminServicesPage({
               {services.length} services · {coaches.length} bookable coaches
             </p>
           </div>
-          <a
-            href={`/${locale}/admin`}
-            className="flex items-center gap-1 text-sm text-[var(--color-primary)] hover:underline whitespace-nowrap mt-1"
-          >
-            <ArrowLeft className="w-4 h-4" aria-hidden="true" />
-            Dashboard
-          </a>
+          <div className="flex items-center gap-3">
+            <Link
+              href={`/${locale}/admin/services/list`}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--color-neutral-200)] px-3 py-1.5 text-sm text-[var(--text-primary)] hover:bg-[var(--color-neutral-50)]"
+            >
+              <Pencil className="w-4 h-4" aria-hidden="true" />
+              {isAr ? 'تعديل الخدمات' : 'Edit Services'}
+            </Link>
+            <Link
+              href={`/${locale}/admin/services/new`}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--color-primary)] text-white px-3 py-1.5 text-sm hover:opacity-90"
+            >
+              <Plus className="w-4 h-4" aria-hidden="true" />
+              {isAr ? 'إضافة خدمة' : 'New Service'}
+            </Link>
+            <a
+              href={`/${locale}/admin`}
+              className="flex items-center gap-1 text-sm text-[var(--color-primary)] hover:underline whitespace-nowrap"
+            >
+              <ArrowLeft className="w-4 h-4" aria-hidden="true" />
+              {isAr ? 'لوحة الإدارة' : 'Dashboard'}
+            </a>
+          </div>
         </div>
 
         {/* Legend */}
