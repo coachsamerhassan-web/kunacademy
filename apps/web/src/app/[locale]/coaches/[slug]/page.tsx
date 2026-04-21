@@ -5,6 +5,7 @@ import { cms, AsyncDocRenderer } from '@kunacademy/cms/server';
 import { Section } from '@kunacademy/ui/section';
 import { GeometricPattern } from '@kunacademy/ui/patterns';
 import { MarkdownContent } from '@/components/markdown-content';
+import CoachRatingsWidget from '@/components/coach-ratings-widget';
 import { ArrowLeft, ArrowRight, Calendar, MessageCircle, Quote } from 'lucide-react';
 import type { Metadata } from 'next';
 import type { TeamMember, Testimonial } from '@kunacademy/cms';
@@ -363,6 +364,9 @@ export default async function CoachProfilePage({ params }: Props) {
                   ))}
                 </div>
               )}
+
+              {/* Public aggregate ratings (D4 — Phase 2b bridge) */}
+              <CoachRatingsWidget slug={slug} locale={locale} />
 
               {/* Quick-book CTA (only in hero for bookable coaches) */}
               {coach.is_bookable && (
