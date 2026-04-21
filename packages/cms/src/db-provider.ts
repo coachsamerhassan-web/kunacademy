@@ -180,14 +180,41 @@ export class DbContentProvider implements ContentProvider {
     }
   }
 
-  // ── DELEGATED: All other entities → JsonFileProvider ─────────────────────
+  // ── MIGRATED: PageContent / LandingPages — Phase 2c ──────────────────────
 
   async getPageContent(slug: string): Promise<PageSections> {
-    return this.fallback.getPageContent(slug);
+    try {
+      const { db, and, eq } = await import('@kunacademy/db');
+      const { landing_pages } = await import('@kunacademy/db/schema');
+      const rows = await db
+        .select({ sections_json: landing_pages.sections_json })
+        .from(landing_pages)
+        .where(and(eq(landing_pages.slug, slug), eq(landing_pages.published, true)))
+        .limit(1);
+      const row = rows[0];
+      if (!row) return {};
+      return (row.sections_json ?? {}) as PageSections;
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[cms/db] DB read failed for getPageContent(${slug}); falling back to JSON: ${msg}`);
+      return this.fallback.getPageContent(slug);
+    }
   }
 
   async getAllPageSlugs(): Promise<string[]> {
-    return this.fallback.getAllPageSlugs();
+    try {
+      const { db, eq } = await import('@kunacademy/db');
+      const { landing_pages } = await import('@kunacademy/db/schema');
+      const rows = await db
+        .select({ slug: landing_pages.slug })
+        .from(landing_pages)
+        .where(eq(landing_pages.published, true));
+      return rows.map((r) => r.slug);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[cms/db] DB read failed for getAllPageSlugs; falling back to JSON: ${msg}`);
+      return this.fallback.getAllPageSlugs();
+    }
   }
 
   async getPageSeo(slug: string): Promise<{
@@ -198,11 +225,284 @@ export class DbContentProvider implements ContentProvider {
     og_image_url?: string;
     canonical_url?: string;
   } | null> {
-    return this.fallback.getPageSeo(slug);
+    try {
+      const { db, and, eq } = await import('@kunacademy/db');
+      const { landing_pages } = await import('@kunacademy/db/schema');
+      const rows = await db
+        .select({ seo_meta_json: landing_pages.seo_meta_json })
+        .from(landing_pages)
+        .where(and(eq(landing_pages.slug, slug), eq(landing_pages.published, true)))
+        .limit(1);
+      const row = rows[0];
+      if (!row) return null;
+      const seo = (row.seo_meta_json ?? {}) as {
+        meta_title_ar?: string;
+        meta_title_en?: string;
+        meta_description_ar?: string;
+        meta_description_en?: string;
+        og_image_url?: string;
+        canonical_url?: string;
+      };
+      // Return null when the JSONB is empty so existing consumers can fall through cleanly.
+      if (Object.keys(seo).length === 0) return null;
+      return seo;
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[cms/db] DB read failed for getPageSeo(${slug}); falling back to JSON: ${msg}`);
+      return this.fallback.getPageSeo(slug);
+    }
   }
 
   async getLandingPages(): Promise<PageContent[]> {
-    return this.fallback.getLandingPages();
+    try {
+      const { db, and, eq } = await import('@kunacademy/db');
+      const { landing_pages } = await import('@kunacademy/db/schema');
+      const rows = await db
+        .select()
+        .from(landing_pages)
+        .where(and(eq(landing_pages.published, true), eq(landing_pages.page_type, 'landing')));
+
+      // Flatten each DB row back into the legacy PageContent row-shape the CMS type expects.
+      // A page in the DB = 1 row; in the legacy shape it's one PageContent per (section, key).
+      // We emit one "synthetic" PageContent per (section, key) pair so consumers stay compatible.
+      const out: PageContent[] = [];
+      for (const r of rows) {
+        const sections = (r.sections_json ?? {}) as PageSections;
+        const seo = (r.seo_meta_json ?? {}) as {
+          meta_title_ar?: string;
+          meta_title_en?: string;
+          meta_description_ar?: string;
+          meta_description_en?: string;
+          og_image_url?: string;
+          canonical_url?: string;
+        };
+        const hero = (r.hero_json ?? {}) as {
+          hero_image_url?: string;
+          cta_text_ar?: string;
+          cta_text_en?: string;
+          cta_url?: string;
+          form_embed?: string;
+        };
+        for (const [section, keys] of Object.entries(sections)) {
+          for (const [key, bi] of Object.entries(keys)) {
+            out.push({
+              slug: r.slug,
+              section,
+              key,
+              value_ar: bi.ar ?? '',
+              value_en: bi.en ?? '',
+              type: (r.page_type as 'page' | 'landing' | 'legal') ?? 'landing',
+              meta_title_ar: seo.meta_title_ar,
+              meta_title_en: seo.meta_title_en,
+              meta_description_ar: seo.meta_description_ar,
+              meta_description_en: seo.meta_description_en,
+              og_image_url: seo.og_image_url,
+              canonical_url: seo.canonical_url,
+              hero_image_url: hero.hero_image_url,
+              cta_text_ar: hero.cta_text_ar,
+              cta_text_en: hero.cta_text_en,
+              cta_url: hero.cta_url,
+              form_embed: hero.form_embed,
+              published: r.published,
+              last_edited_by: r.last_edited_by ?? undefined,
+              last_edited_at: r.last_edited_at ?? undefined,
+            });
+          }
+        }
+      }
+      return out;
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[cms/db] DB read failed for getLandingPages; falling back to JSON: ${msg}`);
+      return this.fallback.getLandingPages();
+    }
+  }
+
+  // ── Phase 2c extension methods — not on base ContentProvider interface ────
+
+  /**
+   * Fetch one landing-page row by slug and locale.
+   * Returns locale-projected content + metadata for the /[locale]/landing/[slug] route.
+   * `locale` filters the bilingual sections_json into a flat Record<string,string>.
+   */
+  async getLandingPageBySlug(locale: 'ar' | 'en', slug: string): Promise<{
+    slug: string;
+    page_type: 'page' | 'landing' | 'legal';
+    program_slug: string | null;
+    sections: Record<string, Record<string, string>>;
+    hero: {
+      hero_image_url?: string;
+      cta_text?: string;
+      cta_url?: string;
+      form_embed?: string;
+    };
+    seo: {
+      meta_title?: string;
+      meta_description?: string;
+      og_image_url?: string;
+      canonical_url?: string;
+    };
+    published: boolean;
+  } | null> {
+    try {
+      const { db, and, eq } = await import('@kunacademy/db');
+      const { landing_pages } = await import('@kunacademy/db/schema');
+      const rows = await db
+        .select()
+        .from(landing_pages)
+        .where(and(eq(landing_pages.slug, slug), eq(landing_pages.published, true)))
+        .limit(1);
+      const row = rows[0];
+      if (!row) return null;
+
+      const sectionsJson = (row.sections_json ?? {}) as PageSections;
+      const heroJson = (row.hero_json ?? {}) as {
+        hero_image_url?: string;
+        cta_text_ar?: string;
+        cta_text_en?: string;
+        cta_url?: string;
+        form_embed?: string;
+      };
+      const seoJson = (row.seo_meta_json ?? {}) as {
+        meta_title_ar?: string;
+        meta_title_en?: string;
+        meta_description_ar?: string;
+        meta_description_en?: string;
+        og_image_url?: string;
+        canonical_url?: string;
+      };
+
+      // Project bilingual sections → single-locale strings with graceful AR↔EN fallback
+      const sections: Record<string, Record<string, string>> = {};
+      for (const [section, keys] of Object.entries(sectionsJson)) {
+        sections[section] = {};
+        for (const [key, bi] of Object.entries(keys)) {
+          sections[section][key] = locale === 'ar'
+            ? (bi.ar || bi.en || '')
+            : (bi.en || bi.ar || '');
+        }
+      }
+
+      return {
+        slug: row.slug,
+        page_type: (row.page_type as 'page' | 'landing' | 'legal') ?? 'page',
+        program_slug: row.program_slug ?? null,
+        sections,
+        hero: {
+          hero_image_url: heroJson.hero_image_url,
+          cta_text: locale === 'ar'
+            ? (heroJson.cta_text_ar || heroJson.cta_text_en)
+            : (heroJson.cta_text_en || heroJson.cta_text_ar),
+          cta_url: heroJson.cta_url,
+          form_embed: heroJson.form_embed,
+        },
+        seo: {
+          meta_title: locale === 'ar' ? seoJson.meta_title_ar : seoJson.meta_title_en,
+          meta_description: locale === 'ar' ? seoJson.meta_description_ar : seoJson.meta_description_en,
+          og_image_url: seoJson.og_image_url,
+          canonical_url: seoJson.canonical_url,
+        },
+        published: row.published,
+      };
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[cms/db] DB read failed for getLandingPageBySlug(${slug}): ${msg}`);
+      return null;
+    }
+  }
+
+  /**
+   * Admin/listing helper — returns every landing page row (including unpublished).
+   * If `locale` is passed, the sections field is projected; otherwise raw bilingual
+   * JSONB is returned for editing.
+   */
+  async getAllLandingPages(locale?: 'ar' | 'en'): Promise<Array<{
+    id: string;
+    slug: string;
+    page_type: 'page' | 'landing' | 'legal';
+    program_slug: string | null;
+    sections: PageSections | Record<string, Record<string, string>>;
+    hero_json: Record<string, unknown>;
+    seo_meta_json: Record<string, unknown>;
+    published: boolean;
+    published_at: string | null;
+    last_edited_at: string | null;
+  }>> {
+    try {
+      const { db, asc } = await import('@kunacademy/db');
+      const { landing_pages } = await import('@kunacademy/db/schema');
+      const rows = await db.select().from(landing_pages).orderBy(asc(landing_pages.slug));
+      return rows.map((r) => {
+        const sectionsJson = (r.sections_json ?? {}) as PageSections;
+        let sections: PageSections | Record<string, Record<string, string>> = sectionsJson;
+        if (locale) {
+          const projected: Record<string, Record<string, string>> = {};
+          for (const [section, keys] of Object.entries(sectionsJson)) {
+            projected[section] = {};
+            for (const [key, bi] of Object.entries(keys)) {
+              projected[section][key] = locale === 'ar'
+                ? (bi.ar || bi.en || '')
+                : (bi.en || bi.ar || '');
+            }
+          }
+          sections = projected;
+        }
+        return {
+          id: r.id,
+          slug: r.slug,
+          page_type: (r.page_type as 'page' | 'landing' | 'legal') ?? 'page',
+          program_slug: r.program_slug ?? null,
+          sections,
+          hero_json: (r.hero_json ?? {}) as Record<string, unknown>,
+          seo_meta_json: (r.seo_meta_json ?? {}) as Record<string, unknown>,
+          published: r.published,
+          published_at: r.published_at ?? null,
+          last_edited_at: r.last_edited_at ?? null,
+        };
+      });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[cms/db] DB read failed for getAllLandingPages: ${msg}`);
+      return [];
+    }
+  }
+
+  /** Fetch a single landing page row by UUID (admin edit). */
+  async getLandingPage(id: string): Promise<{
+    id: string;
+    slug: string;
+    page_type: 'page' | 'landing' | 'legal';
+    program_slug: string | null;
+    sections_json: PageSections;
+    hero_json: Record<string, unknown>;
+    seo_meta_json: Record<string, unknown>;
+    published: boolean;
+    published_at: string | null;
+    last_edited_at: string | null;
+  } | null> {
+    try {
+      const { db, eq } = await import('@kunacademy/db');
+      const { landing_pages } = await import('@kunacademy/db/schema');
+      const rows = await db.select().from(landing_pages).where(eq(landing_pages.id, id)).limit(1);
+      const r = rows[0];
+      if (!r) return null;
+      return {
+        id: r.id,
+        slug: r.slug,
+        page_type: (r.page_type as 'page' | 'landing' | 'legal') ?? 'page',
+        program_slug: r.program_slug ?? null,
+        sections_json: (r.sections_json ?? {}) as PageSections,
+        hero_json: (r.hero_json ?? {}) as Record<string, unknown>,
+        seo_meta_json: (r.seo_meta_json ?? {}) as Record<string, unknown>,
+        published: r.published,
+        published_at: r.published_at ?? null,
+        last_edited_at: r.last_edited_at ?? null,
+      };
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[cms/db] DB read failed for getLandingPage(${id}): ${msg}`);
+      return null;
+    }
   }
 
   async getAllPrograms(): Promise<Program[]> {
