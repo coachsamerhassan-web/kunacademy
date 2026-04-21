@@ -509,6 +509,18 @@ export class DbContentProvider implements ContentProvider {
     published: boolean;
     last_edited_by: string | null;
     last_edited_at: Date | string | null;
+    // Canon Phase 2 extensions (migration 0039)
+    cross_list_nav_groups?: string[] | null;
+    delivery_formats?: string[] | null;
+    individually_bookable?: boolean | null;
+    delivery_certification_required?: boolean | null;
+    grants_delivery_license?: string | null;
+    concept_by?: string | null;
+    cta_type?: string | null;
+    durations_offered?: unknown;
+    pricing_by_duration?: unknown;
+    track_color?: string | null;
+    delivery_notes?: string | null;
   }): Program {
     const num = (v: string | number | null | undefined): number => {
       if (v === null || v === undefined || v === '') return 0;
@@ -583,6 +595,33 @@ export class DbContentProvider implements ContentProvider {
         r.last_edited_at instanceof Date
           ? r.last_edited_at.toISOString()
           : r.last_edited_at ?? undefined,
+      // ── Canon Phase 2 (migration 0039) — pass-through ────────────────────
+      // Arrays: `?? undefined` so the Program type's `?: NavGroup[]` shape is
+      //   honored (empty DB default `{}` → undefined at the TS layer keeps
+      //   the "absent" semantic clean).
+      // JSONB (durations_offered, pricing_by_duration): structure is validated
+      //   by the API-layer write path; at read time we pass through as-typed.
+      cross_list_nav_groups:
+        r.cross_list_nav_groups && r.cross_list_nav_groups.length > 0
+          ? (r.cross_list_nav_groups as Program['cross_list_nav_groups'])
+          : undefined,
+      delivery_formats:
+        r.delivery_formats && r.delivery_formats.length > 0
+          ? (r.delivery_formats as Program['delivery_formats'])
+          : undefined,
+      individually_bookable: r.individually_bookable ?? undefined,
+      delivery_certification_required: r.delivery_certification_required ?? undefined,
+      grants_delivery_license: r.grants_delivery_license ?? undefined,
+      concept_by: r.concept_by ?? undefined,
+      cta_type: (r.cta_type ?? undefined) as Program['cta_type'],
+      durations_offered: r.durations_offered
+        ? (r.durations_offered as Program['durations_offered'])
+        : undefined,
+      pricing_by_duration: r.pricing_by_duration
+        ? (r.pricing_by_duration as Program['pricing_by_duration'])
+        : undefined,
+      track_color: r.track_color ?? undefined,
+      delivery_notes: r.delivery_notes ?? undefined,
     };
   }
 
