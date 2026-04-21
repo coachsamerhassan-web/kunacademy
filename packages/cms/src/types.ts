@@ -69,17 +69,30 @@ export interface PageContent extends AuditFields {
 
 // ── Sheet 2: Programs ───────────────────────────────────────────────────────
 
-/** Navigation groups for the mega-menu (7 groups from site structure) */
+/** Navigation groups for the mega-menu
+ *
+ * Canon Phase 2 (2026-04-21) added `'family'` to host the Family & Couples
+ * track (Wisal + Seeds-Youth/Parents/Caregivers). Render order is:
+ *   certifications → courses → retreats → micro-courses → family → corporate → free → community.
+ */
 export type NavGroup =
   | 'certifications'
   | 'courses'
   | 'retreats'
   | 'micro-courses'
+  | 'family'
   | 'corporate'
   | 'free'
   | 'community';
 
-/** Program type classification */
+/** Program type classification
+ *
+ * Canon Phase 2 (2026-04-21) added `'service'` for proposal-based engagements
+ * (Wisal, Seeds tiers). Service-type programs:
+ *   - suppress pricing / cohort-date / installment UI on their detail page
+ *   - render `cta_type === 'request-proposal'` button
+ *   - may still carry TheaterPricing columns for internal/proposal use
+ */
 export type ProgramType =
   | 'certification'
   | 'diploma'
@@ -88,10 +101,49 @@ export type ProgramType =
   | 'retreat'
   | 'micro-course'
   | 'workshop'
-  | 'free-resource';
+  | 'free-resource'
+  | 'service';
 
 /** Program format */
 export type ProgramFormat = 'online' | 'in-person' | 'hybrid';
+
+// ── Canon Phase 2 supporting types ──────────────────────────────────────────
+
+/** CTA variant — locked bilingual labels are rendered client-side by the
+ *  program detail page from a whitelisted map. Anything outside this union
+ *  must be rejected at write-validation (no arbitrary cta strings).
+ */
+export type CtaType =
+  | 'enroll'              // default — existing behaviour
+  | 'request-proposal'    // Wisal + Seeds tiers
+  | 'register-interest'   // Gated-launch Ihya retreats (pre-date state)
+  | 'notify-me'           // Alternative copy for gated-launch closing CTA
+  | 'contact';            // Fallback for bespoke engagements
+
+/** A single duration offering for programs that are sold at multiple lengths
+ *  (e.g. GPS 3h vs 6h, Ihya 5-day vs 7-day). `public_default` drives which
+ *  duration is shown first on the public detail page; admin UI can still
+ *  expose all of them via a selector.
+ */
+export interface DurationOffering {
+  hours: number;           // integer hours (3, 6) OR minutes-as-hours fraction — canonical is 3 | 6 for GPS
+  label_ar: string;
+  label_en: string;
+  public_default: boolean;
+}
+
+/** Per-variant, per-duration, per-currency price matrix.
+ *
+ * Shape (Samer-approved Q8, 2026-04-21):
+ *   Record<variant_slug, Record<'3h'|'6h', Record<'aed'|'egp'|'usd'|'eur', number | null>>>
+ *
+ * `null` at any leaf = price intentionally hidden (admin hasn't set it yet).
+ * `0` = free (still show the line, do not hide).
+ */
+export type PricingByDuration = Record<
+  string, // variant slug (e.g. 'gps-of-life', 'gps-accelerator', 'gps-couples', 'gps-entrepreneurs')
+  Partial<Record<'3h' | '6h', Partial<Record<'aed' | 'egp' | 'usd' | 'eur', number | null>>>>
+>;
 
 export interface Program extends AuditFields, TheaterPricing {
   slug: string;
@@ -170,6 +222,69 @@ export interface Program extends AuditFields, TheaterPricing {
   program_logo?: string;
   /** Google Doc ID for rich program content (rendered via fetchDocAsHtml) */
   content_doc_id?: string;
+
+  // ── Canon Phase 2 extensions (2026-04-21) ──────────────────────────────
+  // All fields below are OPTIONAL and ADDITIVE. Existing 34 programs validate
+  // without providing any of them.
+
+  /** Additional nav groups a program appears under (cross-listing).
+   *  Example: Seeds-Caregivers may be primary `corporate` but cross-listed
+   *  into `['family','certifications']`.
+   */
+  cross_list_nav_groups?: NavGroup[];
+
+  /** Delivery formats supported (superset of `format`, for programs that
+   *  can be delivered in multiple modes — e.g. online cohort + in-person weekend).
+   */
+  delivery_formats?: ProgramFormat[];
+
+  /** Whether a single-track entry can be booked by an individual (true) or
+   *  only sold as an institutional proposal (false). Default: true.
+   */
+  individually_bookable?: boolean;
+
+  /** Whether a delivery certification is required to run this program as a
+   *  licensed coach (e.g. Seeds-Caregivers → required to deliver Seeds-Parents).
+   */
+  delivery_certification_required?: boolean;
+
+  /** Whether graduating this program grants a license to deliver another
+   *  program to end-beneficiaries (Seeds-Caregivers grants delivery license
+   *  for Seeds-Parents; STFC grants delivery license for Wisal).
+   *  Interpreted as the slug of the downstream program the graduate may deliver.
+   */
+  grants_delivery_license?: string;
+
+  /** Concept attribution — slug of the team member who designed this
+   *  program. Single slug per Samer's Q9 decision (no array/structured).
+   */
+  concept_by?: string;
+
+  /** CTA variant rendered on the public detail page. Defaults to `'enroll'`
+   *  when omitted to preserve existing behavior for the 34 legacy programs.
+   */
+  cta_type?: CtaType;
+
+  /** Available durations (GPS variants: 3h and 6h). When present, pricing
+   *  UI shows a duration selector; when absent, `duration` string is used.
+   */
+  durations_offered?: DurationOffering[];
+
+  /** Per-variant, per-duration, per-currency price matrix. See PricingByDuration. */
+  pricing_by_duration?: PricingByDuration;
+
+  /** Track accent color (hex or Tailwind token) used to visually distinguish
+   *  cross-cutting tracks (e.g. Ihya retreats, Seeds tiers) in the mega-menu
+   *  and cards.
+   */
+  track_color?: string;
+
+  /** Free-text delivery notes for admins (internal — never surfaced to public).
+   *  Enforced by Sani's IP-grep guard: never copy session-count or beat
+   *  structure into public `description_*` fields; this field is the only
+   *  place operational/delivery detail is allowed to live.
+   */
+  delivery_notes?: string;
 }
 
 // ── Sheet 3: Services & Packages ────────────────────────────────────────────

@@ -100,6 +100,22 @@ export const programs = pgTable(
     is_featured: boolean('is_featured').notNull().default(false),
     is_free: boolean('is_free').notNull().default(false),
 
+    // ── Canon Phase 2 extensions (migration 0039) ──────────────────────────
+    // All nullable / defaulted to preserve backward compatibility with the
+    // 34 Phase 2d seeded rows. Enum widenings (nav_group `family`,
+    // type `service`) are enforced via refreshed CHECK constraints in 0038.
+    cross_list_nav_groups: text('cross_list_nav_groups').array().notNull().default([]),
+    delivery_formats: text('delivery_formats').array().notNull().default([]),
+    individually_bookable: boolean('individually_bookable'),
+    delivery_certification_required: boolean('delivery_certification_required'),
+    grants_delivery_license: text('grants_delivery_license'),
+    concept_by: text('concept_by'),
+    cta_type: text('cta_type'),
+    durations_offered: jsonb('durations_offered'),
+    pricing_by_duration: jsonb('pricing_by_duration'),
+    track_color: text('track_color'),
+    delivery_notes: text('delivery_notes'),
+
     // Ordering + lifecycle
     display_order: integer('display_order').notNull().default(0),
     published: boolean('published').notNull().default(true),

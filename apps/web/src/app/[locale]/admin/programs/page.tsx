@@ -34,12 +34,15 @@ interface ProgramRow {
   last_edited_at: string | null;
 }
 
+// Canon Phase 2 (2026-04-21): added 'family' — kept in sync with VALID_NAV_GROUPS
+// in /api/admin/programs/route.ts and NAV_GROUPS in ./_form.tsx.
 const NAV_GROUP_FILTERS = [
   '',
   'certifications',
   'courses',
   'retreats',
   'micro-courses',
+  'family',
   'corporate',
   'free',
   'community',

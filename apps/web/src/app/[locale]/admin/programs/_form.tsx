@@ -18,11 +18,14 @@ import { Button } from '@kunacademy/ui/button';
 import Link from 'next/link';
 import { ArrowLeft, ExternalLink } from 'lucide-react';
 
+// Canon Phase 2 (2026-04-21): added 'family' + 'service'. Order mirrors
+// mega-menu render order so the dropdown list is navigable by keyboard.
 const NAV_GROUPS = [
   'certifications',
   'courses',
   'retreats',
   'micro-courses',
+  'family',
   'corporate',
   'free',
   'community',
@@ -38,6 +41,7 @@ const TYPES = [
   'micro-course',
   'workshop',
   'free-resource',
+  'service',
 ] as const;
 type PType = typeof TYPES[number];
 
