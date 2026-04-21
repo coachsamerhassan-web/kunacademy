@@ -50,6 +50,8 @@ import {
   type PasswordResetEmailParams,
   sendCoachNewRatingEmail,
   type CoachNewRatingEmailParams,
+  sendUserActivationEmail,
+  type UserActivationEmailParams,
 } from '@kunacademy/email';
 
 const MAX_ATTEMPTS = 5;
@@ -155,6 +157,13 @@ async function dispatch(row: OutboxRow): Promise<void> {
       await sendCoachNewRatingEmail(
         to_email,
         payload as unknown as CoachNewRatingEmailParams,
+      );
+      return;
+
+    case 'user-activation':
+      await sendUserActivationEmail(
+        to_email,
+        payload as unknown as UserActivationEmailParams,
       );
       return;
 
