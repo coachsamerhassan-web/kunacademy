@@ -88,7 +88,7 @@ export { validateOverrideBody };
 
 export async function GET(
   _req: NextRequest,
-  context: { params: Promise<{ slug: string }> },
+  context: { params: Promise<{ id: string }> },
 ) {
   try {
     const user = await getAuthUser();
@@ -96,7 +96,9 @@ export async function GET(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const { slug } = await context.params;
+    // Dynamic segment renamed [slug] → [id] (2026-04-21) to avoid clash with
+    // sibling [id] route; the value is still a program slug, not a UUID.
+    const { id: slug } = await context.params;
 
     // Verify program exists
     const progRows = await db
@@ -124,7 +126,7 @@ export async function GET(
 
 export async function POST(
   request: NextRequest,
-  context: { params: Promise<{ slug: string }> },
+  context: { params: Promise<{ id: string }> },
 ) {
   try {
     const user = await getAuthUser();
@@ -132,7 +134,9 @@ export async function POST(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const { slug } = await context.params;
+    // Dynamic segment renamed [slug] → [id] (2026-04-21) to avoid clash with
+    // sibling [id] route; the value is still a program slug, not a UUID.
+    const { id: slug } = await context.params;
 
     // Verify program exists
     const progRows = await db

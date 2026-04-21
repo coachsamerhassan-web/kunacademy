@@ -1,10 +1,14 @@
 /**
- * /api/admin/programs/[slug]/overrides/[id] — single-item endpoints
+ * /api/admin/programs/[id]/overrides/[overrideId] — single-item endpoints
  *
  * PATCH  — update one override (price, currency, notes, or region).
  * DELETE — hard delete one override.
  *
- * The [slug] segment is checked for consistency with the override's
+ * Note: [id] is semantically the program SLUG (named [id] to avoid conflict
+ * with sibling [id] program route). [overrideId] is the UUID of the override
+ * row. Renamed from [slug]/overrides/[id] on 2026-04-21.
+ *
+ * The [id] (slug) segment is checked for consistency with the override's
  * program_slug so that cross-program edits are rejected (404 if mismatch).
  */
 
@@ -21,7 +25,7 @@ function isAdmin(role: string | undefined): boolean {
 
 export async function PATCH(
   request: NextRequest,
-  context: { params: Promise<{ slug: string; id: string }> },
+  context: { params: Promise<{ id: string; overrideId: string }> },
 ) {
   try {
     const user = await getAuthUser();
@@ -29,7 +33,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const { slug, id } = await context.params;
+    const { id: slug, overrideId: id } = await context.params;
 
     // Check override exists and belongs to this program slug
     const existing = await db
@@ -68,14 +72,14 @@ export async function PATCH(
         { status: 409 },
       );
     }
-    console.error('[api/admin/programs/[slug]/overrides/[id] PATCH]', msg);
+    console.error('[api/admin/programs/[id]/overrides/[overrideId] PATCH]', msg);
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
 
 export async function DELETE(
   _req: NextRequest,
-  context: { params: Promise<{ slug: string; id: string }> },
+  context: { params: Promise<{ id: string; overrideId: string }> },
 ) {
   try {
     const user = await getAuthUser();
@@ -83,7 +87,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const { slug, id } = await context.params;
+    const { id: slug, overrideId: id } = await context.params;
 
     const deleted = await withAdminContext(async (adminDb) =>
       adminDb
@@ -99,7 +103,7 @@ export async function DELETE(
     return NextResponse.json({ deleted: deleted[0].id });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
-    console.error('[api/admin/programs/[slug]/overrides/[id] DELETE]', msg);
+    console.error('[api/admin/programs/[id]/overrides/[overrideId] DELETE]', msg);
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
