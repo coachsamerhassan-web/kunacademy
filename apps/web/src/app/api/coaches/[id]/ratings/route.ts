@@ -17,10 +17,14 @@
  *
  * Wave S9 — 2026-04-20
  * 2026-04-21: privacy column dropped (never migrated). is_published is sole gate.
+ * 2026-04-21: migration 0034 adds coach_ratings_anon_public_read policy.
+ * Public reads now rely on RLS (coach_ratings_public_select + anon policy)
+ * rather than admin-role escalation — defense-in-depth against WHERE-clause
+ * regressions.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { db, withAdminContext, eq, and } from '@kunacademy/db';
+import { db, eq, and } from '@kunacademy/db';
 import { coach_ratings, profiles } from '@kunacademy/db/schema';
 import { desc, sql } from 'drizzle-orm';
 
@@ -95,44 +99,41 @@ export async function GET(
       return NextResponse.json({ error: 'Coach not found' }, { status: 404 });
     }
 
-    // Fetch public ratings with client profile for display name
-    // Use withAdminContext to bypass RLS (app role kunacademy has RLS on coach_ratings)
-    const rows = await withAdminContext(async (adminDb) => {
-      return adminDb
-        .select({
-          id: coach_ratings.id,
-          stars: coach_ratings.rating,
-          review_text: coach_ratings.review_text,
-          created_at: coach_ratings.created_at,
-          rated_at: coach_ratings.rated_at,
-          client_full_name_en: profiles.full_name_en,
-          client_full_name_ar: profiles.full_name_ar,
-        })
-        .from(coach_ratings)
-        .leftJoin(profiles, eq(coach_ratings.user_id, profiles.id))
-        .where(
-          and(
-            eq(coach_ratings.coach_id, coachId),
-            eq(coach_ratings.is_published, true),
-          ),
-        )
-        .orderBy(desc(coach_ratings.rated_at))
-        .limit(pageSize)
-        .offset(offset);
-    });
+    // Fetch public ratings with client profile for display name.
+    // RLS (coach_ratings_public_select: is_published=true) gates rows for the
+    // default app role — the explicit WHERE below is defense-in-depth.
+    const rows = await db
+      .select({
+        id: coach_ratings.id,
+        stars: coach_ratings.rating,
+        review_text: coach_ratings.review_text,
+        created_at: coach_ratings.created_at,
+        rated_at: coach_ratings.rated_at,
+        client_full_name_en: profiles.full_name_en,
+        client_full_name_ar: profiles.full_name_ar,
+      })
+      .from(coach_ratings)
+      .leftJoin(profiles, eq(coach_ratings.user_id, profiles.id))
+      .where(
+        and(
+          eq(coach_ratings.coach_id, coachId),
+          eq(coach_ratings.is_published, true),
+        ),
+      )
+      .orderBy(desc(coach_ratings.rated_at))
+      .limit(pageSize)
+      .offset(offset);
 
     // Count total public ratings
-    const countRows = await withAdminContext(async (adminDb) => {
-      return adminDb
-        .select({ total: sql<number>`count(*)::int` })
-        .from(coach_ratings)
-        .where(
-          and(
-            eq(coach_ratings.coach_id, coachId),
-            eq(coach_ratings.is_published, true),
-          ),
-        );
-    });
+    const countRows = await db
+      .select({ total: sql<number>`count(*)::int` })
+      .from(coach_ratings)
+      .where(
+        and(
+          eq(coach_ratings.coach_id, coachId),
+          eq(coach_ratings.is_published, true),
+        ),
+      );
 
     const total_public = countRows[0]?.total ?? 0;
 
