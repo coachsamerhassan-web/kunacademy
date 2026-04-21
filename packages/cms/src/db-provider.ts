@@ -23,6 +23,19 @@ import type {
 } from './types';
 import { JsonFileProvider } from './json-provider';
 
+/**
+ * Region-level price override shape returned by getProgramWithRegionPrice().
+ * Exported so public-facing page components can type-check the optional field.
+ */
+export interface RegionPriceOverride {
+  region: string;
+  /** Price as a JS number (parsed from DB numeric string). */
+  price: number;
+  /** Currency code: AED | EGP | SAR | USD | EUR */
+  currency: string;
+  notes?: string;
+}
+
 export class DbContentProvider implements ContentProvider {
   readonly name = 'db';
   private fallback: JsonFileProvider;
@@ -658,6 +671,61 @@ export class DbContentProvider implements ContentProvider {
   async getFeaturedPrograms(): Promise<Program[]> {
     const all = await this.getAllPrograms();
     return all.filter((p) => p.is_featured);
+  }
+
+  /**
+   * Region-aware program fetch (migration 0042 — 2026-04-21).
+   *
+   * Returns the program with an optional `region_price_override` field
+   * attached when a price override exists for the given region.
+   *
+   * Backwards-compatible: callers that do NOT pass `region` get the exact same
+   * object as `getProgram()` (override field is simply absent).
+   *
+   * Shape of the attached field:
+   *   program.region_price_override = { region, price, currency, notes } | undefined
+   *
+   * Public-facing price display should:
+   *   1. Check `program.region_price_override` — if present, display that price.
+   *   2. Otherwise fall back to `program.price_aed` / `price_egp` / etc.
+   */
+  async getProgramWithRegionPrice(
+    slug: string,
+    region?: string,
+  ): Promise<(Program & { region_price_override?: RegionPriceOverride }) | null> {
+    const base = await this.getProgram(slug);
+    if (!base) return null;
+    if (!region) return base;
+
+    try {
+      const { db, and, eq } = await import('@kunacademy/db');
+      const { programPriceOverrides } = await import('@kunacademy/db/schema');
+      const rows = await db
+        .select()
+        .from(programPriceOverrides)
+        .where(
+          and(
+            eq(programPriceOverrides.program_slug, slug),
+            eq(programPriceOverrides.region, region.toUpperCase()),
+          ),
+        )
+        .limit(1);
+      if (rows.length === 0) return base;
+      const o = rows[0];
+      return {
+        ...base,
+        region_price_override: {
+          region: o.region,
+          price: parseFloat(o.price),
+          currency: o.currency,
+          notes: o.notes ?? undefined,
+        },
+      };
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[cms/db] DB read failed for getProgramWithRegionPrice(${slug}, ${region}): ${msg}`);
+      return base; // Safe fallback: return base program without override
+    }
   }
 
   /**

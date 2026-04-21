@@ -16,6 +16,7 @@ import { DbContentProvider } from './db-provider';
 export { GoogleSheetsProvider } from './sheets-provider';
 export { JsonFileProvider } from './json-provider';
 export { DbContentProvider } from './db-provider';
+export type { RegionPriceOverride } from './db-provider';
 export { fetchDocAsHtml, invalidateDocCache } from './google-docs-fetcher';
 export { AsyncDocRenderer } from './doc-renderer.server';
 

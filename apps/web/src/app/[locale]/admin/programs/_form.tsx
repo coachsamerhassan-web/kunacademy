@@ -16,7 +16,7 @@ import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
 import { Button } from '@kunacademy/ui/button';
 import Link from 'next/link';
-import { ArrowLeft, ExternalLink } from 'lucide-react';
+import { ArrowLeft, ExternalLink, MapPin } from 'lucide-react';
 
 // Canon Phase 2 (2026-04-21): added 'family' + 'service'. Order mirrors
 // mega-menu render order so the dropdown list is navigable by keyboard.
@@ -413,7 +413,7 @@ export default function ProgramForm({ programId }: Props) {
   return (
     <main>
       <Section variant="white">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-3">
           <Heading level={1}>
             {isEdit
               ? isAr
@@ -423,13 +423,25 @@ export default function ProgramForm({ programId }: Props) {
                 ? 'إضافة برنامج'
                 : 'New Program'}
           </Heading>
-          <Link
-            href={`/${locale}/admin/programs`}
-            className="text-[var(--color-primary)] text-sm hover:underline"
-          >
-            <ArrowLeft className="w-4 h-4 inline-block rtl:rotate-180" />{' '}
-            {isAr ? 'العودة للقائمة' : 'Back to list'}
-          </Link>
+          <div className="flex items-center gap-3">
+            {/* Region price overrides — edit mode only */}
+            {isEdit && programId && (
+              <Link
+                href={`/${locale}/admin/programs/${programId}/overrides`}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--color-neutral-300)] px-3 py-1.5 text-sm hover:bg-[var(--color-neutral-50)]"
+              >
+                <MapPin className="w-4 h-4" />
+                {isAr ? 'تسعير المناطق' : 'Region Pricing'}
+              </Link>
+            )}
+            <Link
+              href={`/${locale}/admin/programs`}
+              className="text-[var(--color-primary)] text-sm hover:underline"
+            >
+              <ArrowLeft className="w-4 h-4 inline-block rtl:rotate-180" />{' '}
+              {isAr ? 'العودة للقائمة' : 'Back to list'}
+            </Link>
+          </div>
         </div>
 
         <form onSubmit={handleSubmit} className="mt-6 grid gap-5 max-w-5xl">
