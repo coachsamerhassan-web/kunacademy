@@ -367,16 +367,134 @@ export class DbContentProvider implements ContentProvider {
     };
   }
 
+  // ── MIGRATED: TeamMembers (instructors table) — Phase 2b ───────────────────
+
+  /** Shared mapper: instructors row → CMS TeamMember shape. */
+  private mapInstructorRow(r: {
+    id: string;
+    profile_id: string | null;
+    slug: string;
+    title_ar: string;
+    title_en: string;
+    name_ar: string | null;
+    name_en: string | null;
+    bio_ar: string | null;
+    bio_en: string | null;
+    bio_doc_id: string | null;
+    photo_url: string | null;
+    credentials: string | null;
+    kun_level: string | null;
+    icf_credential: string | null;
+    coach_level_legacy: string | null;
+    service_roles: string[] | null;
+    specialties: string[] | null;
+    coaching_styles: string[] | null;
+    languages: string[] | null;
+    is_visible: boolean | null;
+    is_bookable: boolean;
+    published: boolean;
+    display_order: number | null;
+    last_edited_by: string | null;
+    last_edited_at: string | null;
+  }): TeamMember {
+    return {
+      slug: r.slug,
+      name_ar: r.name_ar ?? r.title_ar ?? '',
+      name_en: r.name_en ?? r.title_en ?? '',
+      title_ar: r.title_ar ?? undefined,
+      title_en: r.title_en ?? undefined,
+      bio_ar: r.bio_ar ?? undefined,
+      bio_en: r.bio_en ?? undefined,
+      bio_doc_id: r.bio_doc_id ?? undefined,
+      photo_url: r.photo_url ?? undefined,
+      // Legacy CMS column kept for audit (TeamMember.coach_level)
+      coach_level: r.coach_level_legacy ?? r.icf_credential ?? undefined,
+      icf_credential: r.icf_credential ?? undefined,
+      kun_level: (r.kun_level as TeamMember['kun_level']) ?? undefined,
+      credentials: r.credentials ?? undefined,
+      service_roles: r.service_roles ?? [],
+      specialties: r.specialties ?? [],
+      coaching_styles: r.coaching_styles ?? [],
+      languages: r.languages ?? [],
+      is_visible: r.is_visible ?? true,
+      is_bookable: r.is_bookable,
+      display_order: r.display_order ?? 0,
+      published: r.published,
+      last_edited_by: r.last_edited_by ?? undefined,
+      last_edited_at: r.last_edited_at ?? undefined,
+    };
+  }
+
   async getAllTeamMembers(): Promise<TeamMember[]> {
-    return this.fallback.getAllTeamMembers();
+    try {
+      const { db, and, eq, asc } = await import('@kunacademy/db');
+      const { instructors } = await import('@kunacademy/db/schema');
+      const rows = await db
+        .select()
+        .from(instructors)
+        .where(and(eq(instructors.published, true), eq(instructors.is_visible, true)))
+        .orderBy(asc(instructors.display_order));
+      return rows.map((r) => this.mapInstructorRow(r));
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[cms/db] DB read failed for getAllTeamMembers; falling back to JSON: ${msg}`);
+      return this.fallback.getAllTeamMembers();
+    }
   }
 
   async getBookableCoaches(): Promise<TeamMember[]> {
-    return this.fallback.getBookableCoaches();
+    try {
+      const all = await this.getAllTeamMembers();
+      return all.filter((t) => t.is_bookable);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[cms/db] DB read failed for getBookableCoaches; falling back to JSON: ${msg}`);
+      return this.fallback.getBookableCoaches();
+    }
   }
 
   async getTeamMember(slug: string): Promise<TeamMember | null> {
-    return this.fallback.getTeamMember(slug);
+    try {
+      const { db, and, eq } = await import('@kunacademy/db');
+      const { instructors } = await import('@kunacademy/db/schema');
+      const rows = await db
+        .select()
+        .from(instructors)
+        .where(and(eq(instructors.slug, slug), eq(instructors.published, true)))
+        .limit(1);
+      const row = rows[0];
+      return row ? this.mapInstructorRow(row) : null;
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[cms/db] DB read failed for getTeamMember; falling back to JSON: ${msg}`);
+      return this.fallback.getTeamMember(slug);
+    }
+  }
+
+  /**
+   * Phase 2b bridge — public coach-ratings display.
+   * Looks up the instructor row by `profile_id` so `coach_ratings.coach_id`
+   * (→ profiles.id) can be aggregated onto the instructor's public profile
+   * without a fuzzy slug/name match. Returns null if no instructor is linked.
+   *
+   * Not part of the base ContentProvider interface — call as a DB extension.
+   */
+  async getInstructorByProfileId(profileId: string): Promise<TeamMember | null> {
+    try {
+      const { db, eq } = await import('@kunacademy/db');
+      const { instructors } = await import('@kunacademy/db/schema');
+      const rows = await db
+        .select()
+        .from(instructors)
+        .where(eq(instructors.profile_id, profileId))
+        .limit(1);
+      const row = rows[0];
+      return row ? this.mapInstructorRow(row) : null;
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[cms/db] DB read failed for getInstructorByProfileId: ${msg}`);
+      return null;
+    }
   }
 
   async getAllPathfinderQuestions(): Promise<PathfinderQuestion[]> {
