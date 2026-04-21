@@ -16,6 +16,19 @@
 
 BEGIN;
 
+-- ── Null out FKs from Phase 2b seed work (package_templates.created_by) ────
+-- The 0041 migration deletes the 3 Phase 2b test instructor fixtures.
+-- package_templates seed (stic-l1-mentoring-bundle-v1) was audit-stamped with
+-- created_by = 'bbbb9999-0000-0000-0000-000000000009' (= test-mentor-manager).
+-- Null the audit FK (non-critical) before the instructors DELETE so the
+-- NO ACTION constraint doesn't abort the transaction.
+UPDATE package_templates
+   SET created_by = NULL
+ WHERE created_by IN (
+     SELECT id FROM instructors
+      WHERE slug IN ('test-mentor-manager','test-coach','test-attacker')
+   );
+
 -- ── Clean up Phase 2b test fixtures (empty name rows) ───────────────────────
 DELETE FROM instructors WHERE slug IN ('test-mentor-manager','test-coach','test-attacker');
 
