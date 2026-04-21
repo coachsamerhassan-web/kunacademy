@@ -2,11 +2,10 @@
  * GET /api/admin/coach-ratings
  *
  * Admin endpoint — admin/super_admin auth required.
- * Returns paginated list of ALL ratings (public + private) for audit purposes.
+ * Returns paginated list of ALL ratings for audit purposes.
  *
  * Query params (all optional):
  *   - coach_id  <uuid>        — filter by coach
- *   - privacy   public|private — filter by privacy value
  *   - page      (default 1)
  *   - pageSize  (default 20, max 100)
  *
@@ -15,6 +14,7 @@
  *   - 403 if authenticated but not admin/super_admin
  *
  * Wave S9 — 2026-04-20
+ * 2026-04-21: privacy column dropped — filter removed, badge removed.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -70,7 +70,6 @@ export async function GET(request: NextRequest) {
 
     // Optional filters
     const coachIdParam = searchParams.get('coach_id');
-    const privacyParam = searchParams.get('privacy'); // 'public' | 'private'
 
     // Pagination
     const pageRaw = parseInt(searchParams.get('page') ?? '1', 10);
@@ -91,15 +90,12 @@ export async function GET(request: NextRequest) {
     if (coachIdParam) {
       conditions.push(eq(coach_ratings.coach_id, coachIdParam));
     }
-    if (privacyParam === 'public' || privacyParam === 'private') {
-      conditions.push(eq(coach_ratings.privacy, privacyParam));
-    }
 
     const whereClause = conditions.length > 0
       ? conditions.length === 1 ? conditions[0] : and(...conditions)
       : undefined;
 
-    // Fetch ratings (all — no privacy filter) with coach + client name enrichment
+    // Fetch ratings with coach + client name enrichment
     const rows = await withAdminContext(async (adminDb) => {
       const q = adminDb
         .select({
@@ -109,7 +105,6 @@ export async function GET(request: NextRequest) {
           booking_id: coach_ratings.booking_id,
           stars: coach_ratings.rating,
           review_text: coach_ratings.review_text,
-          privacy: coach_ratings.privacy,
           is_published: coach_ratings.is_published,
           rated_at: coach_ratings.rated_at,
           created_at: coach_ratings.created_at,

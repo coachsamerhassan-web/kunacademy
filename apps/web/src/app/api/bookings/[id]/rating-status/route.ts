@@ -73,7 +73,6 @@ export async function GET(
         id: coach_ratings.id,
         rating: coach_ratings.rating,
         review_text: coach_ratings.review_text,
-        privacy: coach_ratings.privacy,
         rated_at: coach_ratings.rated_at,
       })
       .from(coach_ratings)

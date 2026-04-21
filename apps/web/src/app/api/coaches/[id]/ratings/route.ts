@@ -2,8 +2,8 @@
  * GET /api/coaches/[id]/ratings
  *
  * Public endpoint — no auth required.
- * Returns paginated list of PUBLIC ratings for a coach.
- * CRITICAL: Only rows where privacy = 'public' are returned.
+ * Returns paginated list of published ratings for a coach.
+ * CRITICAL: Only rows where is_published = true are returned.
  *
  * Query params:
  *   - page     (default 1)
@@ -16,6 +16,7 @@
  * Full identity is NOT exposed.
  *
  * Wave S9 — 2026-04-20
+ * 2026-04-21: privacy column dropped (never migrated). is_published is sole gate.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -112,7 +113,6 @@ export async function GET(
         .where(
           and(
             eq(coach_ratings.coach_id, coachId),
-            eq(coach_ratings.privacy, 'public'),
             eq(coach_ratings.is_published, true),
           ),
         )
@@ -129,7 +129,6 @@ export async function GET(
         .where(
           and(
             eq(coach_ratings.coach_id, coachId),
-            eq(coach_ratings.privacy, 'public'),
             eq(coach_ratings.is_published, true),
           ),
         );

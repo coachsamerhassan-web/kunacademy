@@ -15,13 +15,17 @@
  *   {
  *     rating:   number (1–5, integer, required),
  *     feedback: string (optional, max 2000 chars),
- *     privacy:  'public' | 'private' (optional, default 'public'),
  *   }
  *
  * On success:
- *   - INSERT into coach_ratings
+ *   - INSERT into coach_ratings (is_published=true — all submitted ratings are public)
  *   - Logs SUBMIT_COACH_RATING to admin_audit_log
  *   - Returns 201 with created rating row
+ *
+ * 2026-04-21: privacy column dropped (was never migrated). All submitted ratings
+ *             are now treated as public (is_published=true). Ignored privacy in
+ *             request body is accepted silently for back-compat with any in-flight
+ *             client that still sends it.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -44,7 +48,7 @@ export async function POST(
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   // ── Parse + validate body ─────────────────────────────────────────────────
-  let body: { rating?: unknown; feedback?: unknown; privacy?: unknown };
+  let body: { rating?: unknown; feedback?: unknown };
   try {
     body = await request.json();
   } catch {
@@ -64,8 +68,6 @@ export async function POST(
   const feedback = typeof body.feedback === 'string'
     ? body.feedback.slice(0, 2000).trim() || null
     : null;
-
-  const privacy = body.privacy === 'private' ? 'private' : 'public';
 
   // ── Fetch booking ─────────────────────────────────────────────────────────
   const bookingRows = await withAdminContext(async (adminDb) => {
@@ -139,9 +141,8 @@ export async function POST(
         booking_id: bookingId,
         rating: ratingRaw,
         review_text: feedback,
-        privacy,
         rated_at: now,
-        is_published: privacy === 'public',
+        is_published: true,
       })
       .returning();
   });
@@ -157,7 +158,6 @@ export async function POST(
     metadata: {
       rating_id: created?.id,
       rating: ratingRaw,
-      privacy,
       coach_id: booking.coach_id,
     },
     ipAddress: request.headers.get('x-forwarded-for') ?? undefined,
@@ -204,7 +204,6 @@ export async function POST(
           payload: {
             coach_name:          coachName,
             stars:               ratingRaw,
-            privacy,
             review_text:         feedback ?? null,
             preferred_language:  locale,
             portal_base_url:     portalBaseUrl,

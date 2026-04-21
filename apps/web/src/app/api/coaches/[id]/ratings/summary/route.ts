@@ -4,9 +4,9 @@
  * Public aggregate endpoint — no auth required.
  * Returns numeric summary for a coach's ratings.
  *
- * PRIVACY RULES:
- *   - avg_stars, count_total, distribution: ALL ratings (public + private) for numeric accuracy
- *   - count_public: public-only count
+ * RULES:
+ *   - avg_stars, count_total, distribution: ALL ratings for numeric accuracy
+ *   - count_public: count of is_published=true rows (publicly-displayable ratings)
  *   - NO text content or identifiable data is returned
  *
  * Response:
@@ -18,6 +18,7 @@
  *   }
  *
  * Wave S9 — 2026-04-20
+ * 2026-04-21: privacy column dropped — is_published is the sole display gate.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -49,7 +50,7 @@ export async function GET(
       return NextResponse.json({ error: 'Coach not found' }, { status: 404 });
     }
 
-    // Aggregate over ALL ratings (privacy-agnostic) for numeric accuracy
+    // Aggregate over ALL ratings for numeric accuracy
     const aggRows = await withAdminContext(async (adminDb) => {
       return adminDb
         .select({
@@ -65,7 +66,7 @@ export async function GET(
         .where(eq(coach_ratings.coach_id, coachId));
     });
 
-    // Public-only count
+    // Public-only count = published rows
     const publicCountRows = await withAdminContext(async (adminDb) => {
       return adminDb
         .select({ count_public: sql<number>`count(*)::int` })
@@ -73,7 +74,6 @@ export async function GET(
         .where(
           and(
             eq(coach_ratings.coach_id, coachId),
-            eq(coach_ratings.privacy, 'public'),
             eq(coach_ratings.is_published, true),
           ),
         );

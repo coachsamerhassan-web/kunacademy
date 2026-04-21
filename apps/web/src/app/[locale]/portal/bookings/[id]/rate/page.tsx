@@ -11,11 +11,12 @@
  *   unauthenticated → sign-in prompt
  *   not_completed   → session not marked completed yet
  *   already_rated   → shows existing rating (read-only)
- *   form        → 5-star selector + feedback + privacy toggle
+ *   form        → 5-star selector + feedback
  *   success     → thank-you screen
  *   error       → generic error state
  *
  * Wave S9 — 2026-04-20
+ * 2026-04-21: privacy toggle removed (column never migrated) — all ratings are public.
  */
 
 import { useEffect, useState } from 'react';
@@ -38,7 +39,6 @@ interface ExistingRating {
   id: string;
   rating: number;
   review_text: string | null;
-  privacy: string;
   rated_at: string;
 }
 
@@ -114,7 +114,6 @@ export default function RatingPage() {
   const [bookingInfo, setBookingInfo] = useState<BookingInfo | null>(null);
   const [rating, setRating] = useState(0);
   const [feedback, setFeedback] = useState('');
-  const [privacy, setPrivacy] = useState<'public' | 'private'>('public');
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
@@ -158,7 +157,7 @@ export default function RatingPage() {
       const res = await fetch(`/api/bookings/${bookingId}/rate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ rating, feedback: feedback.trim() || undefined, privacy }),
+        body: JSON.stringify({ rating, feedback: feedback.trim() || undefined }),
       });
 
       if (res.status === 201) {
@@ -372,36 +371,12 @@ export default function RatingPage() {
               </p>
             </div>
 
-            {/* Privacy toggle */}
-            <div className="flex items-start gap-3 p-4 rounded-xl bg-[var(--color-neutral-50)] border border-[var(--color-neutral-200)]">
-              <button
-                type="button"
-                role="switch"
-                aria-checked={privacy === 'public'}
-                onClick={() => setPrivacy(p => p === 'public' ? 'private' : 'public')}
-                className={`relative mt-0.5 shrink-0 h-6 w-11 rounded-full transition-colors min-w-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] ${
-                  privacy === 'public' ? 'bg-[var(--color-primary)]' : 'bg-[var(--color-neutral-300)]'
-                }`}
-              >
-                <span
-                  className={`absolute top-1 h-4 w-4 rounded-full bg-white transition-transform shadow ${
-                    privacy === 'public' ? (isAr ? 'right-1' : 'translate-x-5 left-1') : (isAr ? 'right-5' : 'left-1')
-                  }`}
-                />
-              </button>
-              <div className="flex-1">
-                <p className="text-sm font-medium text-[var(--text-primary)]">
-                  {privacy === 'public'
-                    ? (isAr ? 'تقييم عام' : 'Public rating')
-                    : (isAr ? 'تقييم خاص' : 'Private rating')}
-                </p>
-                <p className="text-xs text-[var(--color-neutral-500)] mt-0.5">
-                  {privacy === 'public'
-                    ? (isAr ? 'قد يظهر تقييمك في صفحة المدرب العامة.' : 'Your rating may appear on the coach\'s public profile.')
-                    : (isAr ? 'تقييمك لن يظهر للعموم.' : 'Your rating will not be visible publicly.')}
-                </p>
-              </div>
-            </div>
+            {/* Note: ratings are public by default once published by admin */}
+            <p className="text-xs text-[var(--color-neutral-500)] px-1">
+              {isAr
+                ? 'قد يظهر تقييمك في صفحة المدرب العامة بعد مراجعة الإدارة.'
+                : 'Your rating may appear on the coach\'s public profile after admin review.'}
+            </p>
 
             {/* Error */}
             {submitError && (

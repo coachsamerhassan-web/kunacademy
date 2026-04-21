@@ -10,9 +10,10 @@
  * Template key: 'coach-new-rating'
  * Enqueued by: POST /api/bookings/[id]/rate (fire-and-forget after INSERT)
  *
- * Privacy rules:
- *   - public + has review_text: show full review text
- *   - private (regardless of text): show privacy notice, hide review text
+ * 2026-04-21: privacy column dropped from coach_ratings (never migrated).
+ * All new ratings are 'public'. Template still supports 'private' for back-compat
+ * with any queued emails that may still set privacy='private', but new emails
+ * omit the field and it defaults to 'public'.
  */
 
 import { sendEmail } from './sender';
@@ -24,8 +25,9 @@ export interface CoachNewRatingEmailParams {
   coach_name: string;
   /** Star rating 1–5 */
   stars: number;
-  /** Whether the rating is public or private */
-  privacy: 'public' | 'private';
+  /** Whether the rating is public or private. Optional — defaults to 'public'
+   *  (privacy column was dropped 2026-04-21; retained in template for legacy queued jobs). */
+  privacy?: 'public' | 'private';
   /** Review text submitted by the client — may be null/undefined */
   review_text?: string | null;
   /** Controls which language block appears first. Defaults to 'ar'. */
@@ -51,7 +53,8 @@ function starString(stars: number): string {
 // ── Section builders ──────────────────────────────────────────────────────────
 
 function buildArSection(params: CoachNewRatingEmailParams): string {
-  const { coach_name, stars, privacy, review_text, portal_base_url } = params;
+  const { coach_name, stars, review_text, portal_base_url } = params;
+  const privacy = params.privacy ?? 'public';
   const ratingsUrl = `${portal_base_url}/ar/coach/ratings`;
   const footerNote =
     'هذا البريد أُرسل تلقائياً من أكاديمية كُن. للاستفسار: <a href="mailto:support@kunacademy.com" style="color:#7C73C0;">support@kunacademy.com</a>';
@@ -123,7 +126,8 @@ function buildArSection(params: CoachNewRatingEmailParams): string {
 }
 
 function buildEnSection(params: CoachNewRatingEmailParams): string {
-  const { coach_name, stars, privacy, review_text, portal_base_url } = params;
+  const { coach_name, stars, review_text, portal_base_url } = params;
+  const privacy = params.privacy ?? 'public';
   const ratingsUrl = `${portal_base_url}/en/coach/ratings`;
   const footerNote =
     'This email was sent automatically by Kun Academy. Questions? <a href="mailto:support@kunacademy.com" style="color:#7C73C0;">support@kunacademy.com</a>';

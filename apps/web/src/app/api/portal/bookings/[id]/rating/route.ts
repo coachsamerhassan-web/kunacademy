@@ -2,8 +2,7 @@
  * GET /api/portal/bookings/[id]/rating
  *
  * Owner endpoint — client auth required.
- * Returns the authenticated client's OWN rating for the given booking,
- * regardless of privacy setting.
+ * Returns the authenticated client's OWN rating for the given booking.
  *
  * Auth:
  *   - 401 if unauthenticated
@@ -54,14 +53,13 @@ export async function GET(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    // Fetch the rating — no privacy filter, owner may see their own
+    // Fetch the rating — owner may see their own
     const ratingRows = await withAdminContext(async (adminDb) => {
       return adminDb
         .select({
           id: coach_ratings.id,
           stars: coach_ratings.rating,
           review_text: coach_ratings.review_text,
-          privacy: coach_ratings.privacy,
           rated_at: coach_ratings.rated_at,
           created_at: coach_ratings.created_at,
         })

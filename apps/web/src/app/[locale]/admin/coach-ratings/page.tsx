@@ -9,13 +9,14 @@
  *       useEffect guard redirects to /dashboard on insufficient role.
  *
  * Features:
- *   - URL-driven filters: coach_id (UUID), privacy (public|private), page
- *   - Table: coach name, client name, stars, privacy badge, review_text (expandable),
- *     rated_at (localized date), actions (empty — future wave)
+ *   - URL-driven filters: coach_id (UUID), page
+ *   - Table: coach name, client name, stars, review_text (expandable),
+ *     rated_at (localized date), actions (publish/unpublish)
  *   - Pagination: N rows · page X of Y, Prev/Next
  *   - Bilingual AR/EN, RTL/LTR direction
  *
  * Wave S9 — 2026-04-20
+ * 2026-04-21: privacy column dropped (never migrated) — filter removed, badge removed.
  */
 
 import { useEffect, useState, useCallback } from 'react';
@@ -34,7 +35,6 @@ interface RatingRow {
   booking_id: string | null;
   stars: number;
   review_text: string | null;
-  privacy: 'public' | 'private';
   is_published: boolean;
   rated_at: string;
   created_at: string;
@@ -87,23 +87,6 @@ function StarDisplay({ stars }: { stars: number }) {
   );
 }
 
-function PrivacyBadge({ privacy, isAr }: { privacy: 'public' | 'private'; isAr: boolean }) {
-  const isPublic = privacy === 'public';
-  return (
-    <span
-      className={`inline-block rounded px-2 py-0.5 text-xs font-medium whitespace-nowrap ${
-        isPublic
-          ? 'bg-green-100 text-green-700'
-          : 'bg-[var(--color-neutral-100)] text-[var(--color-neutral-600)]'
-      }`}
-    >
-      {isPublic
-        ? (isAr ? 'عامة' : 'Public')
-        : (isAr ? 'خاصة' : 'Private')}
-    </span>
-  );
-}
-
 function ExpandableText({ text, isAr }: { text: string; isAr: boolean }) {
   const [expanded, setExpanded] = useState(false);
   const limit = 120;
@@ -152,7 +135,6 @@ export default function CoachRatingsAdminPage() {
 
   // Filter state — initialised from URL
   const [coachIdInput, setCoachIdInput] = useState(searchParams.get('coach_id') ?? '');
-  const [privacyInput, setPrivacyInput] = useState(searchParams.get('privacy') ?? '');
   const [coachIdError, setCoachIdError] = useState('');
 
   const currentPage = Math.max(1, parseInt(searchParams.get('page') ?? '1', 10));
@@ -168,13 +150,11 @@ export default function CoachRatingsAdminPage() {
 
   // ── URL helpers ────────────────────────────────────────────────────────────
   const buildUrl = useCallback(
-    (overrides: { coach_id?: string; privacy?: string; page?: number }) => {
+    (overrides: { coach_id?: string; page?: number }) => {
       const params = new URLSearchParams();
       const coachId = overrides.coach_id ?? searchParams.get('coach_id') ?? '';
-      const privacy = overrides.privacy ?? searchParams.get('privacy') ?? '';
       const page = overrides.page ?? currentPage;
       if (coachId) params.set('coach_id', coachId);
-      if (privacy) params.set('privacy', privacy);
       if (page > 1) params.set('page', String(page));
       const qs = params.toString();
       return `${pathname}${qs ? '?' + qs : ''}`;
@@ -189,9 +169,7 @@ export default function CoachRatingsAdminPage() {
     try {
       const params = new URLSearchParams();
       const coachId = searchParams.get('coach_id') ?? '';
-      const privacy = searchParams.get('privacy') ?? '';
       if (coachId) params.set('coach_id', coachId);
-      if (privacy) params.set('privacy', privacy);
       params.set('page', String(currentPage));
       params.set('pageSize', String(PAGE_SIZE));
 
@@ -220,13 +198,12 @@ export default function CoachRatingsAdminPage() {
     }
     setCoachIdError('');
     router.push(
-      buildUrl({ coach_id: coachIdInput, privacy: privacyInput, page: 1 })
+      buildUrl({ coach_id: coachIdInput, page: 1 })
     );
   }
 
   function clearFilters() {
     setCoachIdInput('');
-    setPrivacyInput('');
     setCoachIdError('');
     router.push(pathname);
   }
@@ -317,25 +294,6 @@ export default function CoachRatingsAdminPage() {
               )}
             </div>
 
-            {/* Privacy filter */}
-            <div>
-              <label
-                htmlFor="cr-privacy"
-                className="block text-xs font-medium text-[var(--color-neutral-500)] mb-1"
-              >
-                {isAr ? 'الخصوصية' : 'Privacy'}
-              </label>
-              <select
-                id="cr-privacy"
-                value={privacyInput}
-                onChange={(e) => setPrivacyInput(e.target.value)}
-                className="w-full min-h-[44px] rounded-md border border-[var(--color-neutral-300)] bg-white px-3 py-2 text-sm text-[var(--color-neutral-700)] hover:border-[var(--color-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] transition"
-              >
-                <option value="">{isAr ? 'الكل' : 'All'}</option>
-                <option value="public">{isAr ? 'عامة' : 'Public'}</option>
-                <option value="private">{isAr ? 'خاصة' : 'Private'}</option>
-              </select>
-            </div>
           </div>
 
           {/* Actions row */}
@@ -389,9 +347,6 @@ export default function CoachRatingsAdminPage() {
                   <th className="py-3 px-4 text-start font-medium w-32">
                     {isAr ? 'التقييم' : 'Stars'}
                   </th>
-                  <th className="py-3 px-4 text-start font-medium w-28">
-                    {isAr ? 'الخصوصية' : 'Privacy'}
-                  </th>
                   <th className="py-3 px-4 text-start font-medium">
                     {isAr ? 'نص المراجعة' : 'Review'}
                   </th>
@@ -438,11 +393,6 @@ export default function CoachRatingsAdminPage() {
                     {/* Stars */}
                     <td className="py-3 px-4 align-top">
                       <StarDisplay stars={row.stars} />
-                    </td>
-
-                    {/* Privacy */}
-                    <td className="py-3 px-4 align-top">
-                      <PrivacyBadge privacy={row.privacy} isAr={isAr} />
                     </td>
 
                     {/* Review text */}
