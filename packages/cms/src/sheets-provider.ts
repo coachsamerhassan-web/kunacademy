@@ -214,99 +214,72 @@ export class GoogleSheetsProvider implements ContentProvider {
     return rows.filter((r) => r.published);
   }
 
-  // ── Sheet 1: Page Content ───────────────────────────────────────────────
+  // ── Phase 3 PARTIAL cutover (2026-04-21) ────────────────────────────────
+  // 7 entities are DB-only. GoogleSheetsProvider is retained only as a
+  // legacy fallback path for pathfinder + team + blog (un-migrated).
+  // Calls to migrated-entity methods throw to surface misconfiguration.
+  private migrated(method: string): never {
+    throw new Error(
+      `[cms/sheets] ${method}() is DB-only since Phase 3 PARTIAL (2026-04-21). ` +
+      `Unset GOOGLE_SHEETS_API_KEY to fall back to DbContentProvider, or route this call through DbContentProvider directly.`,
+    );
+  }
 
-  async getPageContent(slug: string): Promise<PageSections> {
-    const rows = await this.loadSheet<PageContent>('pageContent');
-    const pageRows = this.published(rows).filter((r) => r.slug === slug);
-    const sections: PageSections = {};
+  // ── Sheet 1: Page Content (MIGRATED → landing_pages) ────────────────────
 
-    for (const row of pageRows) {
-      if (!sections[row.section]) sections[row.section] = {};
-      sections[row.section][row.key] = {
-        ar: row.value_ar,
-        en: row.value_en,
-      };
-    }
-    return sections;
+  async getPageContent(_slug: string): Promise<PageSections> {
+    this.migrated('getPageContent');
   }
 
   async getAllPageSlugs(): Promise<string[]> {
-    const rows = await this.loadSheet<PageContent>('pageContent');
-    const slugs = new Set(this.published(rows).map((r) => r.slug));
-    return [...slugs];
+    this.migrated('getAllPageSlugs');
   }
 
-  async getPageSeo(slug: string) {
-    const rows = await this.loadSheet<PageContent>('pageContent');
-    const firstRow = this.published(rows).find((r) => r.slug === slug);
-    if (!firstRow) return null;
-    return {
-      meta_title_ar: firstRow.meta_title_ar,
-      meta_title_en: firstRow.meta_title_en,
-      meta_description_ar: firstRow.meta_description_ar,
-      meta_description_en: firstRow.meta_description_en,
-      og_image_url: firstRow.og_image_url,
-      canonical_url: firstRow.canonical_url,
-    };
+  async getPageSeo(_slug: string): Promise<{
+    meta_title_ar?: string;
+    meta_title_en?: string;
+    meta_description_ar?: string;
+    meta_description_en?: string;
+    og_image_url?: string;
+    canonical_url?: string;
+  } | null> {
+    this.migrated('getPageSeo');
   }
 
   async getLandingPages(): Promise<PageContent[]> {
-    const rows = await this.loadSheet<PageContent>('pageContent');
-    return this.published(rows).filter((r) => r.type === 'landing');
+    this.migrated('getLandingPages');
   }
 
-  // ── Sheet 2: Programs ─────────────────────────────────────────────────
-
-  private normalizeProgram(p: Program): Program {
-    return {
-      ...p,
-      status: p.status || 'active',
-      prerequisite_codes: Array.isArray(p.prerequisite_codes) ? p.prerequisite_codes : [],
-      pathway_codes: Array.isArray(p.pathway_codes) ? p.pathway_codes : [],
-      program_logo: p.program_logo || PROGRAM_LOGO_MAP[p.slug],
-      hero_image_url: p.hero_image_url || PROGRAM_HERO_MAP[p.slug],
-    };
-  }
+  // ── Sheet 2: Programs (MIGRATED → programs) ─────────────────────────────
 
   async getAllPrograms(): Promise<Program[]> {
-    const rows = await this.loadSheet<Program>('programs');
-    return this.published(rows)
-      .map((p) => this.normalizeProgram(p))
-      .sort((a, b) => a.display_order - b.display_order);
+    this.migrated('getAllPrograms');
   }
 
-  async getProgramsByNavGroup(group: NavGroup): Promise<Program[]> {
-    const all = await this.getAllPrograms();
-    return all.filter((p) => p.nav_group === group);
+  async getProgramsByNavGroup(_group: NavGroup): Promise<Program[]> {
+    this.migrated('getProgramsByNavGroup');
   }
 
-  async getProgram(slug: string): Promise<Program | null> {
-    const rows = await this.loadSheet<Program>('programs');
-    const found = this.published(rows).find((p) => p.slug === slug);
-    return found ? this.normalizeProgram(found) : null;
+  async getProgram(_slug: string): Promise<Program | null> {
+    this.migrated('getProgram');
   }
 
   async getFeaturedPrograms(): Promise<Program[]> {
-    const all = await this.getAllPrograms();
-    return all.filter((p) => p.is_featured);
+    this.migrated('getFeaturedPrograms');
   }
 
-  // ── Sheet 3: Services ─────────────────────────────────────────────────
+  // ── Sheet 3: Services (MIGRATED → services) ─────────────────────────────
 
   async getAllServices(): Promise<Service[]> {
-    const rows = await this.loadSheet<Service>('services');
-    return this.published(rows).sort((a, b) => a.display_order - b.display_order);
+    this.migrated('getAllServices');
   }
 
-  async getServicesByCategory(category: ServiceCategory): Promise<Service[]> {
-    const all = await this.getAllServices();
-    return all.filter((s) => s.category === category);
+  async getServicesByCategory(_category: ServiceCategory): Promise<Service[]> {
+    this.migrated('getServicesByCategory');
   }
 
-  async getService(slug: string): Promise<Service | null> {
-    const rows = await this.loadSheet<Service>('services');
-    return this.published(rows).find((s) => s.slug === slug) ?? null;
+  async getService(_slug: string): Promise<Service | null> {
+    this.migrated('getService');
   }
 
   // ── Sheet 4: Team ─────────────────────────────────────────────────────
@@ -338,21 +311,14 @@ export class GoogleSheetsProvider implements ContentProvider {
     return found ? this.normalizeTeamMember(found) : null;
   }
 
-  // ── Sheet 5: Settings ─────────────────────────────────────────────────
+  // ── Sheet 5: Settings (MIGRATED → site_settings) ────────────────────────
 
   async getAllSettings(): Promise<SettingsMap> {
-    const rows = await this.loadSheet<{ category: string; key: string; value: string; published: boolean }>('settings');
-    const map: SettingsMap = {};
-    for (const row of this.published(rows)) {
-      if (!map[row.category]) map[row.category] = {};
-      map[row.category][row.key] = row.value;
-    }
-    return map;
+    this.migrated('getAllSettings');
   }
 
-  async getSetting(category: string, key: string): Promise<string | null> {
-    const all = await this.getAllSettings();
-    return all[category]?.[key] ?? null;
+  async getSetting(_category: string, _key: string): Promise<string | null> {
+    this.migrated('getSetting');
   }
 
   // ── Sheet 6: Pathfinder ─────────────────────────────────────────────
@@ -402,54 +368,42 @@ export class GoogleSheetsProvider implements ContentProvider {
   }
 
 
-  // ── Sheet 7: Testimonials ─────────────────────────────────────────────
+  // ── Sheet 7: Testimonials (MIGRATED → testimonials) ─────────────────────
 
   async getAllTestimonials(): Promise<Testimonial[]> {
-    const rows = await this.loadSheet<Testimonial>('testimonials');
-    return this.published(rows).sort((a, b) => a.display_order - b.display_order);
+    this.migrated('getAllTestimonials');
   }
 
   async getFeaturedTestimonials(): Promise<Testimonial[]> {
-    const all = await this.getAllTestimonials();
-    return all.filter((t) => t.is_featured);
+    this.migrated('getFeaturedTestimonials');
   }
 
-  async getTestimonialsByCoach(coachSlug: string): Promise<Testimonial[]> {
-    const all = await this.getAllTestimonials();
-    return all.filter((t) => t.coach_slug === coachSlug);
+  async getTestimonialsByCoach(_coachSlug: string): Promise<Testimonial[]> {
+    this.migrated('getTestimonialsByCoach');
   }
 
-  // ── Quotes ─────────────────────────────────────────────────────────
+  // ── Quotes (MIGRATED → quotes) ──────────────────────────────────────────
 
   async getAllQuotes(): Promise<Quote[]> {
-    const rows = await this.loadSheet<Quote>('quotes');
-    return this.published(rows).sort((a, b) => a.display_order - b.display_order);
+    this.migrated('getAllQuotes');
   }
 
-  async getQuotesByCategory(category: string): Promise<Quote[]> {
-    const all = await this.getAllQuotes();
-    return all.filter((q) => q.category === category);
+  async getQuotesByCategory(_category: string): Promise<Quote[]> {
+    this.migrated('getQuotesByCategory');
   }
 
-  // ── Sheet 8: Events ─────────────────────────────────────────────────
+  // ── Sheet 8: Events (MIGRATED → events) ─────────────────────────────────
 
   async getAllEvents(): Promise<Event[]> {
-    const rows = await this.loadSheet<Event>('events');
-    return this.published(rows).sort((a, b) => {
-      if (a.date_start && b.date_start) return a.date_start.localeCompare(b.date_start);
-      return a.display_order - b.display_order;
-    });
+    this.migrated('getAllEvents');
   }
 
   async getUpcomingEvents(): Promise<Event[]> {
-    const all = await this.getAllEvents();
-    const today = new Date().toISOString().split('T')[0];
-    return all.filter((e) => e.date_start >= today);
+    this.migrated('getUpcomingEvents');
   }
 
-  async getEvent(slug: string): Promise<Event | null> {
-    const rows = await this.loadSheet<Event>('events');
-    return this.published(rows).find((e) => e.slug === slug) ?? null;
+  async getEvent(_slug: string): Promise<Event | null> {
+    this.migrated('getEvent');
   }
 
   // ── Sheet 9: Blog ─────────────────────────────────────────────────
