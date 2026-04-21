@@ -505,20 +505,256 @@ export class DbContentProvider implements ContentProvider {
     }
   }
 
+  // ── MIGRATED: Programs (Phase 2d) ─────────────────────────────────────────
+
+  /**
+   * DB row → CMS Program mapper. Numeric columns come back as strings from pg;
+   * date columns as YYYY-MM-DD strings; text[] as string[]. We coerce pricing
+   * to numbers (TheaterPricing requires number, coerce null → 0) and keep
+   * other optional fields nullable via `?? undefined`.
+   */
+  private rowToProgram(r: {
+    slug: string;
+    title_ar: string;
+    title_en: string;
+    subtitle_ar: string | null;
+    subtitle_en: string | null;
+    description_ar: string | null;
+    description_en: string | null;
+    nav_group: string;
+    type: string;
+    format: string;
+    status: string;
+    category: string | null;
+    parent_code: string | null;
+    instructor_slug: string | null;
+    location: string | null;
+    duration: string | null;
+    next_start_date: string | null;
+    enrollment_deadline: string | null;
+    access_duration_days: number | null;
+    price_aed: string | number | null;
+    price_egp: string | number | null;
+    price_usd: string | number | null;
+    price_eur: string | number | null;
+    early_bird_price_aed: string | number | null;
+    early_bird_deadline: string | null;
+    discount_percentage: string | number | null;
+    discount_valid_until: string | null;
+    installment_enabled: boolean;
+    bundle_id: string | null;
+    is_icf_accredited: boolean;
+    icf_details: string | null;
+    cce_units: string | number | null;
+    hero_image_url: string | null;
+    thumbnail_url: string | null;
+    program_logo: string | null;
+    promo_video_url: string | null;
+    prerequisite_codes: string[] | null;
+    pathway_codes: string[] | null;
+    curriculum_json: unknown;
+    faq_json: unknown;
+    journey_stages: string | null;
+    materials_folder_url: string | null;
+    content_doc_id: string | null;
+    meta_title_ar: string | null;
+    meta_title_en: string | null;
+    meta_description_ar: string | null;
+    meta_description_en: string | null;
+    og_image_url: string | null;
+    is_featured: boolean;
+    is_free: boolean;
+    display_order: number;
+    published: boolean;
+    last_edited_by: string | null;
+    last_edited_at: Date | string | null;
+  }): Program {
+    const num = (v: string | number | null | undefined): number => {
+      if (v === null || v === undefined || v === '') return 0;
+      return typeof v === 'number' ? v : Number(v);
+    };
+    const numOpt = (v: string | number | null | undefined): number | undefined => {
+      if (v === null || v === undefined || v === '') return undefined;
+      return typeof v === 'number' ? v : Number(v);
+    };
+    return {
+      slug: r.slug,
+      title_ar: r.title_ar,
+      title_en: r.title_en,
+      subtitle_ar: r.subtitle_ar ?? undefined,
+      subtitle_en: r.subtitle_en ?? undefined,
+      description_ar: r.description_ar ?? undefined,
+      description_en: r.description_en ?? undefined,
+      nav_group: r.nav_group as Program['nav_group'],
+      type: r.type as Program['type'],
+      format: r.format as Program['format'],
+      location: r.location ?? undefined,
+      instructor_slug: r.instructor_slug ?? undefined,
+      duration: r.duration ?? undefined,
+      next_start_date: r.next_start_date ?? undefined,
+      enrollment_deadline: r.enrollment_deadline ?? undefined,
+      // TheaterPricing — coerce null → 0
+      price_aed: num(r.price_aed),
+      price_egp: num(r.price_egp),
+      price_usd: num(r.price_usd),
+      price_eur: num(r.price_eur),
+      early_bird_price_aed: numOpt(r.early_bird_price_aed),
+      early_bird_deadline: r.early_bird_deadline ?? undefined,
+      discount_percentage: numOpt(r.discount_percentage),
+      discount_valid_until: r.discount_valid_until ?? undefined,
+      installment_enabled: r.installment_enabled,
+      bundle_id: r.bundle_id ?? undefined,
+      is_icf_accredited: r.is_icf_accredited,
+      icf_details: r.icf_details ?? undefined,
+      cce_units: numOpt(r.cce_units),
+      materials_folder_url: r.materials_folder_url ?? undefined,
+      access_duration_days: r.access_duration_days ?? undefined,
+      journey_stages: r.journey_stages ?? undefined,
+      hero_image_url: r.hero_image_url ?? undefined,
+      thumbnail_url: r.thumbnail_url ?? undefined,
+      is_featured: r.is_featured,
+      is_free: r.is_free,
+      display_order: r.display_order,
+      meta_title_ar: r.meta_title_ar ?? undefined,
+      meta_title_en: r.meta_title_en ?? undefined,
+      meta_description_ar: r.meta_description_ar ?? undefined,
+      meta_description_en: r.meta_description_en ?? undefined,
+      og_image_url: r.og_image_url ?? undefined,
+      promo_video_url: r.promo_video_url ?? undefined,
+      category: r.category ?? undefined,
+      parent_code: r.parent_code ?? undefined,
+      prerequisite_codes: r.prerequisite_codes ?? [],
+      status: r.status as Program['status'],
+      pathway_codes: r.pathway_codes ?? [],
+      curriculum_json:
+        r.curriculum_json != null && typeof r.curriculum_json !== 'string'
+          ? JSON.stringify(r.curriculum_json)
+          : (r.curriculum_json as string | undefined) ?? undefined,
+      faq_json:
+        r.faq_json != null && typeof r.faq_json !== 'string'
+          ? JSON.stringify(r.faq_json)
+          : (r.faq_json as string | undefined) ?? undefined,
+      program_logo: r.program_logo ?? undefined,
+      content_doc_id: r.content_doc_id ?? undefined,
+      published: r.published,
+      last_edited_by: r.last_edited_by ?? undefined,
+      last_edited_at:
+        r.last_edited_at instanceof Date
+          ? r.last_edited_at.toISOString()
+          : r.last_edited_at ?? undefined,
+    };
+  }
+
   async getAllPrograms(): Promise<Program[]> {
-    return this.fallback.getAllPrograms();
+    try {
+      const { db, eq, asc } = await import('@kunacademy/db');
+      const { programs } = await import('@kunacademy/db/schema');
+      const rows = await db
+        .select()
+        .from(programs)
+        .where(eq(programs.published, true))
+        .orderBy(asc(programs.display_order));
+      return rows.map((r) => this.rowToProgram(r));
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[cms/db] DB read failed for getAllPrograms; falling back to JSON: ${msg}`);
+      return this.fallback.getAllPrograms();
+    }
   }
 
   async getProgramsByNavGroup(group: NavGroup): Promise<Program[]> {
-    return this.fallback.getProgramsByNavGroup(group);
+    try {
+      const all = await this.getAllPrograms();
+      return all.filter((p) => p.nav_group === group);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[cms/db] DB read failed for getProgramsByNavGroup; falling back to JSON: ${msg}`);
+      return this.fallback.getProgramsByNavGroup(group);
+    }
   }
 
   async getProgram(slug: string): Promise<Program | null> {
-    return this.fallback.getProgram(slug);
+    try {
+      const { db, and, eq } = await import('@kunacademy/db');
+      const { programs } = await import('@kunacademy/db/schema');
+      const rows = await db
+        .select()
+        .from(programs)
+        .where(and(eq(programs.slug, slug), eq(programs.published, true)))
+        .limit(1);
+      const r = rows[0];
+      return r ? this.rowToProgram(r) : null;
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[cms/db] DB read failed for getProgram(${slug}); falling back to JSON: ${msg}`);
+      return this.fallback.getProgram(slug);
+    }
   }
 
   async getFeaturedPrograms(): Promise<Program[]> {
-    return this.fallback.getFeaturedPrograms();
+    try {
+      const all = await this.getAllPrograms();
+      return all.filter((p) => p.is_featured);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[cms/db] DB read failed for getFeaturedPrograms; falling back to JSON: ${msg}`);
+      return this.fallback.getFeaturedPrograms();
+    }
+  }
+
+  /**
+   * Phase 2d extension — filter programs by `category` (not on base interface).
+   */
+  async getProgramsByCategory(category: string): Promise<Program[]> {
+    try {
+      const all = await this.getAllPrograms();
+      return all.filter((p) => p.category === category);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[cms/db] DB read failed for getProgramsByCategory: ${msg}`);
+      return [];
+    }
+  }
+
+  /**
+   * Admin helper — list every programs row including unpublished (for /admin/programs).
+   */
+  async getAllProgramsAdmin(): Promise<
+    Array<Program & { id: string; published_at: string | null }>
+  > {
+    try {
+      const { db, asc } = await import('@kunacademy/db');
+      const { programs } = await import('@kunacademy/db/schema');
+      const rows = await db.select().from(programs).orderBy(asc(programs.display_order));
+      return rows.map((r) => ({
+        ...this.rowToProgram(r),
+        id: r.id,
+        published_at: r.published_at ?? null,
+      }));
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[cms/db] DB read failed for getAllProgramsAdmin: ${msg}`);
+      return [];
+    }
+  }
+
+  /** Admin helper — fetch one program by UUID (admin edit). */
+  async getProgramById(id: string): Promise<
+    | (Program & { id: string; published_at: string | null })
+    | null
+  > {
+    try {
+      const { db, eq } = await import('@kunacademy/db');
+      const { programs } = await import('@kunacademy/db/schema');
+      const rows = await db.select().from(programs).where(eq(programs.id, id)).limit(1);
+      const r = rows[0];
+      if (!r) return null;
+      return { ...this.rowToProgram(r), id: r.id, published_at: r.published_at ?? null };
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[cms/db] DB read failed for getProgramById(${id}): ${msg}`);
+      return null;
+    }
   }
 
   // ── MIGRATED: Services (Phase 2a) ────────────────────────────────────────

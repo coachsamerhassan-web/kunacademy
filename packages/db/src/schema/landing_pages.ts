@@ -1,5 +1,6 @@
 import { pgTable, boolean, text, timestamp, uuid, jsonb, index } from 'drizzle-orm/pg-core';
 import { profiles } from './profiles';
+import { programs } from './programs';
 
 /**
  * CMS→DB Phase 2c — landing_pages
@@ -15,8 +16,10 @@ export const landing_pages = pgTable("landing_pages", {
   slug: text("slug").notNull().unique(),
   // 'page' | 'landing' | 'legal'  (CHECK constraint enforced at DB level)
   page_type: text("page_type").notNull().default('page'),
-  // Optional program link — FK deferred until Phase 2d creates programs table.
+  // Optional program link — TEXT kept for backwards compat.
   program_slug: text("program_slug"),
+  // Real FK added in migration 0037 (Phase 2d). ON DELETE SET NULL.
+  program_id: uuid("program_id").references(() => programs.id, { onDelete: 'set null' }),
   // { [section]: { [key]: { ar, en } } } — matches cms/types.ts PageSections
   sections_json: jsonb("sections_json").notNull().default({}),
   // Landing/hero fields: { hero_image_url, cta_text_ar/en, cta_url, form_embed }
@@ -32,6 +35,7 @@ export const landing_pages = pgTable("landing_pages", {
 }, (t) => ({
   slugIdx: index("landing_pages_slug_idx").on(t.slug),
   programSlugIdx: index("landing_pages_program_slug_idx").on(t.program_slug),
+  programIdIdx: index("landing_pages_program_id_idx").on(t.program_id),
   publishedIdx: index("landing_pages_published_idx").on(t.published),
   pageTypeIdx: index("landing_pages_page_type_idx").on(t.page_type),
 }));
