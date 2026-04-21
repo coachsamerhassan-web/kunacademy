@@ -2,7 +2,7 @@
  * Notification Dispatcher — orchestrates multi-channel notifications.
  * Each channel is optional and gracefully skips when not configured.
  *
- * Channels: Email (Resend) | WhatsApp (Meta API) | Telegram (Bot API)
+ * Channels: Email via Zoho Mail API (OAuth) | WhatsApp (Meta API) | Telegram (Bot API)
  */
 import { sendBookingConfirmation, sendBookingReminder, sendPaymentReceipt, sendEnrollmentConfirmation, sendInstallmentReminder, sendPayoutNotification } from './sender';
 import { sendWhatsApp, whatsappBookingConfirmation, whatsappBookingReminder, whatsappPaymentConfirmation } from './whatsapp';

@@ -17,8 +17,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
     }),
 
-    // Email provider deferred to Wave 9 — requires Drizzle adapter + Resend API key
-    // Email({ server: { host: 'smtp.resend.com', port: 465, auth: { user: 'resend', pass: process.env.RESEND_API_KEY } }, from: 'noreply@kunacademy.com' }),
+    // Email verification (magic links) not yet wired into NextAuth.
+    // When ready, use @kunacademy/email Zoho Mail transport (packages/email/src/sender.ts) —
+    // wrap sendEmail() in a custom NextAuth Email provider via sendVerificationRequest.
 
     Credentials({
       name: 'credentials',
