@@ -35,6 +35,11 @@ export type {
   EventLocationType,
   BlogPost,
   Quote,
+  CorporateBenefit,
+  CorporateBenefitDirection,
+  CorporateBenefitsData,
+  CorporateBenefitsMode,
+  CorporateRoiCategory,
 } from './types';
 
 // ── Client-safe function exports ──────────────────────────────────────────────

@@ -23,6 +23,9 @@ import type {
   Event,
   BlogPost,
   Quote,
+  CorporateBenefit,
+  CorporateBenefitDirection,
+  CorporateBenefitsData,
 } from './types';
 
 // ── Config ──────────────────────────────────────────────────────────────────
@@ -407,6 +410,23 @@ export class GoogleSheetsProvider implements ContentProvider {
 
   async getBlogPostsByCategory(_category: string): Promise<BlogPost[]> {
     this.migrated('getBlogPostsByCategory');
+  }
+
+  // ── Phase 3d (2026-04-21) — corporate benefits migrated to DB ───────────
+  async getAllCorporateBenefitDirections(): Promise<CorporateBenefitDirection[]> {
+    this.migrated('getAllCorporateBenefitDirections');
+  }
+  async getAllCorporateBenefits(): Promise<CorporateBenefit[]> {
+    this.migrated('getAllCorporateBenefits');
+  }
+  async getCorporateBenefitsByDirection(_d: string): Promise<CorporateBenefit[]> {
+    this.migrated('getCorporateBenefitsByDirection');
+  }
+  async getCorporateBenefit(_slug: string): Promise<CorporateBenefit | null> {
+    this.migrated('getCorporateBenefit');
+  }
+  async getCorporateBenefitsData(): Promise<CorporateBenefitsData> {
+    this.migrated('getCorporateBenefitsData');
   }
 
   // ── Cache ─────────────────────────────────────────────────────────────

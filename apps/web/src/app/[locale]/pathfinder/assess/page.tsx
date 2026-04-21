@@ -2,7 +2,6 @@ import { setRequestLocale } from 'next-intl/server';
 import { cms } from '@kunacademy/cms/server';
 import type { Metadata } from 'next';
 import { PathfinderEngine } from './pathfinder-engine';
-import corporateBenefitsData from '@/data/cms/corporate-benefits.json';
 
 interface Props { params: Promise<{ locale: string }> }
 
@@ -22,8 +21,14 @@ export default async function PathfinderAssessPage({ params }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
 
-  // Fetch all pathfinder questions from CMS (they come with branching structure)
-  const allQuestions = await cms.getAllPathfinderQuestions();
+  // CMS Phase 3d (2026-04-21): corporate-benefits sourced from DB via cms
+  // provider (was direct JSON import from data/cms/corporate-benefits.json).
+  // getCorporateBenefitsData() emits the same legacy payload shape so the
+  // PathfinderEngine client component stays unchanged.
+  const [allQuestions, corporateBenefitsData] = await Promise.all([
+    cms.getAllPathfinderQuestions(),
+    cms.getCorporateBenefitsData(),
+  ]);
 
   return (
     <PathfinderEngine

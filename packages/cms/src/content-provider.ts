@@ -18,6 +18,9 @@ import type {
   Event,
   BlogPost,
   Quote,
+  CorporateBenefit,
+  CorporateBenefitDirection,
+  CorporateBenefitsData,
 } from './types';
 
 /**
@@ -151,6 +154,28 @@ export interface ContentProvider {
 
   /** Get blog posts by category */
   getBlogPostsByCategory(category: string): Promise<BlogPost[]>;
+
+  // ── Sheet 10: Corporate Benefits (Pathfinder corporate flow) ──────────
+
+  /** Get all published corporate benefit directions (with children populated). */
+  getAllCorporateBenefitDirections(): Promise<CorporateBenefitDirection[]>;
+
+  /** Get all published corporate benefits across every direction. */
+  getAllCorporateBenefits(): Promise<CorporateBenefit[]>;
+
+  /** Get benefits scoped to one direction (by direction_slug). */
+  getCorporateBenefitsByDirection(directionSlug: string): Promise<CorporateBenefit[]>;
+
+  /** Get a single benefit by slug (its own slug, not direction's). */
+  getCorporateBenefit(slug: string): Promise<CorporateBenefit | null>;
+
+  /**
+   * Returns the full legacy-shape payload for PathfinderEngine:
+   *   { version, directions: [{ id, title_*, description_*, icon, benefits }] }
+   * where benefits is either an array of Benefit objects or the sentinel 'all'
+   * for directions whose benefits_mode='all'. Zero prop-shape churn downstream.
+   */
+  getCorporateBenefitsData(): Promise<CorporateBenefitsData>;
 
   // ── Cache Control ─────────────────────────────────────────────────────
 

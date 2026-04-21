@@ -557,6 +557,88 @@ export interface PathfinderQuestion {
   last_edited_at?: string;
 }
 
+// ── Sheet 10: Corporate Benefits (Pathfinder corporate flow) ────────────────
+//
+// Phase 3d migration (2026-04-21). Powers the corporate direction-select +
+// benefits-quiz steps in /pathfinder/assess. Two related entities:
+//   - Direction: one of 4 strategic buckets (leadership_development,
+//     organizational_transformation, individual_coaching, custom_program)
+//   - Benefit: a specific capability inside a direction (33 total)
+//
+// The `custom_program` direction uses benefits_mode='all' meaning the UI
+// should flatten benefits from every other direction (previously encoded as
+// the JSON sentinel `"benefits": "all"`).
+
+export type CorporateBenefitsMode = 'list' | 'all';
+export type CorporateRoiCategory =
+  | 'productivity'
+  | 'turnover'
+  | 'absenteeism'
+  | 'engagement'
+  | 'conflict';
+
+export interface CorporateBenefit extends AuditFields {
+  slug: string;
+  direction_slug: string;
+  label_ar: string;
+  label_en: string;
+  description_ar?: string;
+  description_en?: string;
+  citation_ar?: string;
+  citation_en?: string;
+  benchmark_improvement_pct: number;
+  roi_category: CorporateRoiCategory;
+  self_assessment_prompt_ar?: string;
+  self_assessment_prompt_en?: string;
+  display_order: number;
+}
+
+export interface CorporateBenefitDirection extends AuditFields {
+  slug: string;
+  title_ar: string;
+  title_en: string;
+  description_ar?: string;
+  description_en?: string;
+  icon?: string;
+  benefits_mode: CorporateBenefitsMode;
+  display_order: number;
+  /** Populated by getAllCorporateBenefits() joining children. */
+  benefits?: CorporateBenefit[];
+}
+
+/**
+ * Legacy-shape payload matching the old corporate-benefits.json file.
+ * Returned by DbContentProvider.getCorporateBenefitsData() so the existing
+ * PathfinderEngine client component can consume the DB output with zero
+ * prop-shape changes. `benefits: 'all'` sentinel preserved for custom_program.
+ */
+export interface CorporateBenefitsData {
+  version: string;
+  directions: Array<{
+    id: string;
+    title_ar: string;
+    title_en: string;
+    description_ar: string;
+    description_en: string;
+    icon: string;
+    benefits:
+      | 'all'
+      | Array<{
+          id: string;
+          label_ar: string;
+          label_en: string;
+          description_ar: string;
+          description_en: string;
+          citation_ar: string;
+          citation_en: string;
+          benchmark_improvement_pct: number;
+          roi_category: CorporateRoiCategory;
+          self_assessment_prompt_ar: string;
+          self_assessment_prompt_en: string;
+        }>;
+  }>;
+}
+
 // ── Provider Interface ──────────────────────────────────────────────────────
 
 /** Content fetched for a specific page — grouped by section */

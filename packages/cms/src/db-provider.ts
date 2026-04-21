@@ -20,6 +20,11 @@ import type {
   Event,
   BlogPost,
   Quote,
+  CorporateBenefit,
+  CorporateBenefitDirection,
+  CorporateBenefitsData,
+  CorporateBenefitsMode,
+  CorporateRoiCategory,
 } from './types';
 import { JsonFileProvider } from './json-provider';
 
@@ -1333,6 +1338,229 @@ export class DbContentProvider implements ContentProvider {
       const msg = err instanceof Error ? err.message : String(err);
       console.error(`[cms/db] DB read failed for getBlogPostById(${id}): ${msg}`);
       return null;
+    }
+  }
+
+  // ── MIGRATED: Corporate Benefits (Phase 3d, 2026-04-21) ───────────────────
+
+  private rowToCorporateBenefitDirection(r: {
+    slug: string;
+    title_ar: string;
+    title_en: string;
+    description_ar: string | null;
+    description_en: string | null;
+    icon: string | null;
+    benefits_mode: string;
+    display_order: number;
+    published: boolean;
+    last_edited_by: string | null;
+    last_edited_at: Date | string | null;
+  }): CorporateBenefitDirection {
+    return {
+      slug: r.slug,
+      title_ar: r.title_ar,
+      title_en: r.title_en,
+      description_ar: r.description_ar ?? undefined,
+      description_en: r.description_en ?? undefined,
+      icon: r.icon ?? undefined,
+      benefits_mode: (r.benefits_mode as CorporateBenefitsMode) ?? 'list',
+      display_order: r.display_order,
+      published: r.published,
+      last_edited_by: r.last_edited_by ?? undefined,
+      last_edited_at:
+        r.last_edited_at instanceof Date
+          ? r.last_edited_at.toISOString()
+          : r.last_edited_at ?? undefined,
+    };
+  }
+
+  private rowToCorporateBenefit(r: {
+    slug: string;
+    direction_slug: string;
+    label_ar: string;
+    label_en: string;
+    description_ar: string | null;
+    description_en: string | null;
+    citation_ar: string | null;
+    citation_en: string | null;
+    benchmark_improvement_pct: number;
+    roi_category: string;
+    self_assessment_prompt_ar: string | null;
+    self_assessment_prompt_en: string | null;
+    display_order: number;
+    published: boolean;
+    last_edited_by: string | null;
+    last_edited_at: Date | string | null;
+  }): CorporateBenefit {
+    return {
+      slug: r.slug,
+      direction_slug: r.direction_slug,
+      label_ar: r.label_ar,
+      label_en: r.label_en,
+      description_ar: r.description_ar ?? undefined,
+      description_en: r.description_en ?? undefined,
+      citation_ar: r.citation_ar ?? undefined,
+      citation_en: r.citation_en ?? undefined,
+      benchmark_improvement_pct: r.benchmark_improvement_pct,
+      roi_category: (r.roi_category as CorporateRoiCategory) ?? 'productivity',
+      self_assessment_prompt_ar: r.self_assessment_prompt_ar ?? undefined,
+      self_assessment_prompt_en: r.self_assessment_prompt_en ?? undefined,
+      display_order: r.display_order,
+      published: r.published,
+      last_edited_by: r.last_edited_by ?? undefined,
+      last_edited_at:
+        r.last_edited_at instanceof Date
+          ? r.last_edited_at.toISOString()
+          : r.last_edited_at ?? undefined,
+    };
+  }
+
+  async getAllCorporateBenefitDirections(): Promise<CorporateBenefitDirection[]> {
+    const { db, eq, asc } = await import('@kunacademy/db');
+    const { corporate_benefit_directions, corporate_benefits } = await import('@kunacademy/db/schema');
+    const dirRows = await db
+      .select()
+      .from(corporate_benefit_directions)
+      .where(eq(corporate_benefit_directions.published, true))
+      .orderBy(asc(corporate_benefit_directions.display_order));
+
+    const benRows = await db
+      .select()
+      .from(corporate_benefits)
+      .where(eq(corporate_benefits.published, true))
+      .orderBy(asc(corporate_benefits.direction_slug), asc(corporate_benefits.display_order));
+
+    const byDir = new Map<string, CorporateBenefit[]>();
+    for (const b of benRows) {
+      const mapped = this.rowToCorporateBenefit(b);
+      const arr = byDir.get(mapped.direction_slug) ?? [];
+      arr.push(mapped);
+      byDir.set(mapped.direction_slug, arr);
+    }
+
+    return dirRows.map((d) => {
+      const dir = this.rowToCorporateBenefitDirection(d);
+      dir.benefits = byDir.get(dir.slug) ?? [];
+      return dir;
+    });
+  }
+
+  async getAllCorporateBenefits(): Promise<CorporateBenefit[]> {
+    const { db, eq, asc } = await import('@kunacademy/db');
+    const { corporate_benefits } = await import('@kunacademy/db/schema');
+    const rows = await db
+      .select()
+      .from(corporate_benefits)
+      .where(eq(corporate_benefits.published, true))
+      .orderBy(asc(corporate_benefits.direction_slug), asc(corporate_benefits.display_order));
+    return rows.map((r) => this.rowToCorporateBenefit(r));
+  }
+
+  async getCorporateBenefitsByDirection(directionSlug: string): Promise<CorporateBenefit[]> {
+    const { db, and, eq, asc } = await import('@kunacademy/db');
+    const { corporate_benefits } = await import('@kunacademy/db/schema');
+    const rows = await db
+      .select()
+      .from(corporate_benefits)
+      .where(
+        and(
+          eq(corporate_benefits.published, true),
+          eq(corporate_benefits.direction_slug, directionSlug),
+        ),
+      )
+      .orderBy(asc(corporate_benefits.display_order));
+    return rows.map((r) => this.rowToCorporateBenefit(r));
+  }
+
+  async getCorporateBenefit(slug: string): Promise<CorporateBenefit | null> {
+    const { db, and, eq } = await import('@kunacademy/db');
+    const { corporate_benefits } = await import('@kunacademy/db/schema');
+    const rows = await db
+      .select()
+      .from(corporate_benefits)
+      .where(and(eq(corporate_benefits.published, true), eq(corporate_benefits.slug, slug)))
+      .limit(1);
+    const r = rows[0];
+    return r ? this.rowToCorporateBenefit(r) : null;
+  }
+
+  /**
+   * Legacy-shape payload used by PathfinderEngine. Directions with
+   * benefits_mode='all' emit the sentinel `"all"` for `benefits` so the
+   * client's existing logic flattens other directions.
+   */
+  async getCorporateBenefitsData(): Promise<CorporateBenefitsData> {
+    const directions = await this.getAllCorporateBenefitDirections();
+    return {
+      version: '1.0',
+      directions: directions.map((d) => ({
+        id: d.slug,
+        title_ar: d.title_ar,
+        title_en: d.title_en,
+        description_ar: d.description_ar ?? '',
+        description_en: d.description_en ?? '',
+        icon: d.icon ?? '',
+        benefits:
+          d.benefits_mode === 'all'
+            ? 'all'
+            : (d.benefits ?? []).map((b) => ({
+                id: b.slug,
+                label_ar: b.label_ar,
+                label_en: b.label_en,
+                description_ar: b.description_ar ?? '',
+                description_en: b.description_en ?? '',
+                citation_ar: b.citation_ar ?? '',
+                citation_en: b.citation_en ?? '',
+                benchmark_improvement_pct: b.benchmark_improvement_pct,
+                roi_category: b.roi_category,
+                self_assessment_prompt_ar: b.self_assessment_prompt_ar ?? '',
+                self_assessment_prompt_en: b.self_assessment_prompt_en ?? '',
+              })),
+      })),
+    };
+  }
+
+  // ── Admin helpers for Corporate Benefits CRUD ─────────────────────────────
+
+  async getAllCorporateBenefitDirectionsAdmin(): Promise<
+    Array<CorporateBenefitDirection & { id: string }>
+  > {
+    try {
+      const { db, asc } = await import('@kunacademy/db');
+      const { corporate_benefit_directions } = await import('@kunacademy/db/schema');
+      const rows = await db
+        .select()
+        .from(corporate_benefit_directions)
+        .orderBy(asc(corporate_benefit_directions.display_order));
+      return rows.map((r) => ({
+        ...this.rowToCorporateBenefitDirection(r),
+        id: r.id,
+      }));
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[cms/db] DB read failed for getAllCorporateBenefitDirectionsAdmin: ${msg}`);
+      return [];
+    }
+  }
+
+  async getAllCorporateBenefitsAdmin(): Promise<
+    Array<CorporateBenefit & { id: string }>
+  > {
+    try {
+      const { db, asc } = await import('@kunacademy/db');
+      const { corporate_benefits } = await import('@kunacademy/db/schema');
+      const rows = await db
+        .select()
+        .from(corporate_benefits)
+        .orderBy(
+          asc(corporate_benefits.direction_slug),
+          asc(corporate_benefits.display_order),
+        );
+      return rows.map((r) => ({ ...this.rowToCorporateBenefit(r), id: r.id }));
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[cms/db] DB read failed for getAllCorporateBenefitsAdmin: ${msg}`);
+      return [];
     }
   }
 
