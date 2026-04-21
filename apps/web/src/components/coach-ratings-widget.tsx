@@ -4,10 +4,12 @@
  * Server component. Bridges the Phase 2b instructor ↔ profile FK:
  *   instructors.slug → instructors.profile_id → coach_ratings.coach_id (= profiles.id)
  *
- * PRIVACY — matches /api/coaches/[id]/ratings/summary:
+ * PRIVACY:
  *   - avg_stars + count_total computed over ALL ratings (numeric accuracy)
- *   - count_public is filtered by privacy='public' AND is_published=true
+ *   - count_public is filtered by is_published=true (public flag)
  *   - No text, no names, no identifiable data — aggregates only
+ *   - Matches the live coach_ratings schema (privacy text column is declared in
+ *     Drizzle but not migrated; is_published is the enforced public gate)
  *
  * Widget shows "No ratings yet" when no public ratings exist.
  * Bilingual: AR "التقييمات" / EN "Ratings". Honors RTL via parent <html dir>.
@@ -57,7 +59,7 @@ async function fetchSummaryBySlug(slug: string): Promise<Summary | null> {
         .where(eq(coach_ratings.coach_id, profileId));
     });
 
-    // Step 3 — public-only count (privacy='public' AND is_published=true)
+    // Step 3 — public-only count (is_published=true is the enforced gate)
     const pubRows = await withAdminContext(async (adminDb) => {
       return adminDb
         .select({ count_public: sql<number>`count(*)::int` })
@@ -65,7 +67,6 @@ async function fetchSummaryBySlug(slug: string): Promise<Summary | null> {
         .where(
           and(
             eq(coach_ratings.coach_id, profileId),
-            eq(coach_ratings.privacy, 'public'),
             eq(coach_ratings.is_published, true),
           ),
         );
