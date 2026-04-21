@@ -5,7 +5,8 @@ import Link from 'next/link';
 import { JourneyMap } from '@/lib/pathfinder/journey-map';
 import { RadarChart } from '@/lib/pathfinder/radar-chart';
 import { generateReportHtml } from '@/lib/pathfinder/report-template';
-import type { RoiResult, CorporateRoiResult } from '@kunacademy/cms';
+import type { RoiResult } from '@/lib/pathfinder-scorer';
+import type { CorporateRoiResult } from '@kunacademy/cms';
 
 // ── Program URL Map ────────────────────────────────────────────────────────────
 // Maps pathfinder recommendation slugs to their actual page URLs.

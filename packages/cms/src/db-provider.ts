@@ -1031,16 +1031,175 @@ export class DbContentProvider implements ContentProvider {
     }
   }
 
+  // ── MIGRATED: Pathfinder tree (migration 0045, 2026-04-21) ─────────────────
+  //
+  // The tree is versioned; exactly one row in pathfinder_tree_versions has
+  // is_active=true (enforced by partial unique index). Public reads always
+  // use the active version. Admin UIs can fetch drafts via the version-aware
+  // helpers below.
+  //
+  // Legacy PathfinderQuestion shape (question_id + parent_answer_id string +
+  // embedded answers[]) is preserved at the TS boundary so PathfinderEngine
+  // client component needs zero prop churn. The DB layer uses code+UUID.
+
+  /**
+   * Return the active tree version id. Throws if no active version exists
+   * (configuration error — migration 0045 seeds one).
+   */
+  async getActivePathfinderVersion(): Promise<{ id: string; version_number: number; label: string } | null> {
+    const { db, eq } = await import('@kunacademy/db');
+    const { pathfinder_tree_versions } = await import('@kunacademy/db/schema');
+    const rows = await db
+      .select({
+        id: pathfinder_tree_versions.id,
+        version_number: pathfinder_tree_versions.version_number,
+        label: pathfinder_tree_versions.label,
+      })
+      .from(pathfinder_tree_versions)
+      .where(eq(pathfinder_tree_versions.is_active, true))
+      .limit(1);
+    return rows[0] ?? null;
+  }
+
+  /**
+   * Fetch every (question, answer) pair for a given version and reassemble
+   * the legacy PathfinderQuestion shape the client engine expects.
+   * Uses answer codes for parent_answer_id so the existing engine keeps
+   * working against string identifiers (not UUIDs).
+   */
+  private async getPathfinderTreeByVersion(versionId: string): Promise<PathfinderQuestion[]> {
+    const { db, eq, asc } = await import('@kunacademy/db');
+    const { pathfinder_questions, pathfinder_answers } = await import('@kunacademy/db/schema');
+
+    const qRows = await db
+      .select()
+      .from(pathfinder_questions)
+      .where(eq(pathfinder_questions.version_id, versionId))
+      .orderBy(asc(pathfinder_questions.sort_order));
+
+    if (qRows.length === 0) return [];
+
+    const aRows = await db
+      .select()
+      .from(pathfinder_answers)
+      .orderBy(asc(pathfinder_answers.sort_order));
+
+    // Build question-code → answer-code maps for parent resolution.
+    const answerIdToCode = new Map<string, string>();
+    for (const a of aRows) answerIdToCode.set(a.id, a.code);
+
+    const byQuestion = new Map<string, typeof aRows>();
+    for (const a of aRows) {
+      const arr = byQuestion.get(a.question_id) ?? [];
+      arr.push(a);
+      byQuestion.set(a.question_id, arr);
+    }
+
+    return qRows.map((q) => {
+      const answers = (byQuestion.get(q.id) ?? []).map((a) => ({
+        id: a.code,
+        text_ar: a.text_ar,
+        text_en: a.text_en ?? '',
+        category_weights: (a.category_weights ?? {}) as Record<string, number>,
+      }));
+      const parentCode = q.parent_answer_id ? answerIdToCode.get(q.parent_answer_id) ?? '' : '';
+      return {
+        question_id: q.code,
+        parent_answer_id: parentCode,
+        question_ar: q.question_ar,
+        question_en: q.question_en ?? '',
+        type: q.type as 'individual' | 'corporate',
+        answers,
+        published: q.published,
+      };
+    });
+  }
+
   async getAllPathfinderQuestions(): Promise<PathfinderQuestion[]> {
-    return this.fallback.getAllPathfinderQuestions();
+    const active = await this.getActivePathfinderVersion();
+    if (!active) {
+      console.warn('[cms/db] No active pathfinder tree version — returning empty');
+      return [];
+    }
+    const tree = await this.getPathfinderTreeByVersion(active.id);
+    // Preserve the JSON-era semantic: only return published questions to the public
+    return tree.filter((q) => q.published);
   }
 
   async getPathfinderRoots(type?: 'individual' | 'corporate'): Promise<PathfinderQuestion[]> {
-    return this.fallback.getPathfinderRoots(type);
+    const all = await this.getAllPathfinderQuestions();
+    const roots = all.filter((q) => !q.parent_answer_id);
+    return type ? roots.filter((q) => q.type === type) : roots;
   }
 
   async getPathfinderChildren(parentAnswerId: string): Promise<PathfinderQuestion[]> {
-    return this.fallback.getPathfinderChildren(parentAnswerId);
+    const all = await this.getAllPathfinderQuestions();
+    return all.filter((q) => q.parent_answer_id === parentAnswerId);
+  }
+
+  /**
+   * Admin-facing: fetch full tree (including unpublished) for a specific
+   * version id. Used by /admin/pathfinder/ preview + edit flows.
+   */
+  async getPathfinderTreeForAdmin(versionId: string): Promise<PathfinderQuestion[]> {
+    return this.getPathfinderTreeByVersion(versionId);
+  }
+
+  /** Admin-facing: list every version (active + drafts). */
+  async getAllPathfinderVersionsAdmin(): Promise<
+    Array<{
+      id: string;
+      version_number: number;
+      label: string;
+      is_active: boolean;
+      published_at: string | null;
+      created_at: string;
+    }>
+  > {
+    const { db, asc } = await import('@kunacademy/db');
+    const { pathfinder_tree_versions } = await import('@kunacademy/db/schema');
+    const rows = await db
+      .select()
+      .from(pathfinder_tree_versions)
+      .orderBy(asc(pathfinder_tree_versions.version_number));
+    return rows.map((r) => ({
+      id: r.id,
+      version_number: r.version_number,
+      label: r.label,
+      is_active: r.is_active,
+      published_at: r.published_at ?? null,
+      created_at: r.created_at,
+    }));
+  }
+
+  /** Admin-facing: outcomes for a version. */
+  async getPathfinderOutcomesForVersion(versionId: string): Promise<
+    Array<{
+      id: string;
+      program_slug: string;
+      category_affinity: Record<string, number>;
+      min_score: number;
+      cta_label_ar: string | null;
+      cta_label_en: string | null;
+      cta_type: 'book_call' | 'enroll' | 'explore' | 'free_signup';
+    }>
+  > {
+    const { db, eq, asc } = await import('@kunacademy/db');
+    const { pathfinder_outcomes } = await import('@kunacademy/db/schema');
+    const rows = await db
+      .select()
+      .from(pathfinder_outcomes)
+      .where(eq(pathfinder_outcomes.version_id, versionId))
+      .orderBy(asc(pathfinder_outcomes.program_slug));
+    return rows.map((r) => ({
+      id: r.id,
+      program_slug: r.program_slug,
+      category_affinity: (r.category_affinity ?? {}) as Record<string, number>,
+      min_score: r.min_score,
+      cta_label_ar: r.cta_label_ar,
+      cta_label_en: r.cta_label_en,
+      cta_type: r.cta_type as 'book_call' | 'enroll' | 'explore' | 'free_signup',
+    }));
   }
 
   // ── MIGRATED: Events (Phase 2e) ───────────────────────────────────────────

@@ -155,27 +155,22 @@ export class JsonFileProvider implements ContentProvider {
     this.migrated('getSetting');
   }
 
-  // ── Sheet 6: Pathfinder ─────────────────────────────────────────────
+  // ── Sheet 6: Pathfinder (MIGRATED → pathfinder_* tables, migration 0045) ──
 
   async getAllPathfinderQuestions(): Promise<PathfinderQuestion[]> {
-    const rows = await this.loadSheet<PathfinderQuestion>('pathfinder');
-    return this.published(rows).map(row => ({
-      ...row,
-      answers: typeof row.answers === 'string'
-        ? (() => { try { return JSON.parse(row.answers as unknown as string); } catch { return []; } })()
-        : (row.answers ?? []),
-    }));
+    this.migrated('getAllPathfinderQuestions');
   }
 
-  async getPathfinderRoots(type?: 'individual' | 'corporate'): Promise<PathfinderQuestion[]> {
-    const all = await this.getAllPathfinderQuestions();
-    const roots = all.filter((q) => !q.parent_answer_id);
-    return type ? roots.filter((q) => q.type === type) : roots;
+  async getPathfinderRoots(_type?: 'individual' | 'corporate'): Promise<PathfinderQuestion[]> {
+    this.migrated('getPathfinderRoots');
   }
 
-  async getPathfinderChildren(parentAnswerId: string): Promise<PathfinderQuestion[]> {
-    const all = await this.getAllPathfinderQuestions();
-    return all.filter((q) => q.parent_answer_id === parentAnswerId);
+  async getPathfinderChildren(_parentAnswerId: string): Promise<PathfinderQuestion[]> {
+    this.migrated('getPathfinderChildren');
+  }
+
+  async getActivePathfinderVersion(): Promise<{ id: string; version_number: number; label: string } | null> {
+    this.migrated('getActivePathfinderVersion');
   }
 
   // ── Testimonials (MIGRATED → testimonials) ──────────────────────────────

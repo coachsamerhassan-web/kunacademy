@@ -355,6 +355,15 @@ export class GoogleSheetsProvider implements ContentProvider {
     return all.filter((q) => q.parent_answer_id === parentAnswerId);
   }
 
+  /**
+   * Sheets provider is pre-DB — there is no version table. Return null so
+   * the assessment flow persists response rows with NULL tree_version_id
+   * (legacy-safe; never reached in Phase 3+).
+   */
+  async getActivePathfinderVersion(): Promise<{ id: string; version_number: number; label: string } | null> {
+    return null;
+  }
+
 
   // ── Sheet 7: Testimonials (MIGRATED → testimonials) ─────────────────────
 

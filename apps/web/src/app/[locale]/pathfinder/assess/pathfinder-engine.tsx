@@ -2,8 +2,8 @@
 
 import { useState, useCallback, useRef, useEffect, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import type { PathfinderQuestion, PathfinderAnswer, LightReport } from '@kunacademy/cms';
-import { scoreAnswersLight } from '@kunacademy/cms';
+import type { PathfinderQuestion, PathfinderAnswer } from '@kunacademy/cms';
+import { scoreAnswersLight, type LightReport } from '@/lib/pathfinder-scorer';
 import {
   DirectionSelectStep,
   SelfAssessmentStep,

@@ -77,3 +77,7 @@ export * from './program-price-overrides';
 export * from './events';
 export * from './corporate_benefit_directions';
 export * from './corporate_benefits';
+export * from './pathfinder_tree_versions';
+export * from './pathfinder_questions';
+export * from './pathfinder_answers';
+export * from './pathfinder_outcomes';

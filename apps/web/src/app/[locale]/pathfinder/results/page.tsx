@@ -3,7 +3,8 @@ import { db } from '@kunacademy/db';
 import { pathfinder_responses } from '@kunacademy/db/schema';
 import { eq } from 'drizzle-orm';
 import { redirect } from 'next/navigation';
-import { calculateRoi, calculateCorporateRoi } from '@kunacademy/cms';
+import { calculateRoi } from '@/lib/pathfinder-scorer';
+import { calculateCorporateRoi } from '@kunacademy/cms';
 import type { Metadata } from 'next';
 import { ResultsDisplay } from './results-display';
 

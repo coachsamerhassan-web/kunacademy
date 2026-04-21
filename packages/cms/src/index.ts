@@ -48,8 +48,9 @@ export { contentGetter, localize } from './helpers';
 export { applyDocStyles, DOC_CLASS_MAP, CALLOUT_CLASS_MAP } from './doc-styles';
 export type { DocRendererProps } from './doc-renderer.client';
 export { DocRenderer } from './doc-renderer.client';
-export { scoreAnswers, scoreAnswersLight, calculateRoi } from './pathfinder-scorer';
-export type { ScoredAnswer, Recommendation, LightRecommendation, LightReport, RoiInputs, RoiResult } from './pathfinder-scorer';
+// pathfinder-scorer relocated to apps/web/src/lib/pathfinder-scorer.ts
+// (migration 0045, 2026-04-21). CMS package no longer owns scoring logic;
+// it's pulled directly by the web app via @/lib/pathfinder-scorer.
 
 export { calculateCorporateRoi } from './benefits-roi-calculator';
 export type { CorporateRoiResult, BenefitSavings, CorporateSettings, SelectedBenefit } from './benefits-roi-calculator';

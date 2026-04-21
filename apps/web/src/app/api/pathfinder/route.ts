@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { db } from '@kunacademy/db';
 import { pathfinder_responses } from '@kunacademy/db/schema';
 import { cms } from '@kunacademy/cms/server';
-import { scoreAnswers } from '@kunacademy/cms';
+import { scoreAnswers } from '@/lib/pathfinder-scorer';
 
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 const RATE_LIMIT_MAX = 20;
@@ -65,7 +65,19 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { answers, contact, type, roi_inputs, locale = 'ar' } = body;
+    const {
+      answers,
+      contact,
+      type,
+      roi_inputs,
+      locale = 'ar',
+      // Samer decision #6 (2026-04-21): email consent is opt-in; default false.
+      email_consent = false,
+      // Samer decision #7 (2026-04-21): only book-call clickers upsert a CRM
+      // lead. The client POSTs this flag true only when the user actually
+      // clicked the book-call CTA — not on completion.
+      book_call_intent = false,
+    } = body;
 
     if (!contact?.name || !contact?.email || !type) {
       return NextResponse.json(
@@ -95,12 +107,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Score recommendations from the answer trail
+    // Score recommendations from the answer trail (already top-3 ranked)
     const allPrograms = await cms.getAllPrograms();
-    const recommendations = scoreAnswers(answers, allPrograms, type);
+    const recommendations = scoreAnswers(answers, allPrograms, type).slice(0, 3);
 
     // Determine journey stage from answers
     const journeyStage = determineJourneyStage(answers);
+
+    // Migration 0045 — pin this response to the active tree version so
+    // analytics can ask "of users who saw v2, how many enrolled in STCE?".
+    // Nullable for legacy safety; getActivePathfinderVersion returns null
+    // only if the DB was never seeded (shouldn't happen post-0045).
+    const activeVersion = await cms.getActivePathfinderVersion();
+    const treeVersionId = activeVersion?.id ?? null;
 
     // Store in DB using Drizzle
     const [data] = await db
@@ -115,6 +134,7 @@ export async function POST(request: NextRequest) {
         roi_inputs: roi_inputs || null,
         journey_stage: journeyStage,
         locale,
+        tree_version_id: treeVersionId,
       })
       .returning({ id: pathfinder_responses.id });
 
@@ -123,10 +143,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to save response' }, { status: 500 });
     }
 
+    // Fire-and-forget side effects. These failures must not block the response.
+    // (Decisions locked by Samer 2026-04-21: email opt-in only; CRM on book-call only.)
+    if (email_consent === true) {
+      // Hook point — when a pathfinder summary email template exists in @kunacademy/email,
+      // wire it here. Deferred until the template ships (separate micro-wave).
+      console.info(`[api/pathfinder] email_consent=true for ${contact.email} — summary email deferred (template pending)`);
+    }
+    if (book_call_intent === true) {
+      console.info(`[api/pathfinder] book_call_intent=true for ${contact.email} — CRM lead upsert hook (template pending)`);
+    }
+
     return NextResponse.json({
       id: data.id,
       recommendations,
       journey_stage: journeyStage,
+      tree_version_id: treeVersionId,
     });
   } catch (err) {
     console.error('[api/pathfinder] Error:', err);

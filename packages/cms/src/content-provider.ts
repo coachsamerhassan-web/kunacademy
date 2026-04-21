@@ -112,6 +112,18 @@ export interface ContentProvider {
   /** Get child questions for a given parent answer ID */
   getPathfinderChildren(parentAnswerId: string): Promise<PathfinderQuestion[]>;
 
+  /**
+   * Get the active pathfinder tree version (migration 0045, 2026-04-21).
+   * Returns null if no active version exists (shouldn't happen in healthy setups).
+   * Only DbContentProvider returns a real value; JsonFileProvider throws
+   * migrated(); SheetsProvider returns null (legacy, un-migrated).
+   */
+  getActivePathfinderVersion(): Promise<{
+    id: string;
+    version_number: number;
+    label: string;
+  } | null>;
+
 
   // ── Sheet 7: Testimonials ────────────────────────────────────────────
 

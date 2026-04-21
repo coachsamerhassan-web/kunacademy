@@ -5,7 +5,7 @@
  * ranked program recommendations with match percentages and reasoning.
  */
 
-import type { Program } from './types';
+import type { Program } from '@kunacademy/cms';
 
 /** A single answer in the trail, as submitted by the pathfinder engine */
 export interface ScoredAnswer {
