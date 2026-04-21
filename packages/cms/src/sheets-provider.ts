@@ -216,7 +216,7 @@ export class GoogleSheetsProvider implements ContentProvider {
 
   // ── Phase 3 PARTIAL cutover (2026-04-21) ────────────────────────────────
   // 7 entities are DB-only. GoogleSheetsProvider is retained only as a
-  // legacy fallback path for pathfinder + team + blog (un-migrated).
+  // legacy fallback path for pathfinder + blog (un-migrated).
   // Calls to migrated-entity methods throw to surface misconfiguration.
   private migrated(method: string): never {
     throw new Error(
@@ -282,33 +282,18 @@ export class GoogleSheetsProvider implements ContentProvider {
     this.migrated('getService');
   }
 
-  // ── Sheet 4: Team ─────────────────────────────────────────────────────
-
-  private normalizeTeamMember(t: TeamMember): TeamMember {
-    return {
-      ...t,
-      // Map legacy coach_level column → icf_credential (unless icf_credential is already set)
-      icf_credential: t.icf_credential ?? t.coach_level,
-    };
-  }
+  // ── Sheet 4: Team (MIGRATED → instructors) ──────────────────────────────
 
   async getAllTeamMembers(): Promise<TeamMember[]> {
-    const rows = await this.loadSheet<TeamMember>('team');
-    return this.published(rows)
-      .filter((t) => t.is_visible)
-      .map((t) => this.normalizeTeamMember(t))
-      .sort((a, b) => a.display_order - b.display_order);
+    this.migrated('getAllTeamMembers');
   }
 
   async getBookableCoaches(): Promise<TeamMember[]> {
-    const all = await this.getAllTeamMembers();
-    return all.filter((t) => t.is_bookable);
+    this.migrated('getBookableCoaches');
   }
 
-  async getTeamMember(slug: string): Promise<TeamMember | null> {
-    const rows = await this.loadSheet<TeamMember>('team');
-    const found = this.published(rows).find((t) => t.slug === slug);
-    return found ? this.normalizeTeamMember(found) : null;
+  async getTeamMember(_slug: string): Promise<TeamMember | null> {
+    this.migrated('getTeamMember');
   }
 
   // ── Sheet 5: Settings (MIGRATED → site_settings) ────────────────────────

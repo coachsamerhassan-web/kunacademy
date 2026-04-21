@@ -39,7 +39,7 @@ export class JsonFileProvider implements ContentProvider {
 
   // ── Phase 3 PARTIAL cutover (2026-04-21) ────────────────────────────────
   // 7 entities are DB-only. JsonFileProvider is retained only as a legacy
-  // fallback path for team + blog + pathfinder (un-migrated).
+  // fallback path for blog + pathfinder (un-migrated).
   // Calls to migrated-entity methods throw to surface misconfiguration.
   private migrated(method: string): never {
     throw new Error(
