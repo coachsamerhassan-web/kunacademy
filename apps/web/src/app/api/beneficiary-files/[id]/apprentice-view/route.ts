@@ -164,16 +164,19 @@ export async function GET(
   });
 
   // ── Assessor-name redaction (spec §4.1) ─────────────────────────────────────
+  // Show real name ONLY on pass or pending. Any other state (fail, escalated,
+  // or unexpected values) → institutional authorship. This is stricter than
+  // "fail only" per Samer's locked decision + DeepSeek P1-6 feedback.
   let assessorNameAr: string | null = null;
   let assessorNameEn: string | null = null;
   if (assessmentRow) {
-    const isFail = assessmentRow.decision === 'fail';
-    if (isFail) {
-      assessorNameAr = 'مُقيّم كُن المعتمد';
-      assessorNameEn = 'Kun Certified Assessor';
-    } else {
+    const showReal = assessmentRow.decision === 'pass' || assessmentRow.decision === 'pending';
+    if (showReal) {
       assessorNameAr = assessmentRow.assessor_name_ar;
       assessorNameEn = assessmentRow.assessor_name_en;
+    } else {
+      assessorNameAr = 'مُقيّم كُن المعتمد';
+      assessorNameEn = 'Kun Certified Assessor';
     }
   }
 

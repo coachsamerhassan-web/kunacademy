@@ -659,9 +659,11 @@ export default function ApprenticeBeneficiaryFilePage({
   if (loading) {
     return (
       <Section>
-        <Card className="py-16 flex items-center justify-center">
-          <p className="text-sm text-[var(--color-neutral-400)]">{l.loading}</p>
-        </Card>
+        <div dir={dir}>
+          <Card className="py-16 flex items-center justify-center">
+            <p className="text-sm text-[var(--color-neutral-400)]">{l.loading}</p>
+          </Card>
+        </div>
       </Section>
     );
   }
@@ -669,15 +671,17 @@ export default function ApprenticeBeneficiaryFilePage({
   if (notFound || !data) {
     return (
       <Section>
-        <Card className="py-16 flex flex-col items-center text-center gap-4" dir={dir}>
-          <div className="w-14 h-14 rounded-full bg-[var(--color-neutral-100)] flex items-center justify-center">
-            <AlertCircle size={24} className="text-[var(--color-neutral-400)]" />
-          </div>
-          <p className="text-sm text-[var(--color-neutral-500)] max-w-sm">{l.notFound}</p>
-          <Link href={`/${locale}/dashboard/beneficiary-files`}>
-            <Button variant="primary" size="md">{l.notFoundCta}</Button>
-          </Link>
-        </Card>
+        <div dir={dir}>
+          <Card className="py-16 flex flex-col items-center text-center gap-4">
+            <div className="w-14 h-14 rounded-full bg-[var(--color-neutral-100)] flex items-center justify-center">
+              <AlertCircle size={24} className="text-[var(--color-neutral-400)]" />
+            </div>
+            <p className="text-sm text-[var(--color-neutral-500)] max-w-sm">{l.notFound}</p>
+            <Link href={`/${locale}/dashboard/beneficiary-files`}>
+              <Button variant="primary" size="md">{l.notFoundCta}</Button>
+            </Link>
+          </Card>
+        </div>
       </Section>
     );
   }
@@ -687,7 +691,8 @@ export default function ApprenticeBeneficiaryFilePage({
 
   return (
     <Section>
-      <div className="mb-4" dir={dir}>
+      <div dir={dir}>
+      <div className="mb-4">
         <Link
           href={`/${locale}/dashboard/beneficiary-files`}
           className="text-sm text-[var(--color-neutral-500)] hover:text-[var(--color-primary)] inline-flex items-center gap-1"
@@ -758,6 +763,7 @@ export default function ApprenticeBeneficiaryFilePage({
           <PrimaryCTA data={data} locale={locale} l={l} isAr={isAr} />
         </>
       )}
+      </div>
     </Section>
   );
 }
