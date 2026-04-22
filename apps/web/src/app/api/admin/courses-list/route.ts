@@ -81,13 +81,15 @@ export async function POST(request: NextRequest) {
     if (!type || !course_id) return NextResponse.json({ error: 'type and course_id required' }, { status: 400 });
 
     if (type === 'lesson') {
-      const { title_ar, title_en, video_url, duration_minutes, is_preview, section_id, order: lessonOrder } = body;
+      // NOTE (Migration 0046): video_url dropped from lessons. Legacy admin
+      // UI that posts video_url is silently ignored — new admin UI (Session B)
+      // creates lesson_blocks of type 'video' with block_data.url instead.
+      const { title_ar, title_en, duration_minutes, is_preview, section_id, order: lessonOrder } = body;
       const inserted = await withAdminContext(async (adminDb) =>
         adminDb.insert(lessons).values({
           course_id,
           title_ar,
           title_en,
-          video_url: video_url || null,
           duration_minutes: duration_minutes || null,
           is_preview: is_preview ?? false,
           section_id: section_id || null,
@@ -132,12 +134,12 @@ export async function PATCH(request: NextRequest) {
     if (!type || !id) return NextResponse.json({ error: 'type and id required' }, { status: 400 });
 
     if (type === 'lesson') {
-      const { title_ar, title_en, video_url, duration_minutes, is_preview, section_id, course_id } = body;
+      // NOTE (Migration 0046): video_url dropped — see POST handler comment.
+      const { title_ar, title_en, duration_minutes, is_preview, section_id, course_id } = body;
       await withAdminContext(async (adminDb) =>
         adminDb.update(lessons).set({
           title_ar,
           title_en,
-          video_url: video_url || null,
           duration_minutes: duration_minutes || null,
           is_preview: is_preview ?? false,
           section_id: section_id || null,

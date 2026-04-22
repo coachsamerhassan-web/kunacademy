@@ -77,5 +77,6 @@ export type BadgeTier = 'bronze' | 'silver' | 'gold' | 'platinum';
 /** Commission scope */
 export type CommissionScope = 'global' | 'per_program' | 'per_coach';
 
-/** Video provider — matches lessons.video_provider column values */
+/** Video provider — historically `lessons.video_provider` (dropped in migration
+ *  0046). Now used by `lesson_blocks.block_data` for block_type='video'. */
 export type VideoProvider = 'youtube' | 'vimeo' | 'bunny' | 'local';

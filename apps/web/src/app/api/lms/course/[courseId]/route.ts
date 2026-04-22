@@ -45,6 +45,10 @@ export async function GET(
         .from(course_sections)
         .where(eq(course_sections.course_id, courseId))
         .orderBy(asc(course_sections.order)),
+      // NOTE (Migration 0046): video_url / video_provider / video_id columns
+      // dropped. Per-lesson video now lives in lesson_blocks.block_data for
+      // blocks of block_type='video'. Client treats video_url as null; the
+      // lesson player (Session C) will read from lesson_blocks instead.
       db
         .select({
           id: lessons.id,
@@ -55,7 +59,6 @@ export async function GET(
           order: lessons.order,
           duration_minutes: lessons.duration_minutes,
           is_preview: lessons.is_preview,
-          video_url: lessons.video_url,
         })
         .from(lessons)
         .where(eq(lessons.course_id, courseId))
