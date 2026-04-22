@@ -77,6 +77,9 @@ export const programs = pgTable(
     thumbnail_url: text('thumbnail_url'),
     program_logo: text('program_logo'),
     promo_video_url: text('promo_video_url'),
+    // Canon W3-A (migration 0049) — gallery + closing band
+    gallery_json: jsonb('gallery_json'),
+    closing_bg_url: text('closing_bg_url'),
 
     // Pathways
     prerequisite_codes: text('prerequisite_codes').array().notNull().default([]),

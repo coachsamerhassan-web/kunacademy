@@ -539,6 +539,9 @@ export class DbContentProvider implements ContentProvider {
     pricing_by_duration?: unknown;
     track_color?: string | null;
     delivery_notes?: string | null;
+    // Canon W3-A (migration 0049)
+    gallery_json?: unknown;
+    closing_bg_url?: string | null;
   }): Program {
     const num = (v: string | number | null | undefined): number => {
       if (v === null || v === undefined || v === '') return 0;
@@ -640,6 +643,27 @@ export class DbContentProvider implements ContentProvider {
         : undefined,
       track_color: r.track_color ?? undefined,
       delivery_notes: r.delivery_notes ?? undefined,
+      // ── Canon W3-A (migration 0049) ────────────────────────────────────
+      gallery_json: (() => {
+        const raw = r.gallery_json;
+        if (raw == null) return undefined;
+        try {
+          const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+          if (!Array.isArray(parsed)) return undefined;
+          return parsed
+            .map((item: unknown) => {
+              if (typeof item === 'string') return { url: item };
+              if (item && typeof item === 'object' && 'url' in item && typeof (item as { url: unknown }).url === 'string') {
+                return item as import('./types').GalleryImage;
+              }
+              return null;
+            })
+            .filter((x): x is import('./types').GalleryImage => x !== null);
+        } catch {
+          return undefined;
+        }
+      })(),
+      closing_bg_url: r.closing_bg_url ?? undefined,
     };
   }
 

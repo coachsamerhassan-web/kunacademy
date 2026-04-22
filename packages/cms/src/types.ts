@@ -285,6 +285,37 @@ export interface Program extends AuditFields, TheaterPricing {
    *  place operational/delivery detail is allowed to live.
    */
   delivery_notes?: string;
+
+  // ── Canon W3-A extensions (2026-04-22, migration 0049) ─────────────────
+  /** Gallery images rendered below the body on the program detail page.
+   *  Each entry is a structured descriptor; string URLs are accepted for
+   *  backward-compat and treated as {url} with no alt-text. Cross-attributed
+   *  images (same asset on sibling-Ihya pages) set `cross_attrib: true` to
+   *  trigger the "من مواسم إحياء السابقة / from previous Ihya seasons" caption.
+   */
+  gallery_json?: GalleryImage[];
+
+  /** Background image for the closing CTA band. Track-color tinted per
+   *  variant at render (scrim gradient + `track_color` overlay).
+   */
+  closing_bg_url?: string;
+}
+
+/** Gallery image descriptor for program detail page Gallery section. */
+export interface GalleryImage {
+  url: string;
+  alt_ar?: string;
+  alt_en?: string;
+  /** `square` (1:1), `landscape` (16:9 or 21:9), `portrait`. Hints to renderer
+   *  for grid placement. Absent → default `square`.
+   */
+  aspect?: 'square' | 'landscape' | 'portrait';
+  caption_ar?: string;
+  caption_en?: string;
+  /** When true, render the "من مواسم إحياء السابقة / from previous Ihya seasons"
+   *  cross-attribution caption (for sibling-Ihya reused assets).
+   */
+  cross_attrib?: boolean;
 }
 
 // ── Sheet 3: Services & Packages ────────────────────────────────────────────

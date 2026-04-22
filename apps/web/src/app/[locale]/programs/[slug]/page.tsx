@@ -441,11 +441,75 @@ export default async function ProgramDetailPage({ params }: Props) {
         </div>
       </Section>
 
+      {/* ── Gallery (Canon W3-A) ──────────────────────────────────────────── */}
+      {program.gallery_json && program.gallery_json.length > 0 && (
+        <Section variant="white">
+          <div className="mx-auto max-w-[var(--max-content-width)]">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+              {program.gallery_json.map((img, idx) => {
+                const alt = (isAr ? img.alt_ar : img.alt_en) || (isAr ? img.alt_en : img.alt_ar) || '';
+                const caption = isAr ? img.caption_ar : img.caption_en;
+                const crossAttribLabel = isAr
+                  ? 'من مواسم إحياء السابقة'
+                  : 'from previous Ihya seasons';
+                const aspectClass =
+                  img.aspect === 'landscape'
+                    ? 'aspect-[16/9]'
+                    : img.aspect === 'portrait'
+                      ? 'aspect-[3/4]'
+                      : 'aspect-square';
+                return (
+                  <figure
+                    key={`${img.url}-${idx}`}
+                    className="relative overflow-hidden rounded-2xl bg-[var(--color-neutral-100)] group"
+                    style={
+                      program.track_color
+                        ? { boxShadow: `0 0 0 1px ${program.track_color}26` }
+                        : undefined
+                    }
+                  >
+                    <img
+                      src={img.url}
+                      alt={alt}
+                      loading="lazy"
+                      decoding="async"
+                      className={`w-full ${aspectClass} object-cover transition-transform duration-500 group-hover:scale-[1.03]`}
+                    />
+                    {(caption || img.cross_attrib) && (
+                      <figcaption className="absolute bottom-0 start-0 end-0 bg-gradient-to-t from-black/60 to-transparent p-3 text-white text-sm">
+                        {caption && <span>{caption}</span>}
+                        {img.cross_attrib && (
+                          <span className="block text-xs opacity-75 mt-0.5">
+                            {crossAttribLabel}
+                          </span>
+                        )}
+                      </figcaption>
+                    )}
+                  </figure>
+                );
+              })}
+            </div>
+          </div>
+        </Section>
+      )}
+
       {/* ── Trust Bar ────────────────────────────────────────────────────── */}
       <TrustBar locale={locale} variant="compact" />
 
       {/* ── Pricing & CTA ──────────────────────────────────────────────────── */}
-      <Section variant="surface-low">
+      <Section
+        variant="surface-low"
+        className={program.closing_bg_url ? '!bg-transparent' : undefined}
+        style={
+          program.closing_bg_url
+            ? {
+                background: program.track_color
+                  ? `linear-gradient(to bottom, ${program.track_color}26 0%, ${program.track_color}14 100%), url(${program.closing_bg_url}) center/cover no-repeat`
+                  : `linear-gradient(to bottom, rgba(30,27,75,0.15) 0%, rgba(30,27,75,0.08) 100%), url(${program.closing_bg_url}) center/cover no-repeat`,
+              }
+            : undefined
+        }
+      >
         <div className="mx-auto max-w-xl text-center">
           {program.is_free ? (
             /* Free program */
