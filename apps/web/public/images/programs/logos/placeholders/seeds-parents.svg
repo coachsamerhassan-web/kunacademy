@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Placeholder program logo for Seeds — Parents (101) — to be replaced per Canon W3-B / Samer D8=(a). -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Seeds Parents placeholder logo">
+  <defs>
+    <radialGradient id="seedsParentsBg" cx="50%" cy="45%" r="60%">
+      <stop offset="0%" stop-color="#6A5CB8"/>
+      <stop offset="100%" stop-color="#3A2E7A"/>
+    </radialGradient>
+  </defs>
+  <circle cx="100" cy="100" r="96" fill="url(#seedsParentsBg)" stroke="#D4A853" stroke-width="2" opacity="0.95"/>
+  <g fill="none" stroke="#D4A853" stroke-width="1.2" opacity="0.4">
+    <circle cx="100" cy="60" r="22"/>
+    <circle cx="134.6" cy="80" r="22"/>
+    <circle cx="134.6" cy="120" r="22"/>
+    <circle cx="100" cy="140" r="22"/>
+    <circle cx="65.4" cy="120" r="22"/>
+    <circle cx="65.4" cy="80" r="22"/>
+    <circle cx="100" cy="100" r="22"/>
+  </g>
+  <text x="100" y="115" text-anchor="middle" font-family="'Amiri','Noto Naskh Arabic','Tajawal',serif" font-size="60" font-weight="700" fill="#FFF5E9">ب</text>
+  <text x="100" y="160" text-anchor="middle" font-family="'Inter','Helvetica',sans-serif" font-size="14" font-weight="600" fill="#FFF5E9" opacity="0.85" letter-spacing="1.5">PARENTS</text>
+</svg>

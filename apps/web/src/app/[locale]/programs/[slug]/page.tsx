@@ -331,6 +331,92 @@ export default async function ProgramDetailPage({ params }: Props) {
         </Section>
       )}
 
+      {/* ── Canon W3-C: Wisal → STFC delivery network cross-link ─────────── */}
+      {slug === 'wisal' && (
+        <Section variant="surface-low">
+          <div className="mx-auto max-w-3xl">
+            <div className="rounded-2xl border border-[var(--color-primary-100)] bg-[var(--color-primary-50)] p-6 md:p-8">
+              <h3
+                className="text-xl md:text-2xl font-bold text-[var(--text-primary)] mb-3"
+                style={{ fontFamily: headingFont }}
+              >
+                {isAr ? 'من يقدّم وِصال؟' : 'Who delivers Wisal?'}
+              </h3>
+              <p className="text-[var(--color-neutral-700)] leading-relaxed text-base md:text-lg">
+                {isAr ? (
+                  <>
+                    يُقدَّم وِصال اليوم عبر <strong>سامر حسن MCC</strong>، وعلى المدى
+                    الممتد عبر كوتشز كُن الحاصلين على شهادة{' '}
+                    <a
+                      href={`/${locale}/programs/stce-level-5-stfc`}
+                      className="text-[var(--color-primary)] hover:underline font-semibold"
+                    >
+                      STCE Level 5 STFC
+                    </a>
+                    {' '}في كوتشينج الأسر والأزواج.
+                  </>
+                ) : (
+                  <>
+                    Wisal is delivered today by <strong>Samer Hassan MCC</strong> and,
+                    over time, by Kun coaches who have earned{' '}
+                    <a
+                      href={`/${locale}/programs/stce-level-5-stfc`}
+                      className="text-[var(--color-primary)] hover:underline font-semibold"
+                    >
+                      STCE Level 5 STFC
+                    </a>
+                    {' '}certification in Family &amp; Couples Coaching.
+                  </>
+                )}
+              </p>
+            </div>
+          </div>
+        </Section>
+      )}
+
+      {/* ── Canon W3-C: STFC → Wisal delivery authorization cross-link ──── */}
+      {slug === 'stce-level-5-stfc' && (
+        <Section variant="surface-low">
+          <div className="mx-auto max-w-3xl">
+            <div className="rounded-2xl border border-[var(--color-primary-100)] bg-[var(--color-primary-50)] p-6 md:p-8">
+              <h3
+                className="text-xl md:text-2xl font-bold text-[var(--text-primary)] mb-3"
+                style={{ fontFamily: headingFont }}
+              >
+                {isAr ? 'ماذا تمنحك هذه الشهادة؟' : 'What this certification unlocks'}
+              </h3>
+              <p className="text-[var(--color-neutral-700)] leading-relaxed text-base md:text-lg">
+                {isAr ? (
+                  <>
+                    بعد الحصول على الشهادة، يحقّ لكوتشز STFC المرخَّصين تقديم
+                    خدمة{' '}
+                    <a
+                      href={`/${locale}/programs/wisal`}
+                      className="text-[var(--color-primary)] hover:underline font-semibold"
+                    >
+                      وِصال
+                    </a>
+                    {' '}للأسر والأزواج الذين نخدمهم.
+                  </>
+                ) : (
+                  <>
+                    After certification, STFC-licensed coaches are authorized to
+                    deliver{' '}
+                    <a
+                      href={`/${locale}/programs/wisal`}
+                      className="text-[var(--color-primary)] hover:underline font-semibold"
+                    >
+                      Wisal
+                    </a>
+                    {' '}engagements to the families and couples we serve.
+                  </>
+                )}
+              </p>
+            </div>
+          </div>
+        </Section>
+      )}
+
       {/* ── Body ──────────────────────────────────────────────────────────── */}
       <Section variant="white">
         <div className="mx-auto max-w-3xl">

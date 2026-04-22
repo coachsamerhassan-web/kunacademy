@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Placeholder program logo for Wisal — to be replaced with real logo per Canon W3-B / Samer D8=(a). -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Wisal placeholder logo">
+  <defs>
+    <radialGradient id="wisalBg" cx="50%" cy="45%" r="60%">
+      <stop offset="0%" stop-color="#6A5CB8"/>
+      <stop offset="100%" stop-color="#3A2E7A"/>
+    </radialGradient>
+  </defs>
+  <circle cx="100" cy="100" r="96" fill="url(#wisalBg)" stroke="#D4A853" stroke-width="2" opacity="0.95"/>
+  <!-- Simplified flower-of-life petal ring -->
+  <g fill="none" stroke="#D4A853" stroke-width="1.2" opacity="0.4">
+    <circle cx="100" cy="60" r="22"/>
+    <circle cx="134.6" cy="80" r="22"/>
+    <circle cx="134.6" cy="120" r="22"/>
+    <circle cx="100" cy="140" r="22"/>
+    <circle cx="65.4" cy="120" r="22"/>
+    <circle cx="65.4" cy="80" r="22"/>
+    <circle cx="100" cy="100" r="22"/>
+  </g>
+  <!-- Arabic letter و (waw) for Wisal -->
+  <text x="100" y="122" text-anchor="middle" font-family="'Amiri','Noto Naskh Arabic','Tajawal',serif" font-size="72" font-weight="700" fill="#FFF5E9">و</text>
+</svg>
