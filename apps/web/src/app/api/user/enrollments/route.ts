@@ -68,9 +68,13 @@ export async function GET() {
         );
     }
 
-    // Count completed and total lessons per course
+    // Count completed and total lessons per course.
+    // Post-migration-0046 lessons.course_id is nullable (lessons may live in the
+    // team library without a legacy course_id). Skip nulls — enrollments still
+    // resolve through lesson_placements (Session B will migrate this whole route).
     const lessonsByCourse: Record<string, string[]> = {};
     for (const l of lessonRows) {
+      if (!l.course_id) continue;
       (lessonsByCourse[l.course_id] ||= []).push(l.id);
     }
 
