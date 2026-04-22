@@ -8,7 +8,7 @@ const { auth } = NextAuth(authConfig);
 
 const intlMiddleware = createIntlMiddleware(routing);
 
-const PROTECTED_PATHS = ['/dashboard', '/coach/', '/admin', '/portal/assessor'];
+const PROTECTED_PATHS = ['/dashboard', '/coach/', '/admin', '/portal/assessor', '/portal/lessons'];
 
 function isProtectedPath(pathname: string): boolean {
   // Strip locale prefix: /ar/portal → /portal

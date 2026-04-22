@@ -30,6 +30,13 @@ interface ProgressRow {
   playback_position_seconds: number;
 }
 
+interface PlacementRow {
+  id: string;
+  lesson_id: string;
+  section_id: string | null;
+  sort_order: number;
+}
+
 interface CourseRow {
   id: string;
   title_ar: string;
@@ -61,6 +68,7 @@ export default function CourseLearningPage({
   const [sections, setSections] = useState<Section[]>([]);
   const [lessons, setLessons] = useState<LessonRow[]>([]);
   const [progress, setProgress] = useState<ProgressRow[]>([]);
+  const [placements, setPlacements] = useState<PlacementRow[]>([]);
   const [enrollment, setEnrollment] = useState<EnrollmentRow | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -78,6 +86,7 @@ export default function CourseLearningPage({
         if (data.course) setCourse(data.course as CourseRow);
         if (data.sections) setSections(data.sections as Section[]);
         if (data.lessons) setLessons(data.lessons as LessonRow[]);
+        if (data.placements) setPlacements(data.placements as PlacementRow[]);
       }
 
       if (progressRes.ok) {
@@ -117,6 +126,14 @@ export default function CourseLearningPage({
     const p = progress.find((pr) => pr.lesson_id === l.id);
     return !p?.completed;
   }) ?? lessons[0];
+
+  // Map lesson_id → placement_id (first placement wins; one lesson may have
+  // multiple placements in the same course if placed in multiple sections).
+  const placementByLesson = new Map<string, string>();
+  for (const pl of placements) {
+    if (!placementByLesson.has(pl.lesson_id)) placementByLesson.set(pl.lesson_id, pl.id);
+  }
+  const nextLessonPlacementId = nextLesson ? placementByLesson.get(nextLesson.id) ?? null : null;
 
   // Group lessons by section
   const unsectioned = lessons.filter((l) => !l.section_id);
@@ -163,10 +180,12 @@ export default function CourseLearningPage({
             </div>
           </div>
 
-          {/* Continue button */}
+          {/* Continue button — prefer new placement-scoped player when available */}
           {nextLesson && (
             <a
-              href={`/${locale}/dashboard/courses/${courseId}/lessons/${nextLesson.id}`}
+              href={nextLessonPlacementId
+                ? `/${locale}/portal/lessons/${nextLessonPlacementId}`
+                : `/${locale}/dashboard/courses/${courseId}/lessons/${nextLesson.id}`}
               className="mt-4 inline-flex items-center justify-center rounded-xl bg-[var(--color-primary)] px-6 py-3 text-sm font-semibold text-white min-h-[44px] hover:opacity-90 transition-opacity"
             >
               <svg className="w-5 h-5 ltr:mr-2 rtl:ml-2" viewBox="0 0 24 24" fill="currentColor">
@@ -208,7 +227,7 @@ export default function CourseLearningPage({
         {/* Unsectioned lessons (if any) */}
         {unsectioned.length > 0 && (
           <div className="mb-4">
-            <LessonList lessons={unsectioned} progress={progress} locale={locale} courseId={courseId} isAr={isAr} />
+            <LessonList lessons={unsectioned} progress={progress} locale={locale} courseId={courseId} isAr={isAr} placementByLesson={placementByLesson} />
           </div>
         )}
 
@@ -226,7 +245,7 @@ export default function CourseLearningPage({
                   {section.lessons.reduce((sum, l) => sum + (l.duration_minutes ?? 0), 0)} {isAr ? 'دقيقة' : 'min'}
                 </p>
               </div>
-              <LessonList lessons={section.lessons} progress={progress} locale={locale} courseId={courseId} isAr={isAr} />
+              <LessonList lessons={section.lessons} progress={progress} locale={locale} courseId={courseId} isAr={isAr} placementByLesson={placementByLesson} />
             </Card>
           </div>
         ))}
@@ -249,12 +268,14 @@ function LessonList({
   locale,
   courseId,
   isAr,
+  placementByLesson,
 }: {
   lessons: LessonRow[];
   progress: ProgressRow[];
   locale: string;
   courseId: string;
   isAr: boolean;
+  placementByLesson: Map<string, string>;
 }) {
   return (
     <div className="divide-y divide-[var(--color-neutral-100)]">
@@ -263,10 +284,14 @@ function LessonList({
         const isCompleted = p?.completed ?? false;
         const title = isAr ? lesson.title_ar : lesson.title_en;
 
+        const placementId = placementByLesson.get(lesson.id);
+        const href = placementId
+          ? `/${locale}/portal/lessons/${placementId}`
+          : `/${locale}/dashboard/courses/${courseId}/lessons/${lesson.id}`;
         return (
           <a
             key={lesson.id}
-            href={`/${locale}/dashboard/courses/${courseId}/lessons/${lesson.id}`}
+            href={href}
             className="flex items-center gap-3 px-5 py-3 hover:bg-[var(--color-surface-dim)] transition-colors min-h-[52px]"
           >
             {/* Status indicator */}

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@kunacademy/db';
 import { getAuthUser } from '@kunacademy/auth/server';
 import { eq, asc } from 'drizzle-orm';
-import { courses, lessons, course_sections } from '@kunacademy/db/schema';
+import { courses, lessons, course_sections, lesson_placements } from '@kunacademy/db/schema';
 
 /**
  * GET /api/lms/course/[courseId]
@@ -19,7 +19,7 @@ export async function GET(
 
     const { courseId } = await params;
 
-    const [courseRows, sectionRows, lessonRows] = await Promise.all([
+    const [courseRows, sectionRows, lessonRows, placementRows] = await Promise.all([
       db
         .select({
           id: courses.id,
@@ -63,12 +63,32 @@ export async function GET(
         .from(lessons)
         .where(eq(lessons.course_id, courseId))
         .orderBy(asc(lessons.order)),
+      // Session C-1: placement_id is the new course-scoped anchor. Student
+      // lesson player lives at /portal/lessons/[placementId]. Dashboard course
+      // page prefers placement link when available; falls back to legacy
+      // lesson_id link otherwise (unplaced lessons remain reachable via
+      // /dashboard/courses/[courseId]/lessons/[lessonId] until C-2 drops that).
+      db
+        .select({
+          id: lesson_placements.id,
+          lesson_id: lesson_placements.lesson_id,
+          section_id: lesson_placements.section_id,
+          sort_order: lesson_placements.sort_order,
+        })
+        .from(lesson_placements)
+        .where(eq(lesson_placements.course_id, courseId))
+        .orderBy(asc(lesson_placements.sort_order)),
     ]);
 
     const course = courseRows[0] ?? null;
     if (!course) return NextResponse.json({ error: 'Course not found' }, { status: 404 });
 
-    return NextResponse.json({ course, sections: sectionRows, lessons: lessonRows });
+    return NextResponse.json({
+      course,
+      sections: sectionRows,
+      lessons: lessonRows,
+      placements: placementRows,
+    });
   } catch (err: any) {
     console.error('[api/lms/course/[courseId] GET]', err);
     return NextResponse.json({ error: err.message }, { status: 500 });
