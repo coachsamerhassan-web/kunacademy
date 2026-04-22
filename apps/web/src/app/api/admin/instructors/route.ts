@@ -137,8 +137,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ instructor: inserted }, { status: 201 });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
+    // D11: disambiguate profile_id unique-index collision from slug collision.
+    if (msg.includes('idx_instructors_profile_id_unique')) {
+      return NextResponse.json(
+        { error: 'profile_id already linked to another instructor', code: 'profile_id_taken' },
+        { status: 409 }
+      );
+    }
     if (msg.includes('instructors_slug_unique_not_null') || msg.includes('duplicate key')) {
-      return NextResponse.json({ error: 'slug already exists' }, { status: 409 });
+      return NextResponse.json({ error: 'slug already exists', code: 'slug_taken' }, { status: 409 });
     }
     console.error('[api/admin/instructors POST]', err);
     return NextResponse.json({ error: msg }, { status: 500 });

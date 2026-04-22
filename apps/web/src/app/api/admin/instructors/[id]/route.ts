@@ -254,8 +254,19 @@ export async function PATCH(
 
     return NextResponse.json({ instructor: updatedRow });
   } catch (err: any) {
+    const msg = err?.message ?? String(err);
+    // D11: disambiguate profile_id unique-index collision from slug collision.
+    if (msg.includes('idx_instructors_profile_id_unique')) {
+      return NextResponse.json(
+        { error: 'profile_id already linked to another instructor', code: 'profile_id_taken' },
+        { status: 409 }
+      );
+    }
+    if (msg.includes('instructors_slug_unique_not_null') || msg.includes('instructors_slug_key')) {
+      return NextResponse.json({ error: 'slug already exists', code: 'slug_taken' }, { status: 409 });
+    }
     console.error('[api/admin/instructors/[id] PATCH]', err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
 

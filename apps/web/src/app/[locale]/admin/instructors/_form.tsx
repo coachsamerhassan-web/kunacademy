@@ -86,6 +86,13 @@ interface CoachProfile {
   full_name_ar: string | null;
   full_name_en: string | null;
   role: string | null;
+  // D11 (2026-04-22): flags that this profile is already linked to another
+  // instructor — UI surfaces a soft warning before commit. DB enforces
+  // uniqueness via partial unique index `idx_instructors_profile_id_unique`.
+  linked_instructor_id: string | null;
+  linked_instructor_slug: string | null;
+  linked_instructor_name_en: string | null;
+  linked_instructor_name_ar: string | null;
 }
 
 interface Props {
@@ -107,6 +114,8 @@ export default function InstructorForm({ instructorId }: Props) {
   const [form, setForm] = useState<InstructorFormValue>(EMPTY);
   const [coaches, setCoaches] = useState<CoachProfile[]>([]);
   const [coachSearch, setCoachSearch] = useState('');
+  // D11: "picker open" gates the search dropdown — admin clicks Change to open.
+  const [pickerOpen, setPickerOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -178,7 +187,7 @@ export default function InstructorForm({ instructorId }: Props) {
   }, [isEdit, instructorId, authLoading]);
 
   const filteredCoaches = useMemo(() => {
-    if (!coachSearch.trim()) return coaches.slice(0, 20);
+    if (!coachSearch.trim()) return coaches.slice(0, 50);
     const q = coachSearch.toLowerCase();
     return coaches
       .filter(
@@ -187,7 +196,7 @@ export default function InstructorForm({ instructorId }: Props) {
           (c.full_name_ar ?? '').includes(coachSearch) ||
           c.email.toLowerCase().includes(q)
       )
-      .slice(0, 20);
+      .slice(0, 50);
   }, [coaches, coachSearch]);
 
   const selectedCoach = coaches.find((c) => c.id === form.profile_id) ?? null;
@@ -368,7 +377,10 @@ export default function InstructorForm({ instructorId }: Props) {
             </fieldset>
 
             {/* ── Profile bridge (BRIDGE for public coach-ratings) ─── */}
-            <fieldset className="rounded-xl border border-[var(--color-primary)]/40 bg-[var(--color-primary)]/5 p-5">
+            <fieldset
+              className="rounded-xl border border-[var(--color-primary)]/40 bg-[var(--color-primary)]/5 p-5"
+              data-testid="profile-bridge-fieldset"
+            >
               <legend className="px-2 text-sm font-semibold text-[var(--color-primary)]">
                 {isAr ? 'الربط بالحساب (لعرض التقييمات العامة)' : 'Profile Link (Public Ratings Bridge)'}
               </legend>
@@ -377,68 +389,185 @@ export default function InstructorForm({ instructorId }: Props) {
                   ? 'اربط هذا الكوتش بحساب في النظام لعرض تقييمات جلساته على صفحته العامة.'
                   : 'Link this coach to a platform account so session ratings aggregate onto their public profile.'}
               </p>
-              <div className="relative">
-                <div className="flex items-center gap-2 rounded-lg border border-[var(--color-neutral-200)] bg-white px-3 py-2">
-                  <Search className="w-4 h-4 text-[var(--color-neutral-400)]" />
-                  <input
-                    type="text"
-                    value={coachSearch}
-                    onChange={(e) => setCoachSearch(e.target.value)}
-                    placeholder={isAr ? 'ابحث بالاسم أو البريد...' : 'Search by name or email...'}
-                    className="flex-1 bg-transparent text-sm outline-none min-h-[36px]"
-                  />
-                  {form.profile_id && (
+
+              {/* ---- Current-link status row (always visible) ---- */}
+              <div
+                className={`mb-3 rounded-lg px-3 py-2.5 text-sm border ${
+                  selectedCoach
+                    ? 'bg-emerald-50 border-emerald-200'
+                    : 'bg-amber-50 border-amber-200'
+                }`}
+                data-testid="profile-bridge-status"
+              >
+                <div className="flex items-start justify-between gap-3 flex-wrap">
+                  <div className="min-w-0 flex-1">
+                    <div className="text-xs font-medium text-[var(--color-neutral-600)] mb-0.5">
+                      {isAr ? 'الحالة الحالية' : 'Current status'}
+                    </div>
+                    {selectedCoach ? (
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-medium">
+                          {isAr
+                            ? selectedCoach.full_name_ar || selectedCoach.full_name_en
+                            : selectedCoach.full_name_en || selectedCoach.full_name_ar}
+                        </span>
+                        <span className="text-[var(--color-neutral-500)] text-xs">
+                          ({selectedCoach.email})
+                        </span>
+                        <span className="text-[var(--color-neutral-400)] text-[11px] font-mono">
+                          {form.profile_id.slice(0, 8)}…
+                        </span>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-medium">
+                          {isAr ? 'مربوط' : 'linked'}
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="text-amber-800 font-medium">
+                        {isAr ? 'غير مربوط' : 'Not linked'}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
                     <button
                       type="button"
-                      onClick={() => setForm({ ...form, profile_id: '' })}
-                      className="text-xs text-red-600 hover:underline"
+                      onClick={() => {
+                        setPickerOpen((v) => !v);
+                        setCoachSearch('');
+                      }}
+                      className="text-xs rounded-md border border-[var(--color-primary)] text-[var(--color-primary)] hover:bg-[var(--color-primary)] hover:text-white px-3 py-1.5 min-h-[32px]"
+                      data-testid="profile-bridge-change-btn"
                     >
-                      {isAr ? 'إلغاء الربط' : 'Unlink'}
+                      {pickerOpen
+                        ? isAr
+                          ? 'إغلاق'
+                          : 'Close'
+                        : selectedCoach
+                          ? isAr
+                            ? 'تغيير'
+                            : 'Change'
+                          : isAr
+                            ? 'اختر حساباً'
+                            : 'Pick a profile'}
                     </button>
-                  )}
-                </div>
-
-                {selectedCoach && (
-                  <div className="mt-2 rounded-lg bg-white border border-[var(--color-primary)]/30 px-3 py-2 text-sm">
-                    <span className="font-medium">
-                      {isAr ? selectedCoach.full_name_ar || selectedCoach.full_name_en : selectedCoach.full_name_en || selectedCoach.full_name_ar}
-                    </span>
-                    <span className="text-[var(--color-neutral-500)] ms-2 text-xs">{selectedCoach.email}</span>
-                    <span className="ms-2 text-xs px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700">
-                      {isAr ? 'مربوط' : 'linked'}
-                    </span>
+                    {form.profile_id && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (
+                            window.confirm(
+                              isAr
+                                ? 'هل تريد إلغاء ربط هذا الحساب؟'
+                                : 'Unlink this profile? Public ratings will no longer aggregate onto this coach.'
+                            )
+                          ) {
+                            setForm({ ...form, profile_id: '' });
+                            setPickerOpen(false);
+                            setCoachSearch('');
+                          }
+                        }}
+                        className="text-xs rounded-md border border-red-300 text-red-700 hover:bg-red-50 px-3 py-1.5 min-h-[32px]"
+                        data-testid="profile-bridge-unlink-btn"
+                      >
+                        {isAr ? 'إلغاء الربط' : 'Unlink'}
+                      </button>
+                    )}
                   </div>
-                )}
+                </div>
+              </div>
 
-                {coachSearch && !selectedCoach && (
-                  <div className="mt-2 max-h-56 overflow-y-auto rounded-lg border border-[var(--color-neutral-200)] bg-white">
+              {/* ---- Search + results (only when picker is open) ---- */}
+              {pickerOpen && (
+                <div className="relative" data-testid="profile-bridge-picker">
+                  <div className="flex items-center gap-2 rounded-lg border border-[var(--color-neutral-200)] bg-white px-3 py-2">
+                    <Search className="w-4 h-4 text-[var(--color-neutral-400)]" />
+                    <input
+                      type="text"
+                      value={coachSearch}
+                      onChange={(e) => setCoachSearch(e.target.value)}
+                      placeholder={isAr ? 'ابحث بالاسم أو البريد...' : 'Search by name or email...'}
+                      className="flex-1 bg-transparent text-sm outline-none min-h-[36px]"
+                      autoFocus
+                    />
+                  </div>
+
+                  <div className="mt-2 max-h-64 overflow-y-auto rounded-lg border border-[var(--color-neutral-200)] bg-white">
                     {filteredCoaches.length === 0 ? (
                       <p className="p-3 text-xs text-[var(--color-neutral-500)]">
                         {isAr ? 'لا توجد نتائج' : 'No matches'}
                       </p>
                     ) : (
-                      filteredCoaches.map((c) => (
-                        <button
-                          key={c.id}
-                          type="button"
-                          onClick={() => {
-                            setForm({ ...form, profile_id: c.id });
-                            setCoachSearch('');
-                          }}
-                          className="block w-full text-start px-3 py-2 text-sm hover:bg-[var(--color-neutral-50)] border-b border-[var(--color-neutral-100)] last:border-b-0"
-                        >
-                          <div className="font-medium">
-                            {isAr ? c.full_name_ar || c.full_name_en : c.full_name_en || c.full_name_ar}
-                          </div>
-                          <div className="text-xs text-[var(--color-neutral-500)]">
-                            {c.email} · {c.role}
-                          </div>
-                        </button>
-                      ))
+                      filteredCoaches.map((c) => {
+                        const isCurrent = c.id === form.profile_id;
+                        // D11: is this profile already linked to a DIFFERENT instructor?
+                        const takenByOther =
+                          !!c.linked_instructor_id &&
+                          (!isEdit || c.linked_instructor_id !== instructorId);
+                        const otherName =
+                          c.linked_instructor_name_en ||
+                          c.linked_instructor_name_ar ||
+                          c.linked_instructor_slug ||
+                          '';
+                        return (
+                          <button
+                            key={c.id}
+                            type="button"
+                            disabled={isCurrent}
+                            onClick={() => {
+                              if (isCurrent) return;
+                              if (takenByOther) {
+                                const msg = isAr
+                                  ? `هذا الحساب مربوط بالفعل بالكوتش "${otherName}". هل تريد نقل الربط إلى هذا الكوتش؟ (الحفظ سيرفض إذا لم تقم أولاً بإلغاء الربط من الكوتش الآخر — القيد يفرض ربطاً واحداً فقط.)`
+                                  : `This profile is already linked to instructor "${otherName}". To move the link here, first unlink it from "${otherName}" — the DB enforces one instructor per profile. Continue anyway?`;
+                                if (!window.confirm(msg)) return;
+                              }
+                              setForm({ ...form, profile_id: c.id });
+                              setCoachSearch('');
+                              setPickerOpen(false);
+                            }}
+                            className={`block w-full text-start px-3 py-2 text-sm border-b border-[var(--color-neutral-100)] last:border-b-0 ${
+                              isCurrent
+                                ? 'bg-emerald-50 cursor-default'
+                                : takenByOther
+                                  ? 'bg-amber-50 hover:bg-amber-100'
+                                  : 'hover:bg-[var(--color-neutral-50)]'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between gap-2 flex-wrap">
+                              <div className="min-w-0">
+                                <div className="font-medium">
+                                  {isAr
+                                    ? c.full_name_ar || c.full_name_en
+                                    : c.full_name_en || c.full_name_ar}
+                                </div>
+                                <div className="text-xs text-[var(--color-neutral-500)]">
+                                  {c.email} · {c.role}
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-1 shrink-0">
+                                {isCurrent && (
+                                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-medium">
+                                    {isAr ? 'الحالي' : 'current'}
+                                  </span>
+                                )}
+                                {takenByOther && (
+                                  <span
+                                    className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 font-medium"
+                                    title={otherName}
+                                  >
+                                    {isAr
+                                      ? `مربوط بـ ${otherName}`
+                                      : `linked to ${otherName}`}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </button>
+                        );
+                      })
                     )}
                   </div>
-                )}
-              </div>
+                </div>
+              )}
             </fieldset>
 
             {/* ── Bio + photo ──────────────────────────────────────── */}
