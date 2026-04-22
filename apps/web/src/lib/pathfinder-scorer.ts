@@ -3,6 +3,12 @@
  *
  * Takes a user's answer trail (with category weights per answer) and produces
  * ranked program recommendations with match percentages and reasoning.
+ *
+ * Audit trail for hardcoded priority/exclusion edits lives in:
+ *   /Users/samer/Claude Code/Project Memory/KUN-Features/PATHFINDER-V7-TO-CANON-RECONCILIATION.md
+ * Source-of-truth for GPS variant canon:
+ *   /Users/samer/Claude Code/Project Memory/KUN-Features/GPS-OF-LIFE-RESEARCH.md §1
+ *   /Users/samer/Claude Code/Project Memory/KUN-Features/PROGRAM-CANON.md §3, §4
  */
 
 import type { Program } from '@kunacademy/cms';
@@ -59,15 +65,23 @@ const PATHFINDER_EXCLUDED_SLUGS = new Set([
 ]);
 
 /**
- * Additional high-priority slugs to surface in Pathfinder per board decision (2026-04-05).
+ * Additional high-priority slugs to surface in Pathfinder per board decision (2026-04-05),
+ * updated 2026-04-22 to reconcile with PROGRAM-CANON Phase 1 + GPS-OF-LIFE-RESEARCH §1.
  * These supplement the nav_group matching for specific recommendation targets.
  *
- * GPS audience segments (gps, gps-accelerator, gps-professional) have nav_group "courses",
- * so they are prioritized under the "course" category.
+ * GPS audience segments (gps-accelerator, gps-couples) have nav_group "courses",
+ * so they are prioritized under the "course" category. gps-entrepreneurs also keeps
+ * nav_group "courses" per GPS-OF-LIFE-RESEARCH line 299, but its audience-intent
+ * routes through the "corporate" priority bucket (founders / leaders / executives).
  *
  * Mini-courses (nav_group "micro-courses") are also reachable via the "course" category
  * since CATEGORY_TO_NAV_GROUP maps "course" → ["courses", "micro-courses"].
  * The featured mini-course (mini-course-leadership) surfaces first for course matches.
+ *
+ * Canonical GPS-of-Life routing: `gps-of-life` surfaces via direct
+ * `pathfinder_answers.recommended_slugs` (q4/a12, q8/a22, q9/a27, q10/a29) and is
+ * intentionally NOT listed in this priority table to avoid double-counting.
+ * See PATHFINDER-V7-TO-CANON-RECONCILIATION.md §2.2 for the removal rationale.
  */
 const PATHFINDER_PRIORITY_SLUGS: Record<string, string[]> = {
   // Manhajak 3 packages (individual path — coaching methodology)
@@ -75,10 +89,11 @@ const PATHFINDER_PRIORITY_SLUGS: Record<string, string[]> = {
     'menhajak-training',
     'menhajak-organizational',
     'menhajak-leadership',
-    // GPS audience segments (nav_group: courses) — board decision 2026-04-05
-    'gps',
+    // GPS audience segments (nav_group: courses) — canon 2026-04-21
+    // - bare 'gps' retired (GPS-OF-LIFE-RESEARCH §1 line 201, PROGRAM-CANON Part 3 row 528)
+    // - 'gps-professional' renamed to 'gps-couples' (PROGRAM-CANON §3)
     'gps-accelerator',
-    'gps-professional',
+    'gps-couples',
     // Mini-courses — featured one surfaces first (board decision 2026-04-05)
     'mini-course-leadership',
     'mini-course-communication',
@@ -91,10 +106,13 @@ const PATHFINDER_PRIORITY_SLUGS: Record<string, string[]> = {
     'mini-course-emotion',
     'mini-course-team',
   ],
-  // Impact Engineering segments (nav_group: courses + corporate) — board decision 2026-04-05
+  // Impact Engineering + GPS-Entrepreneurs (audience-intent: founders / leaders)
+  // gps-entrepreneurs is new per PROGRAM-CANON §4 (created 2026-04-21). nav_group
+  // remains "courses" but the corporate-priority bucket matches leadership intent.
   corporate: [
     'impact-engineering',
     'impact-engineering-foundation',
+    'gps-entrepreneurs',
     'impact-engineering-mastery',
   ],
 };
