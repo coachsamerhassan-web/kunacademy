@@ -198,10 +198,13 @@ CREATE TABLE IF NOT EXISTS lesson_blocks (
       'video', 'text', 'pdf', 'image', 'audio',
       'callout', 'quiz_ref', 'audio_exchange'
     )),
+  -- Ref-integrity check — two-way: the FK is required iff the matching
+  -- block_type is set; AND the off-type FK must be null. Prevents e.g. a
+  -- block_type='video' row from carrying a stray quiz_id.
   CONSTRAINT lesson_blocks_ref_integrity_check CHECK (
-    (block_type = 'quiz_ref'       AND quiz_id           IS NOT NULL) OR
-    (block_type = 'audio_exchange' AND audio_exchange_id IS NOT NULL) OR
-    (block_type NOT IN ('quiz_ref', 'audio_exchange'))
+    (block_type = 'quiz_ref'       AND quiz_id           IS NOT NULL AND audio_exchange_id IS NULL) OR
+    (block_type = 'audio_exchange' AND audio_exchange_id IS NOT NULL AND quiz_id           IS NULL) OR
+    (block_type NOT IN ('quiz_ref', 'audio_exchange')  AND quiz_id IS NULL AND audio_exchange_id IS NULL)
   )
 );
 
@@ -286,6 +289,9 @@ CREATE INDEX IF NOT EXISTS idx_lesson_audio_responses_exchange
   ON lesson_audio_responses(exchange_id, placement_id);
 CREATE INDEX IF NOT EXISTS idx_lesson_audio_responses_student
   ON lesson_audio_responses(student_id, submitted_at DESC);
+-- Coach-policy join optimization: placement_id is the join key.
+CREATE INDEX IF NOT EXISTS idx_lesson_audio_responses_placement
+  ON lesson_audio_responses(placement_id, submitted_at DESC);
 
 ALTER TABLE lesson_audio_responses ENABLE ROW LEVEL SECURITY;
 
