@@ -19,7 +19,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAdminContext } from '@kunacademy/db';
 import { getAuthUser } from '@kunacademy/auth/server';
-import { profiles, lessons, lesson_blocks } from '@kunacademy/db/schema';
+import {
+  profiles,
+  lessons,
+  lesson_blocks,
+  quizzes,
+  lesson_audio_exchanges,
+} from '@kunacademy/db/schema';
 import { db } from '@kunacademy/db';
 import { eq, desc } from 'drizzle-orm';
 
@@ -91,6 +97,36 @@ export async function POST(
         { error: 'audio_exchange blocks require an audio_exchange_id' },
         { status: 400 }
       );
+    }
+
+    // DeepSeek QA finding #4 (MEDIUM, Session B): verify the referenced
+    // resource actually exists so we return a clean 400 instead of a 500
+    // from the downstream FK.
+    if (quiz_id) {
+      const q = await withAdminContext(async (adminDb) =>
+        adminDb.select({ id: quizzes.id }).from(quizzes).where(eq(quizzes.id, quiz_id)).limit(1)
+      );
+      if (!q.length) {
+        return NextResponse.json(
+          { error: 'quiz_id does not reference a valid quiz', code: 'quiz_not_found' },
+          { status: 400 }
+        );
+      }
+    }
+    if (audio_exchange_id) {
+      const x = await withAdminContext(async (adminDb) =>
+        adminDb
+          .select({ id: lesson_audio_exchanges.id })
+          .from(lesson_audio_exchanges)
+          .where(eq(lesson_audio_exchanges.id, audio_exchange_id))
+          .limit(1)
+      );
+      if (!x.length) {
+        return NextResponse.json(
+          { error: 'audio_exchange_id does not reference a valid exchange', code: 'exchange_not_found' },
+          { status: 400 }
+        );
+      }
     }
 
     // Lesson existence + ownership (D4e=i) check.

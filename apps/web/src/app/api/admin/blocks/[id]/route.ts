@@ -111,6 +111,15 @@ export async function PATCH(
       const newOrder = Math.max(0, Math.floor(body.sort_order));
       try {
         await withAdminContext(async (adminDb) => {
+          // DeepSeek QA finding #1 (CRITICAL rebuttal, Session B): lock the full
+          // set of sibling blocks in this lesson FOR UPDATE before swapping
+          // so concurrent reorders serialize cleanly instead of racing through
+          // the -1000000 parking slot.
+          await adminDb.execute(sql`
+            SELECT id FROM lesson_blocks
+             WHERE lesson_id = ${existing.lesson_id}
+             FOR UPDATE
+          `);
           // Step 1: move the block at the target slot (if any) to a parking spot (-1000000).
           await adminDb.execute(sql`
             UPDATE lesson_blocks

@@ -79,6 +79,14 @@ export async function PATCH(
     if (sectionChanged || orderChanged) {
       try {
         await withAdminContext(async (adminDb) => {
+          // DeepSeek QA finding #2 (CRITICAL rebuttal, Session B): lock all
+          // placements in the affected course FOR UPDATE so concurrent
+          // reorders serialize through the -1000000 parking slot.
+          await adminDb.execute(sql`
+            SELECT id FROM lesson_placements
+             WHERE course_id = ${existing.course_id}
+             FOR UPDATE
+          `);
           // Park the block currently at the target slot (same course + same section) to -1000000.
           await adminDb.execute(sql`
             UPDATE lesson_placements

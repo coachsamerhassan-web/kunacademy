@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db, withAdminContext } from '@kunacademy/db';
 import { getAuthUser } from '@kunacademy/auth/server';
 import { eq, and, inArray, sql } from 'drizzle-orm';
-import { lessons, enrollments, lesson_progress, certificates, quizzes, quiz_questions, quiz_attempts, courses } from '@kunacademy/db/schema';
+import { lessons, enrollments, lesson_progress, lesson_placements, certificates, quizzes, quiz_questions, quiz_attempts, courses } from '@kunacademy/db/schema';
 
 /**
  * Returns quiz IDs that are published, have ≥ 1 question, and the user has NOT yet passed.
@@ -116,7 +116,7 @@ export async function POST(request: NextRequest) {
   // optional for back-compat with callers that only pass lessonId. Writers
   // populate BOTH lesson_id (legacy) and placement_id (new) when placementId
   // is supplied so the column can be dropped cleanly in Session C.
-  const placementId: string | null = typeof body.placementId === 'string' ? body.placementId : null;
+  let placementId: string | null = typeof body.placementId === 'string' ? body.placementId : null;
 
   if (!lessonId || !courseId) {
     return NextResponse.json({ error: 'lessonId and courseId required' }, { status: 400 });
@@ -138,6 +138,25 @@ export async function POST(request: NextRequest) {
 
   if (!enrollment || !['enrolled', 'in_progress', 'completed'].includes(enrollment.status ?? '')) {
     return NextResponse.json({ error: 'Not enrolled' }, { status: 403 });
+  }
+
+  // DeepSeek QA finding #3 (HIGH, Session B): if caller supplied placementId,
+  // verify it (a) exists, (b) belongs to courseId we just enrollment-checked.
+  // Otherwise a student enrolled in Course A could scribble progress on a
+  // placement in Course B.
+  if (placementId) {
+    const placementRows = await db
+      .select({ course_id: lesson_placements.course_id })
+      .from(lesson_placements)
+      .where(eq(lesson_placements.id, placementId))
+      .limit(1);
+    const placementCourseId = placementRows[0]?.course_id;
+    if (!placementCourseId || placementCourseId !== courseId) {
+      // Silent drop — keep progress write on lesson_id only. Defense in depth
+      // (RLS + course enrollment check upstream already gate the row-level
+      // access); we just refuse to populate the new column with a mismatch.
+      placementId = null;
+    }
   }
 
   // Update enrollment status to in_progress if still 'enrolled'
