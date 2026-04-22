@@ -112,6 +112,11 @@ export async function POST(request: NextRequest) {
 
   const body = await request.json();
   const { lessonId, courseId, playbackPosition, completed } = body;
+  // Session B (0047): placementId is the preferred course-scoped anchor. Still
+  // optional for back-compat with callers that only pass lessonId. Writers
+  // populate BOTH lesson_id (legacy) and placement_id (new) when placementId
+  // is supplied so the column can be dropped cleanly in Session C.
+  const placementId: string | null = typeof body.placementId === 'string' ? body.placementId : null;
 
   if (!lessonId || !courseId) {
     return NextResponse.json({ error: 'lessonId and courseId required' }, { status: 400 });
@@ -150,6 +155,11 @@ export async function POST(request: NextRequest) {
   const updateValues: Partial<typeof lesson_progress.$inferInsert> = {
     user_id: user.id,
     lesson_id: lessonId as string,
+    // Session B additive: set placement_id when the caller provides it. The
+    // Session C student lesson player will ALWAYS set it; legacy callers
+    // continue to work with NULL placement_id until this column is made
+    // NOT NULL in a follow-up migration.
+    placement_id: placementId ?? undefined,
     updated_at: now.toISOString(),
   };
 

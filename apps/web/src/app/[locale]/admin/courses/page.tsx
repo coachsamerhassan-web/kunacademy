@@ -454,6 +454,12 @@ export default function AdminCoursesPage() {
               >
                 {isAr ? 'إدارة' : 'Manage'} <ArrowRight className="w-4 h-4 inline-block rtl:rotate-180" aria-hidden="true" />
               </button>
+              <a
+                href={`/${locale}/admin/courses/${c.id}/builder`}
+                className="text-xs text-[var(--color-neutral-600)] hover:underline min-h-[44px] flex items-center"
+              >
+                {isAr ? 'منشئ' : 'Builder'}
+              </a>
             </div>
           </Card>
         ))}

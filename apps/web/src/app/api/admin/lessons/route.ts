@@ -135,3 +135,75 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
+
+// ─── POST /api/admin/lessons ──────────────────────────────────────────────
+// Create a new lesson. Creator = current user (from session). Default scope
+// is 'private'. LESSON-BLOCKS Session B — 2026-04-22.
+//
+// Body:
+//   title_ar        (required)
+//   title_en        (required)
+//   description_ar  (optional)
+//   description_en  (optional)
+//   duration_minutes (optional)
+//   scope           (optional, 'private' | 'team_library'; default 'private')
+//   is_global       (optional, bool; default false)
+export async function POST(request: NextRequest) {
+  try {
+    const authResult = await requireAdmin();
+    if (authResult.kind === 'unauthenticated') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    if (authResult.kind === 'forbidden') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    const body = await request.json().catch(() => null);
+    if (!body || typeof body !== 'object') {
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    }
+
+    const title_ar = typeof body.title_ar === 'string' ? body.title_ar.trim() : '';
+    const title_en = typeof body.title_en === 'string' ? body.title_en.trim() : '';
+    if (!title_ar || !title_en) {
+      return NextResponse.json(
+        { error: 'title_ar and title_en are required' },
+        { status: 400 }
+      );
+    }
+
+    const scope = body.scope === 'team_library' ? 'team_library' : 'private';
+    const is_global = body.is_global === true;
+    const description_ar =
+      typeof body.description_ar === 'string' ? body.description_ar : null;
+    const description_en =
+      typeof body.description_en === 'string' ? body.description_en : null;
+    const duration_minutes =
+      typeof body.duration_minutes === 'number' && Number.isFinite(body.duration_minutes)
+        ? Math.max(0, Math.floor(body.duration_minutes))
+        : null;
+
+    const inserted = await withAdminContext(async (adminDb) =>
+      adminDb
+        .insert(lessons)
+        .values({
+          title_ar,
+          title_en,
+          description_ar: description_ar ?? undefined,
+          description_en: description_en ?? undefined,
+          duration_minutes: duration_minutes ?? undefined,
+          scope,
+          is_global,
+          created_by: authResult.user.id,
+          // Legacy columns: order is NOT NULL in live schema; seed 0 (unused post-Session B).
+          order: 0,
+        })
+        .returning()
+    );
+
+    return NextResponse.json({ lesson: inserted[0] }, { status: 201 });
+  } catch (err: any) {
+    console.error('[api/admin/lessons POST]', err);
+    return NextResponse.json({ error: err?.message ?? 'Internal server error' }, { status: 500 });
+  }
+}

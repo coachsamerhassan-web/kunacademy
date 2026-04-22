@@ -1,5 +1,6 @@
 import { pgTable, boolean, index, integer, jsonb, timestamp, uuid } from 'drizzle-orm/pg-core';
 import { enrollments } from './enrollments';
+import { lesson_placements } from './lesson_placements';
 import { profiles } from './profiles';
 import { quizzes } from './quizzes';
 
@@ -13,6 +14,10 @@ export const quiz_attempts = pgTable("quiz_attempts", {
   quiz_id: uuid("quiz_id").notNull().references(() => quizzes.id, { onDelete: 'cascade' }),
   // nullable: admin/preview attempts may have no enrollment
   enrollment_id: uuid("enrollment_id").references(() => enrollments.id, { onDelete: 'set null' }),
+  // Added 0047 (Session B): course-placement scoping. Nullable because admin
+  // preview attempts may have no placement; student-initiated attempts
+  // (Session C) will set it from the lesson player's course context.
+  placement_id: uuid("placement_id").references(() => lesson_placements.id, { onDelete: 'set null' }),
   started_at: timestamp("started_at", { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
   // null = attempt still in progress
   submitted_at: timestamp("submitted_at", { withTimezone: true, mode: 'string' }),
