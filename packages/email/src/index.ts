@@ -1,5 +1,5 @@
 // @kunacademy/email — Multi-channel notification system
-// Channels: Email (Resend) | WhatsApp (Meta API) | Telegram (Bot API)
+// Channels: Email via Zoho Mail API (OAuth) | WhatsApp (Meta API) | Telegram (Bot API)
 
 // Email templates
 export {
