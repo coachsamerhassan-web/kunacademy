@@ -4,6 +4,7 @@ import NextAuth from 'next-auth';
 import { authConfig } from '@/auth.config';
 import { routing } from './i18n/routing';
 import { getLaunchMode, decideGate, isAdminIp } from '@/lib/lp/launch-mode';
+import { classifyHost, decideHost } from '@/lib/lp/host-routing';
 
 const { auth } = NextAuth(authConfig);
 
@@ -41,10 +42,37 @@ function getPricingRegion(countryCode: string | null): 'EGP' | 'AED' | 'EUR' {
 }
 
 export default auth(async function middleware(request) {
-  // ── Launch-mode isolation gate (Wave 14 LP-INFRA) ──────────────────
+  // ── Host-header routing (Wave 14.1 — primary operational gate) ──────
+  // try.kuncoaching.me → public LP surface only (allowlist of /lp/*, /api/lp/*,
+  //   payment webhooks, static). Non-allowlisted paths → 404.
+  // kuncoaching.me → staging. Anonymous visitors see /coming-soon (rewrite,
+  //   URL unchanged); admin|super_admin|content_editor roles pass through.
+  // Runs FIRST so nothing else interferes.
+  const hostHeader = request.headers.get('host');
+  const host = classifyHost(hostHeader);
+  const pathname = request.nextUrl.pathname;
+  const session = (request as any).auth;
+  const sessionRole = session?.user
+    ? ((session.user as any).role as string | undefined)
+    : undefined;
+
+  const hostDecision = decideHost({ host, pathname, role: sessionRole });
+
+  if (hostDecision.action === 'block-404') {
+    return new NextResponse(null, { status: 404 });
+  }
+
+  if (hostDecision.action === 'rewrite-coming-soon') {
+    const locale = getLocaleFromPath(pathname) || 'ar';
+    const target = new URL(`/${locale}/coming-soon`, request.url);
+    return NextResponse.rewrite(target);
+  }
+  // action === 'allow' → fall through to the rest of middleware
+
+  // ── Launch-mode isolation gate (Wave 14 LP-INFRA — emergency kill-switch)
+  // Kept as defense-in-depth. Primary gate above is host-header routing.
   // When LAUNCH_MODE=landing-only or landing-only-strict, only LP routes,
   // admin (conditionally), payment webhooks, and static assets pass.
-  // Everything else 404s (or redirects to LAUNCH_MODE_REDIRECT_TO if set).
   // No-op when LAUNCH_MODE=full or unset.
   const launchMode = getLaunchMode();
   if (launchMode !== 'full') {
@@ -53,7 +81,7 @@ export default auth(async function middleware(request) {
       request.headers.get('x-real-ip') ||
       null;
     const decision = decideGate(
-      { pathname: request.nextUrl.pathname, isAdminIp: isAdminIp(ip) },
+      { pathname, isAdminIp: isAdminIp(ip) },
       launchMode,
     );
     if (!decision.allow) {
@@ -70,7 +98,7 @@ export default auth(async function middleware(request) {
   }
 
   // ── API requests: gate-only path ───────────────────────────────────
-  // Beyond the gate above, API routes don't need intl, auth-redirect, or
+  // Beyond the gates above, API routes don't need intl, auth-redirect, or
   // geo cookie middleware — they handle their own auth via getAuthUser()
   // and geo via headers. Bail out cleanly so we don't break /api responses.
   if (request.nextUrl.pathname.startsWith('/api/')) {
@@ -113,7 +141,7 @@ export default auth(async function middleware(request) {
   // ── Auto-apply preferred_language on ambiguous paths ────────────────
   // If user is authenticated and path is / or /ar (the default locale),
   // redirect to their preferred language if different from current path.
-  const session = (request as any).auth;
+  // (`session` was resolved at the top of middleware for host-header routing.)
   if (session?.user) {
     const currentLocale = getLocaleFromPath(request.nextUrl.pathname);
     const preferredLocale = ((session.user as any).preferred_language as string) || 'ar';
