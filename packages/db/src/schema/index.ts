@@ -92,3 +92,7 @@ export * from './pathfinder_tree_versions';
 export * from './pathfinder_questions';
 export * from './pathfinder_answers';
 export * from './pathfinder_outcomes';
+// Wave E.1 — Scholarship Fund (migration 0054)
+export * from './donations';
+export * from './scholarship_applications';
+export * from './scholarships';

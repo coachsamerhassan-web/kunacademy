@@ -84,10 +84,6 @@ export function TierGrandfatherBanner({ locale }: Props) {
 
   const deadline = formatGrandfatherEndDate(isAr ? 'ar' : 'en');
 
-  const bannerText = isAr
-    ? `مرتبتك: ${current} (سابقًا: ${previous} — تنتهي فترة الانتقال ${deadline})`
-    : `Your tier: ${current} (previously: ${previous} — grandfather ends ${deadline})`;
-
   const a11yLabel = isAr ? 'إشعار تحديث تسمية المرتبة' : 'Tier label update notice';
 
   return (
@@ -117,7 +113,26 @@ export function TierGrandfatherBanner({ locale }: Props) {
           className="flex-1 leading-relaxed"
           style={{ fontFamily: isAr ? 'var(--font-arabic-body)' : 'var(--font-english-body)' }}
         >
-          {bannerText}
+          {/* Build the banner from discrete React nodes rather than a single
+              interpolated string. The date is wrapped in a <bdi> element with
+              explicit dir='ltr' so the browser's Unicode BiDi algorithm does
+              NOT reorder the hyphen-separated date segments inside an RTL
+              paragraph. Without isolation, 2026-05-24 can render as 24-05-2026
+              because '-' is a neutral character and the outer direction bleeds
+              across it. */}
+          {isAr ? (
+            <>
+              {`مرتبتك: ${current} (سابقًا: ${previous} — تنتهي فترة الانتقال `}
+              <bdi dir="ltr">{deadline}</bdi>
+              {`)`}
+            </>
+          ) : (
+            <>
+              {`Your tier: ${current} (previously: ${previous} — grandfather ends `}
+              <bdi dir="ltr">{deadline}</bdi>
+              {`)`}
+            </>
+          )}
         </p>
       </div>
     </div>
