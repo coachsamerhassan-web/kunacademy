@@ -58,6 +58,11 @@ const nextConfig: NextConfig = {
       // Booking flow consolidation (Wave 15)
       { source: '/:locale/book', destination: '/:locale/coaching/book', permanent: true },
       { source: '/:locale/book/:path*', destination: '/:locale/coaching/book', permanent: true },
+      // Retired program slugs — Canon Phase 2 W2 (migration 0040, 2026-04-21)
+      // gps was a duplicate/placeholder row deleted in 0040; canonical is gps-of-life
+      { source: '/:locale(ar|en)/programs/gps', destination: '/:locale/programs/gps-of-life', permanent: true },
+      // gps-professional renamed to gps-couples in 0040; old slug must 301 to preserve SEO + bookmarks
+      { source: '/:locale(ar|en)/programs/gps-professional', destination: '/:locale/programs/gps-couples', permanent: true },
       // WordPress legacy URL redirects
       { source: '/:locale/register', destination: '/:locale/auth/signup', permanent: true },
       { source: '/:locale/login', destination: '/:locale/auth/login', permanent: true },
