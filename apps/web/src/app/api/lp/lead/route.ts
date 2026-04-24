@@ -71,24 +71,42 @@ function clampString(v: unknown, max: number): string | null {
 function safeRedirectUrl(raw: unknown, request: NextRequest): string | null {
   if (typeof raw !== 'string' || raw.length === 0) return null;
   try {
-    // Same-origin OR https absolute URL only — no SSRF / open-redirect.
-    if (raw.startsWith('/')) return raw;
+    // Same-origin only. Cross-origin redirects on a public lead-capture
+    // endpoint are an open-redirect / phishing vector — even https-anywhere.
+    // Operators who need cross-origin success_redirect can host a same-origin
+    // /lp/[slug]/thank-you page and redirect from there.
+    if (raw.startsWith('/') && !raw.startsWith('//')) return raw;
     const u = new URL(raw, request.url);
     const requestOrigin = new URL(request.url).origin;
     if (u.origin === requestOrigin) return u.pathname + u.search;
-    if (u.protocol === 'https:') return u.toString();
     return null;
   } catch {
     return null;
   }
 }
 
+/** HTML-escape user-supplied text before interpolating into email templates.
+ *  `sanitize()` strips tags but leaves attribute-breaking characters intact;
+ *  this escapes the 5 dangerous chars so name/email/message can't break out
+ *  of an HTML attribute or open a script context in the admin email client. */
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 // ── POST handler ────────────────────────────────────────────────────────────
 export async function POST(request: NextRequest) {
   try {
+    // Prefer x-real-ip (set by trusted nginx on this VPS) over x-forwarded-for
+    // (which a client can spoof). Fall back to x-forwarded-for first hop only
+    // if x-real-ip isn't present (e.g. dev environment without nginx).
     const ip =
+      request.headers.get('x-real-ip')?.trim() ||
       request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-      request.headers.get('x-real-ip') ||
       'unknown';
 
     if (isRateLimited(ip)) {
@@ -209,23 +227,32 @@ export async function POST(request: NextRequest) {
     const zohoLeadSource = leadConfig.zoho_lead_source || 'Landing Page';
 
     // ── Fan-out (best-effort, never blocks success response) ───────────────
-    // Email admin
+    // Email admin — all user-supplied values HTML-escaped to prevent stored
+    // XSS in the admin's email client (DeepSeek C-2 fix, 2026-04-24 wave 14).
+    const eName = escapeHtml(name);
+    const eEmail = escapeHtml(email);
+    const eSlug = escapeHtml(slug);
+    const eLocale = escapeHtml(locale);
+    const ePhone = phone ? escapeHtml(phone) : null;
+    const eMessage = message ? escapeHtml(message) : null;
+    const eUtmSource = utm_source ? escapeHtml(utm_source) : null;
+    const eUtmCampaign = utm_campaign ? escapeHtml(utm_campaign) : null;
     sendEmail({
       to: 'info@kuncoaching.com',
-      subject: `[Kun LP Lead] ${slug} — ${name}`,
+      subject: `[Kun LP Lead] ${eSlug} — ${eName}`,
       html: `
         <div style="font-family: system-ui, sans-serif; max-width: 600px; margin: 0 auto; padding: 32px;">
           <h2 style="color: #474099; margin-bottom: 24px;">New Landing-Page Lead</h2>
           <table style="width: 100%; border-collapse: collapse;">
-            <tr><td style="padding: 10px 0; font-weight: bold; color: #555; width: 140px;">Landing Page</td><td style="padding: 10px 0;">${slug}</td></tr>
-            <tr><td style="padding: 10px 0; font-weight: bold; color: #555;">Locale</td><td style="padding: 10px 0;">${locale}</td></tr>
-            <tr><td style="padding: 10px 0; font-weight: bold; color: #555;">Name</td><td style="padding: 10px 0;">${name}</td></tr>
-            <tr><td style="padding: 10px 0; font-weight: bold; color: #555;">Email</td><td style="padding: 10px 0;"><a href="mailto:${email}">${email}</a></td></tr>
-            ${phone ? `<tr><td style="padding: 10px 0; font-weight: bold; color: #555;">Phone</td><td style="padding: 10px 0;"><a href="tel:${phone}">${phone}</a></td></tr>` : ''}
-            ${utm_source ? `<tr><td style="padding: 10px 0; font-weight: bold; color: #555;">UTM Source</td><td style="padding: 10px 0;">${utm_source}</td></tr>` : ''}
-            ${utm_campaign ? `<tr><td style="padding: 10px 0; font-weight: bold; color: #555;">UTM Campaign</td><td style="padding: 10px 0;">${utm_campaign}</td></tr>` : ''}
+            <tr><td style="padding: 10px 0; font-weight: bold; color: #555; width: 140px;">Landing Page</td><td style="padding: 10px 0;">${eSlug}</td></tr>
+            <tr><td style="padding: 10px 0; font-weight: bold; color: #555;">Locale</td><td style="padding: 10px 0;">${eLocale}</td></tr>
+            <tr><td style="padding: 10px 0; font-weight: bold; color: #555;">Name</td><td style="padding: 10px 0;">${eName}</td></tr>
+            <tr><td style="padding: 10px 0; font-weight: bold; color: #555;">Email</td><td style="padding: 10px 0;"><a href="mailto:${eEmail}">${eEmail}</a></td></tr>
+            ${ePhone ? `<tr><td style="padding: 10px 0; font-weight: bold; color: #555;">Phone</td><td style="padding: 10px 0;"><a href="tel:${ePhone}">${ePhone}</a></td></tr>` : ''}
+            ${eUtmSource ? `<tr><td style="padding: 10px 0; font-weight: bold; color: #555;">UTM Source</td><td style="padding: 10px 0;">${eUtmSource}</td></tr>` : ''}
+            ${eUtmCampaign ? `<tr><td style="padding: 10px 0; font-weight: bold; color: #555;">UTM Campaign</td><td style="padding: 10px 0;">${eUtmCampaign}</td></tr>` : ''}
           </table>
-          ${message ? `<div style="margin-top: 20px; padding: 16px; background: #f5f3ef; border-radius: 8px;"><p style="color: #333; white-space: pre-wrap; line-height: 1.7;">${message}</p></div>` : ''}
+          ${eMessage ? `<div style="margin-top: 20px; padding: 16px; background: #f5f3ef; border-radius: 8px;"><p style="color: #333; white-space: pre-wrap; line-height: 1.7;">${eMessage}</p></div>` : ''}
           <p style="margin-top: 16px; color: #999; font-size: 12px;">Lead ID: ${inserted!.id}</p>
         </div>
       `,
