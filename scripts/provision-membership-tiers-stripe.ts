@@ -22,7 +22,6 @@
  *   - Prints a dry-run summary first and requires --confirm to execute.
  *   - Logs JSON output to Workspace/CTO/output/ for audit.
  */
-import 'dotenv/config';
 import { Pool } from 'pg';
 import { provisionTierInStripe } from '../packages/payments/src/subscriptions';
 
