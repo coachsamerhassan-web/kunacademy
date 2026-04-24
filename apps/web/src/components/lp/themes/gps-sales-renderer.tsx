@@ -8,6 +8,45 @@ import type {
 import { LpLeadForm } from '../lp-lead-form';
 import './gps-sales.css';
 
+/**
+ * Minimal HTML sanitizer for author-supplied copy fields that need line-break
+ * preservation. Strategy: escape EVERYTHING then re-enable only the tags we
+ * explicitly allow. Keeps the "paste a link in the contact copy" authoring
+ * experience without opening <script> / on*-handler / iframe vectors.
+ *
+ * Authors go through admin auth (role: admin | super_admin | content_editor
+ * in Wave 14b) — but defense-in-depth against a compromised admin account
+ * is still cheap. Per DeepSeek adversarial pass 2026-04-24.
+ *
+ * Allowed tags: <br>, <a href="...">, <strong>, <em>. Nothing else.
+ */
+function sanitizeAuthorHtml(input: string): string {
+  if (!input) return '';
+  // 1. Escape every HTML-special character.
+  const escaped = input
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+  // 2. Selectively re-enable the whitelisted tags.
+  return escaped
+    // <br/> and <br>
+    .replace(/&lt;br\s*\/?&gt;/gi, '<br/>')
+    // <strong>...</strong>
+    .replace(/&lt;strong&gt;/gi, '<strong>')
+    .replace(/&lt;\/strong&gt;/gi, '</strong>')
+    // <em>...</em>
+    .replace(/&lt;em&gt;/gi, '<em>')
+    .replace(/&lt;\/em&gt;/gi, '</em>')
+    // <a href="..."> — only http/https/mailto/tel URLs, quotes must be simple
+    .replace(
+      /&lt;a\s+href=&quot;((?:https?:\/\/|mailto:|tel:|#|\/)[^"<>\s]+)&quot;&gt;/gi,
+      (_, url) => `<a href="${url}" rel="noopener noreferrer">`,
+    )
+    .replace(/&lt;\/a&gt;/gi, '</a>');
+}
+
 interface LpGpsSalesRendererProps {
   slug: string;
   locale: string;
@@ -141,19 +180,19 @@ function GpsHero({ hero, isAr }: { hero: LpHero; isAr: boolean }) {
   const brand = isAr ? hero.brand_mark_ar : hero.brand_mark_en;
   const brandSub = isAr ? hero.brand_mark_sub_ar : hero.brand_mark_sub_en;
 
-  // Render headline with optional accent span
+  // Render headline with optional accent span. Belt-and-suspenders null
+  // guard + type guard on headline_accent — per DeepSeek adversarial pass.
   const renderHeadline = () => {
-    if (!headline) return null;
-    if (hero.headline_accent && headline.includes(hero.headline_accent)) {
-      const parts = headline.split(hero.headline_accent);
+    if (!headline || typeof headline !== 'string') return null;
+    const accent = hero.headline_accent;
+    if (accent && typeof accent === 'string' && accent.length > 0 && headline.includes(accent)) {
+      const parts = headline.split(accent);
       return (
         <h1 className="gps-cover-title">
           {parts.map((part, i) => (
             <span key={i}>
               {part}
-              {i < parts.length - 1 && (
-                <span className="gps-accent">{hero.headline_accent}</span>
-              )}
+              {i < parts.length - 1 && <span className="gps-accent">{accent}</span>}
             </span>
           ))}
         </h1>
@@ -192,14 +231,18 @@ function GpsHero({ hero, isAr }: { hero: LpHero; isAr: boolean }) {
         {subheadline && (
           <p
             className="gps-cover-subtitle"
-            dangerouslySetInnerHTML={{ __html: subheadline.replace(/\n/g, '<br/>') }}
+            dangerouslySetInnerHTML={{
+              __html: sanitizeAuthorHtml(subheadline.replace(/\n/g, '<br/>')),
+            }}
           />
         )}
         <div className="gps-cover-divider" />
         {hook && (
           <div
             className="gps-cover-hook"
-            dangerouslySetInnerHTML={{ __html: hook.replace(/\n/g, '<br/>') }}
+            dangerouslySetInnerHTML={{
+              __html: sanitizeAuthorHtml(hook.replace(/\n/g, '<br/>')),
+            }}
           />
         )}
       </div>
@@ -309,7 +352,9 @@ function GpsMirrorSection({ section, isAr }: SectionProps) {
         {close && (
           <div
             className="gps-mirror-bridge"
-            dangerouslySetInnerHTML={{ __html: close.replace(/\n\n/g, '<br/><br/>') }}
+            dangerouslySetInnerHTML={{
+              __html: sanitizeAuthorHtml(close.replace(/\n\n/g, '<br/><br/>')),
+            }}
           />
         )}
       </div>
@@ -683,7 +728,7 @@ function GpsCtaSection({ section, isAr }: SectionProps) {
         {contact && (
           <p
             className="gps-cta-contact"
-            dangerouslySetInnerHTML={{ __html: contact }}
+            dangerouslySetInnerHTML={{ __html: sanitizeAuthorHtml(contact) }}
           />
         )}
       </div>
