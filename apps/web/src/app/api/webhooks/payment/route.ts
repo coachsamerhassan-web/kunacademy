@@ -7,6 +7,13 @@ import { getBusinessConfig } from '@/lib/cms-config';
 import { alertWebhookFailure, alertPaymentMismatch } from '@kunacademy/email';
 import { sql } from 'drizzle-orm';
 import { fireSettlementEffects, type EarningsSourceType } from '@/lib/settlement-effects';
+import {
+  isDonationEvent,
+  handleDonationSucceeded,
+  handleRecurringDonationCharge,
+  handleRecurringDonationCanceled,
+  handleDonationRefund,
+} from '@/lib/donation-webhook-handlers';
 
 // Unified payment webhook — handles Stripe, Tabby
 export async function POST(request: NextRequest) {
@@ -289,11 +296,161 @@ export async function POST(request: NextRequest) {
           return NextResponse.json({ received: true, note: 'already processed' });
         }
 
-      } else if (event.type === 'invoice.paid') {
+      } else if (event.type === 'payment_intent.succeeded') {
+        // ── Wave E.2: one-time donation (Scholarship Fund) ─────────────────────
+        // Non-donation PaymentIntents produced by the existing checkout.session
+        // flow also fire this event (because checkout creates a PI). We gate on
+        // metadata.donation_type to avoid double-processing program payments.
+        //
+        // Recurring donations ALSO fire payment_intent.succeeded for each
+        // monthly charge. We deliberately skip those here because the canonical
+        // recording point for a recurring charge is invoice.payment_succeeded
+        // (which carries the invoice + subscription context required to
+        // populate stripe_subscription_id). Recording at payment_intent.succeeded
+        // for recurring would create a "phantom" row missing subscription
+        // linkage, causing double-count at invoice.payment_succeeded.
+        const piForDonation = event.data.object as any;
+        if (isDonationEvent(piForDonation.metadata)) {
+          const donationType = piForDonation.metadata?.donation_type;
+          if (donationType === 'one_time') {
+            try {
+              const result = await handleDonationSucceeded(piForDonation);
+              await withAdminContext(async (db) => {
+                await db.execute(
+                  sql`UPDATE webhook_events SET status = 'completed', completed_at = NOW() WHERE event_id = ${eventId}`
+                );
+              });
+              return NextResponse.json({
+                received: true,
+                note: result.alreadyProcessed ? 'donation_already_processed' : 'donation_recorded',
+                donation_id: result.donation_id,
+                zoho_task_id: result.zohoTaskId,
+                zoho_mock: result.zohoMock,
+              });
+            } catch (err: any) {
+              console.error('[stripe-webhook] donation handler (one-time) failed:', err.message);
+              await withAdminContext(async (db) => {
+                await db.execute(
+                  sql`UPDATE webhook_events SET status = 'failed', error_message = ${err.message} WHERE event_id = ${eventId}`
+                );
+              });
+              void alertWebhookFailure({
+                gateway: 'stripe',
+                eventType: 'payment_intent.succeeded(donation)',
+                eventId: eventId ?? 'unknown',
+                error: err.message,
+              });
+              return NextResponse.json({ error: err.message }, { status: 500 });
+            }
+          }
+          // donation_type === 'recurring' — intentionally deferred to the
+          // invoice.payment_succeeded handler which carries the full Invoice
+          // + Subscription context. Close out cleanly.
+          await withAdminContext(async (db) => {
+            await db.execute(
+              sql`UPDATE webhook_events SET status = 'completed', completed_at = NOW() WHERE event_id = ${eventId}`
+            );
+          });
+          return NextResponse.json({
+            received: true,
+            note: 'donation_recurring_pi_deferred_to_invoice_handler',
+          });
+        }
+        // Non-donation PI succeeded — the main checkout.session.completed flow
+        // handles enrollment/invoice elsewhere. Close out the event record.
+        await withAdminContext(async (db) => {
+          await db.execute(
+            sql`UPDATE webhook_events SET status = 'completed', completed_at = NOW() WHERE event_id = ${eventId}`
+          );
+        });
+        return NextResponse.json({ received: true, note: 'non_donation_payment_intent_skipped' });
+
+      } else if (event.type === 'customer.subscription.deleted') {
+        // ── Wave E.2: recurring donation canceled ─────────────────────────────
+        const canceledSub = event.data.object as any;
+        if (isDonationEvent(canceledSub.metadata)) {
+          try {
+            const result = await handleRecurringDonationCanceled(canceledSub);
+            await withAdminContext(async (db) => {
+              await db.execute(
+                sql`UPDATE webhook_events SET status = 'completed', completed_at = NOW() WHERE event_id = ${eventId}`
+              );
+            });
+            return NextResponse.json({
+              received: true,
+              note: 'donation_subscription_canceled',
+              rows_touched: result.rowsTouched,
+            });
+          } catch (err: any) {
+            console.error('[stripe-webhook] donation cancellation handler failed:', err.message);
+            await withAdminContext(async (db) => {
+              await db.execute(
+                sql`UPDATE webhook_events SET status = 'failed', error_message = ${err.message} WHERE event_id = ${eventId}`
+              );
+            });
+            return NextResponse.json({ error: err.message }, { status: 500 });
+          }
+        }
+        // Non-donation subscription cancellation (e.g., future membership waves).
+        // No-op here — membership webhook route (F.2) handles its own events.
+        await withAdminContext(async (db) => {
+          await db.execute(
+            sql`UPDATE webhook_events SET status = 'completed', completed_at = NOW() WHERE event_id = ${eventId}`
+          );
+        });
+        return NextResponse.json({ received: true, note: 'non_donation_subscription_deleted_skipped' });
+
+      } else if (event.type === 'charge.refunded') {
+        // ── Wave E.2: donation refund ─────────────────────────────────────────
+        const refundedCharge = event.data.object as any;
+        if (isDonationEvent(refundedCharge.metadata)) {
+          try {
+            const result = await handleDonationRefund(refundedCharge);
+            await withAdminContext(async (db) => {
+              await db.execute(
+                sql`UPDATE webhook_events SET status = 'completed', completed_at = NOW() WHERE event_id = ${eventId}`
+              );
+            });
+            return NextResponse.json({
+              received: true,
+              note: result.alreadyRefunded ? 'donation_already_refunded' : 'donation_refunded',
+              donation_id: result.donation_id,
+              reversal_task_id: result.reversalTaskId,
+            });
+          } catch (err: any) {
+            console.error('[stripe-webhook] donation refund handler failed:', err.message);
+            await withAdminContext(async (db) => {
+              await db.execute(
+                sql`UPDATE webhook_events SET status = 'failed', error_message = ${err.message} WHERE event_id = ${eventId}`
+              );
+            });
+            return NextResponse.json({ error: err.message }, { status: 500 });
+          }
+        }
+        // Non-donation charge refund — no-op at this webhook.
+        await withAdminContext(async (db) => {
+          await db.execute(
+            sql`UPDATE webhook_events SET status = 'completed', completed_at = NOW() WHERE event_id = ${eventId}`
+          );
+        });
+        return NextResponse.json({ received: true, note: 'non_donation_charge_refunded_skipped' });
+
+      } else if (event.type === 'invoice.paid' || event.type === 'invoice.payment_succeeded') {
         // ── Stripe Subscription Schedule: installment settled ──────────────────
         // Fires for each successful charge in a subscription schedule.
         // Decision 3: commission fires on each invoice.paid (per-installment), not upfront.
         // Idempotency: handled at event level via webhook_events UNIQUE constraint above.
+        //
+        // Wave E.2 (2026-04-24): Stripe emits BOTH 'invoice.paid' (legacy) and
+        // 'invoice.payment_succeeded' (current) for the same invoice charge.
+        // We handle both to cover recurring donation subscriptions. The
+        // webhook_events UNIQUE(event_id) constraint ensures we don't process
+        // the same event twice; but DIFFERENT event_ids for the same invoice
+        // are both dispatched here (Stripe sends each event separately).
+        // For donations: the stripe_payment_intent_id UNIQUE on donations
+        // prevents duplicate row insert when both events land.
+        // For installments: existing pendingIdx lookup + alreadySettledByThisInvoice
+        // guard prevents double-progression.
 
         const invoice = event.data.object as any;
         const subscriptionId = invoice.subscription as string | null;
@@ -306,6 +463,55 @@ export async function POST(request: NextRequest) {
             );
           });
           return NextResponse.json({ received: true, note: 'non_subscription_invoice_skipped' });
+        }
+
+        // ── Wave E.2: Donation subscription early-fork ───────────────────────
+        // Donation subscriptions have no Stripe Schedule. Route to the donation
+        // handler BEFORE the schedule-metadata lookup (which would return null
+        // and land in the error path).
+        const StripeForDonation = (await import('stripe')).default;
+        const stripeDonationClient = new StripeForDonation(process.env.STRIPE_SECRET_KEY!);
+        let donationSubscriptionResolved: any | null = null;
+        try {
+          donationSubscriptionResolved = await stripeDonationClient.subscriptions.retrieve(subscriptionId);
+        } catch (resolveErr: any) {
+          console.error('[stripe-webhook] invoice.paid: subscription retrieve failed:', resolveErr.message);
+        }
+        if (donationSubscriptionResolved && isDonationEvent(donationSubscriptionResolved.metadata)) {
+          try {
+            const result = await handleRecurringDonationCharge(invoice, donationSubscriptionResolved);
+            await withAdminContext(async (db) => {
+              await db.execute(
+                sql`UPDATE webhook_events SET status = 'completed', completed_at = NOW() WHERE event_id = ${eventId}`
+              );
+            });
+            return NextResponse.json({
+              received: true,
+              note: result.alreadyProcessed
+                ? 'donation_recurring_already_processed'
+                : result.isFirstCharge
+                  ? 'donation_recurring_first_charge'
+                  : 'donation_recurring_charge',
+              donation_id: result.donation_id,
+              is_first_charge: result.isFirstCharge,
+              zoho_task_id: result.zohoTaskId,
+              zoho_mock: result.zohoMock,
+            });
+          } catch (donErr: any) {
+            console.error('[stripe-webhook] donation (recurring) handler failed:', donErr.message);
+            await withAdminContext(async (db) => {
+              await db.execute(
+                sql`UPDATE webhook_events SET status = 'failed', error_message = ${donErr.message} WHERE event_id = ${eventId}`
+              );
+            });
+            void alertWebhookFailure({
+              gateway: 'stripe',
+              eventType: `${event.type}(donation)`,
+              eventId: eventId ?? 'unknown',
+              error: donErr.message,
+            });
+            return NextResponse.json({ error: donErr.message }, { status: 500 });
+          }
         }
 
         // Resolve internal payment_id from subscription schedule metadata

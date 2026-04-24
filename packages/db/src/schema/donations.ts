@@ -8,6 +8,7 @@ import {
   jsonb,
   index,
 } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
 
 /**
  * Wave E.1 — Scholarship Fund: donations ledger
@@ -73,8 +74,17 @@ export const donations = pgTable('donations', {
   metadata:                    jsonb('metadata').notNull().default({}),
 }, (t) => ({
   statusIdx:        index('idx_donations_status').on(t.status),
-  emailIdx:         index('idx_donations_email').on(t.donor_email),
-  subscriptionIdx:  index('idx_donations_subscription').on(t.stripe_subscription_id),
+  // Expression index on lower(donor_email) mirrors the SQL migration. Drizzle
+  // expression-index API accepts a sql tag for the lower() call.
+  emailIdx:         index('idx_donations_email').on(sql`lower(${t.donor_email})`),
+  // Partial index on stripe_subscription_id where not null.
+  subscriptionIdx:  index('idx_donations_subscription')
+                      .on(t.stripe_subscription_id)
+                      .where(sql`${t.stripe_subscription_id} IS NOT NULL`),
+  // Partial index on designation where status='received' (admin queries top-of-queue).
+  designationIdx:   index('idx_donations_designation')
+                      .on(t.designation_preference)
+                      .where(sql`${t.status} = 'received'`),
   createdAtIdx:     index('idx_donations_created_at').on(t.created_at),
 }));
 
