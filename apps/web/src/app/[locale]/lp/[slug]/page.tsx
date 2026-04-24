@@ -4,6 +4,7 @@ import { setRequestLocale } from 'next-intl/server';
 import { db } from '@kunacademy/db';
 import { eq } from 'drizzle-orm';
 import { landing_pages } from '@kunacademy/db/schema';
+import { getAuthUser } from '@kunacademy/auth/server';
 import { LpRenderer } from '@/components/lp/lp-renderer';
 import { LpAnalytics } from '@/components/lp/lp-analytics';
 import {
@@ -105,7 +106,16 @@ export default async function LpPage({ params }: Props) {
   setRequestLocale(locale);
 
   const lp = await loadLp(slug);
-  if (!lp || !lp.published) notFound();
+  if (!lp) notFound();
+
+  // Draft-preview for admins: unpublished rows render for authed users with
+  // admin role (so Hakima + Samer can preview LP scaffolding before publish).
+  // Public visitors see 404 on unpublished rows.
+  if (!lp.published) {
+    const user = await getAuthUser();
+    const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
+    if (!isAdmin) notFound();
+  }
 
   const composition = isLpComposition(lp.composition_json)
     ? (lp.composition_json as LpComposition)

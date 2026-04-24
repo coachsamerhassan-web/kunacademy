@@ -4,6 +4,7 @@ import { setRequestLocale } from 'next-intl/server';
 import { db } from '@kunacademy/db';
 import { eq } from 'drizzle-orm';
 import { landing_pages } from '@kunacademy/db/schema';
+import { getAuthUser } from '@kunacademy/auth/server';
 import { Section } from '@kunacademy/ui/section';
 import { GeometricPattern } from '@kunacademy/ui/patterns';
 import { isLpComposition, type LpComposition } from '@/lib/lp/composition-types';
@@ -47,7 +48,12 @@ export default async function LpThankYouPage({ params }: Props) {
   setRequestLocale(locale);
 
   const lp = await loadThankYou(slug);
-  if (!lp || !lp.published) notFound();
+  if (!lp) notFound();
+  if (!lp.published) {
+    const user = await getAuthUser();
+    const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
+    if (!isAdmin) notFound();
+  }
 
   const isAr = locale === 'ar';
   const dir = isAr ? 'rtl' : 'ltr';
