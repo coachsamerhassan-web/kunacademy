@@ -14,14 +14,19 @@ interface Props {
 
 // ── Kun Level display map ─────────────────────────────────────────────────────
 
-// ── Kun Level entries (values from canonical enum, labels defined locally for AR/EN display) ──
+// Canon Phase 2 (2026-04-24): L3/L4 labels swapped in the display register.
+// DB values unchanged. `expert` → "Master Coach", `master` → "Expert Coach".
+// See apps/web/src/lib/coach-tier-labels.ts for the canonical helper.
 const KUN_LEVEL_ENTRIES = [
-  { value: 'basic',        ar: 'كوتش أساسي',       en: 'Basic Coach'          },
-  { value: 'professional', ar: 'كوتش محترف',        en: 'Professional Coach'   },
-  { value: 'expert',       ar: 'كوتش خبير',         en: 'Expert Coach'         },
-  { value: 'master',       ar: 'كوتش ماستر',        en: 'Master Coach'         },
+  { value: 'basic',        ar: 'كوتش مساعد',        en: 'Associate Coach'     },
+  { value: 'professional', ar: 'كوتش محترف',        en: 'Professional Coach'  },
+  { value: 'expert',       ar: 'كوتش ماستر',        en: 'Master Coach'        },
+  { value: 'master',       ar: 'كوتش خبير',         en: 'Expert Coach'        },
 ] as const;
 
+// Color hierarchy follows NEW canon tier rank.
+//   DB master (now displays "Expert", AED 800, highest tier) → amber
+//   DB expert (now displays "Master", AED 600)               → purple
 const KUN_LEVEL_COLORS: Record<string, string> = {
   basic:        'bg-green-100 text-green-800',
   professional: 'bg-blue-100 text-blue-800',

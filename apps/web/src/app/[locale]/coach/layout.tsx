@@ -5,6 +5,7 @@ import { db } from '@kunacademy/db';
 import { eq } from 'drizzle-orm';
 import { providers } from '@kunacademy/db/schema';
 import { PortalSidebar } from '@/components/portal-sidebar';
+import { TierGrandfatherBanner } from '@/components/coach/TierGrandfatherBanner';
 
 export const dynamic = 'force-dynamic';
 
@@ -40,7 +41,13 @@ export default async function CoachLayout({
         <div className="mx-auto max-w-[var(--max-content-width)] px-4 py-8">
           <div className="flex flex-col md:flex-row gap-6">
             <PortalSidebar locale={locale} variant="coach" canOfferCourses={canOfferCourses} />
-            <div className="flex-1 min-w-0">{children}</div>
+            <div className="flex-1 min-w-0">
+              {/* Canon Phase 2 grandfather banner — renders only for L3/L4
+                  coaches during 2026-04-24 → 2026-05-24. Auto-expires via
+                  date gate in coach-tier-labels.ts. L1+L2: returns null. */}
+              <TierGrandfatherBanner locale={locale} />
+              {children}
+            </div>
           </div>
         </div>
       </div>

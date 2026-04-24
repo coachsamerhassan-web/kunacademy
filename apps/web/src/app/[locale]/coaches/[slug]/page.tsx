@@ -95,15 +95,18 @@ const KUN_LEVEL_PRICE: Record<string, { priceAed: number; serviceSlug: string }>
   master:       { priceAed: 800,  serviceSlug: 'individual-master'        },
 };
 
+// Canon Phase 2 (2026-04-24): L3/L4 labels swapped.
+// DB `expert` → displays "Master Coach" (AED 600). DB `master` → displays "Expert Coach" (AED 800).
+// See apps/web/src/lib/coach-tier-labels.ts.
 const KUN_LEVEL_META: Record<string, {
   labelEn: string;
   labelAr: string;
   badgeClasses: string;
 }> = {
-  basic:        { labelEn: 'Basic Coach',        labelAr: 'كوتش أساسي',  badgeClasses: 'bg-sky-100 text-sky-800' },
+  basic:        { labelEn: 'Associate Coach',     labelAr: 'كوتش مساعد',  badgeClasses: 'bg-sky-100 text-sky-800' },
   professional: { labelEn: 'Professional Coach',  labelAr: 'كوتش محترف',  badgeClasses: 'bg-violet-100 text-violet-800' },
-  expert:       { labelEn: 'Expert Coach',         labelAr: 'كوتش خبير',   badgeClasses: 'bg-amber-100 text-amber-800' },
-  master:       { labelEn: 'Master Coach',         labelAr: 'كوتش ماستر',  badgeClasses: 'bg-emerald-100 text-emerald-800' },
+  expert:       { labelEn: 'Master Coach',        labelAr: 'كوتش ماستر',  badgeClasses: 'bg-amber-100 text-amber-800' },
+  master:       { labelEn: 'Expert Coach',        labelAr: 'كوتش خبير',   badgeClasses: 'bg-emerald-100 text-emerald-800' },
 };
 
 // Language code → display name (flag emoji not used per icon rules — text labels only)

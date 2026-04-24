@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { getTierLabel } from '@/lib/coach-tier-labels';
 
 interface Instructor {
   id: string;
@@ -84,7 +85,7 @@ export function InstructorsList({ locale }: { locale: string }) {
               </td>
               <td className="py-3 px-2">
                 <span className="inline-block rounded-full bg-[var(--color-neutral-100)] px-2 py-0.5 text-xs">
-                  {inst.kun_level || inst.icf_credential || '-'}
+                  {inst.kun_level ? getTierLabel(inst.kun_level, isAr) : (inst.icf_credential || '-')}
                 </span>
               </td>
               <td className="py-3 px-2">

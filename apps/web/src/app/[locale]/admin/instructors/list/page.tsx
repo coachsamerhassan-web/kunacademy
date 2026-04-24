@@ -14,6 +14,7 @@ import { Heading } from '@kunacademy/ui/heading';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Eye, Plus, Pencil, Trash2, Check, X, Link as LinkIcon } from 'lucide-react';
+import { getTierLabel } from '@/lib/coach-tier-labels';
 
 interface InstructorRow {
   id: string;
@@ -239,7 +240,7 @@ export default function AdminInstructorsListPage() {
                   </td>
                   <td className="px-3 py-2.5 text-center text-xs">
                     {r.kun_level ? (
-                      <span className="px-1.5 py-0.5 rounded bg-amber-50 text-amber-700">{r.kun_level}</span>
+                      <span className="px-1.5 py-0.5 rounded bg-amber-50 text-amber-700">{getTierLabel(r.kun_level, isAr)}</span>
                     ) : (
                       <span className="text-[var(--color-neutral-300)]">—</span>
                     )}
@@ -335,7 +336,7 @@ export default function AdminInstructorsListPage() {
             <div className="text-xs text-[var(--color-neutral-400)] mb-3 flex flex-wrap gap-2">
               {preview.slug && <span>slug: {preview.slug}</span>}
               {preview.icf_credential && <span>· ICF {preview.icf_credential}</span>}
-              {preview.kun_level && <span>· kun {preview.kun_level}</span>}
+              {preview.kun_level && <span>· kun {getTierLabel(preview.kun_level, isAr)}</span>}
               {preview.profile_id && <span>· linked</span>}
             </div>
             {preview.languages && preview.languages.length > 0 && (

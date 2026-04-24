@@ -20,6 +20,7 @@ import { Heading } from '@kunacademy/ui/heading';
 import { Button } from '@kunacademy/ui/button';
 import Link from 'next/link';
 import { ArrowLeft, Search } from 'lucide-react';
+import { getTierLabel } from '@/lib/coach-tier-labels';
 
 const ICF_CREDENTIALS = ['ACC', 'PCC', 'MCC'] as const;
 const KUN_LEVELS = ['basic', 'professional', 'expert', 'master'] as const;
@@ -660,7 +661,7 @@ export default function InstructorForm({ instructorId }: Props) {
                     <option value="">—</option>
                     {KUN_LEVELS.map((v) => (
                       <option key={v} value={v}>
-                        {v}
+                        {`${v} — ${getTierLabel(v, isAr)}`}
                       </option>
                     ))}
                   </select>

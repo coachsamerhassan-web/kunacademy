@@ -5,6 +5,7 @@ import { useAuth } from '@kunacademy/auth';
 import { Button } from '@kunacademy/ui/button';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
+import { getTierLabel } from '@/lib/coach-tier-labels';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -892,7 +893,7 @@ function BookingFlowInner({ locale }: { locale: string }) {
                         {isAr ? coach.title_ar : coach.title_en}
                       </div>
                       {coach.kun_level && (
-                        <span className="text-xs text-[var(--color-neutral-500)]">{coach.kun_level}</span>
+                        <span className="text-xs text-[var(--color-neutral-500)]">{getTierLabel(coach.kun_level, isAr)}</span>
                       )}
                     </div>
                   </div>

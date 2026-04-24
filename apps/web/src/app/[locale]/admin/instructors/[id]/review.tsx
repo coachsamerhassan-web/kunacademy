@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Button } from '@kunacademy/ui/button';
+import { getDualLabel } from '@/lib/coach-tier-labels';
 
 interface InstructorData {
   id: string;
@@ -83,7 +84,14 @@ export function InstructorReview({ locale, instructorId }: { locale: string; ins
         <div>
           <h2 className="text-lg font-medium">{instructor.title_ar}</h2>
           <p className="text-[var(--color-neutral-600)]">{instructor.title_en}</p>
-          <p className="text-sm text-[var(--color-neutral-500)]">{instructor.kun_level || instructor.icf_credential || '-'}</p>
+          <p className="text-sm text-[var(--color-neutral-500)]">
+            {instructor.kun_level ? (() => {
+              const { current, previous } = getDualLabel(instructor.kun_level, isAr);
+              return previous
+                ? (isAr ? `${current} (سابقًا: ${previous})` : `${current} (previously: ${previous})`)
+                : current;
+            })() : (instructor.icf_credential || '-')}
+          </p>
         </div>
       </div>
 

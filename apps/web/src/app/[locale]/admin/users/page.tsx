@@ -96,11 +96,15 @@ const STATUS_LABELS: Record<string, { ar: string; en: string; color: string }> =
 
 // KUN_LEVELS and ICF_CREDENTIALS imported from @kunacademy/db/enums
 
+// Canon Phase 2 (2026-04-24): display register renames L3/L4 labels.
+// DB values unchanged. See apps/web/src/lib/coach-tier-labels.ts.
+//   - kun_level = 'expert' (DB) → displays as "Master" (new canon)
+//   - kun_level = 'master' (DB) → displays as "Expert" (new canon)
 const KUN_LEVEL_LABELS: Record<string, { ar: string; en: string }> = {
-  basic: { ar: 'أساسي', en: 'Basic' },
+  basic: { ar: 'مساعد', en: 'Associate' },
   professional: { ar: 'محترف', en: 'Professional' },
-  expert: { ar: 'خبير', en: 'Expert' },
-  master: { ar: 'ماستر', en: 'Master' },
+  expert: { ar: 'ماستر', en: 'Master' },
+  master: { ar: 'خبير', en: 'Expert' },
 };
 
 const ICF_LABELS: Record<string, { ar: string; en: string }> = {
