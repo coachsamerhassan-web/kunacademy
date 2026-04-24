@@ -192,6 +192,19 @@ export default async function ProgramDetailPage({ params }: Props) {
   const subtitle = isAr ? program.subtitle_ar : program.subtitle_en;
   const description = isAr ? program.description_ar : program.description_en;
 
+  // ── Canon W4 (migration 0051) — structured long-form content ─────────────
+  // Populated for 6 Ihya variants; NULL for other programs (falls back to
+  // short `description` block above). Template renders the full composition
+  // from IHYA-LANDING-PAGES.md §1 when present.
+  const longForm = isAr ? program.long_description_ar : program.long_description_en;
+  const hasLongForm = !!(
+    longForm &&
+    (longForm.opening_invitation ||
+      (longForm.who_for && longForm.who_for.length > 0) ||
+      (longForm.benefits && longForm.benefits.length > 0) ||
+      (longForm.impressions && longForm.impressions.length > 0))
+  );
+
   // ── Geo-based pricing (Board rules) ──────────────────────────────────────
   // Egypt → EGP only | Gulf/Arab → AED only | World → EUR only
   // Tier rule: >4,000 AED → hide price, show CRM form (Manhajak, STAIC, etc.)
@@ -430,7 +443,9 @@ export default async function ProgramDetailPage({ params }: Props) {
             />
           ) : (
             <div className="space-y-8">
-              {/* Description */}
+              {/* Description — always shows as lead when present.
+                  Canon W4: long-form structured content (if populated)
+                  renders BELOW this intro, not in place of it. */}
               {description && (
                 <div>
                   <h2
@@ -442,6 +457,133 @@ export default async function ProgramDetailPage({ params }: Props) {
                   <p className="text-[var(--color-neutral-600)] leading-relaxed text-lg">
                     {description}
                   </p>
+                </div>
+              )}
+
+              {/* ── Canon W4 long-form composition ─────────────────────────
+                  Renders the IHYA-LANDING-PAGES.md §1 composition when the
+                  program has structured `long_description_{ar|en}` populated.
+                  Gracefully handles missing sub-fields per variant (e.g.
+                  `closing_invitation` only present on dated variants).
+              */}
+              {hasLongForm && longForm && (
+                <div className="space-y-10 pt-4 border-t border-[var(--color-primary-100)]">
+                  {/* Opening invitation (Composition §2) */}
+                  {longForm.opening_invitation && (
+                    <div>
+                      <p className="text-[var(--color-neutral-700)] leading-loose text-lg md:text-xl font-medium">
+                        {longForm.opening_invitation}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Who this is for / not for (Composition §3) */}
+                  {((longForm.who_for && longForm.who_for.length > 0) ||
+                    (longForm.who_not_for && longForm.who_not_for.length > 0)) && (
+                    <div className="grid gap-6 md:grid-cols-2">
+                      {longForm.who_for && longForm.who_for.length > 0 && (
+                        <div className="rounded-2xl border border-[var(--color-primary-100)] bg-[var(--color-primary-50)] p-6">
+                          <h3
+                            className="text-xl font-bold text-[var(--text-primary)] mb-4"
+                            style={{ fontFamily: headingFont }}
+                          >
+                            {isAr ? 'لمن هذه الرحلة' : 'Who this is for'}
+                          </h3>
+                          <ul className="space-y-2.5">
+                            {longForm.who_for.map((item, i) => (
+                              <li key={i} className="flex items-start gap-2 text-[var(--color-neutral-700)] leading-relaxed">
+                                <span className="mt-2 w-1.5 h-1.5 rounded-full bg-[var(--color-primary)] flex-shrink-0" aria-hidden />
+                                <span>{item}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      {longForm.who_not_for && longForm.who_not_for.length > 0 && (
+                        <div className="rounded-2xl border border-[var(--color-neutral-200)] bg-[var(--color-neutral-50)] p-6">
+                          <h3
+                            className="text-xl font-bold text-[var(--text-primary)] mb-4"
+                            style={{ fontFamily: headingFont }}
+                          >
+                            {isAr ? 'ليست هذه الرحلة' : 'Who this is not for'}
+                          </h3>
+                          <ul className="space-y-2.5">
+                            {longForm.who_not_for.map((item, i) => (
+                              <li key={i} className="flex items-start gap-2 text-[var(--color-neutral-700)] leading-relaxed">
+                                <span className="mt-2 w-1.5 h-1.5 rounded-full bg-[var(--color-neutral-400)] flex-shrink-0" aria-hidden />
+                                <span>{item}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Benefits — what you'll leave with (Composition §4) */}
+                  {longForm.benefits && longForm.benefits.length > 0 && (
+                    <div>
+                      <h3
+                        className="text-2xl font-bold text-[var(--text-primary)] mb-4"
+                        style={{ fontFamily: headingFont }}
+                      >
+                        {isAr ? 'ما ستخرج به' : "What you'll leave with"}
+                      </h3>
+                      <ul className="space-y-3">
+                        {longForm.benefits.map((item, i) => (
+                          <li key={i} className="flex items-start gap-3 text-[var(--color-neutral-700)] leading-relaxed text-base md:text-lg">
+                            <span className="mt-2.5 w-2 h-2 rounded-full bg-[var(--color-accent)] flex-shrink-0" aria-hidden />
+                            <span>{item}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {/* Impressions — the experience (Composition §5) */}
+                  {longForm.impressions && longForm.impressions.length > 0 && (
+                    <div>
+                      <h3
+                        className="text-2xl font-bold text-[var(--text-primary)] mb-4"
+                        style={{ fontFamily: headingFont }}
+                      >
+                        {isAr ? 'التجربة' : 'The Experience'}
+                      </h3>
+                      <div className="space-y-5">
+                        {longForm.impressions.map((para, i) => (
+                          <p key={i} className="text-[var(--color-neutral-700)] leading-loose text-base md:text-lg">
+                            {para}
+                          </p>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Samer pull-quote */}
+                  {longForm.pull_quote && (
+                    <blockquote
+                      className="relative rounded-2xl bg-[var(--color-primary-50)] border-s-4 border-[var(--color-primary)] p-6 md:p-8"
+                    >
+                      <p
+                        className="text-[var(--color-primary-700)] text-xl md:text-2xl font-semibold leading-relaxed italic"
+                        style={{ fontFamily: headingFont }}
+                      >
+                        {isAr ? '«' : '"'}{longForm.pull_quote}{isAr ? '»' : '"'}
+                      </p>
+                      <footer className="mt-3 text-sm text-[var(--color-neutral-500)]">
+                        {isAr ? '— سامر حسن' : '— Samer Hassan'}
+                      </footer>
+                    </blockquote>
+                  )}
+
+                  {/* Closing invitation (Composition §9 — optional) */}
+                  {longForm.closing_invitation && (
+                    <div className="rounded-2xl bg-gradient-to-br from-[var(--color-primary-50)] to-[var(--color-accent)]/10 p-6 md:p-8 text-center">
+                      <p className="text-[var(--color-neutral-800)] leading-loose text-base md:text-lg font-medium">
+                        {longForm.closing_invitation}
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
 

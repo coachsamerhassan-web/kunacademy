@@ -80,6 +80,9 @@ export const programs = pgTable(
     // Canon W3-A (migration 0049) — gallery + closing band
     gallery_json: jsonb('gallery_json'),
     closing_bg_url: text('closing_bg_url'),
+    // Canon W4 (migration 0051) — structured long-form landing-page content
+    long_description_ar: jsonb('long_description_ar'),
+    long_description_en: jsonb('long_description_en'),
 
     // Pathways
     prerequisite_codes: text('prerequisite_codes').array().notNull().default([]),

@@ -542,6 +542,9 @@ export class DbContentProvider implements ContentProvider {
     // Canon W3-A (migration 0049)
     gallery_json?: unknown;
     closing_bg_url?: string | null;
+    // Canon W4 (migration 0051)
+    long_description_ar?: unknown;
+    long_description_en?: unknown;
   }): Program {
     const num = (v: string | number | null | undefined): number => {
       if (v === null || v === undefined || v === '') return 0;
@@ -664,6 +667,33 @@ export class DbContentProvider implements ContentProvider {
         }
       })(),
       closing_bg_url: r.closing_bg_url ?? undefined,
+      // ── Canon W4 (migration 0051) ──────────────────────────────────────
+      long_description_ar: (() => {
+        const raw = r.long_description_ar;
+        if (raw == null) return undefined;
+        try {
+          const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+          if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+            return undefined;
+          }
+          return parsed as import('./types').ProgramLongDescription;
+        } catch {
+          return undefined;
+        }
+      })(),
+      long_description_en: (() => {
+        const raw = r.long_description_en;
+        if (raw == null) return undefined;
+        try {
+          const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+          if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+            return undefined;
+          }
+          return parsed as import('./types').ProgramLongDescription;
+        } catch {
+          return undefined;
+        }
+      })(),
     };
   }
 

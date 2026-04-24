@@ -299,6 +299,42 @@ export interface Program extends AuditFields, TheaterPricing {
    *  variant at render (scrim gradient + `track_color` overlay).
    */
   closing_bg_url?: string;
+
+  // ── Canon W4 extensions (2026-04-24, migration 0051) ───────────────────
+  /** Structured long-form landing-page content (AR). NULL → falls back to
+   *  `description_ar` for the detail page body. When populated, the template
+   *  renders the structured composition (opening invitation → who-for /
+   *  who-not-for → benefits → impressions → pull-quote → optional closing
+   *  invitation). Source of truth: `IHYA-LANDING-PAGES.md §7`.
+   */
+  long_description_ar?: ProgramLongDescription;
+  /** Structured long-form landing-page content (EN). Mirrors long_description_ar. */
+  long_description_en?: ProgramLongDescription;
+}
+
+/** Structured long-form landing-page content per-locale. Authored by Hakima,
+ *  composition locked by Shahira. Every field is optional so the template can
+ *  gracefully render partial variants.
+ */
+export interface ProgramLongDescription {
+  /** 2-4 sentence philosophical framing opening. Single paragraph. */
+  opening_invitation?: string;
+  /** Who this retreat/program is for. 3-5 bullets, ≤15 words each. */
+  who_for?: string[];
+  /** Who this retreat/program is NOT for. 2-3 bullets. Must include a
+   *  therapeutic-complement line where relevant (per Samer's safety pattern). */
+  who_not_for?: string[];
+  /** What participants leave with. 5-6 bullets. Sensed-outcome language. */
+  benefits?: string[];
+  /** Impressions-of-the-experience paragraphs. 3-5 sentences each,
+   *  typically 2-3 paragraphs. Atmosphere only — no curriculum / no
+   *  session structure / no exercise prompts (IP rule per CLAUDE.md). */
+  impressions?: string[];
+  /** Samer pull-quote for this variant. 1 sentence. */
+  pull_quote?: string;
+  /** Optional closing invitation (Section 9 pattern). Present on dated
+   *  variants; gated variants may omit. */
+  closing_invitation?: string;
 }
 
 /** Gallery image descriptor for program detail page Gallery section. */
