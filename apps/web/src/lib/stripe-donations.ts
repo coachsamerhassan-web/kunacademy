@@ -325,6 +325,129 @@ export async function createDonationPaymentIntent(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Public API — one-time donation via Stripe Checkout Session (hosted)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface DonationCheckoutSessionInput extends DonationIntentInput {
+  /** Full URL to redirect to on successful payment. Must include CHECKOUT_SESSION_ID placeholder Stripe fills. */
+  success_url: string;
+  /** Full URL to redirect to on cancel. */
+  cancel_url: string;
+}
+
+export interface DonationCheckoutSessionResult {
+  url: string;
+  sessionId: string;
+  paymentIntentId: string | null;
+}
+
+/**
+ * Create a Stripe Checkout Session in `mode: 'payment'` for a one-time
+ * donation. Produces a hosted Stripe checkout page — no client-side Stripe
+ * Elements needed, which matches the rest of the platform's checkout flows
+ * (apps/web/src/app/api/checkout/route.ts + packages/payments/stripe.ts).
+ *
+ * Under the hood Stripe creates a PaymentIntent; all critical metadata is
+ * mirrored onto both the Session and the PaymentIntent so the
+ * `payment_intent.succeeded` webhook handler (E.2 donation-webhook-handlers.ts
+ * `handleDonationSucceeded`) sees `metadata.donation_type === 'one_time'` and
+ * inserts the donations row.
+ *
+ * Supported wallets (default for Stripe Checkout):
+ *   - card (all brands)
+ *   - Apple Pay (auto-detect on iOS Safari)
+ *   - Google Pay (auto-detect on Android Chrome)
+ *   - Link (Stripe's saved-cards network)
+ *
+ * Same validation + metadata contract as `createDonationPaymentIntent`.
+ */
+export async function createDonationCheckoutSession(
+  input: DonationCheckoutSessionInput,
+): Promise<DonationCheckoutSessionResult> {
+  if (!VALID_CURRENCIES.has(input.currency)) {
+    throw new Error(`[stripe-donations] Unsupported currency: ${input.currency}`);
+  }
+  if (!VALID_DESIGNATIONS.has(input.designation_preference)) {
+    throw new Error(
+      `[stripe-donations] Unsupported designation: ${input.designation_preference}`,
+    );
+  }
+  validateAmountMinor(input.amount_minor, input.currency);
+  if (!input.donor.email || !input.donor.name) {
+    throw new Error('[stripe-donations] donor.name and donor.email are required');
+  }
+  if (!input.success_url || !input.cancel_url) {
+    throw new Error('[stripe-donations] success_url and cancel_url are required');
+  }
+
+  // Base metadata — mirrored onto both Session and PaymentIntent
+  const metadata: Record<string, string> = {
+    donation_type: 'one_time',
+    designation_preference: input.designation_preference,
+    is_anonymous: String(input.is_anonymous),
+    is_recurring: 'false',
+    donor_name: input.donor.name,
+    donor_email: input.donor.email,
+    locale: input.donor.locale ?? 'ar',
+    source: 'stripe_webhook',
+    amount_minor: String(input.amount_minor),
+    currency: input.currency,
+  };
+  if (input.donor.message) {
+    // Stripe metadata value cap is 500 chars; we already cap at 280 upstream.
+    metadata.donor_message = input.donor.message.slice(0, 280);
+  }
+
+  // Build a single Checkout line item — Stripe requires either price_data
+  // or a pre-existing price. One-time donations use price_data (dynamic
+  // amount per donation).
+  const session = await stripe.checkout.sessions.create({
+    mode: 'payment',
+    line_items: [
+      {
+        quantity: 1,
+        price_data: {
+          currency: toStripeCurrency(input.currency),
+          unit_amount: input.amount_minor,
+          product_data: {
+            name: 'Kun Scholarship Fund — Donation',
+            description: `Donation to Kun Scholarship Fund (${input.designation_preference})`,
+          },
+        },
+      },
+    ],
+    payment_intent_data: {
+      description: `Kun Scholarship Fund donation — ${input.designation_preference}`,
+      receipt_email: input.donor.email,
+      metadata, // mirrored onto underlying PaymentIntent
+    },
+    customer_email: input.donor.email,
+    // Stripe Checkout automatically enables card + Apple Pay + Google Pay +
+    // Link when `payment_method_types` is omitted. Explicitly set to keep
+    // card+wallet behavior predictable across Stripe API changes.
+    payment_method_types: ['card'],
+    success_url: input.success_url,
+    cancel_url: input.cancel_url,
+    metadata, // mirrored onto Session as well
+    // Stripe supports `ar` at runtime but SDK Locale type lags; widen via cast.
+    // EN is the canonical default when locale is not 'ar'.
+    locale: (input.donor.locale === 'ar' ? 'ar' : 'en') as Stripe.Checkout.SessionCreateParams.Locale,
+  });
+
+  if (!session.url) {
+    throw new Error('[stripe-donations] Checkout session created without url');
+  }
+
+  return {
+    url: session.url,
+    sessionId: session.id,
+    paymentIntentId: typeof session.payment_intent === 'string'
+      ? session.payment_intent
+      : session.payment_intent?.id ?? null,
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Public API — recurring donation Subscription
 // ─────────────────────────────────────────────────────────────────────────────
 

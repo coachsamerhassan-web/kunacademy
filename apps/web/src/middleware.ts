@@ -5,6 +5,11 @@ import { authConfig } from '@/auth.config';
 import { routing } from './i18n/routing';
 import { getLaunchMode, decideGate, isAdminIp } from '@/lib/lp/launch-mode';
 import { classifyHost, decideHost } from '@/lib/lp/host-routing';
+import {
+  isScholarshipPublicLaunched,
+  isScholarshipPublicPath,
+  isScholarshipApiPath,
+} from '@/lib/feature-flags';
 
 const { auth } = NextAuth(authConfig);
 
@@ -97,6 +102,35 @@ export default auth(async function middleware(request) {
           // Invalid LAUNCH_MODE_REDIRECT_TO — fall through to 404
         }
       }
+      return new NextResponse(null, { status: 404 });
+    }
+  }
+
+  // ── Scholarship public-launch gate (Wave E.3 — dark-by-default) ─────
+  // When `SCHOLARSHIP_PUBLIC_LAUNCH !== 'true'`, all public donation +
+  // scholarship surfaces return 404. Per decision `d-canon-phase2-b4=a` —
+  // not a redirect, not a "coming soon" page, a clean 404 so crawlers
+  // don't index the surface before CT-advisory gate clears.
+  //
+  // Enforcement points per spec Appendix C:
+  //   - Public pages: `/ar/donate*`, `/en/donate*`, `/ar/scholarships*`,
+  //     `/en/scholarships*` → 404 when flag off.
+  //   - Public APIs: `/api/donations/*`, `/api/scholarships/*` → 404.
+  //   - Admin routes: NOT gated (B5 manual entry before launch).
+  //   - Webhook `/api/webhooks/payment`: NOT gated (idempotent donation
+  //     recording during closed beta is required).
+  if (!isScholarshipPublicLaunched()) {
+    const rawPath = request.nextUrl.pathname;
+    const withoutLocaleForFlag = rawPath.replace(/^\/(ar|en)/, '');
+
+    // Public locale-prefixed pages (e.g. /ar/donate, /en/scholarships/apply)
+    if (isScholarshipPublicPath(withoutLocaleForFlag)) {
+      return new NextResponse(null, { status: 404 });
+    }
+
+    // Public API paths (e.g. /api/donations/create-intent) — gate BEFORE
+    // the generic /api/ bail-out so the 404 returns before handler runs.
+    if (rawPath.startsWith('/api/') && isScholarshipApiPath(rawPath)) {
       return new NextResponse(null, { status: 404 });
     }
   }
