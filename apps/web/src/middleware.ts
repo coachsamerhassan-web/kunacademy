@@ -3,6 +3,7 @@ import createIntlMiddleware from 'next-intl/middleware';
 import NextAuth from 'next-auth';
 import { authConfig } from '@/auth.config';
 import { routing } from './i18n/routing';
+import { getLaunchMode, decideGate, isAdminIp } from '@/lib/lp/launch-mode';
 
 const { auth } = NextAuth(authConfig);
 
@@ -40,6 +41,42 @@ function getPricingRegion(countryCode: string | null): 'EGP' | 'AED' | 'EUR' {
 }
 
 export default auth(async function middleware(request) {
+  // ── Launch-mode isolation gate (Wave 14 LP-INFRA) ──────────────────
+  // When LAUNCH_MODE=landing-only or landing-only-strict, only LP routes,
+  // admin (conditionally), payment webhooks, and static assets pass.
+  // Everything else 404s (or redirects to LAUNCH_MODE_REDIRECT_TO if set).
+  // No-op when LAUNCH_MODE=full or unset.
+  const launchMode = getLaunchMode();
+  if (launchMode !== 'full') {
+    const ip =
+      request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+      request.headers.get('x-real-ip') ||
+      null;
+    const decision = decideGate(
+      { pathname: request.nextUrl.pathname, isAdminIp: isAdminIp(ip) },
+      launchMode,
+    );
+    if (!decision.allow) {
+      if (decision.redirectTo) {
+        try {
+          const target = new URL(decision.redirectTo, request.url);
+          return NextResponse.redirect(target, 307);
+        } catch {
+          // Invalid LAUNCH_MODE_REDIRECT_TO — fall through to 404
+        }
+      }
+      return new NextResponse(null, { status: 404 });
+    }
+  }
+
+  // ── API requests: gate-only path ───────────────────────────────────
+  // Beyond the gate above, API routes don't need intl, auth-redirect, or
+  // geo cookie middleware — they handle their own auth via getAuthUser()
+  // and geo via headers. Bail out cleanly so we don't break /api responses.
+  if (request.nextUrl.pathname.startsWith('/api/')) {
+    return NextResponse.next();
+  }
+
   // Run i18n middleware first
   const response = intlMiddleware(request);
 
@@ -164,5 +201,15 @@ export default auth(async function middleware(request) {
 }) as any;
 
 export const config = {
-  matcher: ['/', '/(ar|en)/:path*'],
+  // Matcher covers:
+  //   - root + locale-prefixed pages (existing behavior)
+  //   - /lp/* (Wave 14 — non-locale-prefixed LP route shouldn't exist, but
+  //     guard in case someone hits /lp/foo bypassing locale)
+  //   - /api/* — required so the LAUNCH_MODE gate can enforce isolation on
+  //     API endpoints. The gate's always-allowed list (api/lp/*, api/auth/*,
+  //     api/webhooks/payment) keeps necessary endpoints reachable; everything
+  //     else 404s when LAUNCH_MODE=landing-only.
+  // Excluded by Next.js default: _next/static, _next/image, favicon.ico —
+  // we additionally allowlist them in launch-mode.ts as belt-and-braces.
+  matcher: ['/', '/(ar|en)/:path*', '/api/:path*'],
 };

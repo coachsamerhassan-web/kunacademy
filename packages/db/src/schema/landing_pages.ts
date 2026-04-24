@@ -26,6 +26,19 @@ export const landing_pages = pgTable("landing_pages", {
   hero_json: jsonb("hero_json").notNull().default({}),
   // { meta_title_ar/en, meta_description_ar/en, og_image_url, canonical_url }
   seo_meta_json: jsonb("seo_meta_json").notNull().default({}),
+  // ── Wave 14 LP-INFRA (migration 0052) ──────────────────────────────────
+  // When true, this LP is reachable even when LAUNCH_MODE=landing-only.
+  launch_lock: boolean("launch_lock").notNull().default(false),
+  // Multi-section composition (richer than sections_json). NULL = use legacy
+  // hero+body+CTA renderer at /landing/[slug]. New /lp/[slug] route requires this.
+  composition_json: jsonb("composition_json"),
+  // { enabled, fields[], required_fields[], success_redirect?, zoho_lead_source?, consent_text_{ar,en}? }
+  lead_capture_config: jsonb("lead_capture_config"),
+  // { enabled, currencies[], tiers[], group_codes[], alumni_unlock_early_bird }
+  // Schema only — payment widget wiring deferred to LP-INFRA-B.
+  payment_config: jsonb("payment_config"),
+  // { ga4_id?, meta_pixel_id?, tiktok_pixel_id?, conversion_event_name? }
+  analytics_config: jsonb("analytics_config"),
   published: boolean("published").notNull().default(true),
   published_at: timestamp("published_at", { withTimezone: true, mode: 'string' }),
   last_edited_by: uuid("last_edited_by").references(() => profiles.id),
