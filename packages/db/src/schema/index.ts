@@ -79,6 +79,12 @@ export * from './landing_pages';
 export * from './lp_leads';
 export * from './programs';
 export * from './program-price-overrides';
+// Wave F.1 — Membership Platform (migration 0055)
+export * from './tiers';
+export * from './features';
+export * from './tier_features';
+export * from './memberships';
+export * from './pricing_config';
 export * from './events';
 export * from './corporate_benefit_directions';
 export * from './corporate_benefits';
