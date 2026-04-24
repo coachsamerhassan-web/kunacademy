@@ -96,3 +96,7 @@ export * from './pathfinder_outcomes';
 export * from './donations';
 export * from './scholarship_applications';
 export * from './scholarships';
+// Wave 15 — Global Rich Content Editor + Agent Content API (migration 0057)
+export * from './content_media';
+export * from './agent_tokens';
+export * from './content_edits';

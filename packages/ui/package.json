@@ -23,7 +23,10 @@
     "./footer": "./src/footer.tsx",
     "./scroll-observer": "./src/scroll-observer.tsx",
     "./faq-jsonld": "./src/faq-jsonld.ts",
-    "./structured-data": "./src/structured-data.ts"
+    "./structured-data": "./src/structured-data.ts",
+    "./rich-editor": "./src/rich-editor/index.ts",
+    "./rich-editor/sanitizer": "./src/rich-editor/sanitizer.ts",
+    "./rich-editor/rich-content": "./src/rich-editor/rich-content.tsx"
   },
   "scripts": {
     "build": "tsc --build",
@@ -32,8 +35,17 @@
     "clean": "rm -rf dist .turbo"
   },
   "dependencies": {
+    "@tiptap/core": "^3.22.4",
+    "@tiptap/extension-image": "^3.22.4",
+    "@tiptap/extension-link": "^3.22.4",
+    "@tiptap/extension-text-align": "^3.22.4",
+    "@tiptap/html": "^3.22.4",
+    "@tiptap/pm": "^3.22.4",
+    "@tiptap/react": "^3.22.4",
+    "@tiptap/starter-kit": "^3.22.4",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "isomorphic-dompurify": "^3.10.0",
     "lucide-react": "^0.468.0",
     "tailwind-merge": "^2.6.1"
   },
