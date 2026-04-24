@@ -115,8 +115,9 @@ CREATE INDEX IF NOT EXISTS tier_features_feature_idx
 
 CREATE TABLE IF NOT EXISTS memberships (
   id                      uuid         PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id                 uuid         NOT NULL
-                                       REFERENCES profiles(id) ON DELETE CASCADE,
+  -- user_id: SET NULL on profile delete preserves membership history
+  -- for 3-year tax/dispute retention per spec §10. DeepSeek QA [MEDIUM].
+  user_id                 uuid         REFERENCES profiles(id) ON DELETE SET NULL,
   tier_id                 uuid         NOT NULL REFERENCES tiers(id),
   status                  text         NOT NULL DEFAULT 'active'
                                        CHECK (status IN (
@@ -170,8 +171,9 @@ CREATE TABLE IF NOT EXISTS pricing_config (
                                    'tier','coach_session','samer_session',
                                    'program_discount','early_bird'
                                  )),
+  -- entity_key: snake_case pattern CHECK (DeepSeek QA [LOW]).
   entity_key        text         NOT NULL
-                                 CHECK (char_length(entity_key) BETWEEN 1 AND 64),
+                                 CHECK (entity_key ~ '^[a-z0-9][a-z0-9_-]{0,63}$'),
   value_cents       integer      CHECK (value_cents IS NULL OR value_cents >= 0),
   currency          text         CHECK (currency IS NULL
                                         OR currency IN ('AED','EGP','USD','EUR')),

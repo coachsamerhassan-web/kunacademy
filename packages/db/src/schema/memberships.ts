@@ -24,7 +24,7 @@ export const memberships = pgTable(
   'memberships',
   {
     id:                      uuid('id').primaryKey().defaultRandom(),
-    user_id:                 uuid('user_id').notNull().references(() => profiles.id, { onDelete: 'cascade' }),
+    user_id:                 uuid('user_id').references(() => profiles.id, { onDelete: 'set null' }),
     tier_id:                 uuid('tier_id').notNull().references(() => tiers.id),
     status:                  text('status').notNull().default('active'),
     billing_frequency:       text('billing_frequency'),
