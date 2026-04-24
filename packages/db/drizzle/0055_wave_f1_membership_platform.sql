@@ -206,22 +206,43 @@ CREATE INDEX IF NOT EXISTS pricing_config_audit_changed_by_idx
   ON pricing_config_audit (changed_by, changed_at DESC);
 
 -- ╔══════════════════════════════════════════════════════════════════════════╗
--- ║ updated_at triggers (re-use existing set_updated_at function)            ║
+-- ║ updated_at triggers — per-table functions matching existing DB pattern   ║
+-- ║ (landing_pages_touch_updated_at, programs_touch_updated_at, etc.)        ║
 -- ╚══════════════════════════════════════════════════════════════════════════╝
+
+CREATE OR REPLACE FUNCTION tiers_touch_updated_at() RETURNS trigger AS $fn$
+BEGIN NEW.updated_at = now(); RETURN NEW; END;
+$fn$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION features_touch_updated_at() RETURNS trigger AS $fn$
+BEGIN NEW.updated_at = now(); RETURN NEW; END;
+$fn$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION memberships_touch_updated_at() RETURNS trigger AS $fn$
+BEGIN NEW.updated_at = now(); RETURN NEW; END;
+$fn$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION pricing_config_touch_updated_at() RETURNS trigger AS $fn$
+BEGIN NEW.updated_at = now(); RETURN NEW; END;
+$fn$ LANGUAGE plpgsql;
 
 DO $$
 BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'set_tiers_updated_at') THEN
-    CREATE TRIGGER set_tiers_updated_at BEFORE UPDATE ON tiers
-      FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+  IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'tiers_touch_updated_at') THEN
+    CREATE TRIGGER tiers_touch_updated_at BEFORE UPDATE ON tiers
+      FOR EACH ROW EXECUTE FUNCTION tiers_touch_updated_at();
   END IF;
-  IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'set_features_updated_at') THEN
-    CREATE TRIGGER set_features_updated_at BEFORE UPDATE ON features
-      FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+  IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'features_touch_updated_at') THEN
+    CREATE TRIGGER features_touch_updated_at BEFORE UPDATE ON features
+      FOR EACH ROW EXECUTE FUNCTION features_touch_updated_at();
   END IF;
-  IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'set_memberships_updated_at') THEN
-    CREATE TRIGGER set_memberships_updated_at BEFORE UPDATE ON memberships
-      FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+  IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'memberships_touch_updated_at') THEN
+    CREATE TRIGGER memberships_touch_updated_at BEFORE UPDATE ON memberships
+      FOR EACH ROW EXECUTE FUNCTION memberships_touch_updated_at();
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'pricing_config_touch_updated_at') THEN
+    CREATE TRIGGER pricing_config_touch_updated_at BEFORE UPDATE ON pricing_config
+      FOR EACH ROW EXECUTE FUNCTION pricing_config_touch_updated_at();
   END IF;
 END $$;
 
