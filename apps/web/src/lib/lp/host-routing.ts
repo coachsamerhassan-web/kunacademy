@@ -146,6 +146,7 @@ export function isTryHostAllowed(pathname: string): boolean {
  *  is rewritten to /coming-soon for anonymous visitors. */
 const STAGING_ANON_ALLOWED_PREFIXES: ReadonlyArray<string> = [
   '/api/auth/',       // NextAuth needs to work so users can log in
+  '/api/agent/',      // Wave 15 — Agent Content API: bearer-token auth, no session cookie
   '/auth/',           // login pages
   '/_next/',
   '/images/',
