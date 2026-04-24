@@ -2,7 +2,7 @@
 
 import { use } from 'react';
 import { Section } from '@kunacademy/ui/section';
-import { LpForm } from '../_form';
+import { LpForm } from '@/components/lp/admin-lp-form';
 
 export default function AdminLpNewPage({
   params,

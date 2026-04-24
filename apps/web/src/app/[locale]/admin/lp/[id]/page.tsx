@@ -3,7 +3,7 @@
 import { use, useEffect, useState } from 'react';
 import { Section } from '@kunacademy/ui/section';
 import { Card } from '@kunacademy/ui/card';
-import { LpForm, type LpFormState } from '../_form';
+import { LpForm, type LpFormState } from '@/components/lp/admin-lp-form';
 
 interface LeadRow {
   id: string;
