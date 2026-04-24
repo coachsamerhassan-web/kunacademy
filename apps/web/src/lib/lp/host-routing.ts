@@ -28,38 +28,72 @@
 
 export type KunHost = 'staging' | 'try' | 'production' | 'unknown';
 
-/** Strip locale prefix so /ar/admin → /admin, /en/lp/foo → /lp/foo. */
-export function stripLocale(pathname: string): string {
-  return pathname.replace(/^\/(ar|en)(?=\/|$)/, '') || '/';
+/** Normalize a pathname for allowlist matching. Defends against:
+ *  - URL encoding (%2F, %61, etc.) that could slip past literal prefix checks
+ *  - Unicode lookalikes ('ɑ' / Cyrillic 'а' for 'a')
+ *  - Case variance on the locale prefix
+ *  - Empty pathname
+ *  Per DeepSeek adversarial review 2026-04-24 (C-2, C-5, H-1). */
+function normalizePath(pathname: string): string {
+  if (!pathname) return '/';
+  let p = pathname;
+  // Iteratively decode URI-encoded sequences (e.g. /%2Fadmin, /%61r/admin).
+  // Cap at 3 passes to prevent pathological input loops.
+  for (let i = 0; i < 3; i++) {
+    try {
+      const decoded = decodeURIComponent(p);
+      if (decoded === p) break;
+      p = decoded;
+    } catch {
+      break;
+    }
+  }
+  // Unicode NFC normalization so visual lookalikes fold.
+  try {
+    p = p.normalize('NFC');
+  } catch {
+    /* old runtime — keep as-is */
+  }
+  return p;
 }
 
-/** Classify the Host header. Strips port + case-insensitive. */
+/** Strip locale prefix so /ar/admin → /admin, /en/lp/foo → /lp/foo.
+ *  Case-insensitive and operates on the normalized pathname. */
+export function stripLocale(pathname: string): string {
+  const norm = normalizePath(pathname);
+  return norm.replace(/^\/(ar|en)(?=\/|$)/i, '') || '/';
+}
+
+/** Classify the Host header. Strips port + case-insensitive.
+ *  Only the explicit Host header is read — Next.js middleware doesn't expose
+ *  X-Forwarded-Host through request.headers.get('host'), and nginx preserves
+ *  the original Host via proxy_set_header. Loopback-only for dev convenience
+ *  (arbitrary IPs are 'unknown' to prevent internal-address bypass — DeepSeek M-2). */
 export function classifyHost(hostHeader: string | null | undefined): KunHost {
   if (!hostHeader) return 'unknown';
   const h = hostHeader.split(':')[0].toLowerCase().trim();
   if (h === 'try.kuncoaching.me') return 'try';
   if (h === 'kuncoaching.me' || h === 'www.kuncoaching.me') return 'staging';
   if (h === 'kuncoaching.com' || h === 'www.kuncoaching.com') return 'production';
-  // localhost, VPS IP, etc. — treat as staging for local-dev convenience
-  if (h === 'localhost' || h === '127.0.0.1' || /^\d+\.\d+\.\d+\.\d+$/.test(h)) {
-    return 'staging';
-  }
+  if (h === 'localhost' || h === '127.0.0.1' || h === '::1') return 'staging';
   return 'unknown';
 }
 
 // ── try.kuncoaching.me allowlist ────────────────────────────────────────────
 /** Path prefixes reachable on try.* (after locale strip). */
 const TRY_ALLOWED_PREFIXES: ReadonlyArray<string> = [
-  '/lp/',            // /[locale]/lp/<slug>  + /thank-you
-  '/api/lp/',        // /api/lp/lead
-  '/api/checkout/',  // LP-INFRA-B payment flow (shipped later; allowlist now)
-  '/api/webhooks/payment', // Stripe webhooks must always reach us
-  '/api/webhooks/auth',    // auth webhooks
-  '/api/auth/',      // NextAuth callbacks — needed for login if user signs in from try.* (future)
-  '/_next/',         // Next.js chunks + static
-  '/images/',        // images served by nginx but fall through to Node for dynamic
-  '/uploads/',       // user uploads (LP images in future)
-  '/fonts/',         // Google Fonts local fallbacks
+  '/lp/',                   // /[locale]/lp/<slug>  + /thank-you
+  '/api/lp/',               // /api/lp/lead
+  '/api/checkout/',         // LP-INFRA-B payment flow (shipped later)
+  '/api/webhooks/payment',  // Stripe webhooks must always reach us
+  '/api/webhooks/auth',     // auth webhooks
+  // NextAuth callbacks deliberately NOT allowlisted on try.* — login is
+  // staging-only (DeepSeek C-6). If a future flow needs login from try.*,
+  // re-add and rate-limit the route.
+  '/_next/',                // Next.js chunks + static
+  '/images/',               // images (nginx-served; Node fallback)
+  '/uploads/',              // user uploads
+  '/fonts/',                // Google Fonts local fallbacks
 ];
 
 const TRY_ALLOWED_EXACT: ReadonlyArray<string> = [
@@ -69,17 +103,39 @@ const TRY_ALLOWED_EXACT: ReadonlyArray<string> = [
   '/manifest.json',
 ];
 
-/** Static-asset extensions always allowed regardless of host. */
+/** Static-asset file extensions. Only meaningful when the pathname is
+ *  ALSO inside a known static-path prefix (below). Extension alone is
+ *  never sufficient — per DeepSeek C-3, `/admin/.png` or `/admin?x=.png`
+ *  must NOT be allowed just because they match the extension regex. */
 const STATIC_EXT = /\.(png|jpe?g|webp|gif|svg|ico|woff2?|ttf|otf|css|js|map|json|txt|xml|webmanifest)$/i;
+
+/** Prefixes whose contents are trusted static assets. An extension match
+ *  only passes the gate if the path starts with one of these. */
+const STATIC_PATH_PREFIXES: ReadonlyArray<string> = [
+  '/_next/',
+  '/images/',
+  '/uploads/',
+  '/fonts/',
+  '/storage/',
+  '/social-assets/',
+];
 
 function startsWithAny(p: string, prefixes: ReadonlyArray<string>): boolean {
   return prefixes.some((x) => p === x || p.startsWith(x));
 }
 
+/** Permissive static-asset check: path MUST start with a known static prefix
+ *  AND end with a static extension. Defeats the `/admin/.png` trick. */
+function isStaticAsset(normalizedPath: string): boolean {
+  if (!startsWithAny(normalizedPath, STATIC_PATH_PREFIXES)) return false;
+  return STATIC_EXT.test(normalizedPath);
+}
+
 export function isTryHostAllowed(pathname: string): boolean {
-  if (STATIC_EXT.test(pathname)) return true;
-  if (TRY_ALLOWED_EXACT.includes(pathname)) return true;
-  const stripped = stripLocale(pathname);
+  const norm = normalizePath(pathname);
+  if (isStaticAsset(norm)) return true;
+  if (TRY_ALLOWED_EXACT.includes(norm)) return true;
+  const stripped = stripLocale(pathname); // already normalizes internally
   if (startsWithAny(stripped, TRY_ALLOWED_PREFIXES)) return true;
   if (TRY_ALLOWED_EXACT.includes(stripped)) return true;
   return false;
@@ -113,12 +169,13 @@ function isComingSoonPath(pathname: string): boolean {
 }
 
 export function isStagingAnonAllowed(pathname: string): boolean {
-  if (STATIC_EXT.test(pathname)) return true;
-  if (STAGING_ANON_ALLOWED_EXACT.includes(pathname)) return true;
-  if (isComingSoonPath(pathname)) return true;
-  const stripped = stripLocale(pathname);
+  const norm = normalizePath(pathname);
+  if (isStaticAsset(norm)) return true;
+  if (STAGING_ANON_ALLOWED_EXACT.includes(norm)) return true;
+  if (isComingSoonPath(norm)) return true;
+  const stripped = stripLocale(pathname); // already normalizes
   if (startsWithAny(stripped, STAGING_ANON_ALLOWED_PREFIXES)) return true;
-  if (startsWithAny(pathname, STAGING_ANON_ALLOWED_PREFIXES)) return true;
+  if (startsWithAny(norm, STAGING_ANON_ALLOWED_PREFIXES)) return true;
   return false;
 }
 
