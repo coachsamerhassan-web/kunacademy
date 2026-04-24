@@ -94,44 +94,53 @@ export async function provisionTierInStripe(
 ): Promise<ProvisionTierResult> {
   const currencyLower = params.currency.toLowerCase();
 
-  // 1. Product
-  const product = await stripe.products.create({
-    name: params.productName,
-    description: params.description,
-    metadata: {
-      tier_id: params.tierId,
-      tier_slug: params.tierSlug,
-      source: 'kun_membership_platform',
+  // 1. Product (idempotency key = tier_id guarantees retries don't dup)
+  const product = await stripe.products.create(
+    {
+      name: params.productName,
+      description: params.description,
+      metadata: {
+        tier_id: params.tierId,
+        tier_slug: params.tierSlug,
+        source: 'kun_membership_platform',
+      },
     },
-  });
+    { idempotencyKey: `kun_tier_product_${params.tierId}` },
+  );
 
   // 2. Monthly price
-  const monthlyPrice = await stripe.prices.create({
-    product: product.id,
-    unit_amount: params.priceMonthlyCents,
-    currency: currencyLower,
-    recurring: { interval: 'month' },
-    metadata: {
-      tier_id: params.tierId,
-      tier_slug: params.tierSlug,
-      billing_frequency: 'monthly',
+  const monthlyPrice = await stripe.prices.create(
+    {
+      product: product.id,
+      unit_amount: params.priceMonthlyCents,
+      currency: currencyLower,
+      recurring: { interval: 'month' },
+      metadata: {
+        tier_id: params.tierId,
+        tier_slug: params.tierSlug,
+        billing_frequency: 'monthly',
+      },
+      lookup_key: `kun_tier_${params.tierSlug}_monthly_${currencyLower}`,
     },
-    lookup_key: `kun_tier_${params.tierSlug}_monthly_${currencyLower}`,
-  });
+    { idempotencyKey: `kun_tier_price_${params.tierId}_monthly_${currencyLower}` },
+  );
 
   // 3. Annual price
-  const annualPrice = await stripe.prices.create({
-    product: product.id,
-    unit_amount: params.priceAnnualCents,
-    currency: currencyLower,
-    recurring: { interval: 'year' },
-    metadata: {
-      tier_id: params.tierId,
-      tier_slug: params.tierSlug,
-      billing_frequency: 'annual',
+  const annualPrice = await stripe.prices.create(
+    {
+      product: product.id,
+      unit_amount: params.priceAnnualCents,
+      currency: currencyLower,
+      recurring: { interval: 'year' },
+      metadata: {
+        tier_id: params.tierId,
+        tier_slug: params.tierSlug,
+        billing_frequency: 'annual',
+      },
+      lookup_key: `kun_tier_${params.tierSlug}_annual_${currencyLower}`,
     },
-    lookup_key: `kun_tier_${params.tierSlug}_annual_${currencyLower}`,
-  });
+    { idempotencyKey: `kun_tier_price_${params.tierId}_annual_${currencyLower}` },
+  );
 
   return {
     stripeProductId: product.id,
@@ -153,14 +162,19 @@ export async function createStripeCustomer(params: {
   name?: string;
   userId: string;
 }): Promise<string> {
-  const customer = await stripe.customers.create({
-    email: params.email,
-    name: params.name,
-    metadata: {
-      kun_user_id: params.userId,
-      source: 'kun_membership_platform',
+  // Idempotency key keyed on userId — retries on the same user never
+  // produce duplicate Stripe Customer objects (DeepSeek low-#15).
+  const customer = await stripe.customers.create(
+    {
+      email: params.email,
+      name: params.name,
+      metadata: {
+        kun_user_id: params.userId,
+        source: 'kun_membership_platform',
+      },
     },
-  });
+    { idempotencyKey: `kun_customer_${params.userId}` },
+  );
   return customer.id;
 }
 
@@ -178,26 +192,38 @@ export async function createStripeCustomer(params: {
 export async function createSubscriptionCheckoutSession(
   params: CreateSubscriptionCheckoutParams,
 ): Promise<CreateSubscriptionCheckoutResult> {
-  const session = await stripe.checkout.sessions.create({
-    mode: 'subscription',
-    customer: params.stripeCustomerId,
-    line_items: [
-      {
-        price: params.stripePriceId,
-        quantity: 1,
-      },
-    ],
-    success_url: params.successUrl,
-    cancel_url: params.cancelUrl,
-    client_reference_id: params.clientReferenceId,
-    metadata: params.metadata,
-    subscription_data: params.subscriptionMetadata
-      ? { metadata: params.subscriptionMetadata }
-      : undefined,
-    // Stripe default billing_address_collection='auto' is fine for now.
-    // payment_method_collection='always' (default) — forces card collection even for trials.
-    allow_promotion_codes: false,
-  });
+  // Idempotency key: user + price + 5-minute bucket. Protects against accidental
+  // double-submits (user double-clicks "Subscribe") producing two Checkout
+  // Sessions. Legitimate retries (user abandons checkout, comes back 10 min
+  // later) land in a new bucket and get a fresh session. Upstream DB-level
+  // advisory lock in the /subscribe route is the primary guard; this is
+  // belt-and-suspenders.
+  const bucket5min = Math.floor(Date.now() / (5 * 60 * 1000));
+  const idempotencyKey = `kun_checkout_sub_${params.clientReferenceId}_${params.stripePriceId}_${bucket5min}`;
+
+  const session = await stripe.checkout.sessions.create(
+    {
+      mode: 'subscription',
+      customer: params.stripeCustomerId,
+      line_items: [
+        {
+          price: params.stripePriceId,
+          quantity: 1,
+        },
+      ],
+      success_url: params.successUrl,
+      cancel_url: params.cancelUrl,
+      client_reference_id: params.clientReferenceId,
+      metadata: params.metadata,
+      subscription_data: params.subscriptionMetadata
+        ? { metadata: params.subscriptionMetadata }
+        : undefined,
+      // Stripe default billing_address_collection='auto' is fine for now.
+      // payment_method_collection='always' (default) — forces card collection even for trials.
+      allow_promotion_codes: false,
+    },
+    { idempotencyKey },
+  );
 
   return {
     sessionId: session.id,

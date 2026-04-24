@@ -192,6 +192,15 @@ async function handleSubscriptionCreatedOrUpdated(
     return { handled: false, note: 'missing_customer_id' };
   }
 
+  // Concurrency guard (DeepSeek critical-#2): serialize all handlers for the
+  // same subscription within a transaction via advisory lock. This prevents
+  // the `checkout.session.completed` and `customer.subscription.created`
+  // events from racing to INSERT a membership row. pg_advisory_xact_lock
+  // releases automatically at transaction end.
+  await adminDb.execute(sql`
+    SELECT pg_advisory_xact_lock(hashtext('kun_stripe_sub_' || ${stripeSubscriptionId}::text))
+  `);
+
   // Derive user_id from subscription metadata (written by /subscribe route)
   const metadataUserId = subscription.metadata?.kun_user_id;
 
@@ -257,7 +266,11 @@ async function handleSubscriptionCreatedOrUpdated(
     return { handled: true };
   }
 
-  // No existing membership — insert new (rare path: pre-F.1 user or missing auto-provision)
+  // No existing membership — insert new (rare path: pre-F.1 user or missing auto-provision).
+  //
+  // Extra safety (DeepSeek medium-#3): cross-reference the metadata user_id with
+  // the Stripe customer. If the customer already has a DB-linked user (via any
+  // other membership row), require the metadata to match that user.
   if (!metadataUserId) {
     console.error(
       `[stripe-subscription] Cannot insert new membership: no kun_user_id in subscription metadata (event=${event.id})`,
@@ -265,6 +278,24 @@ async function handleSubscriptionCreatedOrUpdated(
     return { handled: false, note: 'no_existing_membership_and_no_user_metadata' };
   }
 
+  const { rows: existingByCustomer } = await adminDb.execute(sql`
+    SELECT user_id FROM memberships
+     WHERE stripe_customer_id = ${stripeCustomerId}
+     LIMIT 1
+  `);
+  const ownedByUserId = (existingByCustomer[0] as { user_id: string } | undefined)?.user_id;
+  if (ownedByUserId && ownedByUserId !== metadataUserId) {
+    console.error(
+      `[stripe-subscription] Customer ${stripeCustomerId} belongs to user ${ownedByUserId}, metadata says ${metadataUserId} — rejecting to avoid cross-customer hijacking (event=${event.id})`,
+    );
+    return { handled: false, note: 'user_mismatch_customer_ownership' };
+  }
+
+  // ON CONFLICT via the partial unique index predicate — if a concurrent
+  // event raced us, the second INSERT becomes an UPDATE on the same row
+  // instead of crashing on unique-violation. The WHERE clause MUST match
+  // the `memberships_user_active_uidx` predicate exactly for Postgres to
+  // pick the right inference target.
   await adminDb.execute(sql`
     INSERT INTO memberships (
       user_id, tier_id, status, billing_frequency, stripe_customer_id,
@@ -275,6 +306,20 @@ async function handleSubscriptionCreatedOrUpdated(
       ${stripeSubscriptionId}, ${currentPeriodStart}, ${currentPeriodEnd},
       ${cancelAt}, ${cancelledAt}, ${metadataJson}::jsonb
     )
+    ON CONFLICT (user_id)
+      WHERE ended_at IS NULL AND status IN ('active','past_due','paused','trialing')
+    DO UPDATE SET
+      tier_id = EXCLUDED.tier_id,
+      status = EXCLUDED.status,
+      billing_frequency = EXCLUDED.billing_frequency,
+      stripe_customer_id = EXCLUDED.stripe_customer_id,
+      stripe_subscription_id = EXCLUDED.stripe_subscription_id,
+      current_period_start = EXCLUDED.current_period_start,
+      current_period_end = EXCLUDED.current_period_end,
+      cancel_at = EXCLUDED.cancel_at,
+      cancelled_at = EXCLUDED.cancelled_at,
+      metadata = memberships.metadata || EXCLUDED.metadata,
+      updated_at = now()
   `);
   return { handled: true };
 }
@@ -301,17 +346,49 @@ async function handleSubscriptionDeleted(
     return { handled: false, note: 'membership_not_found' };
   }
 
+  // Already cancelled? idempotency short-circuit to preserve original cancelled_at stamp
+  // for audit trail (per DeepSeek low-#4).
+  if (membership.status === 'cancelled') {
+    return { handled: true, note: 'already_cancelled' };
+  }
+
   const currentPeriodEnd = isoOrNull((subscription as any).current_period_end);
   const cancelledAt = isoOrNull(subscription.canceled_at) || new Date().toISOString();
 
-  await adminDb.execute(sql`
-    UPDATE memberships
-       SET status = 'cancelled',
-           cancel_at = COALESCE(cancel_at, ${currentPeriodEnd}),
-           cancelled_at = ${cancelledAt},
-           updated_at = now()
-     WHERE id = ${membership.id}
-  `);
+  // Revenue-leak guard (DeepSeek critical-#3):
+  // If subscription.deleted fires AFTER the paid period has already ended
+  // (e.g. hard cancel or grace-sweep race), stamp ended_at=now() so the
+  // partial unique index drops this row from the active-member pool and
+  // future gating checks treat the user as not-a-member. Grace-sweep cron
+  // in Wave F.5 will then enforce tier-reversion to Free.
+  //
+  // If cancel_at is still in the future (user cancelled mid-period and is
+  // still within the paid window), DO NOT set ended_at — access must persist
+  // per M6=b until cancel_at passes.
+  const nowIso = new Date().toISOString();
+  const shouldEnd =
+    currentPeriodEnd !== null && new Date(currentPeriodEnd) <= new Date(nowIso);
+
+  if (shouldEnd) {
+    await adminDb.execute(sql`
+      UPDATE memberships
+         SET status = 'cancelled',
+             cancel_at = COALESCE(cancel_at, ${currentPeriodEnd}),
+             cancelled_at = ${cancelledAt},
+             ended_at = COALESCE(ended_at, ${nowIso}),
+             updated_at = now()
+       WHERE id = ${membership.id}
+    `);
+  } else {
+    await adminDb.execute(sql`
+      UPDATE memberships
+         SET status = 'cancelled',
+             cancel_at = COALESCE(cancel_at, ${currentPeriodEnd}),
+             cancelled_at = ${cancelledAt},
+             updated_at = now()
+       WHERE id = ${membership.id}
+    `);
+  }
   return { handled: true };
 }
 

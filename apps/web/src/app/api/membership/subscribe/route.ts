@@ -60,10 +60,31 @@ type ProfileRow = {
   full_name_ar: string | null;
 };
 
+// Whitelist of host-header values we accept. Anything else → fallback to
+// NEXT_PUBLIC_SITE_URL / configured default. Prevents host-header injection
+// from redirecting the user to a phishing site after Stripe Checkout
+// (DeepSeek low-#1).
+const ALLOWED_ORIGINS = new Set([
+  'kuncoaching.me',
+  'kuncoaching.com',
+  'www.kuncoaching.com',
+  'kunacademy.com',
+  'www.kunacademy.com',
+  'localhost:3001',
+  'localhost:3000',
+  '127.0.0.1:3001',
+  '127.0.0.1:3000',
+]);
+
 function originFromRequest(req: NextRequest): string {
-  const host = req.headers.get('x-forwarded-host') || req.headers.get('host');
-  const proto = req.headers.get('x-forwarded-proto') || (host?.includes('localhost') ? 'http' : 'https');
-  if (host) return `${proto}://${host}`;
+  const rawHost = req.headers.get('x-forwarded-host') || req.headers.get('host') || '';
+  const host = rawHost.split(',')[0].trim().toLowerCase();
+  const proto = (req.headers.get('x-forwarded-proto') || '').split(',')[0].trim() ||
+    (host.startsWith('localhost') || host.startsWith('127.0.0.1') ? 'http' : 'https');
+
+  if (host && ALLOWED_ORIGINS.has(host)) {
+    return `${proto}://${host}`;
+  }
   return process.env.NEXT_PUBLIC_SITE_URL || 'https://kuncoaching.me';
 }
 
@@ -123,8 +144,26 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'tier_not_provisioned' }, { status: 503 });
   }
 
-  // 4. Lookup user profile + current membership (mutate-in-place pattern)
-  const { profile, membership } = await withAdminContext(async (db) => {
+  // 4. Lookup user profile + current membership (mutate-in-place pattern).
+  //
+  // Concurrency guard (DeepSeek critical-#1 TOCTOU): take a per-user Postgres
+  // advisory lock for the duration of the subscribe flow. Two concurrent
+  // requests for the same user will serialize, preventing double-charge via
+  // parallel Stripe Checkout sessions. The lock is released automatically
+  // when the transaction commits/rolls back (pg_try_advisory_xact_lock).
+  //
+  // Lock key: deterministic hash of user_id (bigint, the 64-bit key type
+  // pg_advisory_xact_lock expects). hashtext() returns int4 — we double it
+  // via two-arg form to reduce collision risk across users.
+  const { profile, membership, lockAcquired } = await withAdminContext(async (db) => {
+    const lockRows = await db.execute(sql`
+      SELECT pg_try_advisory_xact_lock(hashtext('kun_membership_subscribe_' || ${userId}::text)) AS acquired
+    `);
+    const acquired = (lockRows.rows[0] as { acquired: boolean } | undefined)?.acquired === true;
+    if (!acquired) {
+      return { profile: undefined, membership: undefined, lockAcquired: false };
+    }
+
     const profRows = await db.execute(sql`
       SELECT id, email, full_name_en, full_name_ar
       FROM profiles
@@ -145,8 +184,17 @@ export async function POST(req: NextRequest) {
     return {
       profile: profRows.rows[0] as ProfileRow | undefined,
       membership: memRows.rows[0] as MembershipRow | undefined,
+      lockAcquired: true,
     };
   });
+
+  if (!lockAcquired) {
+    // Another subscribe request for this user is in flight — tell the client to retry.
+    return NextResponse.json(
+      { error: 'subscribe_in_progress', message: 'Another subscription request is in flight. Retry in a moment.' },
+      { status: 409 },
+    );
+  }
 
   if (!profile) {
     return NextResponse.json({ error: 'profile_not_found' }, { status: 404 });
