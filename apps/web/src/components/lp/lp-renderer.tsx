@@ -8,6 +8,7 @@ import type {
   LpAnalyticsConfig,
 } from '@/lib/lp/composition-types';
 import { LpLeadForm } from './lp-lead-form';
+import { LpGpsSalesRenderer } from './themes/gps-sales-renderer';
 
 interface LpRendererProps {
   slug: string;
@@ -18,14 +19,31 @@ interface LpRendererProps {
 }
 
 /**
- * Wave 14 LP-INFRA — landing-page renderer.
+ * Wave 14 LP-INFRA — landing-page renderer (theme dispatcher).
  *
- * Composes the hero + sections from a `LpComposition` (DB-driven JSONB).
- * Each section type maps to a presentation block. All bilingual via locale.
+ * Composes hero + sections from `LpComposition` (DB-driven JSONB). Delegates
+ * to a theme-specific renderer based on `composition.theme`:
  *
- * Server component; client islands (lead form) are imported directly.
+ *   - undefined | 'default'  → renders with site-wide Kun brand tokens (this file)
+ *   - 'gps-sales'            → renders with sales-pack design (themes/gps-sales-renderer.tsx)
+ *
+ * Server component. Client islands (lead form, analytics) imported directly.
  */
-export function LpRenderer({
+export function LpRenderer(props: LpRendererProps) {
+  const theme = props.composition.theme || 'default';
+
+  if (theme === 'gps-sales') {
+    return <LpGpsSalesRenderer {...props} />;
+  }
+
+  return <LpDefaultRenderer {...props} />;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// DEFAULT THEME RENDERER (site-wide Kun brand — unchanged from V1)
+// ═══════════════════════════════════════════════════════════════════════════
+
+function LpDefaultRenderer({
   slug,
   locale,
   composition,
@@ -39,7 +57,7 @@ export function LpRenderer({
   const conversionEventName = analyticsConfig?.conversion_event_name || 'lp_lead_submit';
 
   return (
-    <main dir={dir}>
+    <main dir={dir} data-lp-theme="default">
       {composition.hero && (
         <HeroBlock hero={composition.hero} isAr={isAr} headingFont={headingFont} />
       )}
@@ -57,9 +75,6 @@ export function LpRenderer({
         />
       ))}
 
-      {/* If lead capture is enabled but no section anchored a form,
-          render one at the bottom as a fallback so the page is always
-          conversion-ready. */}
       {leadCaptureConfig?.enabled &&
         !composition.sections?.some((s) => s.anchor_id === 'lead-form') && (
           <Section variant="surface-low">
@@ -83,7 +98,7 @@ export function LpRenderer({
   );
 }
 
-// ── Hero block ──────────────────────────────────────────────────────────────
+// ── Hero block (default theme) ──────────────────────────────────────────────
 function HeroBlock({
   hero,
   isAr,
@@ -104,7 +119,8 @@ function HeroBlock({
         background: `linear-gradient(to bottom, ${overlay} 0%, ${overlay} 100%), url(${hero.background_image_url}) center/cover no-repeat`,
       }
     : {
-        background: 'linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-600) 100%)',
+        background:
+          'linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-600) 100%)',
       };
 
   return (
@@ -142,7 +158,7 @@ function HeroBlock({
   );
 }
 
-// ── Section block (dispatches by type) ─────────────────────────────────────
+// ── Section block (default theme, dispatches by type) ──────────────────────
 function SectionBlock({
   section,
   isAr,
@@ -165,19 +181,55 @@ function SectionBlock({
   const body = isAr ? section.body_ar : section.body_en;
   const ctaLabel = isAr ? section.cta_label_ar : section.cta_label_en;
 
-  // Visual treatment per section type — modest per-type accent without
-  // creating 13 different layouts. The composition stays predictable.
   const isListType =
     section.type === 'benefits' ||
     section.type === 'who_for' ||
     section.type === 'who_not_for' ||
-    section.type === 'group_alumni';
+    section.type === 'group_alumni' ||
+    section.type === 'carry_out';
   const isObjectionType = section.type === 'objections';
   const isFaqType = section.type === 'faq';
   const isReframeType = section.type === 'reframe';
   const isCredibilityType = section.type === 'credibility';
   const isPriceType = section.type === 'price';
   const isFormatType = section.type === 'format';
+  const isCtaType = section.type === 'cta';
+
+  // CTA section short-circuits into a centered CTA band
+  if (isCtaType) {
+    const headline =
+      (isAr ? section.cta_headline_ar : section.cta_headline_en) || title;
+    const sub = isAr ? section.cta_sub_ar : section.cta_sub_en;
+    const deadline = isAr ? section.cta_deadline_ar : section.cta_deadline_en;
+    return (
+      <Section variant="primary" id={section.anchor_id}>
+        <div className="mx-auto max-w-2xl text-center">
+          {headline && (
+            <h2
+              className="text-3xl md:text-5xl font-bold text-white leading-[1.2] mb-4"
+              style={{ fontFamily: headingFont }}
+            >
+              {headline}
+            </h2>
+          )}
+          {sub && <p className="text-white/75 text-lg md:text-xl mb-6 leading-relaxed">{sub}</p>}
+          {deadline && (
+            <p className="text-[var(--color-accent-300)] font-semibold mb-8 text-base">
+              {deadline}
+            </p>
+          )}
+          {ctaLabel && section.cta_anchor && (
+            <a
+              href={section.cta_anchor}
+              className="inline-flex items-center justify-center rounded-xl bg-[var(--color-accent)] px-10 py-4 font-bold text-white min-h-[52px] text-lg hover:bg-[var(--color-accent-500)] transition-all duration-300 shadow-[0_8px_28px_rgba(228,96,30,0.4)] hover:scale-[1.02]"
+            >
+              {ctaLabel}
+            </a>
+          )}
+        </div>
+      </Section>
+    );
+  }
 
   return (
     <Section
@@ -204,7 +256,6 @@ function SectionBlock({
           </div>
         )}
 
-        {/* List-style sections: benefits / who_for / who_not_for / group_alumni */}
         {isListType && section.items && section.items.length > 0 && (
           <ul className="mt-6 space-y-3">
             {section.items.map((item, i) => {
@@ -250,9 +301,10 @@ function SectionBlock({
           </ul>
         )}
 
-        {/* Format / Price grid card style */}
         {(isFormatType || isPriceType) && section.items && section.items.length > 0 && (
-          <div className={`mt-6 grid gap-4 ${section.items.length > 2 ? 'sm:grid-cols-2 md:grid-cols-3' : 'sm:grid-cols-2'}`}>
+          <div
+            className={`mt-6 grid gap-4 ${section.items.length > 2 ? 'sm:grid-cols-2 md:grid-cols-3' : 'sm:grid-cols-2'}`}
+          >
             {section.items.map((item, i) => {
               const label = isAr ? item.label_ar : item.label_en;
               const itemBody = isAr ? item.body_ar : item.body_en;
@@ -262,14 +314,20 @@ function SectionBlock({
                   key={i}
                   className="rounded-2xl border border-[var(--color-primary-100)] bg-white p-5"
                 >
-                  {item.icon && <div className="text-3xl mb-3" aria-hidden>{item.icon}</div>}
+                  {item.icon && (
+                    <div className="text-3xl mb-3" aria-hidden>
+                      {item.icon}
+                    </div>
+                  )}
                   {label && (
                     <p className="text-sm font-semibold text-[var(--color-neutral-500)] uppercase tracking-wide mb-1">
                       {label}
                     </p>
                   )}
                   {itemBody && (
-                    <p className={`text-[var(--text-primary)] ${isPriceType ? 'text-2xl md:text-3xl font-bold' : 'text-lg font-medium'}`}>
+                    <p
+                      className={`text-[var(--text-primary)] ${isPriceType ? 'text-2xl md:text-3xl font-bold' : 'text-lg font-medium'}`}
+                    >
                       {itemBody}
                     </p>
                   )}
@@ -282,7 +340,6 @@ function SectionBlock({
           </div>
         )}
 
-        {/* Objections / FAQ — Q&A pairs */}
         {(isObjectionType || isFaqType) && section.items && section.items.length > 0 && (
           <div className="mt-6 space-y-4">
             {section.items.map((item, i) => {
@@ -310,7 +367,6 @@ function SectionBlock({
           </div>
         )}
 
-        {/* Credibility — single block with optional avatar/credentials */}
         {isCredibilityType && section.items && section.items.length > 0 && (
           <div className="mt-6 space-y-3">
             {section.items.map((item, i) => {
@@ -318,7 +374,9 @@ function SectionBlock({
               const itemBody = isAr ? item.body_ar : item.body_en;
               return (
                 <div key={i} className="flex items-start gap-3">
-                  <span className="text-xl mt-0.5" aria-hidden>{item.icon || '🏅'}</span>
+                  <span className="text-xl mt-0.5" aria-hidden>
+                    {item.icon || '🏅'}
+                  </span>
                   <div>
                     {label && (
                       <p className="font-semibold text-[var(--text-primary)]">{label}</p>
@@ -335,7 +393,6 @@ function SectionBlock({
           </div>
         )}
 
-        {/* Section CTA */}
         {ctaLabel && section.cta_anchor && (
           <div className="mt-8 text-center">
             <a
@@ -347,7 +404,6 @@ function SectionBlock({
           </div>
         )}
 
-        {/* Inline lead form when section requests it */}
         {section.anchor_id === 'lead-form' && leadCaptureConfig?.enabled && (
           <div className="mt-8 max-w-xl mx-auto">
             <LpLeadForm
