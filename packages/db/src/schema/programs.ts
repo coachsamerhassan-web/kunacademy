@@ -122,6 +122,23 @@ export const programs = pgTable(
     track_color: text('track_color'),
     delivery_notes: text('delivery_notes'),
 
+    // ── Canon Phase 2 — membership + coaching-1on1 (migration 0053) ────────
+    // All nullable / default-safe. CHECK constraints at DB:
+    //   membership_tier_required ∈ ('free','paid_1') | NULL
+    //   coach_tier ∈ ('associate','professional','master','expert','samer') | NULL
+    //   booking_mode ∈ ('open','discovery-first','invitation-after-conversation','application-only') | NULL
+    member_discount_eligible: boolean('member_discount_eligible'),
+    scholarship_eligible: boolean('scholarship_eligible'),
+    membership_tier_required: text('membership_tier_required'),
+    coach_tier: text('coach_tier'),
+    booking_mode: text('booking_mode'),
+    available_packages: text('available_packages').array().notNull().default([]),
+    total_content_hours: integer('total_content_hours'),
+    typical_completion_weeks: text('typical_completion_weeks'),
+    lifetime_access_while_member: boolean('lifetime_access_while_member'),
+    includes_coach_checkin: boolean('includes_coach_checkin'),
+    application_only: boolean('application_only'),
+
     // Ordering + lifecycle
     display_order: integer('display_order').notNull().default(0),
     published: boolean('published').notNull().default(true),
