@@ -22,17 +22,24 @@ interface Props {
   params: Promise<{ locale: string; slug: string }>;
 }
 
-async function loadThankYou(slug: string) {
-  const [row] = await db
-    .select({
-      slug: landing_pages.slug,
-      published: landing_pages.published,
-      composition_json: landing_pages.composition_json,
-    })
-    .from(landing_pages)
-    .where(eq(landing_pages.slug, slug))
-    .limit(1);
-  return row || null;
+async function loadThankYou(slug: string, includeDrafts = false) {
+  const query = async (database: typeof db) => {
+    const rows = await database
+      .select({
+        slug: landing_pages.slug,
+        published: landing_pages.published,
+        composition_json: landing_pages.composition_json,
+      })
+      .from(landing_pages)
+      .where(eq(landing_pages.slug, slug))
+      .limit(1);
+    return rows[0] || null;
+  };
+  if (includeDrafts) {
+    const { withAdminContext } = await import('@kunacademy/db');
+    return withAdminContext(async (adminDb) => query(adminDb));
+  }
+  return query(db);
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -47,13 +54,14 @@ export default async function LpThankYouPage({ params }: Props) {
   const { locale, slug } = await params;
   setRequestLocale(locale);
 
-  const lp = await loadThankYou(slug);
+  const user = await getAuthUser();
+  const isAdmin =
+    user?.role === 'admin' ||
+    user?.role === 'super_admin' ||
+    user?.role === 'content_editor';
+  const lp = await loadThankYou(slug, isAdmin);
   if (!lp) notFound();
-  if (!lp.published) {
-    const user = await getAuthUser();
-    const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
-    if (!isAdmin) notFound();
-  }
+  if (!lp.published && !isAdmin) notFound();
 
   const isAr = locale === 'ar';
   const dir = isAr ? 'rtl' : 'ltr';

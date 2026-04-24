@@ -35,21 +35,31 @@ interface Props {
 
 export const revalidate = 300;
 
-async function loadLp(slug: string) {
-  const [row] = await db
-    .select({
-      id: landing_pages.id,
-      slug: landing_pages.slug,
-      published: landing_pages.published,
-      composition_json: landing_pages.composition_json,
-      lead_capture_config: landing_pages.lead_capture_config,
-      analytics_config: landing_pages.analytics_config,
-      seo_meta_json: landing_pages.seo_meta_json,
-    })
-    .from(landing_pages)
-    .where(eq(landing_pages.slug, slug))
-    .limit(1);
-  return row || null;
+async function loadLp(slug: string, includeDrafts = false) {
+  // For published rows the `kunacademy` app role + landing_pages_published_read
+  // RLS policy is sufficient. For drafts we need withAdminContext (bypasses RLS).
+  const query = async (database: typeof db) => {
+    const rows = await database
+      .select({
+        id: landing_pages.id,
+        slug: landing_pages.slug,
+        published: landing_pages.published,
+        composition_json: landing_pages.composition_json,
+        lead_capture_config: landing_pages.lead_capture_config,
+        analytics_config: landing_pages.analytics_config,
+        seo_meta_json: landing_pages.seo_meta_json,
+      })
+      .from(landing_pages)
+      .where(eq(landing_pages.slug, slug))
+      .limit(1);
+    return rows[0] || null;
+  };
+
+  if (includeDrafts) {
+    const { withAdminContext } = await import('@kunacademy/db');
+    return withAdminContext(async (adminDb) => query(adminDb));
+  }
+  return query(db);
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -105,17 +115,20 @@ export default async function LpPage({ params }: Props) {
   const { locale, slug } = await params;
   setRequestLocale(locale);
 
-  const lp = await loadLp(slug);
+  // Resolve auth FIRST so we can decide whether to load drafts. Admin-role
+  // users get a draft-preview (RLS-bypassing admin query); public visitors
+  // only see published rows (RLS-constrained).
+  const user = await getAuthUser();
+  const isAdmin =
+    user?.role === 'admin' ||
+    user?.role === 'super_admin' ||
+    user?.role === 'content_editor';
+
+  const lp = await loadLp(slug, isAdmin);
   if (!lp) notFound();
 
-  // Draft-preview for admins: unpublished rows render for authed users with
-  // admin role (so Hakima + Samer can preview LP scaffolding before publish).
-  // Public visitors see 404 on unpublished rows.
-  if (!lp.published) {
-    const user = await getAuthUser();
-    const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
-    if (!isAdmin) notFound();
-  }
+  // Public visitors still 404 on unpublished. Admin already got the row.
+  if (!lp.published && !isAdmin) notFound();
 
   const composition = isLpComposition(lp.composition_json)
     ? (lp.composition_json as LpComposition)

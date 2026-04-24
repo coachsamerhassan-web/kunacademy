@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@kunacademy/db';
+import { db, withAdminContext } from '@kunacademy/db';
 import { getAuthUser } from '@kunacademy/auth/server';
 import { eq, desc } from 'drizzle-orm';
 import { landing_pages, lp_leads } from '@kunacademy/db/schema';
@@ -8,7 +8,7 @@ import { validateLpBody, type LpInsertBody } from '../route';
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function isAdmin(role: string | undefined): boolean {
-  return role === 'admin' || role === 'super_admin';
+  return role === 'admin' || role === 'super_admin' || role === 'content_editor';
 }
 
 // ── GET /[id] — fetch one LP + its recent leads ─────────────────────────────
@@ -25,31 +25,39 @@ export async function GET(
     return NextResponse.json({ error: 'Invalid id' }, { status: 400 });
   }
 
-  const [row] = await db
-    .select()
-    .from(landing_pages)
-    .where(eq(landing_pages.id, id))
-    .limit(1);
+  // Use withAdminContext so RLS lets us read drafts (published=false).
+  // The `kunacademy` app role hits the `landing_pages_published_read` policy
+  // and only sees published=true rows; admin context bypasses that.
+  const { row, recentLeads } = await withAdminContext(async (adminDb) => {
+    const rows = await adminDb
+      .select()
+      .from(landing_pages)
+      .where(eq(landing_pages.id, id))
+      .limit(1);
+    const row = rows[0];
+    if (!row) return { row: null, recentLeads: [] as Array<Record<string, unknown>> };
+
+    const recentLeads = await adminDb
+      .select({
+        id: lp_leads.id,
+        name: lp_leads.name,
+        email: lp_leads.email,
+        phone: lp_leads.phone,
+        message: lp_leads.message,
+        locale: lp_leads.locale,
+        utm_source: lp_leads.utm_source,
+        utm_campaign: lp_leads.utm_campaign,
+        zoho_synced: lp_leads.zoho_synced,
+        created_at: lp_leads.created_at,
+      })
+      .from(lp_leads)
+      .where(eq(lp_leads.landing_page_id, id))
+      .orderBy(desc(lp_leads.created_at))
+      .limit(50);
+    return { row, recentLeads };
+  });
+
   if (!row) return NextResponse.json({ error: 'Not found' }, { status: 404 });
-
-  const recentLeads = await db
-    .select({
-      id: lp_leads.id,
-      name: lp_leads.name,
-      email: lp_leads.email,
-      phone: lp_leads.phone,
-      message: lp_leads.message,
-      locale: lp_leads.locale,
-      utm_source: lp_leads.utm_source,
-      utm_campaign: lp_leads.utm_campaign,
-      zoho_synced: lp_leads.zoho_synced,
-      created_at: lp_leads.created_at,
-    })
-    .from(lp_leads)
-    .where(eq(lp_leads.landing_page_id, id))
-    .orderBy(desc(lp_leads.created_at))
-    .limit(50);
-
   return NextResponse.json({ landing_page: row, recent_leads: recentLeads });
 }
 
@@ -90,11 +98,14 @@ export async function PATCH(
   if ('program_slug' in body) updates.program_slug = body.program_slug ?? null;
 
   try {
-    const [updated] = await db
-      .update(landing_pages)
-      .set(updates)
-      .where(eq(landing_pages.id, id))
-      .returning({ id: landing_pages.id, slug: landing_pages.slug });
+    const updated = await withAdminContext(async (adminDb) => {
+      const rows = await adminDb
+        .update(landing_pages)
+        .set(updates)
+        .where(eq(landing_pages.id, id))
+        .returning({ id: landing_pages.id, slug: landing_pages.slug });
+      return rows[0];
+    });
     if (!updated) return NextResponse.json({ error: 'Not found' }, { status: 404 });
     return NextResponse.json({ landing_page: updated });
   } catch (e: unknown) {
@@ -122,10 +133,13 @@ export async function DELETE(
   }
 
   try {
-    const [deleted] = await db
-      .delete(landing_pages)
-      .where(eq(landing_pages.id, id))
-      .returning({ id: landing_pages.id });
+    const deleted = await withAdminContext(async (adminDb) => {
+      const rows = await adminDb
+        .delete(landing_pages)
+        .where(eq(landing_pages.id, id))
+        .returning({ id: landing_pages.id });
+      return rows[0];
+    });
     if (!deleted) return NextResponse.json({ error: 'Not found' }, { status: 404 });
     return NextResponse.json({ deleted: deleted.id });
   } catch (e) {

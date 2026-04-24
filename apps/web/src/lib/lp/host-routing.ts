@@ -193,16 +193,34 @@ export function isStagingRoleAllowed(role: string | undefined | null): boolean {
 
 // ── Decisions (one call per request) ────────────────────────────────────────
 export interface HostDecision {
-  action: 'allow' | 'rewrite-coming-soon' | 'block-404';
+  action: 'allow' | 'rewrite-coming-soon' | 'block-404' | 'redirect-coming-soon';
   reason: string;
+  redirectTo?: string;
+}
+
+/** try.* bare root paths — redirect to staging coming-soon so a plain
+ *  subdomain visit isn't a dead 404. Includes `/`, `/ar`, `/en`. */
+function isTryRootPath(normalizedPath: string): boolean {
+  return (
+    normalizedPath === '/' ||
+    normalizedPath === '/ar' ||
+    normalizedPath === '/en' ||
+    normalizedPath === '/ar/' ||
+    normalizedPath === '/en/'
+  );
 }
 
 /** Decide what to do with a request, given host + path + session-role.
  *
- * For try.*: allow-listed paths pass, everything else → 404.
+ * For try.*:
+ *   - bare root (/, /ar, /en) → redirect to staging coming-soon (good UX)
+ *   - allow-listed LP paths pass
+ *   - everything else → 404
+ *
  * For staging: authenticated gated-role users pass everything; anonymous
  *   users + non-gated-role users hit /coming-soon rewrite for non-allowlisted
  *   paths. /auth/* + /api/auth/* + static always pass so login works.
+ *
  * For production or unknown: passthrough (this lib doesn't own those yet).
  */
 export function decideHost(params: {
@@ -213,6 +231,16 @@ export function decideHost(params: {
   const { host, pathname, role } = params;
 
   if (host === 'try') {
+    const norm = normalizePath(pathname);
+    // Bare root paths redirect to staging coming-soon so try.* isn't a
+    // dead 404 when hit without a specific /lp/<slug> path.
+    if (isTryRootPath(norm)) {
+      return {
+        action: 'redirect-coming-soon',
+        reason: 'try-bare-root-redirect',
+        redirectTo: 'https://kuncoaching.me/ar/coming-soon',
+      };
+    }
     if (isTryHostAllowed(pathname)) {
       return { action: 'allow', reason: 'try-allowlist' };
     }

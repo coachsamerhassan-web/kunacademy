@@ -62,6 +62,10 @@ export default auth(async function middleware(request) {
     return new NextResponse(null, { status: 404 });
   }
 
+  if (hostDecision.action === 'redirect-coming-soon' && hostDecision.redirectTo) {
+    return NextResponse.redirect(hostDecision.redirectTo, 302);
+  }
+
   if (hostDecision.action === 'rewrite-coming-soon') {
     const locale = getLocaleFromPath(pathname) || 'ar';
     const target = new URL(`/${locale}/coming-soon`, request.url);
@@ -193,6 +197,17 @@ export default auth(async function middleware(request) {
       const escalationConfirmed =
         role === 'admin' || role === 'super_admin' || role === 'mentor_manager';
       if (!escalationConfirmed) {
+        return NextResponse.redirect(new URL(`/${locale}/dashboard`, request.url));
+      }
+    } else if (
+      // content_editor gets narrow-scoped admin: only LP authoring + programs
+      // (per Wave 14.1 spec). Everything else in /admin/* stays admin-only.
+      withoutLocale.startsWith('/admin/lp') ||
+      withoutLocale.startsWith('/admin/programs')
+    ) {
+      const editorConfirmed =
+        role === 'admin' || role === 'super_admin' || role === 'content_editor';
+      if (!editorConfirmed) {
         return NextResponse.redirect(new URL(`/${locale}/dashboard`, request.url));
       }
     } else {

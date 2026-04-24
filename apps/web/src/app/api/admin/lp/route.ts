@@ -10,13 +10,13 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@kunacademy/db';
+import { db, withAdminContext } from '@kunacademy/db';
 import { getAuthUser } from '@kunacademy/auth/server';
 import { desc, sql } from 'drizzle-orm';
 import { landing_pages, lp_leads } from '@kunacademy/db/schema';
 
 function isAdmin(role: string | undefined): boolean {
-  return role === 'admin' || role === 'super_admin';
+  return role === 'admin' || role === 'super_admin' || role === 'content_editor';
 }
 
 const SLUG_RE = /^[a-z0-9][a-z0-9-]{0,200}$/i;
@@ -95,25 +95,29 @@ export async function GET() {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  // Single query with subquery for lead counts
-  const rows = await db
-    .select({
-      id: landing_pages.id,
-      slug: landing_pages.slug,
-      page_type: landing_pages.page_type,
-      published: landing_pages.published,
-      launch_lock: landing_pages.launch_lock,
-      composition_json: landing_pages.composition_json,
-      lead_capture_config: landing_pages.lead_capture_config,
-      payment_config: landing_pages.payment_config,
-      analytics_config: landing_pages.analytics_config,
-      seo_meta_json: landing_pages.seo_meta_json,
-      created_at: landing_pages.created_at,
-      updated_at: landing_pages.updated_at,
-      lead_count: sql<number>`(SELECT count(*)::int FROM ${lp_leads} WHERE ${lp_leads.landing_page_id} = ${landing_pages.id})`,
-    })
-    .from(landing_pages)
-    .orderBy(desc(landing_pages.updated_at));
+  // withAdminContext so RLS lets us see drafts (published=false), not just
+  // published rows. Without this, the kunacademy app role hits the
+  // landing_pages_published_read policy which filters to published=true.
+  const rows = await withAdminContext(async (adminDb) =>
+    adminDb
+      .select({
+        id: landing_pages.id,
+        slug: landing_pages.slug,
+        page_type: landing_pages.page_type,
+        published: landing_pages.published,
+        launch_lock: landing_pages.launch_lock,
+        composition_json: landing_pages.composition_json,
+        lead_capture_config: landing_pages.lead_capture_config,
+        payment_config: landing_pages.payment_config,
+        analytics_config: landing_pages.analytics_config,
+        seo_meta_json: landing_pages.seo_meta_json,
+        created_at: landing_pages.created_at,
+        updated_at: landing_pages.updated_at,
+        lead_count: sql<number>`(SELECT count(*)::int FROM ${lp_leads} WHERE ${lp_leads.landing_page_id} = ${landing_pages.id})`,
+      })
+      .from(landing_pages)
+      .orderBy(desc(landing_pages.updated_at)),
+  );
 
   return NextResponse.json({ landing_pages: rows });
 }
@@ -132,9 +136,10 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const [inserted] = await db
-      .insert(landing_pages)
-      .values({
+    const inserted = await withAdminContext(async (adminDb) => {
+      const rows = await adminDb
+        .insert(landing_pages)
+        .values({
         slug: body.slug,
         page_type: body.page_type || 'landing',
         published: body.published ?? false,
@@ -150,7 +155,9 @@ export async function POST(request: NextRequest) {
         last_edited_by: user.id,
         last_edited_at: new Date().toISOString(),
       })
-      .returning({ id: landing_pages.id, slug: landing_pages.slug });
+        .returning({ id: landing_pages.id, slug: landing_pages.slug });
+      return rows[0];
+    });
     return NextResponse.json({ landing_page: inserted }, { status: 201 });
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);
