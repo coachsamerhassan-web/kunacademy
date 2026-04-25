@@ -7,7 +7,14 @@
  * partial pages incrementally.
  *
  * Source of truth: Project Memory/KUN-Features/Waves/14-LANDING-PAGE-INFRASTRUCTURE.md §3
+ *
+ * Wave 15 Phase 2 (2026-04-25): added optional `*_rich` companions to free-form
+ * prose fields (TipTap JSON via `JSONContent`). Renderers prefer rich-over-string
+ * when both are populated. Fields stay optional + non-breaking; existing scalar
+ * authoring continues to work. See Specs/wave-15-phase-2-spec.md §5.
  */
+
+import type { JSONContent } from '@tiptap/core';
 
 // ── Theme ──────────────────────────────────────────────────────────────────
 /** LP visual theme. Default uses site-wide Kun brand tokens (purple + orange
@@ -82,6 +89,11 @@ export interface LpSectionItem {
   label_en?: string;
   body_ar?: string;
   body_en?: string;
+  /** Wave 15 Phase 2: optional rich-text body. When present (and an object),
+   *  renderers prefer it over `body_ar`/`body_en`. Used by `benefits`,
+   *  `carry_out`, `who_for`, `who_not_for`, `objections`, `faq` items. */
+  body_ar_rich?: JSONContent | null;
+  body_en_rich?: JSONContent | null;
   icon?: string;                          // emoji or icon hint
   meta_ar?: string;                       // small annotation, e.g. price subtext
   meta_en?: string;
@@ -124,10 +136,22 @@ export interface LpSection {
   kicker_en?: string;
   body_ar?: string;
   body_en?: string;
+  /** Wave 15 Phase 2: optional rich-text companion to body_*. When present
+   *  (typeof object) renderers prefer it over the scalar body. Applies to
+   *  `mirror`, `reframe`, `description`, `benefits`, `carry_out`, `who_for`,
+   *  `who_not_for`, `group_alumni`, `credibility` (bio), `custom`. Ignored
+   *  on `format`, `price`, `cta` (those stay scalar). */
+  body_ar_rich?: JSONContent | null;
+  body_en_rich?: JSONContent | null;
   /** Secondary body block rendered after primary body (used on reframe,
    *  mirror-bridge, credibility-closer). */
   close_ar?: string;
   close_en?: string;
+  /** Wave 15 Phase 2: optional rich-text companion to close_*. Same
+   *  rich-over-string preference as `body_*_rich`. Applies to `mirror`,
+   *  `reframe`, `description`, `credibility`, `custom`. */
+  close_ar_rich?: JSONContent | null;
+  close_en_rich?: JSONContent | null;
   items?: LpSectionItem[];
   cta_label_ar?: string;
   cta_label_en?: string;
@@ -156,6 +180,10 @@ export interface LpThankYou {
   headline_en?: string;
   body_ar?: string;
   body_en?: string;
+  /** Wave 15 Phase 2: rich body — authors want inline links to WhatsApp /
+   *  calendar / next-step forms. Renderer prefers rich-over-string. */
+  body_ar_rich?: JSONContent | null;
+  body_en_rich?: JSONContent | null;
   cta_label_ar?: string;
   cta_label_en?: string;
   cta_url?: string;                       // optional follow-up link (e.g. WhatsApp)
