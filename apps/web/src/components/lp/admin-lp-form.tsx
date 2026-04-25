@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, type FormEvent } from 'react';
+import { SectionsTab } from '@/components/admin/lp-editor';
+import type { LpComposition } from '@/lib/lp/composition-types';
 
 export interface LpFormState {
   id?: string;
@@ -31,8 +33,60 @@ export function LpForm({ locale, mode, initial }: LpFormProps) {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
+  // Wave 14b LP-ADMIN-UX: composition view tab toggle. 'sections' = the new
+  // per-section editor (drag-reorder + per-type forms); 'json' = the legacy
+  // raw-JSON textarea (escape hatch / fallback during transition per Q1
+  // co-existence lock). Both views read/write the same composition_json
+  // string in `state` — toggling is non-destructive.
+  const [compositionView, setCompositionView] = useState<'sections' | 'json'>('sections');
+  const [compositionParseError, setCompositionParseError] = useState<string | null>(null);
+
   function set<K extends keyof LpFormState>(key: K, val: LpFormState[K]) {
     setState((s) => ({ ...s, [key]: val }));
+  }
+
+  // Parse current composition JSON string into a typed object for the new
+  // editor. Returns null if the string is empty OR invalid JSON OR the
+  // parsed object fails the runtime shape guard. Adds a defensive shape
+  // check so a malformed JSON tab edit (e.g. `sections: "not-an-array"`)
+  // surfaces a clear recovery banner instead of crashing the Sections tab
+  // with `sections.map is not a function`. (DeepSeek MEDIUM 2026-04-25.)
+  function parseComposition(): LpComposition | null {
+    const raw = state.composition_json.trim();
+    if (!raw) return null;
+    try {
+      const parsed = JSON.parse(raw);
+      if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+        return null;
+      }
+      // Shape guard: `sections` (if present) MUST be an array, and every
+      // entry MUST be an object with a non-empty string `type`. If anything
+      // is off, return null so the recovery banner renders instead of the
+      // Sections tab attempting to .map() a non-array.
+      const obj = parsed as Record<string, unknown>;
+      if ('sections' in obj && obj.sections !== null && obj.sections !== undefined) {
+        if (!Array.isArray(obj.sections)) return null;
+        for (const item of obj.sections) {
+          if (typeof item !== 'object' || item === null) return null;
+          const typeField = (item as Record<string, unknown>).type;
+          if (typeof typeField !== 'string' || typeField.length === 0) return null;
+        }
+      }
+      // hero / thank_you (if present) must be plain objects
+      for (const key of ['hero', 'thank_you'] as const) {
+        if (key in obj && obj[key] !== null && obj[key] !== undefined) {
+          if (typeof obj[key] !== 'object' || Array.isArray(obj[key])) return null;
+        }
+      }
+      return parsed as LpComposition;
+    } catch {
+      return null;
+    }
+  }
+
+  function handleSectionsChange(next: LpComposition) {
+    setCompositionParseError(null);
+    set('composition_json', JSON.stringify(next, null, 2));
   }
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
@@ -185,24 +239,96 @@ export function LpForm({ locale, mode, initial }: LpFormProps) {
         </div>
       </div>
 
-      {/* Composition JSON */}
-      <div className="rounded-2xl bg-white border border-[var(--color-neutral-100)] p-5 space-y-2">
-        <label className={labelClasses}>
-          {isAr ? 'تركيب المحتوى (composition_json)' : 'Composition JSON'}
-        </label>
-        <p className="text-xs text-[var(--color-neutral-500)]">
-          {isAr
-            ? 'هيكل { hero, sections[], thank_you } — راجع composition-types.ts للشكل الكامل.'
-            : 'Shape: { hero, sections[], thank_you } — see composition-types.ts for full schema.'}
-        </p>
-        <textarea
-          value={state.composition_json}
-          onChange={(e) => set('composition_json', e.target.value)}
-          rows={14}
-          className={textareaClasses}
-          dir="ltr"
-          placeholder='{ "hero": { "headline_ar": "...", "headline_en": "..." }, "sections": [] }'
-        />
+      {/* Composition — tabbed view (Wave 14b LP-ADMIN-UX Session 1 LIVE) */}
+      <div className="rounded-2xl bg-white border border-[var(--color-neutral-100)] p-5 space-y-3">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div>
+            <span className={labelClasses}>
+              {isAr ? 'تركيب المحتوى' : 'Composition'}
+            </span>
+            <p className="text-xs text-[var(--color-neutral-500)] mt-0.5">
+              {isAr
+                ? 'محرّر الأقسام للتحرير اليومي. تبويب JSON متاح كحلّ بديل للأنواع التي لم تُشحن نماذجها بعد.'
+                : 'Sections editor for day-to-day authoring. JSON tab is available as fallback for types whose forms haven’t shipped yet.'}
+            </p>
+          </div>
+          <div role="tablist" aria-label="Composition view" className="inline-flex rounded-xl border border-[var(--color-neutral-200)] bg-[var(--color-neutral-50)] p-1">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={compositionView === 'sections'}
+              onClick={() => setCompositionView('sections')}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                compositionView === 'sections'
+                  ? 'bg-white text-[var(--text-primary)] shadow-sm'
+                  : 'text-[var(--color-neutral-600)] hover:text-[var(--color-neutral-800)]'
+              }`}
+            >
+              {isAr ? 'الأقسام' : 'Sections'}
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={compositionView === 'json'}
+              onClick={() => setCompositionView('json')}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                compositionView === 'json'
+                  ? 'bg-white text-[var(--text-primary)] shadow-sm'
+                  : 'text-[var(--color-neutral-600)] hover:text-[var(--color-neutral-800)]'
+              }`}
+            >
+              JSON
+            </button>
+          </div>
+        </div>
+
+        {compositionView === 'sections' ? (
+          (() => {
+            const parsed = parseComposition();
+            const rawNonEmpty = state.composition_json.trim().length > 0;
+            if (rawNonEmpty && parsed === null) {
+              return (
+                <div className="rounded-xl border border-[var(--color-warning-200,#fbbf24)] bg-[var(--color-warning-50,#fffbeb)] p-4">
+                  <p className="text-sm font-semibold text-[var(--color-warning-900,#78350f)] mb-1">
+                    {isAr ? 'تعذّر تحليل composition_json' : 'composition_json failed to parse'}
+                  </p>
+                  <p className="text-xs text-[var(--color-warning-800,#92400e)] mb-3">
+                    {isAr
+                      ? 'افتح تبويب JSON لإصلاح الصياغة، ثم عُد إلى الأقسام.'
+                      : 'Open the JSON tab to fix the syntax, then return to Sections.'}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setCompositionView('json')}
+                    className="rounded-lg border border-[var(--color-warning-300,#f59e0b)] bg-white px-3 py-1.5 text-sm font-medium text-[var(--color-warning-900,#78350f)]"
+                  >
+                    {isAr ? 'فتح تبويب JSON ←' : 'Open JSON tab →'}
+                  </button>
+                </div>
+              );
+            }
+            return (
+              <SectionsTab
+                value={parsed}
+                onChange={handleSectionsChange}
+                onSwitchToJsonTab={() => setCompositionView('json')}
+                locale={locale}
+              />
+            );
+          })()
+        ) : (
+          <textarea
+            value={state.composition_json}
+            onChange={(e) => set('composition_json', e.target.value)}
+            rows={14}
+            className={textareaClasses}
+            dir="ltr"
+            placeholder='{ "hero": { "headline_ar": "...", "headline_en": "..." }, "sections": [] }'
+          />
+        )}
+        {compositionParseError && (
+          <p className="text-xs text-red-700">{compositionParseError}</p>
+        )}
       </div>
 
       {/* Lead capture config */}
