@@ -38,6 +38,7 @@ export {
   RichContent,
   RichContentBilingual,
   extractPlainText,
+  hasRichContent,
   type RichContentProps,
   type RichContentBilingualProps,
 } from './rich-content';

@@ -319,6 +319,10 @@ export interface Program extends AuditFields, TheaterPricing {
 export interface ProgramLongDescription {
   /** 2-4 sentence philosophical framing opening. Single paragraph. */
   opening_invitation?: string;
+  /** Wave 15 Phase 2 Session 2 (2026-04-25): rich-text companion to
+   *  opening_invitation. When present (typeof object) renderer prefers it
+   *  over the scalar string. Stored as TipTap JSON. Sanitized on render. */
+  opening_invitation_rich?: unknown;
   /** Who this retreat/program is for. 3-5 bullets, ≤15 words each. */
   who_for?: string[];
   /** Who this retreat/program is NOT for. 2-3 bullets. Must include a
@@ -332,6 +336,10 @@ export interface ProgramLongDescription {
   impressions?: string[];
   /** Samer pull-quote for this variant. 1 sentence. */
   pull_quote?: string;
+  /** Wave 15 Phase 2 Session 2 (2026-04-25): rich-text companion to
+   *  pull_quote. When present (typeof object) renderer prefers it. Stored
+   *  as TipTap JSON. Sanitized on render. */
+  pull_quote_rich?: unknown;
   /** Optional closing invitation (Section 9 pattern). Present on dated
    *  variants; gated variants may omit. */
   closing_invitation?: string;

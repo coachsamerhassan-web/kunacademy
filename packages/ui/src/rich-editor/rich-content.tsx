@@ -191,6 +191,47 @@ function isNonEmptyDoc(doc: JSONContent): boolean {
 }
 
 /**
+ * `hasRichContent` — exported defensive guard for callers deciding rich-vs-
+ * scalar render priority WITHOUT actually rendering. Pattern (Wave 15 Phase
+ * 2 Session 2 per Hakima Concern 3):
+ *
+ *   {hasRichContent(field_rich) ? (
+ *     <div className={SAME_TAILWIND_AS_SCALAR_FALLBACK}>
+ *       <RichContent doc={field_rich} />
+ *     </div>
+ *   ) : field ? (
+ *     <p className={SAME_TAILWIND}>{field}</p>
+ *   ) : null}
+ *
+ * Stricter than just `!!field_rich` — checks the doc has at least one node
+ * with actual text. Empty / whitespace-only / structural-only docs return
+ * false so the fallback path can run.
+ *
+ * Wraps `isNonEmptyDoc` (same internal predicate `RichContent` uses to bail
+ * out) PLUS a text-content scan so a doc that's just an empty paragraph or
+ * a heading with no text falls back to scalar.
+ */
+export function hasRichContent(doc: unknown): doc is JSONContent {
+  if (!doc) return false;
+  if (typeof doc !== 'object') return false;
+  const d = doc as JSONContent;
+  if (d.type !== 'doc') return false;
+  if (!isNonEmptyDoc(d)) return false;
+  // At least one node must have non-whitespace text.
+  function walkText(node: JSONContent | undefined): boolean {
+    if (!node) return false;
+    if (typeof node.text === 'string' && node.text.trim().length > 0) return true;
+    if (Array.isArray(node.content)) {
+      for (const child of node.content) {
+        if (walkText(child)) return true;
+      }
+    }
+    return false;
+  }
+  return walkText(d);
+}
+
+/**
  * Convenience: render one-of-two bilingual fields based on current locale.
  * Falls back to the other language if the preferred one is empty.
  */

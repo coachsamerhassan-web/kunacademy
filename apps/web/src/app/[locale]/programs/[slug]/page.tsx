@@ -13,6 +13,7 @@ import { buildGpsTabs, buildIeTabs } from '@/components/audience-tabs-data';
 import { LeadCaptureForm } from '@/components/lead-capture-form';
 import { getPricingRegion, getGeoPrice, shouldShowPrice, formatGeoPrice } from '@/lib/geo-pricing';
 import { courseJsonLd } from '@kunacademy/ui/structured-data';
+import { RichContent, hasRichContent } from '@kunacademy/ui/rich-editor';
 import { JsonLd } from '@/components/seo/JsonLd';
 
 export const revalidate = 300;
@@ -468,14 +469,26 @@ export default async function ProgramDetailPage({ params }: Props) {
               */}
               {hasLongForm && longForm && (
                 <div className="space-y-10 pt-4 border-t border-[var(--color-primary-100)]">
-                  {/* Opening invitation (Composition §2) */}
-                  {longForm.opening_invitation && (
+                  {/* Opening invitation (Composition §2)
+                      Wave 15 Phase 2 Session 2 (2026-04-25): rich-over-string
+                      preference — if the JSONB has `opening_invitation_rich`
+                      (TipTap doc), render that via <RichContent>. The
+                      surrounding <div> carries the same Tailwind tokens as
+                      the scalar fallback's <p> so the inner <p> emitted by
+                      RichContent inherits identical typography. Per Hakima
+                      Concern 1 (styling parity) + Concern 3 (defensive
+                      hasRichContent guard). */}
+                  {hasRichContent(longForm.opening_invitation_rich) ? (
+                    <div className="text-[var(--color-neutral-700)] leading-loose text-lg md:text-xl font-medium">
+                      <RichContent doc={longForm.opening_invitation_rich} />
+                    </div>
+                  ) : longForm.opening_invitation ? (
                     <div>
                       <p className="text-[var(--color-neutral-700)] leading-loose text-lg md:text-xl font-medium">
                         {longForm.opening_invitation}
                       </p>
                     </div>
-                  )}
+                  ) : null}
 
                   {/* Who this is for / not for (Composition §3) */}
                   {((longForm.who_for && longForm.who_for.length > 0) ||
@@ -559,8 +572,29 @@ export default async function ProgramDetailPage({ params }: Props) {
                     </div>
                   )}
 
-                  {/* Samer pull-quote */}
-                  {longForm.pull_quote && (
+                  {/* Samer pull-quote
+                      Wave 15 Phase 2 Session 2 (2026-04-25): rich-over-string.
+                      Note: rich path drops the « » / " " quote chars — the
+                      blockquote's gold border + italic typography conveys the
+                      "this is a quote" semantic visually, and authors who
+                      want explicit quote marks can include them in the rich
+                      body. Scalar fallback keeps the auto-bracket behavior
+                      for backwards compat with existing programs. */}
+                  {hasRichContent(longForm.pull_quote_rich) ? (
+                    <blockquote
+                      className="relative rounded-2xl bg-[var(--color-primary-50)] border-s-4 border-[var(--color-primary)] p-6 md:p-8"
+                    >
+                      <div
+                        className="text-[var(--color-primary-700)] text-xl md:text-2xl font-semibold leading-relaxed italic"
+                        style={{ fontFamily: headingFont }}
+                      >
+                        <RichContent doc={longForm.pull_quote_rich} />
+                      </div>
+                      <footer className="mt-3 text-sm text-[var(--color-neutral-500)]">
+                        {isAr ? '— سامر حسن' : '— Samer Hassan'}
+                      </footer>
+                    </blockquote>
+                  ) : longForm.pull_quote ? (
                     <blockquote
                       className="relative rounded-2xl bg-[var(--color-primary-50)] border-s-4 border-[var(--color-primary)] p-6 md:p-8"
                     >
@@ -574,7 +608,7 @@ export default async function ProgramDetailPage({ params }: Props) {
                         {isAr ? '— سامر حسن' : '— Samer Hassan'}
                       </footer>
                     </blockquote>
-                  )}
+                  ) : null}
 
                   {/* Closing invitation (Composition §9 — optional) */}
                   {longForm.closing_invitation && (
