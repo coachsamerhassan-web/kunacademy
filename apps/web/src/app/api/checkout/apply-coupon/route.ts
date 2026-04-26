@@ -295,29 +295,56 @@ export async function POST(req: NextRequest) {
 
       if (!ctx.cart) return;
 
-      // 4c. Membership context — paid-1 active?
-      const memRows = await db.execute(sql`
-        SELECT t.slug AS tier_slug, m.status
+      // 4c. Membership context — uses Wave F.4 entitlement helper.
+      // hasFeature replaces the F.5 hardcoded tier.slug='paid-1' lookup so
+      // future tiers (Paid-2, etc.) inherit the discount automatically when
+      // the matrix grants `program_member_discount_10pct`. The pct itself
+      // can be overridden per-tier via tier_features.config.discount_percentage,
+      // OR globally via pricing_config (legacy). Tier config wins when set.
+      //
+      // We can't import @kunacademy/db inside the existing closure cleanly
+      // without restructuring; instead we run the same join inline. Behavior
+      // is byte-equivalent to hasFeature(userId, 'program_member_discount_10pct').
+      const entitlementRows = await db.execute(sql`
+        SELECT t.slug                AS tier_slug,
+               t.id                  AS tier_id,
+               tf.included           AS included,
+               tf.config             AS config
         FROM memberships m
         JOIN tiers t ON t.id = m.tier_id
+        LEFT JOIN features f ON f.feature_key = 'program_member_discount_10pct'
+        LEFT JOIN tier_features tf ON tf.tier_id = m.tier_id AND tf.feature_id = f.id
         WHERE m.user_id = ${userId}::uuid
           AND m.ended_at IS NULL
           AND m.status IN ('active','past_due','trialing')
         ORDER BY m.started_at DESC
         LIMIT 1
       `);
-      const mem = memRows.rows[0] as { tier_slug: string; status: string } | undefined;
-      const isPaid1 = mem ? mem.tier_slug === 'paid-1' : false;
+      const ent = entitlementRows.rows[0] as
+        | { tier_slug: string; tier_id: string; included: boolean | null; config: Record<string, unknown> | null }
+        | undefined;
+      const hasMemberDiscount = !!(ent && ent.included === true);
 
-      const pctRows = await db.execute(sql`
-        SELECT value_cents FROM pricing_config
-        WHERE entity_type = 'program_discount'
-          AND entity_key = 'member_discount_pct'
-        LIMIT 1
-      `);
-      const pctRow = pctRows.rows[0] as { value_cents: number | null } | undefined;
-      const pct = typeof pctRow?.value_cents === 'number' ? pctRow.value_cents : 10;
-      ctx.member = { is_paid1_active: isPaid1, member_discount_pct: pct };
+      // Resolve discount percentage: tier_features.config.discount_percentage
+      // wins over pricing_config global override. Default 10.
+      let pct = 10;
+      const tierCfgPct =
+        ent?.config && typeof (ent.config as any).discount_percentage === 'number'
+          ? Number((ent.config as any).discount_percentage)
+          : null;
+      if (typeof tierCfgPct === 'number' && Number.isFinite(tierCfgPct)) {
+        pct = tierCfgPct;
+      } else {
+        const pctRows = await db.execute(sql`
+          SELECT value_cents FROM pricing_config
+          WHERE entity_type = 'program_discount'
+            AND entity_key = 'member_discount_pct'
+          LIMIT 1
+        `);
+        const pctRow = pctRows.rows[0] as { value_cents: number | null } | undefined;
+        if (typeof pctRow?.value_cents === 'number') pct = pctRow.value_cents;
+      }
+      ctx.member = { is_paid1_active: hasMemberDiscount, member_discount_pct: pct };
 
       // 4d. Coupon by code
       const cpnRows = await db.execute(sql`

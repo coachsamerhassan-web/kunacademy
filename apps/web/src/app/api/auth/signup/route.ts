@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
-import { withAdminContext } from '@kunacademy/db';
+import { withAdminContext, autoProvisionFreeMembership } from '@kunacademy/db';
 import { sql } from 'drizzle-orm';
 import { enqueueCrmContactSync } from '@/lib/crm-sync';
 
@@ -38,6 +38,14 @@ export async function POST(request: Request) {
       await adminDb.execute(
         sql`INSERT INTO profiles (id, email, role) VALUES (${newUser.id}, ${email}, 'student')`
       );
+
+      // Wave F.4 / F-W9: auto-provision Free-tier membership on signup.
+      // Idempotent — uses ON CONFLICT against the partial unique index. We
+      // pass the existing adminDb tx so the profile row + membership row
+      // share ONE transaction. If anything below this point fails, both
+      // roll back together — no orphan membership pointing to a profile
+      // that never committed.
+      await autoProvisionFreeMembership(newUser.id, { tx: adminDb });
 
       // Zoho CRM: fire-and-forget contact sync (never blocks signup response)
       enqueueCrmContactSync({

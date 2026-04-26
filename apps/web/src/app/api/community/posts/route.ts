@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db, withAdminContext } from '@kunacademy/db';
+import { db, withAdminContext, hasFeature } from '@kunacademy/db';
 import { getAuthUser } from '@kunacademy/auth/server';
 import {
   community_posts,
@@ -123,6 +123,21 @@ export async function POST(req: NextRequest) {
   try {
     const user = await getAuthUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    // Wave F.4 / F-W8: community write requires Paid-1 entitlement.
+    // Free tier is read-only everywhere except their own cohort thread (which
+    // is enrollment-gated, not membership-gated — different code path).
+    const access = await hasFeature(user.id, 'community_post_write', { cacheScope: req });
+    if (!access.granted) {
+      return NextResponse.json(
+        {
+          error: 'entitlement_required',
+          required_feature: 'community_post_write',
+          upgrade_path: '/membership/upgrade',
+        },
+        { status: 402 }, // 402 Payment Required — semantically correct
+      );
+    }
 
     const body = await req.json();
     const { board_id, content, parent_id } = body;

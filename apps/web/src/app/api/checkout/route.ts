@@ -510,8 +510,17 @@ export async function POST(request: NextRequest) {
     //
     // F-W3 single-discount-wins / F-W4 ineligible programs are enforced inside
     // the resolver (lib/discounts).
+    // F.4: when winner.kind === 'member', we still record an audit row at
+    // payment-success time. coupon_id is NULL for hardcoded member-discount
+    // application; future member-auto coupons will set coupon_id.
     let couponMeta:
-      | { coupon_id: string; coupon_code: string; coupon_amount_applied: number; coupon_kind: 'coupon' | 'member' }
+      | {
+          coupon_id?: string | null;
+          coupon_code?: string | null;
+          coupon_amount_applied: number;
+          coupon_kind: 'coupon' | 'member';
+          coupon_currency: string;
+        }
       | null = null;
 
     if (item_type === 'course' && typeof rawCouponCode === 'string' && rawCouponCode.trim().length > 0) {
@@ -552,15 +561,26 @@ export async function POST(request: NextRequest) {
         `);
         const cpn = cpnRows.rows[0] as any | undefined;
 
-        const memRows = await db.execute(sql`
-          SELECT t.slug AS tier_slug FROM memberships m
+        // Wave F.4: replace hardcoded tier.slug='paid-1' with the
+        // entitlement-matrix join. Reads tier_features so future tiers
+        // (Paid-2, Paid-3...) inherit the discount automatically when
+        // `program_member_discount_10pct` is granted in the matrix.
+        const entRows = await db.execute(sql`
+          SELECT t.slug                AS tier_slug,
+                 tf.included           AS included,
+                 tf.config             AS config
+          FROM memberships m
           JOIN tiers t ON t.id = m.tier_id
+          LEFT JOIN features f ON f.feature_key = 'program_member_discount_10pct'
+          LEFT JOIN tier_features tf ON tf.tier_id = m.tier_id AND tf.feature_id = f.id
           WHERE m.user_id = ${user_id}::uuid
             AND m.ended_at IS NULL
             AND m.status IN ('active','past_due','trialing')
           ORDER BY m.started_at DESC LIMIT 1
         `);
-        const mem = memRows.rows[0] as { tier_slug: string } | undefined;
+        const ent = entRows.rows[0] as
+          | { tier_slug: string; included: boolean | null; config: Record<string, unknown> | null }
+          | undefined;
 
         let alreadyRedeemed = false;
         if (cpn?.single_use_per_customer) {
@@ -571,7 +591,18 @@ export async function POST(request: NextRequest) {
           alreadyRedeemed = usedRows.rows.length > 0;
         }
 
-        return { prog, cpn, isPaid1: mem?.tier_slug === 'paid-1', alreadyRedeemed };
+        const hasMemberDiscount = !!(ent && ent.included === true);
+        // Per-tier override of discount pct via tier_features.config; falls back
+        // to the existing hardcoded 10 (kept literal here to preserve the
+        // F.5 default; pricing_config could be added later if needed).
+        let memPct = 10;
+        const tierCfgPct =
+          ent?.config && typeof (ent.config as any).discount_percentage === 'number'
+            ? Number((ent.config as any).discount_percentage)
+            : null;
+        if (typeof tierCfgPct === 'number' && Number.isFinite(tierCfgPct)) memPct = tierCfgPct;
+
+        return { prog, cpn, isPaid1: hasMemberDiscount, alreadyRedeemed, memPct };
       });
 
       if (!couponResult.cpn) {
@@ -619,7 +650,7 @@ export async function POST(request: NextRequest) {
         admin_override: couponResult.cpn.admin_override,
         is_active: couponResult.cpn.is_active,
       };
-      const member = { is_paid1_active: couponResult.isPaid1, member_discount_pct: 10 };
+      const member = { is_paid1_active: couponResult.isPaid1, member_discount_pct: couponResult.memPct ?? 10 };
 
       const ev = evaluateCoupon(cart, couponSnap, member, {
         customer_already_redeemed: couponResult.alreadyRedeemed,
@@ -639,11 +670,22 @@ export async function POST(request: NextRequest) {
           coupon_code: couponSnap.code,
           coupon_amount_applied: winner.amount_cents,
           coupon_kind: 'coupon',
+          coupon_currency: cart.currency,
         };
       } else if (winner.kind === 'member' && winner.amount_cents > 0) {
-        // Member auto-discount won. We still apply but DON'T tag coupon_id —
-        // the redemption row should not be written for the auto-member path.
+        // F.4: member auto-discount won (member > coupon). We apply the
+        // discount AND record the application as a kind='member' audit row
+        // (coupon_id NULL, written at payment-success in webhook). The user
+        // is told the member discount applied; the coupon they entered is
+        // NOT redeemed.
         chargedAmount = Math.max(0, chargedAmount - winner.amount_cents);
+        couponMeta = {
+          coupon_id: null,
+          coupon_code: null,
+          coupon_amount_applied: winner.amount_cents,
+          coupon_kind: 'member',
+          coupon_currency: cart.currency,
+        };
       }
       // 'none' (zero discount) — no chargedAmount mutation
     }

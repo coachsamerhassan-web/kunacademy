@@ -26,6 +26,10 @@ import { sql } from 'drizzle-orm';
 import type Stripe from 'stripe';
 import { withAdminContext } from '@kunacademy/db';
 import { verifyWebhookSignature } from '@kunacademy/payments';
+import {
+  upsertMemberAutoCouponForMembership,
+  deactivateMemberAutoCouponForMembership,
+} from '@/lib/membership/memberAutoCoupon';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -263,6 +267,23 @@ async function handleSubscriptionCreatedOrUpdated(
              updated_at = now()
        WHERE id = ${membership.id}
     `);
+
+    // Wave F.4: per-member auto-coupon. Upsert when transitioning to (or
+    // staying on) a paid tier with active-ish status. The lib is idempotent
+    // so re-firing the webhook re-extends valid_to without duplicates.
+    if (tier.slug !== 'free' && (status === 'active' || status === 'trialing')) {
+      try {
+        await upsertMemberAutoCouponForMembership(membership.id);
+      } catch (err: any) {
+        // Non-fatal: the membership state has been updated; coupon failure
+        // shouldn't reject the webhook (Stripe would retry, mutating again).
+        console.error(
+          `[stripe-subscription] auto-coupon upsert failed for membership ${membership.id} (event=${event.id}):`,
+          err?.message || err,
+        );
+      }
+    }
+
     return { handled: true };
   }
 
@@ -296,7 +317,7 @@ async function handleSubscriptionCreatedOrUpdated(
   // instead of crashing on unique-violation. The WHERE clause MUST match
   // the `memberships_user_active_uidx` predicate exactly for Postgres to
   // pick the right inference target.
-  await adminDb.execute(sql`
+  const insertedRows = await adminDb.execute(sql`
     INSERT INTO memberships (
       user_id, tier_id, status, billing_frequency, stripe_customer_id,
       stripe_subscription_id, current_period_start, current_period_end,
@@ -320,7 +341,22 @@ async function handleSubscriptionCreatedOrUpdated(
       cancelled_at = EXCLUDED.cancelled_at,
       metadata = memberships.metadata || EXCLUDED.metadata,
       updated_at = now()
+    RETURNING id
   `);
+
+  // Wave F.4: per-member auto-coupon for the newly-created membership.
+  const insertedMembershipId = (insertedRows.rows[0] as { id: string } | undefined)?.id;
+  if (insertedMembershipId && tier.slug !== 'free' && (status === 'active' || status === 'trialing')) {
+    try {
+      await upsertMemberAutoCouponForMembership(insertedMembershipId);
+    } catch (err: any) {
+      console.error(
+        `[stripe-subscription] auto-coupon upsert failed for new membership ${insertedMembershipId} (event=${event.id}):`,
+        err?.message || err,
+      );
+    }
+  }
+
   return { handled: true };
 }
 
@@ -379,6 +415,18 @@ async function handleSubscriptionDeleted(
              updated_at = now()
        WHERE id = ${membership.id}
     `);
+
+    // Wave F.4: deactivate auto-coupon when the period has truly ended.
+    // Within the paid period, the coupon stays active per spec §9.4
+    // (30-day grace already baked into valid_to).
+    try {
+      await deactivateMemberAutoCouponForMembership(membership.id);
+    } catch (err: any) {
+      console.error(
+        `[stripe-subscription] auto-coupon deactivate failed for membership ${membership.id} (event=${event.id}):`,
+        err?.message || err,
+      );
+    }
   } else {
     await adminDb.execute(sql`
       UPDATE memberships

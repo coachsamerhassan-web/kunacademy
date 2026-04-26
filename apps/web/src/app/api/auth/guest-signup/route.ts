@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
-import { withAdminContext } from '@kunacademy/db';
+import { withAdminContext, autoProvisionFreeMembership } from '@kunacademy/db';
 import { sql } from 'drizzle-orm';
 import { enqueueCrmContactSync } from '@/lib/crm-sync';
 
@@ -113,6 +113,11 @@ export async function POST(request: Request) {
               WHERE id = ${booking_id}`
         );
       }
+
+      // Wave F.4 / F-W9: auto-provision Free-tier membership.
+      // Idempotent (ON CONFLICT against the partial unique index). Passing
+      // the parent adminDb tx so profile + membership are atomic.
+      await autoProvisionFreeMembership(newUserId, { tx: adminDb });
 
       // Zoho CRM: fire-and-forget contact sync (never blocks signup response)
       enqueueCrmContactSync({

@@ -4,6 +4,18 @@ export { sql, eq, and, or, desc, asc, inArray, isNull, not, count, sum } from 'd
 export { logAdminAction } from './audit';
 export type { AuditAction, AdminAuditLog } from './audit';
 export { encryptField, decryptField } from './encryption';
+// Wave F.4 (2026-04-26) — entitlement helper + auto-provision
+export {
+  hasFeature,
+  listMemberEntitlements,
+  autoProvisionFreeMembership,
+} from './entitlement';
+export type {
+  EntitlementGranted,
+  EntitlementDenied,
+  EntitlementResult,
+  HasFeatureOptions,
+} from './entitlement';
 // Storage utilities: import from '@kunacademy/db/storage' (server-only, uses fs)
 
 // Type exports (Drizzle-inferred, replaces Supabase generated types)
