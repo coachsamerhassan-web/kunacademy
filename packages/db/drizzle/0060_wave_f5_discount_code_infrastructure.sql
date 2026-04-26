@@ -251,4 +251,24 @@ GRANT SELECT ON coupon_redemptions  TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON coupons             TO kunacademy_admin;
 GRANT SELECT, INSERT, UPDATE, DELETE ON coupon_redemptions  TO kunacademy_admin;
 
+-- Ownership: when this migration is applied via `psql -f`, the connecting
+-- role (kunacademy) becomes the table owner — and table owners bypass RLS
+-- by default in Postgres. The codebase pattern (F.1 tiers/features) keeps
+-- ownership at `postgres` so RLS policies always apply. This block aligns
+-- ownership; it is no-op if already postgres.
+-- NOTE: requires SUPERUSER to execute. If applied via kunacademy psql, the
+-- ALTER will silently no-op (kunacademy isn't postgres) — operators must
+-- run these two ALTERs as postgres after the rest of the migration. This
+-- matches the existing operator playbook for migrations applied via
+-- `psql -f` from the kunacademy account. See ops note below.
+DO $$
+BEGIN
+  IF (SELECT tableowner FROM pg_tables WHERE tablename = 'coupons') <> 'postgres' THEN
+    RAISE NOTICE 'OPS NOTE: coupons table owned by %, not postgres. Run as postgres: ALTER TABLE coupons OWNER TO postgres; ALTER TABLE coupon_redemptions OWNER TO postgres;', (SELECT tableowner FROM pg_tables WHERE tablename = 'coupons');
+  END IF;
+END $$;
+
+-- The standard operator follow-up (idempotent; safe to re-run):
+--   sudo -u postgres psql kunacademy -c "ALTER TABLE coupons OWNER TO postgres; ALTER TABLE coupon_redemptions OWNER TO postgres; GRANT SELECT ON coupons, coupon_redemptions TO kunacademy, authenticated; GRANT SELECT, INSERT, UPDATE, DELETE ON coupons, coupon_redemptions TO kunacademy_admin;"
+
 COMMIT;
