@@ -297,6 +297,7 @@ export async function POST(request: NextRequest) {
       applied_credits,
       payment_plan: rawPaymentPlan,
       installment_count: rawInstallmentCount,
+      coupon_code: rawCouponCode,                       // Wave F.5 — optional
     } = body;
 
     if (!item_type || !item_id || !currency || !amount || !gateway) {
@@ -498,6 +499,155 @@ export async function POST(request: NextRequest) {
       };
     }
 
+    // ── Wave F.5 — coupon application (course / program checkout only) ──────
+    //
+    // Coupons currently apply to one cart line representing the course/program.
+    // We resolve via the same library used by /api/checkout/apply-coupon. The
+    // chargedAmount is reduced by the resolver-determined winning discount.
+    // The coupon_id + amount_applied land in payment.metadata so the webhook
+    // can call lockCouponOnOrder() upon successful payment (single source of
+    // truth for redemption insert; ensures we never debit the cap pre-payment).
+    //
+    // F-W3 single-discount-wins / F-W4 ineligible programs are enforced inside
+    // the resolver (lib/discounts).
+    let couponMeta:
+      | { coupon_id: string; coupon_code: string; coupon_amount_applied: number; coupon_kind: 'coupon' | 'member' }
+      | null = null;
+
+    if (item_type === 'course' && typeof rawCouponCode === 'string' && rawCouponCode.trim().length > 0) {
+      const couponCode = rawCouponCode.trim().toUpperCase();
+      // Coupon code regex matches DB CHECK
+      if (!/^[A-Z0-9][A-Z0-9-]{3,31}$/.test(couponCode)) {
+        return NextResponse.json({ error: 'Invalid coupon code format' }, { status: 400 });
+      }
+
+      // Re-fetch program metadata for member_discount_eligible. Course slug ↔
+      // program slug matching is the convention. If no program row exists,
+      // the line is treated as ineligible (member_discount_eligible=false).
+      const courseRow = await withAdminContext(async (db) => {
+        const r = await db.execute(
+          sql`SELECT id, slug FROM courses WHERE id = ${item_id} LIMIT 1`,
+        );
+        return r.rows[0] as { id: string; slug: string } | undefined;
+      });
+      if (!courseRow) {
+        return NextResponse.json({ error: 'Course not found' }, { status: 404 });
+      }
+
+      // Lookup program + coupon snapshot in one txn
+      const couponResult = await withAdminContext(async (db) => {
+        const progRows = await db.execute(sql`
+          SELECT id, slug, member_discount_eligible, coach_tier
+          FROM programs WHERE slug = ${courseRow.slug} LIMIT 1
+        `);
+        const prog = progRows.rows[0] as
+          | { id: string; slug: string; member_discount_eligible: boolean | null; coach_tier: string | null }
+          | undefined;
+
+        const cpnRows = await db.execute(sql`
+          SELECT id, code, type, value, currency, redemptions_max, redemptions_used,
+                 valid_from, valid_to, single_use_per_customer, scope_kind,
+                 scope_program_ids, scope_tier_ids, admin_override, is_active
+          FROM coupons WHERE code = ${couponCode} LIMIT 1
+        `);
+        const cpn = cpnRows.rows[0] as any | undefined;
+
+        const memRows = await db.execute(sql`
+          SELECT t.slug AS tier_slug FROM memberships m
+          JOIN tiers t ON t.id = m.tier_id
+          WHERE m.user_id = ${user_id}::uuid
+            AND m.ended_at IS NULL
+            AND m.status IN ('active','past_due','trialing')
+          ORDER BY m.started_at DESC LIMIT 1
+        `);
+        const mem = memRows.rows[0] as { tier_slug: string } | undefined;
+
+        let alreadyRedeemed = false;
+        if (cpn?.single_use_per_customer) {
+          const usedRows = await db.execute(sql`
+            SELECT 1 FROM coupon_redemptions
+            WHERE coupon_id = ${cpn.id}::uuid AND customer_id = ${user_id}::uuid LIMIT 1
+          `);
+          alreadyRedeemed = usedRows.rows.length > 0;
+        }
+
+        return { prog, cpn, isPaid1: mem?.tier_slug === 'paid-1', alreadyRedeemed };
+      });
+
+      if (!couponResult.cpn) {
+        return NextResponse.json({ error: 'Invalid coupon code' }, { status: 400 });
+      }
+
+      // Build a minimal cart for the resolver
+      const { resolveBestDiscount, evaluateCoupon, REASON_TO_HTTP } = await import('@/lib/discounts');
+      const cart = {
+        cart_id: 'pre-order',
+        customer_id: user_id,
+        currency: currency as 'AED' | 'EGP' | 'USD' | 'EUR',
+        lines: [{
+          program_id: couponResult.prog?.id ?? null,
+          program_slug: couponResult.prog?.slug ?? courseRow.slug,
+          member_discount_eligible: couponResult.prog?.member_discount_eligible === true,
+          coach_tier: couponResult.prog?.coach_tier ?? null,
+          list_price_cents: chargedAmount,           // server-verified above
+          currency: currency as 'AED' | 'EGP' | 'USD' | 'EUR',
+          quantity: 1,
+        }],
+      };
+      const couponSnap = {
+        id: couponResult.cpn.id,
+        code: couponResult.cpn.code,
+        type: couponResult.cpn.type,
+        value: couponResult.cpn.value,
+        currency: couponResult.cpn.currency,
+        redemptions_max: couponResult.cpn.redemptions_max,
+        redemptions_used: couponResult.cpn.redemptions_used,
+        valid_from: couponResult.cpn.valid_from
+          ? (typeof couponResult.cpn.valid_from === 'string'
+              ? couponResult.cpn.valid_from
+              : couponResult.cpn.valid_from.toISOString())
+          : null,
+        valid_to: couponResult.cpn.valid_to
+          ? (typeof couponResult.cpn.valid_to === 'string'
+              ? couponResult.cpn.valid_to
+              : couponResult.cpn.valid_to.toISOString())
+          : null,
+        single_use_per_customer: couponResult.cpn.single_use_per_customer,
+        scope_kind: couponResult.cpn.scope_kind,
+        scope_program_ids: couponResult.cpn.scope_program_ids ?? [],
+        scope_tier_ids: couponResult.cpn.scope_tier_ids ?? [],
+        admin_override: couponResult.cpn.admin_override,
+        is_active: couponResult.cpn.is_active,
+      };
+      const member = { is_paid1_active: couponResult.isPaid1, member_discount_pct: 10 };
+
+      const ev = evaluateCoupon(cart, couponSnap, member, {
+        customer_already_redeemed: couponResult.alreadyRedeemed,
+      });
+      if (!ev.applies) {
+        const m = REASON_TO_HTTP[ev.reason!];
+        return NextResponse.json({ error: m.code }, { status: m.status });
+      }
+
+      const winner = resolveBestDiscount(cart, member, couponSnap, {
+        customer_already_redeemed: couponResult.alreadyRedeemed,
+      });
+      if (winner.kind === 'coupon' && winner.amount_cents > 0) {
+        chargedAmount = Math.max(0, chargedAmount - winner.amount_cents);
+        couponMeta = {
+          coupon_id: couponSnap.id,
+          coupon_code: couponSnap.code,
+          coupon_amount_applied: winner.amount_cents,
+          coupon_kind: 'coupon',
+        };
+      } else if (winner.kind === 'member' && winner.amount_cents > 0) {
+        // Member auto-discount won. We still apply but DON'T tag coupon_id —
+        // the redemption row should not be written for the auto-member path.
+        chargedAmount = Math.max(0, chargedAmount - winner.amount_cents);
+      }
+      // 'none' (zero discount) — no chargedAmount mutation
+    }
+
     // ── InstaPay (Egypt) ──────────────────────────────────────────────
     if (gateway === 'instapay') {
       // chargedAmount is the deposit amount (server-computed) or the full amount.
@@ -518,6 +668,7 @@ export async function POST(request: NextRequest) {
             verification_status: 'awaiting_transfer',
             country,
             ...(depositMetaOverride ?? {}),
+            ...(couponMeta ?? {}),                      // Wave F.5
           },
         }).returning();
       });
@@ -558,6 +709,7 @@ export async function POST(request: NextRequest) {
             payment_plan,
             ...(payment_plan === 'installment' ? { installment_count } : {}),
             ...(depositMetaOverride ?? {}),
+            ...(couponMeta ?? {}),                      // Wave F.5
           },
         }).returning();
       });

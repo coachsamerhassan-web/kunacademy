@@ -100,3 +100,6 @@ export * from './scholarships';
 export * from './content_media';
 export * from './agent_tokens';
 export * from './content_edits';
+// Wave F.5 — Discount Code Infrastructure (migration 0060)
+export * from './coupons';
+export * from './coupon_redemptions';

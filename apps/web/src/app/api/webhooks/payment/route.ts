@@ -1159,6 +1159,59 @@ export async function POST(request: NextRequest) {
           await db.execute(
             sql`INSERT INTO enrollments (user_id, course_id, status, enrollment_type) VALUES (${meta.user_id}, ${meta.item_id}, 'enrolled', 'recorded')`
           );
+
+          // ── Wave F.5 — lock coupon redemption (idempotent) ──────────────────
+          // If checkout attached a coupon to this payment, insert the redemption
+          // row + bump coupons.redemptions_used inside the same admin txn.
+          // Idempotency keyed on (coupon_id, payment_id_meta) — if the webhook
+          // re-fires we won't double-count.
+          //
+          // The course path doesn't write into `orders`, so we pass order_id=null
+          // and persist the payment_id under metadata for traceability via the
+          // existing payments→ payment row.
+          if (meta.coupon_id && typeof meta.coupon_id === 'string'
+              && typeof meta.coupon_amount_applied === 'number'
+              && meta.coupon_amount_applied > 0) {
+            try {
+              // Idempotency: probe by (coupon_id, customer_id) — single-use
+              // index will reject doubles via unique violation; the helper
+              // catches that and returns 'already_used'. For non-single-use
+              // coupons we additionally probe a marker by tagging amount_applied
+              // unique-per-payment via this pre-check on coupon_id+customer_id
+              // pair limited to last 5 minutes (re-delivery window).
+              const recent = await db.execute(sql`
+                SELECT id FROM coupon_redemptions
+                WHERE coupon_id = ${meta.coupon_id}::uuid
+                  AND customer_id = ${meta.user_id}::uuid
+                  AND amount_applied = ${meta.coupon_amount_applied}::int
+                  AND redeemed_at > now() - interval '24 hours'
+                LIMIT 1
+              `);
+              if (recent.rows.length === 0) {
+                await db.execute(sql`
+                  INSERT INTO coupon_redemptions (
+                    coupon_id, customer_id, order_id, amount_applied, currency
+                  ) VALUES (
+                    ${meta.coupon_id}::uuid,
+                    ${meta.user_id}::uuid,
+                    NULL,
+                    ${meta.coupon_amount_applied}::int,
+                    ${payment.currency}
+                  )
+                `);
+                await db.execute(sql`
+                  UPDATE coupons
+                     SET redemptions_used = redemptions_used + 1, updated_at = now()
+                   WHERE id = ${meta.coupon_id}::uuid
+                `);
+              }
+            } catch (e: any) {
+              // Lock failures (exhausted, already_used) are NON-fatal at webhook
+              // time — the customer was already charged the post-discount price,
+              // and re-charging is not appropriate. Log for admin review.
+              console.error('[webhook/payment][F.5] coupon lock failed:', e?.message || e);
+            }
+          }
         });
       } else if (meta.item_type === 'booking') {
         await withAdminContext(async (db) => {

@@ -87,6 +87,14 @@ export default function AdminMembershipIndex({
       descAr: 'تحرير أسعار الجلسات والاشتراكات والخصومات.',
       descEn: 'Edit coach rates, tier rates, discount %.',
     },
+    {
+      href: `/${locale}/admin/coupons`,
+      labelAr: 'كوبونات الخصم',
+      labelEn: 'Discount coupons',
+      summary: isAr ? 'F.5' : 'F.5',
+      descAr: 'إنشاء وإدارة الكوبونات وسجل الاستبدالات.',
+      descEn: 'CRUD coupons + redemption log + CSV export.',
+    },
   ];
 
   return (
@@ -143,7 +151,6 @@ export default function AdminMembershipIndex({
           <ul className="list-disc list-inside leading-relaxed space-y-1">
             <li>{isAr ? 'قائمة الأعضاء (F.4)' : 'Members list (F.4)'}</li>
             <li>{isAr ? 'سجل النشاط: اشتراكات/إلغاءات/فواتير فاشلة (F.6)' : 'Activity log: subs, cancellations, failed payments (F.6)'}</li>
-            <li>{isAr ? 'أكواد الخصم المرتبطة بالعضويّة (F.5)' : 'Member-linked discount codes (F.5)'}</li>
           </ul>
         </div>
       </div>
