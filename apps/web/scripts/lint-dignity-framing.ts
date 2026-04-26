@@ -57,6 +57,9 @@ const SCAN_PATHS: string[] = [
   join(WEB_ROOT, 'lib', 'donation-webhook-handlers.ts'),
   join(WEB_ROOT, 'lib', 'scholarship-transparency.ts'),
   join(WEB_ROOT, 'lib', 'scholarship-application.ts'),
+  // E.6 — allocation + token-redemption lib modules
+  join(WEB_ROOT, 'lib', 'scholarship-allocation.ts'),
+  join(WEB_ROOT, 'lib', 'scholarship-token-redemption.ts'),
 
   // Donation/scholarship API routes (E.3+)
   join(WEB_ROOT, 'app', 'api', 'donations'),

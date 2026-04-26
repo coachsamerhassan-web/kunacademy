@@ -135,3 +135,10 @@ export type { ScholarshipApplicationDeclinedParams } from './templates/scholarsh
 
 export { sendScholarshipApplicationWaitlistedEmail } from './templates/scholarship/application-waitlisted';
 export type { ScholarshipApplicationWaitlistedParams } from './templates/scholarship/application-waitlisted';
+
+// Wave E.6 — allocation + disbursement templates.
+export { sendScholarshipApplicationAllocatedEmail } from './templates/scholarship/application-allocated';
+export type { ScholarshipApplicationAllocatedParams } from './templates/scholarship/application-allocated';
+
+export { sendScholarshipApplicationDisbursedEmail } from './templates/scholarship/application-disbursed';
+export type { ScholarshipApplicationDisbursedParams } from './templates/scholarship/application-disbursed';

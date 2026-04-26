@@ -105,6 +105,12 @@ export default function AdminApplicationDetail({
   const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [actionNote, setActionNote] = useState<string>('');
 
+  // E.6 — disburse action state
+  const [disbursing, setDisbursing] = useState(false);
+  const [disburseError, setDisburseError] = useState<string | null>(null);
+  const [disbursePending, setDisbursePending] = useState<boolean>(false);
+  const [disburseSuccess, setDisburseSuccess] = useState<boolean>(false);
+
   function refresh(): Promise<void> {
     return fetch(`/api/admin/scholarships/applications/${id}`)
       .then(async (res) => {
@@ -173,6 +179,57 @@ export default function AdminApplicationDetail({
     } catch {
       setActionError(isAr ? 'تعذّر الاتصال.' : 'Connection failed.');
       setTransitioning(false);
+    }
+  }
+
+  async function performDisburse() {
+    setDisburseError(null);
+    setDisbursing(true);
+    try {
+      const res = await fetch(`/api/admin/scholarships/applications/${id}/disburse`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) {
+        const code = data.error || 'unknown';
+        const map: Record<string, { ar: string; en: string }> = {
+          'invalid_application_status': {
+            ar: 'حالة الطلب غير ملائمة للصرف.',
+            en: 'Application is not in allocated state.',
+          },
+          'already_disbursed': {
+            ar: 'تمّ الصرف مسبقاً.',
+            en: 'Already disbursed.',
+          },
+          'token_already_active': {
+            ar: 'يوجد رمز نشط مسبقاً لهذه المنحة.',
+            en: 'An active token already exists for this scholarship.',
+          },
+          'scholarship-not-found': {
+            ar: 'لم يتم العثور على المنحة.',
+            en: 'Scholarship not found.',
+          },
+        };
+        if (map[code]) {
+          setDisburseError(isAr ? map[code]!.ar : map[code]!.en);
+        } else if (res.status === 401) {
+          setDisburseError(isAr ? 'لم يتم تسجيل الدخول.' : 'Not signed in.');
+        } else if (res.status === 403) {
+          setDisburseError(isAr ? 'لا توجد صلاحية.' : 'Forbidden.');
+        } else {
+          setDisburseError(isAr ? 'تعذّر الصرف.' : 'Could not disburse.');
+        }
+        setDisbursing(false);
+        return;
+      }
+      setDisburseSuccess(true);
+      setDisbursing(false);
+      await refresh();
+    } catch {
+      setDisburseError(isAr ? 'تعذّر الاتصال.' : 'Connection failed.');
+      setDisbursing(false);
     }
   }
 
@@ -505,14 +562,83 @@ export default function AdminApplicationDetail({
                 </button>
               )}
 
-              {/* E.6 placeholder */}
+              {/* E.6 — Allocation CTA (status='approved' only) */}
               {detail.status === 'approved' && (
                 <div className="mt-4 pt-4 border-t border-[var(--color-neutral-100)]">
-                  <p className="text-xs text-[var(--color-neutral-500)]">
+                  <a
+                    href={`/${locale}/admin/scholarships/applications/${id}/allocate`}
+                    className="block w-full rounded-lg bg-[var(--color-primary)] hover:opacity-90 text-white px-4 py-2 text-sm font-medium text-center transition"
+                  >
+                    {isAr ? 'تخصيص التبرّعات' : 'Allocate donations'}
+                  </a>
+                  <p className="mt-2 text-xs text-[var(--color-neutral-500)]">
                     {isAr
-                      ? 'تخصيص التبرّعات للمنحة سيُتاح في موجة E.6.'
-                      : 'Donation-to-scholarship allocation ships in Wave E.6.'}
+                      ? 'اختر التبرّعات المتاحة لتغطية تكلفة البرنامج.'
+                      : 'Select available donations to cover the program cost.'}
                   </p>
+                </div>
+              )}
+
+              {/* E.6 — Disburse CTA (status='allocated' only) */}
+              {detail.status === 'allocated' && (
+                <div className="mt-4 pt-4 border-t border-[var(--color-neutral-100)]">
+                  {disburseSuccess ? (
+                    <div className="rounded-lg bg-emerald-50 border border-emerald-200 p-3 text-xs text-emerald-800">
+                      {isAr
+                        ? '✓ تمّ الصرف. أُرسل البريد للمتقدّم مع رابط التسجيل.'
+                        : '✓ Disbursed. Enrollment email sent to the applicant.'}
+                    </div>
+                  ) : (
+                    <>
+                      {disburseError && (
+                        <div className="mb-3 rounded-lg bg-red-50 border border-red-200 p-2 text-xs text-red-800">
+                          {disburseError}
+                        </div>
+                      )}
+                      <button
+                        type="button"
+                        disabled={disbursing}
+                        onClick={() => {
+                          if (disbursePending) {
+                            performDisburse();
+                          } else {
+                            setDisbursePending(true);
+                          }
+                        }}
+                        className="w-full rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white px-4 py-2 text-sm font-medium transition"
+                      >
+                        {disbursing
+                          ? isAr ? 'جارٍ الصرف...' : 'Disbursing...'
+                          : disbursePending
+                            ? isAr ? 'تأكيد: صرف' : 'Confirm: Disburse'
+                            : isAr ? 'تأشير كمصروفة' : 'Mark as Disbursed'}
+                      </button>
+                      {disbursePending && (
+                        <button
+                          type="button"
+                          onClick={() => setDisbursePending(false)}
+                          className="mt-2 w-full rounded-lg px-4 py-2 text-xs text-[var(--color-neutral-500)] hover:underline"
+                        >
+                          {isAr ? 'إلغاء' : 'Cancel'}
+                        </button>
+                      )}
+                      <p className="mt-2 text-xs text-[var(--color-neutral-500)]">
+                        {isAr
+                          ? 'يُولَّد رمز استفادة فريد ويُرسَل للمتقدّم. صلاحيّته 30 يوماً.'
+                          : 'A unique scholarship token is issued and emailed to the applicant. Valid for 30 days.'}
+                      </p>
+                    </>
+                  )}
+                </div>
+              )}
+
+              {detail.status === 'disbursed' && (
+                <div className="mt-4 pt-4 border-t border-[var(--color-neutral-100)]">
+                  <div className="rounded-lg bg-emerald-50 border border-emerald-200 p-3 text-xs text-emerald-800">
+                    {isAr
+                      ? '✓ تمّ الصرف. الرمز نشط حتّى استخدامه أو انتهاء صلاحيّته.'
+                      : '✓ Disbursed. Token is active until used or expired.'}
+                  </div>
                 </div>
               )}
             </div>

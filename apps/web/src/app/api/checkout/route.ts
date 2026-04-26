@@ -298,6 +298,7 @@ export async function POST(request: NextRequest) {
       payment_plan: rawPaymentPlan,
       installment_count: rawInstallmentCount,
       coupon_code: rawCouponCode,                       // Wave F.5 — optional
+      scholarship_token: rawScholarshipToken,           // Wave E.6 — optional
     } = body;
 
     if (!item_type || !item_id || !currency || !amount || !gateway) {
@@ -499,6 +500,97 @@ export async function POST(request: NextRequest) {
       };
     }
 
+    // ── Wave E.6 — scholarship_token redemption (course checkout only) ──────
+    //
+    // Per spec §Q9: a scholarship_token is single-use, pre-applied
+    // full-price-offset. NOT a coupon — different surface, scholarship-specific,
+    // expires in 30 days. Stacks with NEITHER member discount NOR coupons:
+    // single-source-of-truth (scholarship covers full price OR nothing).
+    //
+    // We only validate-and-redeem here; the line type written to metadata is
+    // 'scholarship_offset' (distinct from coupon kinds). If a token is provided
+    // alongside a coupon_code, we fail closed with a 400 — caller must choose
+    // one path.
+    let scholarshipOffsetMeta:
+      | {
+          scholarship_id: string;
+          scholarship_offset_cents: number;
+          scholarship_offset_currency: string;
+        }
+      | null = null;
+
+    if (typeof rawScholarshipToken === 'string' && rawScholarshipToken.trim().length > 0) {
+      // Scholarship tokens cannot stack with coupons or member-auto discount.
+      if (typeof rawCouponCode === 'string' && rawCouponCode.trim().length > 0) {
+        return NextResponse.json(
+          { error: 'scholarship-token-and-coupon-not-stackable' },
+          { status: 400 },
+        );
+      }
+
+      // Course-only path. Other item_types reject upfront — scholarships fund
+      // programs, not events/products.
+      if (item_type !== 'course') {
+        return NextResponse.json(
+          { error: 'scholarship-token-only-for-courses' },
+          { status: 400 },
+        );
+      }
+
+      // Look up the program slug from the course id (same convention as the
+      // F.5 coupon path above).
+      const courseSlugRow = await withAdminContext(async (db) => {
+        const r = await db.execute(
+          sql`SELECT id, slug FROM courses WHERE id = ${item_id} LIMIT 1`,
+        );
+        return r.rows[0] as { id: string; slug: string } | undefined;
+      });
+      if (!courseSlugRow) {
+        return NextResponse.json({ error: 'Course not found' }, { status: 404 });
+      }
+
+      const { redeemScholarshipToken } = await import('@/lib/scholarship-token-redemption');
+      const tokenPlaintext = rawScholarshipToken.trim();
+      const result = await redeemScholarshipToken({
+        plaintext: tokenPlaintext,
+        programSlug: courseSlugRow.slug,
+        userId: user_id,
+      });
+      if (!result.valid) {
+        const reason = result.reason;
+        const httpStatus = reason === 'expired' || reason === 'redeemed' ? 410
+          : reason === 'wrong_program' ? 422
+          : reason === 'token_format' ? 400
+          : 400;
+        return NextResponse.json(
+          { error: `scholarship-token-${reason}` },
+          { status: httpStatus },
+        );
+      }
+
+      // Currency match: token currency MUST equal cart currency (a multi-currency
+      // recipient could otherwise game the FX). Reject mismatch.
+      if (result.currency !== currency) {
+        return NextResponse.json(
+          { error: 'scholarship-token-currency-mismatch' },
+          { status: 422 },
+        );
+      }
+
+      // Apply the offset. The offset is the FULL canon program price; charged
+      // amount becomes 0 in normal cases. We DO NOT bypass the price-mismatch
+      // tolerance check above because the offset applied here is server-known.
+      const offset = result.full_price_offset_cents;
+      chargedAmount = Math.max(0, chargedAmount - offset);
+      scholarshipOffsetMeta = {
+        scholarship_id: result.scholarship_id,
+        scholarship_offset_cents: offset,
+        scholarship_offset_currency: result.currency,
+      };
+      // chargedAmount may now be 0; allow the downstream code to handle that
+      // (free-after-scholarship is the expected case for tier='full').
+    }
+
     // ── Wave F.5 — coupon application (course / program checkout only) ──────
     //
     // Coupons currently apply to one cart line representing the course/program.
@@ -513,6 +605,9 @@ export async function POST(request: NextRequest) {
     // F.4: when winner.kind === 'member', we still record an audit row at
     // payment-success time. coupon_id is NULL for hardcoded member-discount
     // application; future member-auto coupons will set coupon_id.
+    //
+    // E.6: when a scholarship_offset has been applied above, we SKIP the
+    // coupon path entirely — these surfaces never stack.
     let couponMeta:
       | {
           coupon_id?: string | null;
@@ -523,7 +618,7 @@ export async function POST(request: NextRequest) {
         }
       | null = null;
 
-    if (item_type === 'course' && typeof rawCouponCode === 'string' && rawCouponCode.trim().length > 0) {
+    if (scholarshipOffsetMeta === null && item_type === 'course' && typeof rawCouponCode === 'string' && rawCouponCode.trim().length > 0) {
       const couponCode = rawCouponCode.trim().toUpperCase();
       // Coupon code regex matches DB CHECK
       if (!/^[A-Z0-9][A-Z0-9-]{3,31}$/.test(couponCode)) {
@@ -711,6 +806,7 @@ export async function POST(request: NextRequest) {
             country,
             ...(depositMetaOverride ?? {}),
             ...(couponMeta ?? {}),                      // Wave F.5
+            ...(scholarshipOffsetMeta ?? {}),           // Wave E.6
           },
         }).returning();
       });
@@ -752,6 +848,7 @@ export async function POST(request: NextRequest) {
             ...(payment_plan === 'installment' ? { installment_count } : {}),
             ...(depositMetaOverride ?? {}),
             ...(couponMeta ?? {}),                      // Wave F.5
+            ...(scholarshipOffsetMeta ?? {}),           // Wave E.6
           },
         }).returning();
       });
