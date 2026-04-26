@@ -55,6 +55,7 @@ const SCAN_PATHS: string[] = [
   join(WEB_ROOT, 'lib', 'stripe-donations.ts'),
   join(WEB_ROOT, 'lib', 'zoho-projects.ts'),
   join(WEB_ROOT, 'lib', 'donation-webhook-handlers.ts'),
+  join(WEB_ROOT, 'lib', 'scholarship-transparency.ts'),
 
   // Donation/scholarship API routes (E.3+)
   join(WEB_ROOT, 'app', 'api', 'donations'),
