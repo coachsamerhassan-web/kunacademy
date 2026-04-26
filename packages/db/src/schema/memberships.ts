@@ -36,6 +36,8 @@ export const memberships = pgTable(
     cancel_at:               timestamp('cancel_at', { withTimezone: true, mode: 'string' }),
     cancelled_at:            timestamp('cancelled_at', { withTimezone: true, mode: 'string' }),
     ended_at:                timestamp('ended_at', { withTimezone: true, mode: 'string' }),
+    /** Wave F.6 — optional reason supplied by member at cancel; used by win-back filter. */
+    cancel_reason:           text('cancel_reason'),
     metadata:                jsonb('metadata'),
     created_at:              timestamp('created_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
     updated_at:              timestamp('updated_at', { withTimezone: true, mode: 'string' }).notNull().defaultNow(),

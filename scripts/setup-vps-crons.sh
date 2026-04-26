@@ -111,6 +111,21 @@ CRON_ENTRIES="
 # Deletes sent rows older than 30 days and failed rows older than 90 days.
 # Removes PII (to_email, payload) that must not be retained indefinitely.
 0 23 * * * curl -s -H \"Authorization: Bearer $CRON_SECRET\" $APP_URL/api/cron/purge-email-outbox >> /var/log/kunacademy-crons.log 2>&1
+
+# ── Wave F.6 — Membership Lifecycle Crons (Dubai = UTC+4) ──────────────────
+
+# Cron 15: Membership renewal reminders (annual T-7 + T-1, monthly T-1)
+#          06:00 Dubai = 02:00 UTC. Daily. Idempotent (lifecycle send_key dedup).
+0 2 * * * curl -s -H \"Authorization: Bearer $CRON_SECRET\" $APP_URL/api/cron/membership-renewal-reminders >> /var/log/kunacademy-crons.log 2>&1
+
+# Cron 16: Membership grace-sweep — flips cancelled rows past cancel_at to expired/free.
+#          06:30 Dubai = 02:30 UTC. Daily. Atomic per row. Idempotent on retry.
+30 2 * * * curl -s -H \"Authorization: Bearer $CRON_SECRET\" $APP_URL/api/cron/membership-grace-sweep >> /var/log/kunacademy-crons.log 2>&1
+
+# Cron 17: Membership win-back retention email (30 days post-expired).
+#          06:45 Dubai = 02:45 UTC. Daily. One-time send per membership; opt-out
+#          filter on cancel_reason matching no_longer_interested.
+45 2 * * * curl -s -H \"Authorization: Bearer $CRON_SECRET\" $APP_URL/api/cron/membership-winback >> /var/log/kunacademy-crons.log 2>&1
 "
 
 # Install crontab entries

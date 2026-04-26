@@ -87,3 +87,31 @@ export type { CoachNewRatingEmailParams } from './coach-new-rating';
 // User activation (wired to POST /api/admin/users + /api/admin/users/[id]/send-activation)
 export { sendUserActivationEmail } from './user-activation';
 export type { UserActivationEmailParams } from './user-activation';
+
+// ── Wave F.6 — Membership Lifecycle Emails ─────────────────────────────────
+// Cancel / reactivation / dunning / renewal reminders / win-back.
+// All bilingual (AR + EN), brand-aligned, IP-clean.
+
+export { sendMembershipCancelConfirmationEmail } from './templates/membership/cancel-confirmation';
+export type { MembershipCancelConfirmationParams } from './templates/membership/cancel-confirmation';
+
+export { sendMembershipCancelEffectiveEmail } from './templates/membership/cancel-effective';
+export type { MembershipCancelEffectiveParams } from './templates/membership/cancel-effective';
+
+export { sendMembershipReactivationConfirmationEmail } from './templates/membership/reactivation-confirmation';
+export type { MembershipReactivationConfirmationParams } from './templates/membership/reactivation-confirmation';
+
+export { sendMembershipDunningPaymentFailedEmail } from './templates/membership/dunning-payment-failed';
+export type { MembershipDunningPaymentFailedParams } from './templates/membership/dunning-payment-failed';
+
+export { sendMembershipDunningBackInGoodStandingEmail } from './templates/membership/dunning-back-in-good-standing';
+export type { MembershipDunningBackInGoodStandingParams } from './templates/membership/dunning-back-in-good-standing';
+
+export { sendMembershipDunningPaymentFailedFinalEmail } from './templates/membership/dunning-payment-failed-final';
+export type { MembershipDunningPaymentFailedFinalParams } from './templates/membership/dunning-payment-failed-final';
+
+export { sendMembershipRenewalReminderEmail } from './templates/membership/renewal-reminders';
+export type { MembershipRenewalReminderParams, RenewalCadence } from './templates/membership/renewal-reminders';
+
+export { sendMembershipWinback30DayEmail } from './templates/membership/winback-30-day';
+export type { MembershipWinback30DayParams } from './templates/membership/winback-30-day';

@@ -95,6 +95,14 @@ export default function AdminMembershipIndex({
       descAr: 'إنشاء وإدارة الكوبونات وسجل الاستبدالات.',
       descEn: 'CRUD coupons + redemption log + CSV export.',
     },
+    {
+      href: `/${locale}/admin/membership/lifecycle`,
+      labelAr: 'دورة حياة العضويّات',
+      labelEn: 'Membership lifecycle',
+      summary: isAr ? 'F.6' : 'F.6',
+      descAr: 'الإلغاءات، التذكيرات، التحصيل، والمتابعة بعد انتهاء العضويّة.',
+      descEn: 'Cancellations, renewal reminders, dunning queue, win-back history.',
+    },
   ];
 
   return (
@@ -149,8 +157,7 @@ export default function AdminMembershipIndex({
             {isAr ? 'قادم في موجات لاحقة' : 'Coming in later waves'}
           </p>
           <ul className="list-disc list-inside leading-relaxed space-y-1">
-            <li>{isAr ? 'قائمة الأعضاء (F.4)' : 'Members list (F.4)'}</li>
-            <li>{isAr ? 'سجل النشاط: اشتراكات/إلغاءات/فواتير فاشلة (F.6)' : 'Activity log: subs, cancellations, failed payments (F.6)'}</li>
+            <li>{isAr ? 'قائمة الأعضاء (لاحق)' : 'Members list (later)'}</li>
           </ul>
         </div>
       </div>

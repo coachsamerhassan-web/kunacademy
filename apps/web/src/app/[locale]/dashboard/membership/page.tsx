@@ -1,19 +1,24 @@
 'use client';
 
 /**
- * /[locale]/dashboard/membership — Wave F.4 (2026-04-26)
+ * /[locale]/dashboard/membership — Wave F.4 + F.6 (2026-04-27)
  *
  * Member dashboard surface. Shows:
  *   1. Current tier card (name, status, billing frequency, next renewal)
  *   2. Entitlements list (features the user has access to)
  *   3. Auto-coupon (Paid-1+ only) — code + scope + expiry + copy button
  *   4. Monthly Q&A — registration buttons (AR / EN), shows registered status
- *   5. Upgrade CTA (if Free) or Cancel CTA stub (if Paid; full flow in F.6)
+ *   5. Upgrade CTA (if Free) or Cancel/Resume CTA (if Paid; F.6 wires the full flow)
+ *
+ * F.6 changes:
+ *   - Cancel CTA wired to POST /api/membership/cancel with bilingual modal
+ *     (no native window.confirm/alert — proper Modal with optional reason)
+ *   - Resume membership CTA visible when cancel_at is set (calls /reactivate)
  *
  * IP rule: NO program methodology in any copy here.
  */
 
-import { useEffect, useState, use } from 'react';
+import { useEffect, useState, use, useCallback } from 'react';
 import { useAuth } from '@kunacademy/auth';
 
 interface Tier {
@@ -100,6 +105,24 @@ export default function MembershipDashboardPage({
   const [qaBusyEn, setQaBusyEn] = useState(false);
   const [qaError, setQaError] = useState<string | null>(null);
 
+  // F.6 cancel/reactivate UI state
+  const [cancelModalOpen, setCancelModalOpen] = useState(false);
+  const [cancelReason, setCancelReason] = useState('');
+  const [cancelBusy, setCancelBusy] = useState(false);
+  const [cancelError, setCancelError] = useState<string | null>(null);
+  const [cancelToast, setCancelToast] = useState<string | null>(null);
+  const [resumeBusy, setResumeBusy] = useState(false);
+  const [resumeError, setResumeError] = useState<string | null>(null);
+  const [resumeToast, setResumeToast] = useState<string | null>(null);
+
+  const reload = useCallback(async () => {
+    const r = await fetch('/api/membership/me');
+    if (r.ok) {
+      const j = (await r.json()) as MembershipResponse;
+      setData(j);
+    }
+  }, []);
+
   useEffect(() => {
     if (authLoading) return;
     if (!user) {
@@ -125,6 +148,16 @@ export default function MembershipDashboardPage({
       })
       .catch(() => setLoadState('error'));
   }, [user, authLoading]);
+
+  // Auto-dismiss toasts after 5s
+  useEffect(() => {
+    if (!cancelToast && !resumeToast) return;
+    const t = setTimeout(() => {
+      setCancelToast(null);
+      setResumeToast(null);
+    }, 5000);
+    return () => clearTimeout(t);
+  }, [cancelToast, resumeToast]);
 
   if (authLoading || loadState === 'loading') {
     return (
@@ -218,15 +251,65 @@ export default function MembershipDashboardPage({
       if (!r.ok) {
         setQaError(j?.error || `error_${r.status}`);
       } else {
-        // refresh
-        const me = await fetch('/api/membership/me');
-        if (me.ok) setData((await me.json()) as MembershipResponse);
+        await reload();
       }
     } catch {
       setQaError('network_error');
     } finally {
       if (lang === 'ar') setQaBusyAr(false);
       else setQaBusyEn(false);
+    }
+  };
+
+  const onConfirmCancel = async () => {
+    setCancelError(null);
+    setCancelBusy(true);
+    try {
+      const r = await fetch('/api/membership/cancel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cancel_reason: cancelReason.trim() || null }),
+      });
+      const j = await r.json();
+      if (!r.ok) {
+        setCancelError(j?.error || `error_${r.status}`);
+        setCancelBusy(false);
+        return;
+      }
+      setCancelToast(
+        isAr
+          ? 'تم إلغاء العضويّة. سيستمر وصولك حتى نهاية فترة الفواتير الحاليّة.'
+          : 'Membership cancelled. Access continues until the end of the current billing period.',
+      );
+      setCancelModalOpen(false);
+      setCancelReason('');
+      await reload();
+    } catch {
+      setCancelError('network_error');
+    } finally {
+      setCancelBusy(false);
+    }
+  };
+
+  const onResume = async () => {
+    setResumeError(null);
+    setResumeBusy(true);
+    try {
+      const r = await fetch('/api/membership/reactivate', { method: 'POST' });
+      const j = await r.json();
+      if (!r.ok) {
+        setResumeError(j?.error || `error_${r.status}`);
+        setResumeBusy(false);
+        return;
+      }
+      setResumeToast(
+        isAr ? 'تم استئناف عضويّتك.' : 'Your membership has been resumed.',
+      );
+      await reload();
+    } catch {
+      setResumeError('network_error');
+    } finally {
+      setResumeBusy(false);
     }
   };
 
@@ -238,6 +321,17 @@ export default function MembershipDashboardPage({
       >
         {isAr ? 'عضويّتي' : 'My Membership'}
       </h1>
+
+      {/* Toasts */}
+      {(cancelToast || resumeToast) && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="mb-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 px-4 py-3 text-sm"
+        >
+          {cancelToast || resumeToast}
+        </div>
+      )}
 
       {/* 1. Tier card */}
       <section className="mb-6 rounded-2xl border border-[var(--color-neutral-100)] bg-white p-6 md:p-8">
@@ -283,6 +377,14 @@ export default function MembershipDashboardPage({
           </div>
         )}
 
+        {data.status === 'past_due' && !data.cancel_at && (
+          <div className="mb-4 rounded-xl bg-rose-50 border border-rose-200 p-4 text-sm text-rose-900">
+            {isAr
+              ? 'لم نتمكّن من تحصيل قيمة التجديد. يرجى تحديث بيانات بطاقتك. وصولك مستمرٌّ مؤقّتًا.'
+              : 'We couldn’t process your renewal payment. Please update your card details. Your access continues during automatic retries.'}
+          </div>
+        )}
+
         <dl className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
           {data.current_period_end && !data.cancel_at && (
             <div>
@@ -309,29 +411,27 @@ export default function MembershipDashboardPage({
               {isAr ? 'الترقية إلى Paid-1' : 'Upgrade to Paid-1'}
             </a>
           )}
+          {isPaid && data.cancel_at && (
+            <button
+              type="button"
+              data-testid="resume-membership-button"
+              onClick={onResume}
+              disabled={resumeBusy}
+              className="inline-flex items-center justify-center rounded-xl bg-[var(--color-primary)] px-5 py-2.5 text-white font-semibold hover:bg-[var(--color-primary-700)] min-h-[44px] disabled:opacity-50"
+            >
+              {resumeBusy
+                ? (isAr ? 'جارٍ الاستئناف…' : 'Resuming…')
+                : (isAr ? 'استئناف العضويّة' : 'Resume membership')}
+            </button>
+          )}
           {isPaid && !data.cancel_at && (
             <button
               type="button"
               data-testid="cancel-membership-stub"
               onClick={() => {
-                // F.6 will wire the full cancel flow. F.4 ships the stub.
-                if (
-                  typeof window !== 'undefined' &&
-                  // eslint-disable-next-line no-alert
-                  window.confirm(
-                    isAr
-                      ? 'إلغاء العضويّة؟ ستظل لديك الإمكانية حتى نهاية فترة الفواتير الحاليّة. (سيتم تفعيل التدفّق الكامل في F.6.)'
-                      : 'Cancel membership? Access continues until the end of the paid period. (Full flow ships in F.6.)',
-                  )
-                ) {
-                  // No mutation in F.4 — explicit stub.
-                  // eslint-disable-next-line no-alert
-                  window.alert(
-                    isAr
-                      ? 'تدفّق الإلغاء الكامل سيكون متاحًا في الموجة F.6.'
-                      : 'Full cancel flow will be available in Wave F.6.',
-                  );
-                }
+                setCancelError(null);
+                setCancelReason('');
+                setCancelModalOpen(true);
               }}
               className="inline-flex items-center justify-center rounded-xl border border-[var(--color-neutral-200)] bg-white px-5 py-2.5 text-[var(--color-neutral-700)] hover:border-[var(--color-neutral-400)] min-h-[44px]"
             >
@@ -339,7 +439,80 @@ export default function MembershipDashboardPage({
             </button>
           )}
         </div>
+        {resumeError && (
+          <p className="text-sm text-rose-700 mt-3">
+            {isAr ? `حدث خطأ: ${resumeError}` : `Error: ${resumeError}`}
+          </p>
+        )}
       </section>
+
+      {/* Cancel modal */}
+      {cancelModalOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="cancel-modal-title"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setCancelModalOpen(false);
+          }}
+        >
+          <div
+            className="bg-white rounded-2xl max-w-md w-full p-6 md:p-8 shadow-2xl"
+            dir={dir}
+          >
+            <h2
+              id="cancel-modal-title"
+              className="text-xl font-bold mb-3 text-[var(--text-primary)]"
+              style={{ fontFamily: headingFont }}
+            >
+              {isAr ? 'تأكيد إلغاء العضويّة' : 'Cancel membership?'}
+            </h2>
+            <p className="text-sm text-[var(--color-neutral-700)] leading-relaxed mb-4">
+              {isAr
+                ? `سيستمر وصولك حتى ${formatDate(data.current_period_end, 'ar')}. يمكنك استئناف العضويّة قبل ذلك التاريخ بضغطة واحدة، دون أيّ رسوم إضافيّة.`
+                : `Your access continues until ${formatDate(data.current_period_end, 'en')}. You can resume your membership before that date in one click, with no extra charge.`}
+            </p>
+            <label className="block text-sm font-medium text-[var(--text-primary)] mb-1">
+              {isAr ? 'سبب الإلغاء (اختياري):' : 'Reason for leaving (optional):'}
+            </label>
+            <textarea
+              value={cancelReason}
+              onChange={(e) => setCancelReason(e.target.value.slice(0, 280))}
+              maxLength={280}
+              rows={3}
+              placeholder={isAr ? 'يساعدنا فهم سببك على التحسّن.' : 'Knowing why helps us improve.'}
+              className="w-full rounded-lg border border-[var(--color-neutral-200)] px-3 py-2 text-sm focus:border-[var(--color-primary)] focus:outline-none mb-4"
+            />
+            {cancelError && (
+              <p className="text-sm text-rose-700 mb-3">
+                {isAr ? `حدث خطأ: ${cancelError}` : `Error: ${cancelError}`}
+              </p>
+            )}
+            <div className="flex flex-wrap gap-3 justify-end">
+              <button
+                type="button"
+                onClick={() => setCancelModalOpen(false)}
+                disabled={cancelBusy}
+                className="rounded-xl border border-[var(--color-neutral-200)] bg-white px-4 py-2 text-sm font-semibold text-[var(--color-neutral-700)] hover:border-[var(--color-neutral-400)] min-h-[44px]"
+              >
+                {isAr ? 'لا، أعدني' : 'Keep my membership'}
+              </button>
+              <button
+                type="button"
+                data-testid="cancel-membership-confirm"
+                onClick={onConfirmCancel}
+                disabled={cancelBusy}
+                className="rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-700 disabled:opacity-50 min-h-[44px]"
+              >
+                {cancelBusy
+                  ? (isAr ? 'جارٍ الإلغاء…' : 'Cancelling…')
+                  : (isAr ? 'تأكيد الإلغاء' : 'Confirm cancellation')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 2. Auto-coupon (Paid-1 only) */}
       {data.auto_coupon && (

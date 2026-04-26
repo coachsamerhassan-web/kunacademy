@@ -103,3 +103,5 @@ export * from './content_edits';
 // Wave F.5 — Discount Code Infrastructure (migration 0060)
 export * from './coupons';
 export * from './coupon_redemptions';
+// Wave F.6 — Membership Lifecycle (annual billing + dunning + grace + retention) (migration 0062)
+export * from './membership_lifecycle_events';

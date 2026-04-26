@@ -310,6 +310,20 @@ export interface Program extends AuditFields, TheaterPricing {
   long_description_ar?: ProgramLongDescription;
   /** Structured long-form landing-page content (EN). Mirrors long_description_ar. */
   long_description_en?: ProgramLongDescription;
+
+  // ── Wave F.1 / F.6 — Membership Platform ───────────────────────────────
+  /** When TRUE, members on Paid-1+ tiers receive 10% off this program at checkout.
+   *  Source of truth: PROGRAM-CANON v3.1 (GPS / Ihya / Wisal / Seeds = TRUE;
+   *  STFC + entrepreneurs-6hr = FALSE per F-W4).
+   */
+  member_discount_eligible?: boolean;
+  /** Membership tier required to access this program's body content.
+   *  NULL → public (one-time purchase / open). 'free' → any signed-in user.
+   *  'paid_1' → Paid-1+ entitlement check via hasFeature(). Wave F.6 wraps
+   *  the program detail page server-side: if non-null, body content is
+   *  replaced with <Paywall /> when the user lacks the matching feature.
+   */
+  membership_tier_required?: 'free' | 'paid_1' | null;
 }
 
 /** Structured long-form landing-page content per-locale. Authored by Hakima,

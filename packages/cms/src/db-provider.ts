@@ -545,6 +545,9 @@ export class DbContentProvider implements ContentProvider {
     // Canon W4 (migration 0051)
     long_description_ar?: unknown;
     long_description_en?: unknown;
+    // Wave F.1 — Membership Platform (migration 0055)
+    member_discount_eligible?: boolean | null;
+    membership_tier_required?: string | null;
   }): Program {
     const num = (v: string | number | null | undefined): number => {
       if (v === null || v === undefined || v === '') return 0;
@@ -693,6 +696,14 @@ export class DbContentProvider implements ContentProvider {
         } catch {
           return undefined;
         }
+      })(),
+      // ── Wave F.1 / F.6 — Membership Platform (migration 0055) ─────────────
+      member_discount_eligible: r.member_discount_eligible ?? undefined,
+      membership_tier_required: ((): 'free' | 'paid_1' | null | undefined => {
+        const v = r.membership_tier_required;
+        if (v === 'free' || v === 'paid_1') return v;
+        if (v === null) return null;
+        return undefined;
       })(),
     };
   }

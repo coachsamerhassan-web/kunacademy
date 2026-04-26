@@ -15,8 +15,18 @@ import { getPricingRegion, getGeoPrice, shouldShowPrice, formatGeoPrice } from '
 import { courseJsonLd } from '@kunacademy/ui/structured-data';
 import { RichContent, hasRichContent } from '@kunacademy/ui/rich-editor';
 import { JsonLd } from '@/components/seo/JsonLd';
+// Wave F.6 — server-side membership gating
+import Paywall from '@/components/membership/Paywall';
+import { hasFeature } from '@kunacademy/db';
+import { getAuthUser } from '@kunacademy/auth/server';
 
-export const revalidate = 300;
+// Wave F.6 — When membership-gated programs render, body content depends on
+// the requesting user's tier. We can't cache the rendered HTML across users.
+// `dynamic = 'force-dynamic'` opts out of static caching for this route. Non-
+// gated programs still benefit from CDN caching at the upstream edge, and
+// cms.getProgram() has its own DB-level caching via the package, so the perf
+// impact is bounded to skipping ISR.
+export const dynamic = 'force-dynamic';
 
 interface Props {
   params: Promise<{ locale: string; slug: string }>;
@@ -233,6 +243,47 @@ export default async function ProgramDetailPage({ params }: Props) {
   // ── Prerequisites ─────────────────────────────────────────────────────────
   const prerequisites = program.prerequisite_codes ?? [];
 
+  // ── Wave F.6 — Membership gating ─────────────────────────────────────────
+  // When the program has membership_tier_required set, body content is
+  // replaced with <Paywall /> for users who don't hold the matching feature.
+  // Header (hero + price + CTA + trust bar) ALWAYS renders so non-members
+  // see the marketing teaser and can convert. Per spec d-canon-phase2-f5:
+  // strict NO Free preview of Paid content (body is fully replaced, not
+  // partial-rendered with a "read more" gate).
+  let bodyAccessGranted = true;
+  let bodyAccessReason: string | undefined = undefined;
+  let bodyAccessTierSlug: string | null = null;
+  let bodyAccessRequiredFeature: string | null = null;
+  if (program.membership_tier_required && program.membership_tier_required !== 'free') {
+    // Map the slug → feature_key. Mirrors /api/programs/[slug]/access SLUG_TO_FEATURE
+    // (kept inline here so server render doesn't hit the API).
+    const slugFeature: Record<string, string> = {
+      'self-paced-body-foundations': 'body_foundations_full',
+      'self-paced-compass-work': 'compass_work_full',
+      'somatic-thinking-intro': 'somatic_thinking_intro_full',
+    };
+    bodyAccessRequiredFeature = slugFeature[slug] ?? null;
+    if (!bodyAccessRequiredFeature) {
+      // Defensive: gated program with no feature mapping = config error.
+      // Fall closed (deny) so unmapped programs never leak content.
+      bodyAccessGranted = false;
+      bodyAccessReason = 'feature_mapping_missing';
+    } else {
+      const user = await getAuthUser();
+      if (!user) {
+        bodyAccessGranted = false;
+        bodyAccessReason = 'auth_required';
+      } else {
+        const access = await hasFeature(user.id, bodyAccessRequiredFeature);
+        bodyAccessGranted = access.granted;
+        if (!access.granted) {
+          bodyAccessReason = access.reason;
+          bodyAccessTierSlug = access.current_tier_slug ?? null;
+        }
+      }
+    }
+  }
+
   return (
     <main dir={dir}>
       {/* ── Hero ──────────────────────────────────────────────────────────── */}
@@ -435,8 +486,17 @@ export default async function ProgramDetailPage({ params }: Props) {
       <Section variant="white">
         <div className="mx-auto max-w-3xl">
 
-          {/* Google Doc rich content OR structured fallback */}
-          {program.content_doc_id ? (
+          {/* Wave F.6 — paywall for members-gated programs.
+              When membership_tier_required is set + user lacks feature, replace
+              the entire body with <Paywall />. Hero + CTA above remains visible. */}
+          {!bodyAccessGranted ? (
+            <Paywall
+              locale={locale as 'ar' | 'en'}
+              requiredFeature={bodyAccessRequiredFeature ?? 'membership_required'}
+              currentTier={bodyAccessTierSlug}
+              returnTo={`/${locale}/programs/${slug}`}
+            />
+          ) : program.content_doc_id ? (
             <AsyncDocRenderer
               docId={program.content_doc_id}
               slug={slug}

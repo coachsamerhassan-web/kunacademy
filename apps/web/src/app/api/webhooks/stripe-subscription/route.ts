@@ -27,6 +27,12 @@ import type Stripe from 'stripe';
 import { withAdminContext } from '@kunacademy/db';
 import { verifyWebhookSignature } from '@kunacademy/payments';
 import {
+  sendMembershipDunningPaymentFailedEmail,
+  sendMembershipDunningBackInGoodStandingEmail,
+  sendMembershipDunningPaymentFailedFinalEmail,
+  sendTelegramAlert,
+} from '@kunacademy/email';
+import {
   upsertMemberAutoCouponForMembership,
   deactivateMemberAutoCouponForMembership,
 } from '@/lib/membership/memberAutoCoupon';
@@ -44,6 +50,39 @@ type MembershipRow = {
   stripe_subscription_id: string | null;
   ended_at: string | null;
 };
+
+type MembershipWithProfile = MembershipRow & {
+  email: string | null;
+  full_name_ar: string | null;
+  full_name_en: string | null;
+  preferred_language: string | null;
+  current_period_end: string | null;
+};
+
+async function findMembershipWithProfileBySubscriptionId(
+  adminDb: any,
+  stripeSubscriptionId: string,
+): Promise<MembershipWithProfile | null> {
+  const { rows } = await adminDb.execute(sql`
+    SELECT m.id, m.user_id, m.tier_id, m.status, m.stripe_customer_id,
+           m.stripe_subscription_id, m.ended_at, m.current_period_end,
+           p.email, p.full_name_ar, p.full_name_en, p.preferred_language
+    FROM memberships m
+    LEFT JOIN profiles p ON p.id = m.user_id
+    WHERE m.stripe_subscription_id = ${stripeSubscriptionId}
+    LIMIT 1
+  `);
+  return (rows[0] as MembershipWithProfile) || null;
+}
+
+function pickRecipientName(row: MembershipWithProfile, lang: 'ar' | 'en'): string | null {
+  if (lang === 'en') return row.full_name_en || row.full_name_ar || null;
+  return row.full_name_ar || row.full_name_en || null;
+}
+
+function pickLang(row: MembershipWithProfile): 'ar' | 'en' {
+  return row.preferred_language === 'en' ? 'en' : 'ar';
+}
 
 type TierRow = {
   id: string;
@@ -377,10 +416,12 @@ async function handleSubscriptionDeleted(
   event: Stripe.Event,
 ): Promise<{ handled: boolean; note?: string }> {
   const subscription = event.data.object as Stripe.Subscription;
-  const membership = await findMembershipBySubscriptionId(adminDb, subscription.id);
+  const membership = await findMembershipWithProfileBySubscriptionId(adminDb, subscription.id);
   if (!membership) {
     return { handled: false, note: 'membership_not_found' };
   }
+
+  const wasPastDue = membership.status === 'past_due';
 
   // Already cancelled? idempotency short-circuit to preserve original cancelled_at stamp
   // for audit trail (per DeepSeek low-#4).
@@ -437,6 +478,60 @@ async function handleSubscriptionDeleted(
        WHERE id = ${membership.id}
     `);
   }
+
+  // F.6: dunning-final email when subscription is deleted from past_due
+  // (Stripe smart-retry exhausted). NOT sent for clean cancel-at-period-end
+  // delete events (those go through grace-sweep → cancel_effective email).
+  if (wasPastDue) {
+    const sendKey = `${membership.id}|${subscription.id}|dunning_payment_failed_final`;
+    const inserted = await adminDb.execute(sql`
+      INSERT INTO membership_lifecycle_events (
+        membership_id, user_id, event_type, send_key, metadata
+      ) VALUES (
+        ${membership.id}::uuid,
+        ${membership.user_id}::uuid,
+        'dunning_payment_failed_final',
+        ${sendKey},
+        ${JSON.stringify({
+          stripe_subscription_id: subscription.id,
+          cancelled_at: cancelledAt,
+        })}::jsonb
+      )
+      ON CONFLICT (event_type, send_key) DO NOTHING
+      RETURNING id
+    `);
+    const firstSeen = inserted.rows.length > 0;
+
+    if (firstSeen && membership.email) {
+      const lang = pickLang(membership);
+      const baseUrl = process.env.PUBLIC_APP_URL || 'https://kunacademy.com';
+      try {
+        await sendMembershipDunningPaymentFailedFinalEmail({
+          to: membership.email,
+          recipient_name: pickRecipientName(membership, lang),
+          resubscribe_url: `${baseUrl}/${lang}/membership`,
+          preferred_language: lang,
+        });
+      } catch (e: any) {
+        console.error(
+          `[stripe-subscription] dunning-final email failed (membership=${membership.id}):`,
+          e?.message || e,
+        );
+      }
+      // Telegram alert too — Samer should know about churn from dunning.
+      try {
+        await sendTelegramAlert({
+          to: 'samer',
+          message:
+            `<b>[F.6 dunning final]</b> ${membership.email || '(no email)'} — ` +
+            `payment retry exhausted; membership ended.`,
+        });
+      } catch {
+        // Non-fatal.
+      }
+    }
+  }
+
   return { handled: true };
 }
 
@@ -461,10 +556,12 @@ async function handleInvoicePaymentSucceeded(
     return { handled: false, note: 'non_subscription_invoice_ignored' };
   }
 
-  const membership = await findMembershipBySubscriptionId(adminDb, subscriptionId);
+  const membership = await findMembershipWithProfileBySubscriptionId(adminDb, subscriptionId);
   if (!membership) {
     return { handled: false, note: 'membership_not_found' };
   }
+
+  const wasPastDue = membership.status === 'past_due';
 
   // Pull period from the invoice's line item (for renewals, line period is the new period)
   const line = invoice.lines?.data?.[0];
@@ -490,15 +587,64 @@ async function handleInvoicePaymentSucceeded(
     `);
   }
 
+  // F.6: dunning recovery email — only when transitioning past_due → active.
+  if (wasPastDue) {
+    const invoiceId = invoice.id || event.id;
+    const sendKey = `${membership.id}|${invoiceId}|dunning_back_in_good_standing`;
+    const inserted = await adminDb.execute(sql`
+      INSERT INTO membership_lifecycle_events (
+        membership_id, user_id, event_type, send_key, metadata
+      ) VALUES (
+        ${membership.id}::uuid,
+        ${membership.user_id}::uuid,
+        'dunning_back_in_good_standing',
+        ${sendKey},
+        ${JSON.stringify({
+          invoice_id: invoiceId,
+          amount_paid: invoice.amount_paid ?? null,
+          currency: invoice.currency ?? null,
+        })}::jsonb
+      )
+      ON CONFLICT (event_type, send_key) DO NOTHING
+      RETURNING id
+    `);
+    const firstSeen = inserted.rows.length > 0;
+
+    if (firstSeen && membership.email) {
+      const lang = pickLang(membership);
+      const baseUrl = process.env.PUBLIC_APP_URL || 'https://kunacademy.com';
+      try {
+        await sendMembershipDunningBackInGoodStandingEmail({
+          to: membership.email,
+          recipient_name: pickRecipientName(membership, lang),
+          next_renewal: periodEnd ?? membership.current_period_end,
+          dashboard_url: `${baseUrl}/${lang}/dashboard/membership`,
+          preferred_language: lang,
+        });
+      } catch (e: any) {
+        console.error(
+          `[stripe-subscription] back-in-good-standing email failed (membership=${membership.id}):`,
+          e?.message || e,
+        );
+      }
+    }
+  }
+
   // TODO Wave F.5: createZohoBooksInvoice() per renewal
-  // TODO Wave F.5: send bilingual receipt email via @kunacademy/email
+  // (Receipt email per renewal is handled by Stripe's own customer-facing
+  //  email — we don't duplicate.)
   return { handled: true };
 }
 
 /**
- * invoice.payment_failed:
- * Stripe's default dunning (4 retries) handles collection. We just flip status → past_due
- * so gating can soft-degrade if Samer wants. No custom dunning at launch per spec.
+ * invoice.payment_failed (Wave F.6):
+ *
+ * Stripe smart-retry continues attempting the card; we flip status → past_due,
+ * send a bilingual dunning email asking the member to update payment, and
+ * Telegram-alert Samer for visibility on revenue at risk.
+ *
+ * Subsequent payment_failed events for the same invoice (Stripe retries) are
+ * de-duped at the lifecycle layer (send_key = membership_id|invoice_id|event).
  */
 async function handleInvoicePaymentFailed(
   adminDb: any,
@@ -513,7 +659,7 @@ async function handleInvoicePaymentFailed(
     return { handled: false, note: 'non_subscription_invoice_ignored' };
   }
 
-  const membership = await findMembershipBySubscriptionId(adminDb, subscriptionId);
+  const membership = await findMembershipWithProfileBySubscriptionId(adminDb, subscriptionId);
   if (!membership) {
     return { handled: false, note: 'membership_not_found' };
   }
@@ -525,7 +671,70 @@ async function handleInvoicePaymentFailed(
      WHERE id = ${membership.id}
   `);
 
-  // TODO Wave F.5: bilingual "payment failed" email + Samer Telegram alert
+  // Lifecycle event with idempotency on (event_type, send_key).
+  const invoiceId = invoice.id || event.id;
+  const sendKey = `${membership.id}|${invoiceId}|dunning_payment_failed`;
+  const inserted = await adminDb.execute(sql`
+    INSERT INTO membership_lifecycle_events (
+      membership_id, user_id, event_type, send_key, metadata
+    ) VALUES (
+      ${membership.id}::uuid,
+      ${membership.user_id}::uuid,
+      'dunning_payment_failed',
+      ${sendKey},
+      ${JSON.stringify({
+        invoice_id: invoiceId,
+        amount_due: invoice.amount_due ?? null,
+        currency: invoice.currency ?? null,
+        attempt_count: invoice.attempt_count ?? null,
+        next_payment_attempt: invoice.next_payment_attempt ?? null,
+      })}::jsonb
+    )
+    ON CONFLICT (event_type, send_key) DO NOTHING
+    RETURNING id
+  `);
+  const isFirstSeen = inserted.rows.length > 0;
+
+  if (!isFirstSeen) {
+    // Already alerted on this invoice — don't double-send the email or alert.
+    return { handled: true, note: 'duplicate_invoice_attempt' };
+  }
+
+  // Bilingual email — non-blocking on failure.
+  if (membership.email) {
+    const lang = pickLang(membership);
+    const baseUrl = process.env.PUBLIC_APP_URL || 'https://kunacademy.com';
+    try {
+      await sendMembershipDunningPaymentFailedEmail({
+        to: membership.email,
+        recipient_name: pickRecipientName(membership, lang),
+        period_end: membership.current_period_end,
+        update_payment_url: `${baseUrl}/${lang}/dashboard/membership`,
+        preferred_language: lang,
+      });
+    } catch (e: any) {
+      console.error(
+        `[stripe-subscription] dunning email send failed (membership=${membership.id}):`,
+        e?.message || e,
+      );
+    }
+  }
+
+  // Telegram alert — Samer.
+  try {
+    const periodEndFmt = membership.current_period_end
+      ? new Date(membership.current_period_end).toISOString().slice(0, 10)
+      : 'unknown';
+    await sendTelegramAlert({
+      to: 'samer',
+      message:
+        `<b>[F.6 dunning]</b> ${membership.email || '(no email)'} card declined; ` +
+        `Stripe will retry; period ends ${periodEndFmt}`,
+    });
+  } catch {
+    // Non-fatal.
+  }
+
   return { handled: true };
 }
 
