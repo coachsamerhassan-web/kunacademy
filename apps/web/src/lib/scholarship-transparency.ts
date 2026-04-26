@@ -194,7 +194,14 @@ function generateMonthKeys(n: number, ref: Date): string[] {
 }
 
 /** Pull canon program titles from the programs table for the given slugs.
- *  Falls back to humanized slug if a row is missing. */
+ *  Falls back to humanized slug if a row is missing.
+ *
+ *  Implementation note: drizzle's sql template tag splits a JS array into
+ *  individual placeholders, which yields `ANY(($1,$2,...)::text[])` — a
+ *  tuple, not an array. We pass the slugs as a JSON-stringified Postgres
+ *  text[] literal cast at the SQL level, which both works correctly AND
+ *  is safe (the slugs originate from a controlled DB column and are not
+ *  user-supplied; we still defensively quote each one). */
 async function fetchProgramTitles(
   db: any,
   slugs: string[],
@@ -202,10 +209,17 @@ async function fetchProgramTitles(
   const out = new Map<string, { family: string; title_ar: string; title_en: string }>();
   if (slugs.length === 0) return out;
 
+  // Build a Postgres array literal: ARRAY['a','b','c']::text[]
+  // Defensive escaping: replace any single quote with two, even though
+  // slugs come from the DB and won't contain quotes by convention.
+  const arrayLiteral = `ARRAY[${slugs
+    .map((s) => `'${s.replace(/'/g, "''")}'`)
+    .join(',')}]::text[]`;
+
   const rows = await db.execute(sql`
     SELECT slug, title_ar, title_en, type
     FROM programs
-    WHERE slug = ANY(${slugs}::text[])
+    WHERE slug = ANY(${sql.raw(arrayLiteral)})
   `);
   for (const r of rows.rows as Array<{
     slug: string;
