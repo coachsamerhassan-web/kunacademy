@@ -164,18 +164,24 @@ CREATE POLICY sch_app_audit_events_server_insert
 -- public form. Per spec §10 dispatch §2: "idempotent on retries via
 -- (applicant_email, created_at::date) UNIQUE for same-day submissions".
 --
--- Implementation note: we partial-index on (lower(applicant_email), date)
+-- Implementation note: we partial-index on (lower(applicant_email), day-bucket)
 -- where source='public_form' so:
 --   - Public form retries collapse to a single row (the second INSERT throws
 --     unique_violation; the API layer catches and returns 200 with the
 --     existing row's confirmation token).
 --   - Admin manual entries can write multiple rows for the same email/day
 --     (cheque + bank transfer + legacy import).
+--
+-- IMPORTANT: Postgres rejects index expressions that aren't IMMUTABLE.
+-- `created_at::date` is STABLE (depends on session TimeZone), not IMMUTABLE.
+-- We use `date_trunc('day', created_at AT TIME ZONE 'UTC')` which IS immutable
+-- for a fixed timezone literal — this gives us a UTC day-bucket that is
+-- deterministic and indexable.
 
 CREATE UNIQUE INDEX IF NOT EXISTS scholarship_apps_same_day_public_uidx
   ON scholarship_applications (
     lower(applicant_email),
-    (created_at::date)
+    (date_trunc('day', created_at AT TIME ZONE 'UTC'))
   )
   WHERE (metadata->>'source') = 'public_form';
 
