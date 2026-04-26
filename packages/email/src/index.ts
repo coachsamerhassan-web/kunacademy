@@ -115,3 +115,23 @@ export type { MembershipRenewalReminderParams, RenewalCadence } from './template
 
 export { sendMembershipWinback30DayEmail } from './templates/membership/winback-30-day';
 export type { MembershipWinback30DayParams } from './templates/membership/winback-30-day';
+
+// ── Wave E.5 — Scholarship Application Emails ─────────────────────────────
+// Application confirmation / admin notification / approved / declined / waitlisted.
+// All bilingual (AR + EN), brand-aligned, IP-clean (no methodology references),
+// dignity-framed (no banned words per spec §3.2).
+
+export { sendScholarshipApplicationConfirmationEmail } from './templates/scholarship/application-confirmation';
+export type { ScholarshipApplicationConfirmationParams } from './templates/scholarship/application-confirmation';
+
+export { sendScholarshipAdminNotificationEmail } from './templates/scholarship/admin-notification';
+export type { ScholarshipAdminNotificationParams } from './templates/scholarship/admin-notification';
+
+export { sendScholarshipApplicationApprovedEmail } from './templates/scholarship/application-approved';
+export type { ScholarshipApplicationApprovedParams } from './templates/scholarship/application-approved';
+
+export { sendScholarshipApplicationDeclinedEmail } from './templates/scholarship/application-declined';
+export type { ScholarshipApplicationDeclinedParams } from './templates/scholarship/application-declined';
+
+export { sendScholarshipApplicationWaitlistedEmail } from './templates/scholarship/application-waitlisted';
+export type { ScholarshipApplicationWaitlistedParams } from './templates/scholarship/application-waitlisted';

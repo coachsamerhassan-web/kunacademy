@@ -56,19 +56,27 @@ const SCAN_PATHS: string[] = [
   join(WEB_ROOT, 'lib', 'zoho-projects.ts'),
   join(WEB_ROOT, 'lib', 'donation-webhook-handlers.ts'),
   join(WEB_ROOT, 'lib', 'scholarship-transparency.ts'),
+  join(WEB_ROOT, 'lib', 'scholarship-application.ts'),
 
   // Donation/scholarship API routes (E.3+)
   join(WEB_ROOT, 'app', 'api', 'donations'),
   join(WEB_ROOT, 'app', 'api', 'scholarships'),
+  // Admin scholarship API routes (E.5+)
+  join(WEB_ROOT, 'app', 'api', 'admin', 'scholarships'),
 
   // Donation/scholarship pages (E.3+)
   join(WEB_ROOT, 'app', '[locale]', 'donate'),
   join(WEB_ROOT, 'app', '[locale]', 'scholarships'),
+  // Admin scholarship pages (E.5+)
+  join(WEB_ROOT, 'app', '[locale]', 'admin', 'scholarships'),
 
   // Donation/scholarship components (E.3+)
   join(WEB_ROOT, 'components', 'DonationForm.tsx'),
   join(WEB_ROOT, 'components', 'ScholarshipsBoard.tsx'),
   join(WEB_ROOT, 'components', 'ScholarshipApplicationForm.tsx'),
+
+  // E.5 — scholarship email templates
+  join(REPO_ROOT, 'packages', 'email', 'src', 'templates', 'scholarship'),
 ];
 
 // i18n JSON scan — only keys under the scholarship/donate prefixes.
