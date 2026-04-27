@@ -201,17 +201,27 @@ export async function POST(request: NextRequest, context: RouteContext) {
     if (typeof body.title_en === 'string') scalars.title_en = body.title_en;
   }
 
-  // Field-level writability for the field set we actually write at create
-  const candidateFields = [
-    'composition_json', 'hero_json', 'seo_meta_json', 'page_type', 'title_ar', 'title_en', 'kind',
+  // Field-level writability check on CREATE
+  //
+  // Creation seeds (page_type, title_ar/_en, kind) are required-at-INSERT
+  // identifiers for their respective entities. They are NOT subject to the
+  // general field-write check — that check protects the editing surface
+  // (PATCH /[id]) from agents mutating structural identifiers on existing
+  // rows. At creation time, the seeds ARE the structural identifiers
+  // being established. Subsequent edits to these fields are still gated
+  // by isFieldWritable.
+  //
+  // Body-shaped fields (composition_json, hero_json, seo_meta_json) DO
+  // pass through the field-writable check, because they're the same fields
+  // the editor uses for ongoing content edits and per-entity scope rules
+  // apply (e.g. Shahira can't write hero_json on static_pages).
+  const editableBodyFields = [
+    'composition_json', 'hero_json', 'seo_meta_json',
   ];
-  for (const f of candidateFields) {
-    const provided = (entity === 'landing_pages' && f === 'page_type') ? body.page_type
-      : (entity === 'blog_posts' && (f === 'title_ar' || f === 'title_en')) ? (body as any)[f]
-      : (f === 'composition_json') ? composition_json
+  for (const f of editableBodyFields) {
+    const provided = (f === 'composition_json') ? composition_json
       : (f === 'hero_json') ? hero_json
       : (f === 'seo_meta_json') ? seo_meta_json
-      : (f === 'kind') ? kind
       : undefined;
     if (provided === undefined) continue;
     const fw = isFieldWritable(agent.agentName, entity, f);
