@@ -101,18 +101,17 @@ export async function POST(
 
   // The route param is the APPLICATION id. We need the SCHOLARSHIP id to
   // disburse — look it up from the application.
-  let scholarshipId: string | null = null;
-  let appSnapshot:
-    | {
-        applicant_name: string;
-        applicant_email: string;
-        preferred_language: 'ar' | 'en';
-        program_slug: string;
-        scholarship_tier: 'partial' | 'full';
-      }
-    | null = null;
+  interface AppSnapshot {
+    scholarship_id: string;
+    applicant_name: string;
+    applicant_email: string;
+    preferred_language: 'ar' | 'en';
+    program_slug: string;
+    scholarship_tier: 'partial' | 'full';
+  }
+  let snapshotResult: AppSnapshot | null = null;
   try {
-    await withAdminContext(async (db) => {
+    snapshotResult = await withAdminContext(async (db): Promise<AppSnapshot | null> => {
       const r = await db.execute(sql`
         SELECT
           s.id            AS scholarship_id,
@@ -125,35 +124,19 @@ export async function POST(
         INNER JOIN scholarships s ON s.application_id = a.id
         WHERE a.id = ${id}::uuid
       `);
-      const row = r.rows[0] as
-        | {
-            scholarship_id: string;
-            applicant_name: string;
-            applicant_email: string;
-            preferred_language: 'ar' | 'en';
-            program_slug: string;
-            scholarship_tier: 'partial' | 'full';
-          }
-        | undefined;
-      if (row) {
-        scholarshipId = row.scholarship_id;
-        appSnapshot = {
-          applicant_name: row.applicant_name,
-          applicant_email: row.applicant_email,
-          preferred_language: row.preferred_language,
-          program_slug: row.program_slug,
-          scholarship_tier: row.scholarship_tier,
-        };
-      }
+      const row = r.rows[0] as AppSnapshot | undefined;
+      return row ?? null;
     });
   } catch (e) {
     console.error('[admin-scholarships-disburse] snapshot failed:', e);
     return NextResponse.json({ error: 'read-failed' }, { status: 500 });
   }
 
-  if (!scholarshipId || !appSnapshot) {
+  if (!snapshotResult) {
     return NextResponse.json({ error: 'scholarship-not-found' }, { status: 404 });
   }
+  const appSnapshot: AppSnapshot = snapshotResult;
+  const scholarshipId = appSnapshot.scholarship_id;
 
   // Apply disbursement
   let result;
@@ -181,20 +164,21 @@ export async function POST(
   const expiresAt = result.expires_at;
 
   // Fire disbursed email (fire-and-forget)
-  void (async (snapshot: NonNullable<typeof appSnapshot>) => {
+  const snap = appSnapshot;
+  void (async () => {
     try {
       const programs = await listEligibleScholarshipPrograms();
-      const found = programs.find((p) => p.slug === snapshot.program_slug);
+      const found = programs.find((p) => p.slug === snap.program_slug);
       const program_title =
         found
-          ? snapshot.preferred_language === 'ar' ? found.title_ar : found.title_en
-          : snapshot.program_slug;
+          ? snap.preferred_language === 'ar' ? found.title_ar : found.title_en
+          : snap.program_slug;
       await sendScholarshipApplicationDisbursedEmail({
-        to: snapshot.applicant_email,
-        recipient_name: snapshot.applicant_name,
+        to: snap.applicant_email,
+        recipient_name: snap.applicant_name,
         program_title,
-        scholarship_tier: snapshot.scholarship_tier,
-        preferred_language: snapshot.preferred_language,
+        scholarship_tier: snap.scholarship_tier,
+        preferred_language: snap.preferred_language,
         enrollment_url: enrollmentUrl,
         expires_at: expiresAt,
         plaintext_token: plaintext,
@@ -202,7 +186,7 @@ export async function POST(
     } catch (e) {
       console.error('[admin-scholarships-disburse] disbursed email failed:', e);
     }
-  })(appSnapshot);
+  })();
 
   // Response intentionally omits plaintext token — only emails carry it.
   return NextResponse.json({
