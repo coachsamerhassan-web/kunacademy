@@ -38,3 +38,8 @@ credentials/
 
 # Root-level public/ is unused in monorepo — Next.js serves from apps/web/public/
 /public/
+
+# User-uploaded media — served by nginx alias /uploads/ → /var/www/kunacademy-git/uploads/
+# Lives at the repo root on the VPS so it survives `git pull` (untracked → not clobbered).
+# Never commit user uploads.
+/uploads/
