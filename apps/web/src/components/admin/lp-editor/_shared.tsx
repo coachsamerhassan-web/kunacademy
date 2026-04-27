@@ -56,11 +56,26 @@ export const SECTION_TYPES_ORDERED: LpSectionType[] = [
   'custom',
 ];
 
-/** Section types that have a per-type form shipped in this build. As more
- *  forms land in Session 2, register them here so the editor switches from
- *  "Edit in JSON fallback" to the dedicated form. */
+/** Section types that have a per-type form shipped in this build.
+ *  Session 2 (2026-04-27): all 15 types now have dedicated forms (some
+ *  multi-mapped — see `dispatchFormType` semantics in section-editor-shell).
+ */
 export const FORMS_AVAILABLE: ReadonlySet<LpSectionType> = new Set<LpSectionType>([
-  'mirror', // Session 1 canary
+  'mirror',
+  'reframe',
+  'description',
+  'benefits',
+  'carry_out',
+  'who_for',
+  'who_not_for',
+  'format',
+  'price',
+  'group_alumni',
+  'credibility',
+  'objections',
+  'faq',
+  'cta',
+  'custom',
 ]);
 
 /** Per-form contract. Each `forms/{type}-form.tsx` exports a component
@@ -120,7 +135,10 @@ export function Modal({
   if (!open) return null;
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      // 768px tablet collapse: drop outer padding so the modal fills the
+      // viewport edge-to-edge (drawer feel). On md+ we restore the inset
+      // padding and centered card. (Wave 14b Session 2 — spec §6.3.)
+      className="fixed inset-0 z-50 flex items-stretch md:items-center justify-center bg-black/50 p-0 md:p-4"
       onClick={(e) => {
         if (dismissOnBackdrop && e.target === e.currentTarget) onClose();
       }}
@@ -129,12 +147,14 @@ export function Modal({
       aria-labelledby="lp-editor-modal-title"
     >
       <div
-        className={`w-full ${maxWidthClass} max-h-[90vh] flex flex-col rounded-2xl bg-white shadow-2xl border border-[var(--color-neutral-200)]`}
+        // On <md viewports: full-bleed, no rounded outer corners, full height.
+        // On md+: bordered card with the configured maxWidth, max 90vh.
+        className={`w-full ${maxWidthClass} max-h-screen md:max-h-[90vh] h-full md:h-auto flex flex-col rounded-none md:rounded-2xl bg-white shadow-2xl md:border md:border-[var(--color-neutral-200)]`}
       >
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--color-neutral-100)]">
+        <div className="flex items-center justify-between px-4 md:px-6 py-3 md:py-4 border-b border-[var(--color-neutral-100)]">
           <h2
             id="lp-editor-modal-title"
-            className="text-lg font-semibold text-[var(--text-primary)]"
+            className="text-base md:text-lg font-semibold text-[var(--text-primary)] truncate pe-3"
           >
             {title}
           </h2>
@@ -142,14 +162,14 @@ export function Modal({
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="rounded-lg p-2 hover:bg-[var(--color-neutral-100)] transition-colors text-[var(--color-neutral-500)] hover:text-[var(--color-neutral-700)] min-w-11 min-h-11 flex items-center justify-center"
+            className="shrink-0 rounded-lg p-2 hover:bg-[var(--color-neutral-100)] transition-colors text-[var(--color-neutral-500)] hover:text-[var(--color-neutral-700)] min-w-11 min-h-11 flex items-center justify-center"
           >
             <span aria-hidden>×</span>
           </button>
         </div>
-        <div className="flex-1 overflow-y-auto px-6 py-5">{children}</div>
+        <div className="flex-1 overflow-y-auto px-4 md:px-6 py-4 md:py-5">{children}</div>
         {footer && (
-          <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-[var(--color-neutral-100)]">
+          <div className="flex items-center justify-end gap-2 md:gap-3 px-4 md:px-6 py-3 md:py-4 border-t border-[var(--color-neutral-100)] flex-wrap">
             {footer}
           </div>
         )}

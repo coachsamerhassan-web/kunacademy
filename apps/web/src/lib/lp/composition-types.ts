@@ -63,6 +63,16 @@ export interface LpHero {
   hook_en?: string;
   background_image_url?: string;
   background_overlay_color?: string;     // CSS color; default rgba(30,27,75,0.85)
+  /** Wave 14b Session 2: featured / OG image for the LP. Stored on hero for
+   *  consistency (no migration; JSONB key per spec Q2). Distinct from
+   *  `background_image_url` — the featured image is the canonical visual
+   *  representation of the LP (used by SEO/OG fallback, future thumbnails,
+   *  social cards). Renderers may consume this independently of background.
+   *  Alt text is required for a11y; bilingual fields stored at the same
+   *  level so author can localize. */
+  featured_image_url?: string;
+  featured_image_alt_ar?: string;
+  featured_image_alt_en?: string;
   cta_label_ar?: string;
   cta_label_en?: string;
   cta_anchor?: string;                   // '#lead-form' | '#payment' | external URL

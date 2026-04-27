@@ -15,10 +15,21 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import type { LpSection } from '@/lib/lp/composition-types';
 import { Modal, FORMS_AVAILABLE, SECTION_TYPE_LABELS } from './_shared';
 import { MirrorForm } from './forms/mirror-form';
+import { ReframeForm } from './forms/reframe-form';
+import { DescriptionForm } from './forms/description-form';
+import { BenefitsForm } from './forms/benefits-form';
+import { CarryOutForm } from './forms/carry_out-form';
+import { WhoForm } from './forms/who-form';
+import { FormatPriceForm } from './forms/format-price-form';
+import { GroupAlumniForm } from './forms/group_alumni-form';
+import { CredibilityForm } from './forms/credibility-form';
+import { ObjectionsFaqForm } from './forms/objections-faq-form';
+import { CtaForm } from './forms/cta-form';
+import { CustomForm } from './forms/custom-form';
 
 interface SectionEditorShellProps {
   open: boolean;
@@ -32,7 +43,21 @@ interface SectionEditorShellProps {
   locale: string;
 }
 
-export function SectionEditorShell({
+/** Public-facing wrapper. Splits the inner form into a separate component
+ *  keyed by `(open, sectionIndex)` so the inner draft state is reset
+ *  naturally on prop change (idiomatic React over a setState-in-effect).
+ *  Wave 14b Session 2: addresses `react-hooks/set-state-in-effect` lint
+ *  carried from Session 1 canary. */
+export function SectionEditorShell(props: SectionEditorShellProps) {
+  const { open, section, sectionIndex } = props;
+  if (!open || !section || sectionIndex === null) return null;
+  // The key on the inner component forces a remount whenever the modal
+  // opens against a different section. That's the React-idiomatic way to
+  // reset internal state without an effect.
+  return <SectionEditorShellInner key={`${sectionIndex}-${section.type}`} {...props} />;
+}
+
+function SectionEditorShellInner({
   open,
   section,
   sectionIndex,
@@ -43,11 +68,6 @@ export function SectionEditorShell({
 }: SectionEditorShellProps) {
   const isAr = locale === 'ar';
   const [draft, setDraft] = useState<LpSection | null>(section);
-
-  // When the modal opens with a fresh section, reset the draft.
-  useEffect(() => {
-    setDraft(section);
-  }, [section, open]);
 
   if (!open || !section || !draft || sectionIndex === null) return null;
 
@@ -120,10 +140,38 @@ function renderForm(
   setDraft: (next: LpSection) => void,
   locale: string,
 ) {
+  // Multi-mapped forms (Session 2): one component handles multiple types
+  //   - WhoForm           : who_for + who_not_for
+  //   - FormatPriceForm   : format + price
+  //   - ObjectionsFaqForm : objections + faq
   switch (draft.type) {
     case 'mirror':
       return <MirrorForm section={draft} onChange={setDraft} locale={locale} inModal />;
-    // Session 2 lands additional case branches here.
+    case 'reframe':
+      return <ReframeForm section={draft} onChange={setDraft} locale={locale} inModal />;
+    case 'description':
+      return <DescriptionForm section={draft} onChange={setDraft} locale={locale} inModal />;
+    case 'benefits':
+      return <BenefitsForm section={draft} onChange={setDraft} locale={locale} inModal />;
+    case 'carry_out':
+      return <CarryOutForm section={draft} onChange={setDraft} locale={locale} inModal />;
+    case 'who_for':
+    case 'who_not_for':
+      return <WhoForm section={draft} onChange={setDraft} locale={locale} inModal />;
+    case 'format':
+    case 'price':
+      return <FormatPriceForm section={draft} onChange={setDraft} locale={locale} inModal />;
+    case 'group_alumni':
+      return <GroupAlumniForm section={draft} onChange={setDraft} locale={locale} inModal />;
+    case 'credibility':
+      return <CredibilityForm section={draft} onChange={setDraft} locale={locale} inModal />;
+    case 'objections':
+    case 'faq':
+      return <ObjectionsFaqForm section={draft} onChange={setDraft} locale={locale} inModal />;
+    case 'cta':
+      return <CtaForm section={draft} onChange={setDraft} locale={locale} inModal />;
+    case 'custom':
+      return <CustomForm section={draft} onChange={setDraft} locale={locale} inModal />;
     default:
       return null;
   }

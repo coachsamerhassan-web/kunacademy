@@ -12,7 +12,7 @@
 
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import {
   DndContext,
   KeyboardSensor,

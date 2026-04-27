@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, type FormEvent } from 'react';
-import { SectionsTab } from '@/components/admin/lp-editor';
+import { SectionsTab, HeroForm } from '@/components/admin/lp-editor';
 import type { LpComposition } from '@/lib/lp/composition-types';
 
 export interface LpFormState {
@@ -33,12 +33,15 @@ export function LpForm({ locale, mode, initial }: LpFormProps) {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  // Wave 14b LP-ADMIN-UX: composition view tab toggle. 'sections' = the new
-  // per-section editor (drag-reorder + per-type forms); 'json' = the legacy
-  // raw-JSON textarea (escape hatch / fallback during transition per Q1
-  // co-existence lock). Both views read/write the same composition_json
-  // string in `state` — toggling is non-destructive.
-  const [compositionView, setCompositionView] = useState<'sections' | 'json'>('sections');
+  // Wave 14b LP-ADMIN-UX: composition view tab toggle.
+  //   'sections' = per-section editor (drag-reorder + per-type forms; S1 + S2 forms)
+  //   'hero'     = hero/featured-image editor (Wave 14b Session 2)
+  //   'json'     = raw-JSON textarea escape hatch (per Q1 co-existence lock)
+  // All three views read/write the same composition_json string in `state` —
+  // toggling is non-destructive.
+  const [compositionView, setCompositionView] = useState<'sections' | 'hero' | 'json'>(
+    'sections',
+  );
   const [compositionParseError, setCompositionParseError] = useState<string | null>(null);
 
   function set<K extends keyof LpFormState>(key: K, val: LpFormState[K]) {
@@ -269,6 +272,19 @@ export function LpForm({ locale, mode, initial }: LpFormProps) {
             <button
               type="button"
               role="tab"
+              aria-selected={compositionView === 'hero'}
+              onClick={() => setCompositionView('hero')}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                compositionView === 'hero'
+                  ? 'bg-white text-[var(--text-primary)] shadow-sm'
+                  : 'text-[var(--color-neutral-600)] hover:text-[var(--color-neutral-800)]'
+              }`}
+            >
+              {isAr ? 'الهيرو' : 'Hero'}
+            </button>
+            <button
+              type="button"
+              role="tab"
               aria-selected={compositionView === 'json'}
               onClick={() => setCompositionView('json')}
               className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
@@ -312,6 +328,39 @@ export function LpForm({ locale, mode, initial }: LpFormProps) {
                 value={parsed}
                 onChange={handleSectionsChange}
                 onSwitchToJsonTab={() => setCompositionView('json')}
+                locale={locale}
+              />
+            );
+          })()
+        ) : compositionView === 'hero' ? (
+          (() => {
+            const parsed = parseComposition();
+            const rawNonEmpty = state.composition_json.trim().length > 0;
+            if (rawNonEmpty && parsed === null) {
+              return (
+                <div className="rounded-xl border border-[var(--color-warning-200,#fbbf24)] bg-[var(--color-warning-50,#fffbeb)] p-4">
+                  <p className="text-sm font-semibold text-[var(--color-warning-900,#78350f)] mb-1">
+                    {isAr ? 'تعذّر تحليل composition_json' : 'composition_json failed to parse'}
+                  </p>
+                  <p className="text-xs text-[var(--color-warning-800,#92400e)] mb-3">
+                    {isAr
+                      ? 'افتح تبويب JSON لإصلاح الصياغة، ثم عُد إلى الهيرو.'
+                      : 'Open the JSON tab to fix the syntax, then return to Hero.'}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setCompositionView('json')}
+                    className="rounded-lg border border-[var(--color-warning-300,#f59e0b)] bg-white px-3 py-1.5 text-sm font-medium text-[var(--color-warning-900,#78350f)]"
+                  >
+                    {isAr ? 'فتح تبويب JSON ←' : 'Open JSON tab →'}
+                  </button>
+                </div>
+              );
+            }
+            return (
+              <HeroForm
+                value={parsed}
+                onChange={handleSectionsChange}
                 locale={locale}
               />
             );

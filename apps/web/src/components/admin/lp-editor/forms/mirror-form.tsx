@@ -22,8 +22,10 @@
 'use client';
 
 import dynamic from 'next/dynamic';
+import { useState } from 'react';
 import type { LpSection, LpSectionItem, LpMirrorLayout } from '@/lib/lp/composition-types';
 import { BilingualScalarField, type SectionFormProps } from '../_shared';
+import { useImageUpload } from '../use-image-upload';
 import type { BilingualRichDoc } from '@kunacademy/ui/rich-editor';
 
 // Dynamic import — keeps the TipTap bundle off SSR + off first-paint.
@@ -57,6 +59,17 @@ const LAYOUT_OPTIONS: ReadonlyArray<{ value: LpMirrorLayout; label: string }> = 
 
 export function MirrorForm({ section, onChange, locale }: SectionFormProps) {
   const isAr = locale === 'ar';
+  const { onImagePick } = useImageUpload();
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const wrappedOnImagePick = async (loc: 'ar' | 'en') => {
+    setUploadError(null);
+    try {
+      return await onImagePick(loc);
+    } catch (e) {
+      setUploadError(e instanceof Error ? e.message : 'Upload failed');
+      return null;
+    }
+  };
 
   function update<K extends keyof LpSection>(key: K, value: LpSection[K]) {
     onChange({ ...section, [key]: value });
@@ -175,12 +188,19 @@ export function MirrorForm({ section, onChange, locale }: SectionFormProps) {
             ? 'يحلّ هذا النص محلّ body_ar / body_en في العرض. الحقول النصية القديمة تبقى للتوافق العكسي.'
             : 'This rich body replaces body_ar / body_en in render. Legacy scalar fields stay populated for backward compat.'}
         </p>
+        {uploadError && (
+          <p className="text-xs text-red-700 mb-2">
+            {isAr ? 'فشل رفع الصورة: ' : 'Image upload failed: '}
+            {uploadError}
+          </p>
+        )}
         <BilingualRichEditor
           value={bodyValue}
           onChange={updateBodyBilingual}
           labelAr="AR"
           labelEn="EN"
           orientation="side-by-side"
+          onImagePick={wrappedOnImagePick}
         />
       </div>
 
@@ -200,6 +220,7 @@ export function MirrorForm({ section, onChange, locale }: SectionFormProps) {
           labelAr="AR"
           labelEn="EN"
           orientation="side-by-side"
+          onImagePick={wrappedOnImagePick}
         />
       </div>
 
