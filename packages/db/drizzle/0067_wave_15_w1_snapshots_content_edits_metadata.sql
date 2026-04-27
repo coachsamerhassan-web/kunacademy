@@ -279,8 +279,8 @@ BEGIN
   SELECT COUNT(*) INTO v_col_count
     FROM information_schema.columns
     WHERE table_name = 'content_page_snapshots';
-  IF v_col_count <> 9 THEN
-    RAISE EXCEPTION 'WAVE-15-W1 0067: expected 9 columns on content_page_snapshots, got %', v_col_count;
+  IF v_col_count <> 10 THEN
+    RAISE EXCEPTION 'WAVE-15-W1 0067: expected 10 columns on content_page_snapshots, got %', v_col_count;
   END IF;
 
   SELECT COUNT(*) INTO v_check_count
