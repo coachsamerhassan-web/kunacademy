@@ -145,7 +145,7 @@ function tableFor(entity: Entity): AnyPgTable {
  * Returns the entity unchanged if it's a known key. Throws PageServiceError
  * 'unknown_entity' otherwise. Always called BEFORE the sql.raw site.
  */
-function assertEntityKnown(entity: string): Entity {
+export function assertEntityKnown(entity: string): Entity {
   if (!Object.prototype.hasOwnProperty.call(ENTITY_TABLES, entity)) {
     throw new PageServiceError(
       `Unknown entity: ${entity}`,

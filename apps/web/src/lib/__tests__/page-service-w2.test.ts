@@ -798,12 +798,16 @@ describe('Wave 15 W2 / page-service-w2 / reorderSections', () => {
 describe('Wave 15 W2 / page-service-w2 / schedulePublish', () => {
   beforeEach(() => resetTables());
 
+  // Use a UUID-shaped id since the helper now strict-validates rowId shape
+  const ROW_ID_UUID = '11111111-2222-3333-4444-555555555555';
+
   test('sets scheduled_publish_at + transitions draft to review', async () => {
-    const row = seedRow('blog_posts', { status: 'draft' });
+    const row = seedRow('blog_posts', { id: ROW_ID_UUID, status: 'draft' });
+    void row; // assertion below
     const future = new Date(Date.now() + 60 * 60 * 1000).toISOString();
     const post = await schedulePublish({
       entity: 'blog_posts',
-      rowId: row.id,
+      rowId: ROW_ID_UUID,
       scheduled_publish_at: future,
       actor: { kind: 'agent', id: 'agent-1', name: 'Nashit' },
     });
@@ -812,14 +816,63 @@ describe('Wave 15 W2 / page-service-w2 / schedulePublish', () => {
     assert.ok(edits.find((e) => e.change_kind === 'transition_review'));
   });
 
+  test('review→review noop preserves status', async () => {
+    seedRow('blog_posts', { id: ROW_ID_UUID, status: 'review' });
+    const future = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+    const post = await schedulePublish({
+      entity: 'blog_posts',
+      rowId: ROW_ID_UUID,
+      scheduled_publish_at: future,
+      actor: { kind: 'agent', id: 'agent-1', name: 'Nashit' },
+    });
+    assert.equal(post.scheduled_publish_at, future);
+    assert.equal(post.status, 'review');
+  });
+
+  test('rejects scheduling an archived row (DeepSeek W2 catch)', async () => {
+    seedRow('blog_posts', { id: ROW_ID_UUID, status: 'archived' });
+    let caught: any = null;
+    const future = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+    try {
+      await schedulePublish({
+        entity: 'blog_posts',
+        rowId: ROW_ID_UUID,
+        scheduled_publish_at: future,
+        actor: { kind: 'agent', id: 'agent-1', name: 'Nashit' },
+      });
+    } catch (err) {
+      caught = err;
+    }
+    assert.ok(caught instanceof PageServiceError);
+    assert.equal(caught.code, 'invalid_transition');
+  });
+
+  test('rejects scheduling a published row', async () => {
+    seedRow('blog_posts', { id: ROW_ID_UUID, status: 'published' });
+    let caught: any = null;
+    const future = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+    try {
+      await schedulePublish({
+        entity: 'blog_posts',
+        rowId: ROW_ID_UUID,
+        scheduled_publish_at: future,
+        actor: { kind: 'agent', id: 'agent-1', name: 'Nashit' },
+      });
+    } catch (err) {
+      caught = err;
+    }
+    assert.ok(caught instanceof PageServiceError);
+    assert.equal(caught.code, 'invalid_transition');
+  });
+
   test('rejects past timestamp', async () => {
-    const row = seedRow('blog_posts');
+    seedRow('blog_posts', { id: ROW_ID_UUID });
     let caught: any = null;
     const past = new Date(Date.now() - 60 * 1000).toISOString();
     try {
       await schedulePublish({
         entity: 'blog_posts',
-        rowId: row.id,
+        rowId: ROW_ID_UUID,
         scheduled_publish_at: past,
         actor: { kind: 'agent', id: 'agent-1', name: 'Nashit' },
       });
@@ -829,14 +882,63 @@ describe('Wave 15 W2 / page-service-w2 / schedulePublish', () => {
     assert.ok(caught instanceof PageServiceError);
   });
 
+  test('rejects timestamp <60s in the future', async () => {
+    seedRow('blog_posts', { id: ROW_ID_UUID });
+    let caught: any = null;
+    const tooSoon = new Date(Date.now() + 30 * 1000).toISOString();
+    try {
+      await schedulePublish({
+        entity: 'blog_posts',
+        rowId: ROW_ID_UUID,
+        scheduled_publish_at: tooSoon,
+        actor: { kind: 'agent', id: 'agent-1', name: 'Nashit' },
+      });
+    } catch (err) {
+      caught = err;
+    }
+    assert.ok(caught instanceof PageServiceError);
+  });
+
   test('rejects malformed timestamp', async () => {
-    const row = seedRow('blog_posts');
+    seedRow('blog_posts', { id: ROW_ID_UUID });
     let caught: any = null;
     try {
       await schedulePublish({
         entity: 'blog_posts',
-        rowId: row.id,
+        rowId: ROW_ID_UUID,
         scheduled_publish_at: 'not-a-date',
+        actor: { kind: 'agent', id: 'agent-1', name: 'Nashit' },
+      });
+    } catch (err) {
+      caught = err;
+    }
+    assert.ok(caught instanceof PageServiceError);
+  });
+
+  test('rejects ISO timestamp without explicit timezone (no Z, no offset)', async () => {
+    seedRow('blog_posts', { id: ROW_ID_UUID });
+    let caught: any = null;
+    try {
+      await schedulePublish({
+        entity: 'blog_posts',
+        rowId: ROW_ID_UUID,
+        scheduled_publish_at: '2026-05-01T10:00:00', // no Z / no offset
+        actor: { kind: 'agent', id: 'agent-1', name: 'Nashit' },
+      });
+    } catch (err) {
+      caught = err;
+    }
+    assert.ok(caught instanceof PageServiceError);
+  });
+
+  test('rejects non-UUID rowId', async () => {
+    let caught: any = null;
+    const future = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+    try {
+      await schedulePublish({
+        entity: 'blog_posts',
+        rowId: 'not-a-uuid',
+        scheduled_publish_at: future,
         actor: { kind: 'agent', id: 'agent-1', name: 'Nashit' },
       });
     } catch (err) {

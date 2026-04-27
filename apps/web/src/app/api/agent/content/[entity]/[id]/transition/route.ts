@@ -39,6 +39,7 @@ import { routePreflight, mapServiceError, rlHeaders } from '@/lib/agent-api/rout
 import { withAdminContext } from '@kunacademy/db';
 import {
   transitionStatus,
+  assertEntityKnown,
   type Status,
 } from '@/lib/authoring/page-service';
 import { canInvokeVerb, canDirectPublish, AGENT_SCOPES } from '@/lib/agent-api/scopes';
@@ -230,11 +231,13 @@ export async function POST(request: NextRequest, context: RouteContext) {
 }
 
 async function loadRowForLint(entity: string, id: string): Promise<Record<string, unknown> | null> {
+  // SECURITY: assertEntityKnown is the canonical whitelist guard from
+  // page-service. Calling it here keeps the sql.raw boundary tight even if
+  // the caller forgot to validate. (DeepSeek W2 catch — local whitelist
+  // copies drift; canonical reference does not.)
+  const safe = assertEntityKnown(entity);
   return withAdminContext(async (adminDb) => {
-    // Whitelist guard mirroring page-service's assertEntityKnown
-    const ok = entity === 'landing_pages' || entity === 'blog_posts' || entity === 'static_pages';
-    if (!ok) return null;
-    const result = await adminDb.execute(sql.raw(`SELECT * FROM ${entity} WHERE id = $1 LIMIT 1`), [id]);
+    const result = await adminDb.execute(sql.raw(`SELECT * FROM ${safe} WHERE id = $1 LIMIT 1`), [id]);
     if (Array.isArray(result)) return (result[0] as Record<string, unknown>) ?? null;
     if (Array.isArray((result as any).rows)) return ((result as any).rows[0] as Record<string, unknown>) ?? null;
     return null;

@@ -20,6 +20,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { withAdminContext } from '@kunacademy/db';
+import { sql } from 'drizzle-orm';
 import { routePreflight, mapServiceError, rlHeaders } from '@/lib/agent-api/route-helpers';
 import { listSnapshots } from '@/lib/authoring/page-service-w2';
 import { createSnapshot } from '@/lib/authoring/page-service';
@@ -93,12 +95,30 @@ export async function POST(request: NextRequest, context: RouteContext) {
       },
     );
 
-    // We don't pass the body.reason / metadata into createSnapshot's first
-    // signature (it doesn't take EditContext), but we DO want it audited.
-    // The snapshot row itself carries no reason text — only the snapshot
-    // reason category — so for admin display we'd surface the reason via
-    // a follow-up content_edits row. For Wave 2 we leave that to /transition
-    // (which is the more common case for manual checkpoint).
+    // Audit the manual snapshot creation (DeepSeek W2 catch — every
+    // mutation needs a content_edits row, including manual snapshots).
+    // Since 'snapshot_manual' isn't in the change_kind CHECK whitelist,
+    // we use 'scalar' with a structured payload pointing to the snapshot.
+    try {
+      await withAdminContext(async (adminDb) => {
+        await adminDb.execute(sql`
+          INSERT INTO content_edits
+            (entity, entity_id, field, editor_type, editor_id, editor_name,
+             previous_value, new_value, change_kind, reason,
+             ip_address, user_agent, edit_source, metadata)
+          VALUES (${entity}, ${id}, '__snapshot_manual',
+                  'agent', ${agent.tokenId}, ${agent.agentName},
+                  null::jsonb,
+                  ${JSON.stringify({ snapshot_id: snapshotId, reason: 'manual' })}::jsonb,
+                  'scalar',
+                  ${typeof body?.reason === 'string' ? body.reason.slice(0, 500) : 'manual snapshot'},
+                  ${clientIp}, ${userAgent}, 'agent_api',
+                  ${body?.metadata && typeof body.metadata === 'object' ? JSON.stringify(body.metadata) : null}::jsonb)
+        `);
+      });
+    } catch (err) {
+      console.error('[agent api snapshots] manual-snapshot audit insert failed:', err);
+    }
 
     return NextResponse.json(
       {

@@ -754,8 +754,30 @@ export interface SchedulePublishInput {
 }
 
 export async function schedulePublish(input: SchedulePublishInput): Promise<Record<string, unknown>> {
+  // SECURITY: This helper is invoked from the /schedule route AFTER lint
+  // hooks have validated the row body. Service-layer state-machine checks
+  // are defense-in-depth; the route is the lint boundary. Any other
+  // caller MUST run lints first or the IP rule is silently bypassed.
   const safeEntity = assertEntityKnown(input.entity);
   validateActor(input.actor);
+
+  // UUID shape guard — defense-in-depth (route layer also checks).
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(input.rowId)) {
+    throw new PageServiceError(
+      `rowId must be UUID, got: ${input.rowId}`,
+      'invalid_actor',
+      400,
+    );
+  }
+
+  // Strict ISO-8601 timestamp shape (must include explicit timezone)
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})$/.test(input.scheduled_publish_at)) {
+    throw new PageServiceError(
+      `scheduled_publish_at must be ISO 8601 with explicit timezone (got: ${input.scheduled_publish_at})`,
+      'invalid_actor',
+      400,
+    );
+  }
   const ts = new Date(input.scheduled_publish_at);
   if (Number.isNaN(ts.getTime())) {
     throw new PageServiceError(
@@ -764,9 +786,10 @@ export async function schedulePublish(input: SchedulePublishInput): Promise<Reco
       400,
     );
   }
-  if (ts.getTime() <= Date.now()) {
+  // Require ≥60s in the future to avoid race conditions with the cron sweeper.
+  if (ts.getTime() <= Date.now() + 60 * 1000) {
     throw new PageServiceError(
-      `scheduled_publish_at must be in the future`,
+      `scheduled_publish_at must be at least 60s in the future`,
       'invalid_actor',
       400,
     );
@@ -779,20 +802,33 @@ export async function schedulePublish(input: SchedulePublishInput): Promise<Reco
     }
     const fromStatus = cur.status as Status;
 
-    // Set scheduled_publish_at; transition to review if currently draft so
-    // the cron sweeper picks it up. (Cron flips review→published when
-    // scheduled_publish_at <= now() per spec D13.)
+    // State-machine intake:
+    //   - draft     → review        (allowed; cron will flip to published at ts)
+    //   - review    → review (noop) (allowed; just update scheduled_publish_at)
+    //   - published → review        (REJECTED — must transition explicitly first)
+    //   - archived  → review        (REJECTED — DeepSeek W2 catch; archived must
+    //                                unarchive via /transition before being scheduled)
     let nextStatus: Status = fromStatus;
-    if (fromStatus === 'draft' || fromStatus === 'archived') {
-      const v = validateTransition(fromStatus, 'review');
+    if (fromStatus === 'draft') {
+      const v = validateTransition('draft', 'review');
       if (!v.allowed) {
         throw new PageServiceError(v.reason, 'invalid_transition', 422);
       }
       nextStatus = 'review';
+    } else if (fromStatus === 'review') {
+      nextStatus = 'review'; // no status change; just update timestamp
     } else if (fromStatus === 'published') {
-      // Re-scheduling an already-published row is a no-op for status; we
-      // still update scheduled_publish_at to reflect intent.
-      nextStatus = fromStatus;
+      throw new PageServiceError(
+        `cannot reschedule a published row; transition to review or draft first via /transition`,
+        'invalid_transition',
+        422,
+      );
+    } else if (fromStatus === 'archived') {
+      throw new PageServiceError(
+        `cannot schedule an archived row; transition to draft first via /transition`,
+        'invalid_transition',
+        422,
+      );
     }
 
     await adminDb.execute(

@@ -580,7 +580,7 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
       },
       {
         edit_source: 'agent_api',
-        reason: typeof body?.reason === 'string' ? body!.reason!.slice(0, 500) : null,
+        reason: body && typeof body.reason === 'string' ? body.reason.slice(0, 500) : null,
         ip_address: clientIp,
         user_agent: userAgent,
         metadata: body && typeof body.metadata === 'object' && body.metadata !== null ? body.metadata : null,
