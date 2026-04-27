@@ -109,3 +109,5 @@ export * from './coupons';
 export * from './coupon_redemptions';
 // Wave F.6 — Membership Lifecycle (annual billing + dunning + grace + retention) (migration 0062)
 export * from './membership_lifecycle_events';
+// Wave 15 Wave 1 — static_pages (migration 0065)
+export * from './static_pages';
