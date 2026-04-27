@@ -527,3 +527,90 @@ function normalizeValue(raw: unknown, kind: FieldKind): unknown {
 
   throw new Error('rich_text must be a TipTap doc ({type:"doc",...}) or { markdown: "..." }');
 }
+
+// ── DELETE — soft-delete via transition to 'archived' (Wave 15 W2) ─────────
+//
+// The Agent Content API never hard-deletes content rows. DELETE is a soft
+// delete — it transitions the row to status='archived', which writes:
+//   1. A snapshot row (taken BEFORE the transition, reason='archive')
+//   2. A content_edits row with change_kind='transition_archived'
+//   3. The status flip itself (sync trigger keeps published BOOLEAN in sync)
+//
+// Required: canWrite(agent, entity) + canInvokeVerb(agent, 'archive').
+// Returns 422 if the row is already archived (invalid transition).
+import { softDeletePage as softDeletePageW2, PageServiceError as PageServiceErrorW2 } from '@/lib/authoring/page-service-w2';
+import { canInvokeVerb as canInvokeVerbW2 } from '@/lib/agent-api/scopes';
+import { isStateMachineEntity as isSM_W2 } from '@/lib/agent-api/entities';
+
+export async function DELETE(request: NextRequest, context: RouteContext) {
+  const pre = await preflight(request, context, 'write');
+  if ('error' in pre) return pre.error;
+  const { agent, entity, id, clientIp, userAgent, rateLimit } = pre;
+
+  // DELETE is only valid on state-machine entities
+  if (!isSM_W2(entity)) {
+    return NextResponse.json(
+      { error: `DELETE not supported on entity '${entity}' (state-machine entities only)` },
+      { status: 405 },
+    );
+  }
+
+  const verb = canInvokeVerbW2(agent.agentName, 'archive');
+  if (!verb.allowed) {
+    return NextResponse.json({ error: verb.reason ?? 'Forbidden' }, { status: 403 });
+  }
+
+  // Best-effort body parse (DELETE may have empty body)
+  let body: { reason?: string; metadata?: Record<string, unknown> } | null = null;
+  try {
+    const txt = await request.text();
+    if (txt) body = JSON.parse(txt);
+  } catch {
+    body = null;
+  }
+
+  try {
+    const post = await softDeletePageW2(
+      entity as any,
+      id,
+      {
+        kind: 'agent',
+        id: agent.tokenId,
+        name: agent.agentName,
+      },
+      {
+        edit_source: 'agent_api',
+        reason: typeof body?.reason === 'string' ? body!.reason!.slice(0, 500) : null,
+        ip_address: clientIp,
+        user_agent: userAgent,
+        metadata: body && typeof body.metadata === 'object' && body.metadata !== null ? body.metadata : null,
+      },
+    );
+
+    return NextResponse.json(
+      {
+        entity,
+        id,
+        status: post.status,
+        archived: true,
+        agent: agent.agentName,
+      },
+      {
+        status: 200,
+        headers: {
+          'X-RateLimit-Remaining': rateLimit.remaining.toString(),
+          'X-RateLimit-Reset': Math.floor(rateLimit.resetAt / 1000).toString(),
+        },
+      },
+    );
+  } catch (err) {
+    if (err instanceof PageServiceErrorW2) {
+      return NextResponse.json(
+        { error: err.message, code: err.code },
+        { status: err.httpStatus },
+      );
+    }
+    console.error('[agent api DELETE]', err);
+    return NextResponse.json({ error: 'Internal error' }, { status: 500 });
+  }
+}
