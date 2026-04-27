@@ -228,6 +228,71 @@ REVOKE DELETE ON scholarship_tokens FROM kunacademy_admin;
 -- disbursed in the whitelist. We DOcument the contract here for grep.
 
 -- ╔══════════════════════════════════════════════════════════════════════════╗
+-- ║ 5. Immutable-columns trigger — defense-in-depth against role inheritance║
+-- ║                                                                          ║
+-- ║ Background: kunacademy is a member of kunacademy_admin (per              ║
+-- ║ pg_auth_members) AND has rolinherit=true → it inherits all of            ║
+-- ║ kunacademy_admin's grants. The column-grant restriction                  ║
+-- ║ `GRANT UPDATE (redeemed_at, redeemed_by_user_id) ON ... TO kunacademy`    ║
+-- ║ is therefore bypassable — kunacademy can UPDATE any column via the       ║
+-- ║ inherited table-wide UPDATE on kunacademy_admin.                         ║
+-- ║                                                                          ║
+-- ║ The RLS policy `scholarship_tokens_server_redeem_update` checks          ║
+-- ║ `redeemed_at IS NOT NULL` in WITH CHECK but allows simultaneous          ║
+-- ║ mutation of token_hash, scholarship_id, expires_at, etc.                  ║
+-- ║                                                                          ║
+-- ║ This trigger is the actual security boundary: it raises an exception     ║
+-- ║ if ANY immutable column changed, AND prevents re-redemption (forward-    ║
+-- ║ only). Postgres role (table owner) bypasses this trigger via             ║
+-- ║ SECURITY DEFINER if needed for emergency repair (NOT the case here —     ║
+-- ║ the trigger fires for ALL roles including postgres because we did NOT    ║
+-- ║ make it SECURITY DEFINER. Emergency repair therefore needs explicit      ║
+-- ║ ALTER TABLE DISABLE TRIGGER + ALTER TABLE ENABLE TRIGGER bracketing.)    ║
+-- ║                                                                          ║
+-- ║ Promoted to learned-pattern in SANI memory.                              ║
+-- ╚══════════════════════════════════════════════════════════════════════════╝
+
+CREATE OR REPLACE FUNCTION scholarship_tokens_immutable_columns_trigger()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $trigger$
+BEGIN
+  IF NEW.token_hash      IS DISTINCT FROM OLD.token_hash      THEN
+    RAISE EXCEPTION 'scholarship_tokens.token_hash is immutable post-INSERT';
+  END IF;
+  IF NEW.scholarship_id  IS DISTINCT FROM OLD.scholarship_id  THEN
+    RAISE EXCEPTION 'scholarship_tokens.scholarship_id is immutable post-INSERT';
+  END IF;
+  IF NEW.expires_at      IS DISTINCT FROM OLD.expires_at      THEN
+    RAISE EXCEPTION 'scholarship_tokens.expires_at is immutable post-INSERT';
+  END IF;
+  IF NEW.created_at      IS DISTINCT FROM OLD.created_at      THEN
+    RAISE EXCEPTION 'scholarship_tokens.created_at is immutable post-INSERT';
+  END IF;
+  IF NEW.metadata        IS DISTINCT FROM OLD.metadata        THEN
+    RAISE EXCEPTION 'scholarship_tokens.metadata is immutable post-INSERT';
+  END IF;
+  -- redeemed_at + redeemed_by_user_id are mutable BUT forward-only:
+  -- once set, they cannot change again.
+  IF OLD.redeemed_at IS NOT NULL AND NEW.redeemed_at IS DISTINCT FROM OLD.redeemed_at THEN
+    RAISE EXCEPTION 'scholarship_tokens.redeemed_at is forward-only';
+  END IF;
+  IF OLD.redeemed_by_user_id IS NOT NULL AND NEW.redeemed_by_user_id IS DISTINCT FROM OLD.redeemed_by_user_id THEN
+    RAISE EXCEPTION 'scholarship_tokens.redeemed_by_user_id is forward-only';
+  END IF;
+  RETURN NEW;
+END;
+$trigger$;
+
+ALTER FUNCTION scholarship_tokens_immutable_columns_trigger() OWNER TO postgres;
+
+DROP TRIGGER IF EXISTS scholarship_tokens_immutable_columns ON scholarship_tokens;
+CREATE TRIGGER scholarship_tokens_immutable_columns
+  BEFORE UPDATE ON scholarship_tokens
+  FOR EACH ROW
+  EXECUTE FUNCTION scholarship_tokens_immutable_columns_trigger();
+
+-- ╔══════════════════════════════════════════════════════════════════════════╗
 -- ║ Self-smoke                                                               ║
 -- ╚══════════════════════════════════════════════════════════════════════════╝
 
@@ -377,12 +442,45 @@ BEGIN
     RAISE NOTICE 'SMOKE 12 PASSED: past-expiry rejected by CHECK';
   END;
 
+  -- 13. Immutable-columns trigger — token_hash forge attempt
+  -- (Re-insert a fresh token first since prior smoke rows were redeemed.)
+  DELETE FROM scholarship_tokens WHERE scholarship_id = scholarship_uuid;
+  INSERT INTO scholarship_tokens (scholarship_id, token_hash, expires_at)
+    VALUES (scholarship_uuid, repeat('e', 64), now() + interval '30 days');
+
+  BEGIN
+    UPDATE scholarship_tokens SET token_hash = repeat('f', 64) WHERE scholarship_id = scholarship_uuid;
+    RAISE EXCEPTION 'SMOKE 13 FAIL: token_hash forge succeeded';
+  EXCEPTION WHEN OTHERS THEN
+    IF SQLERRM LIKE '%token_hash is immutable%' THEN
+      RAISE NOTICE 'SMOKE 13 PASSED: token_hash forge blocked by trigger';
+    ELSE
+      RAISE EXCEPTION 'SMOKE 13 unexpected: %', SQLERRM;
+    END IF;
+  END;
+
+  -- 14. Immutable-columns trigger — combo attack (token_hash + redeem cols)
+  BEGIN
+    UPDATE scholarship_tokens
+       SET token_hash = repeat('f', 64),
+           redeemed_at = now(),
+           redeemed_by_user_id = (SELECT id FROM profiles LIMIT 1)
+     WHERE scholarship_id = scholarship_uuid;
+    RAISE EXCEPTION 'SMOKE 14 FAIL: combo forge succeeded';
+  EXCEPTION WHEN OTHERS THEN
+    IF SQLERRM LIKE '%token_hash is immutable%' THEN
+      RAISE NOTICE 'SMOKE 14 PASSED: combo forge blocked by trigger';
+    ELSE
+      RAISE EXCEPTION 'SMOKE 14 unexpected: %', SQLERRM;
+    END IF;
+  END;
+
   -- Cleanup smoke rows so we don't leave dangling test data
   DELETE FROM scholarship_tokens WHERE scholarship_id = scholarship_uuid;
   DELETE FROM scholarships WHERE id = scholarship_uuid;
   DELETE FROM scholarship_applications WHERE id = app_uuid;
 
-  RAISE NOTICE 'Migration 0064 self-smoke complete (12 PASS)';
+  RAISE NOTICE 'Migration 0064 self-smoke complete (14 PASS)';
 END $$;
 
 COMMIT;
