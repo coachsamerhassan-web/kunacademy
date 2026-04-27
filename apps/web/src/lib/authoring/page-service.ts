@@ -573,11 +573,24 @@ async function updateStatusForEntity(
   actor: Actor,
 ): Promise<void> {
   const safeEntity = assertEntityKnown(entity);
-  // last_edited_by uuid column exists on all three tables. last_edited_by_kind
-  // / last_edited_by_name exist after migrations 0066. last_edited_at is set
-  // via the touch trigger on landing_pages, plus we explicitly set it here
-  // for static_pages (its trigger is COALESCE'd) and blog_posts (no touch
-  // trigger of its own — see verification note below).
+  // SCHEMA DRIFT (Wave 2 deploy smoke catch):
+  //   - landing_pages + blog_posts use `last_edited_by`  (legacy polymorphic uuid)
+  //   - static_pages  uses `last_edited_by_id`           (Wave 1 explicit naming)
+  // Both surfaces hold the same data; we branch the column name here.
+  // last_edited_by_kind + last_edited_by_name + last_edited_at exist
+  // on all three (Wave 1 migrations 0065/0066 standardized those).
+  if (safeEntity === 'static_pages') {
+    await adminDb.execute(sql`
+      UPDATE static_pages
+         SET status = ${to},
+             last_edited_by_id = ${actor.id}::uuid,
+             last_edited_by_kind = ${actor.kind},
+             last_edited_by_name = ${actor.name},
+             last_edited_at = now()
+       WHERE id = ${rowId}::uuid
+    `);
+    return;
+  }
   await adminDb.execute(sql`
     UPDATE ${sql.raw(safeEntity)}
        SET status = ${to},
@@ -623,8 +636,22 @@ async function restoreRowBody(
     return;
   }
 
-  // landing_pages OR static_pages
+  // landing_pages OR static_pages — schema-drift branch on last_edited_by_*
   const safeEntity = assertEntityKnown(entity);
+  if (safeEntity === 'static_pages') {
+    await adminDb.execute(sql`
+      UPDATE static_pages
+         SET composition_json = ${jsonOrNull(snap.composition_json)}::jsonb,
+             hero_json        = ${jsonOrNull(snap.hero_json)}::jsonb,
+             seo_meta_json    = ${jsonOrNull(snap.seo_meta_json)}::jsonb,
+             last_edited_by_id   = ${actor.id}::uuid,
+             last_edited_by_kind = ${actor.kind},
+             last_edited_by_name = ${actor.name},
+             last_edited_at   = now()
+       WHERE id = ${rowId}::uuid
+    `);
+    return;
+  }
   await adminDb.execute(sql`
     UPDATE ${sql.raw(safeEntity)}
        SET composition_json = ${jsonOrNull(snap.composition_json)}::jsonb,

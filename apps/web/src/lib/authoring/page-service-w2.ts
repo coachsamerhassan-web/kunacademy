@@ -863,6 +863,10 @@ async function updateCompositionJson(
   nextComp: Record<string, unknown>,
   actor: Actor,
 ): Promise<void> {
+  // Schema drift (Wave 2 deploy catch): static_pages uses last_edited_by_id
+  // while landing_pages + blog_posts use last_edited_by. We don't write the
+  // uuid here (only kind/name) so the difference is moot for THIS function,
+  // but we keep the path through assertEntityKnown for the table-name guard.
   const safe = assertEntityKnown(entity);
   const compJson = JSON.stringify(nextComp ?? {});
   await adminDb.execute(sql`

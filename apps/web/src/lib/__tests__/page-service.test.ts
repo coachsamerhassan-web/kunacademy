@@ -138,7 +138,7 @@ function fakeExecute(queryObj: any, params?: any[]) {
     return { rows: row ? [row] : [] };
   }
 
-  // ── UPDATE status ───────────────────────────────────────────────────────
+  // ── UPDATE status (landing_pages + blog_posts use last_edited_by) ──────
   m = /^UPDATE (\w+) SET status = \?, last_edited_by = \?::uuid, last_edited_by_kind = \?, last_edited_by_name = \?, last_edited_at = now\(\) WHERE id = \?::uuid$/i.exec(
     raw,
   );
@@ -162,14 +162,54 @@ function fakeExecute(queryObj: any, params?: any[]) {
     return { rows: [] };
   }
 
-  // ── UPDATE body restore (landing_pages / static_pages) ──────────────────
-  m = /^UPDATE (landing_pages|static_pages) SET composition_json = \?::jsonb, hero_json = \?::jsonb, seo_meta_json = \?::jsonb, last_edited_by = \?::uuid, last_edited_by_kind = \?, last_edited_by_name = \?, last_edited_at = now\(\) WHERE id = \?::uuid$/i.exec(
+  // ── UPDATE status (static_pages uses last_edited_by_id) ────────────────
+  m = /^UPDATE static_pages SET status = \?, last_edited_by_id = \?::uuid, last_edited_by_kind = \?, last_edited_by_name = \?, last_edited_at = now\(\) WHERE id = \?::uuid$/i.exec(
     raw,
   );
   if (m) {
-    const [, entity] = m;
+    const [status, editorId, editorKind, editorName, rid] = values;
+    const row = tables.static_pages?.find((r) => r.id === rid);
+    if (!row) return { rows: [] };
+    row.status = status;
+    row.last_edited_by = editorId; // store under same name for test convenience
+    row.last_edited_by_kind = editorKind;
+    row.last_edited_by_name = editorName;
+    row.last_edited_at = new Date().toISOString();
+    if (status === 'published') {
+      row.published = true;
+      row.published_at = row.published_at ?? new Date().toISOString();
+    } else {
+      row.published = false;
+      row.published_at = null;
+    }
+    return { rows: [] };
+  }
+
+  // ── UPDATE body restore (landing_pages — uses last_edited_by) ──────────
+  m = /^UPDATE landing_pages SET composition_json = \?::jsonb, hero_json = \?::jsonb, seo_meta_json = \?::jsonb, last_edited_by = \?::uuid, last_edited_by_kind = \?, last_edited_by_name = \?, last_edited_at = now\(\) WHERE id = \?::uuid$/i.exec(
+    raw,
+  );
+  if (m) {
     const [comp, hero, seo, editorId, editorKind, editorName, rid] = values;
-    const row = tables[entity]?.find((r) => r.id === rid);
+    const row = tables.landing_pages?.find((r) => r.id === rid);
+    if (!row) return { rows: [] };
+    row.composition_json = parseMaybeJSON(comp);
+    row.hero_json = parseMaybeJSON(hero);
+    row.seo_meta_json = parseMaybeJSON(seo);
+    row.last_edited_by = editorId;
+    row.last_edited_by_kind = editorKind;
+    row.last_edited_by_name = editorName;
+    row.last_edited_at = new Date().toISOString();
+    return { rows: [] };
+  }
+
+  // ── UPDATE body restore (static_pages — uses last_edited_by_id) ────────
+  m = /^UPDATE static_pages SET composition_json = \?::jsonb, hero_json = \?::jsonb, seo_meta_json = \?::jsonb, last_edited_by_id = \?::uuid, last_edited_by_kind = \?, last_edited_by_name = \?, last_edited_at = now\(\) WHERE id = \?::uuid$/i.exec(
+    raw,
+  );
+  if (m) {
+    const [comp, hero, seo, editorId, editorKind, editorName, rid] = values;
+    const row = tables.static_pages?.find((r) => r.id === rid);
     if (!row) return { rows: [] };
     row.composition_json = parseMaybeJSON(comp);
     row.hero_json = parseMaybeJSON(hero);
