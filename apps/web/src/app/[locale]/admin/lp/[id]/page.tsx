@@ -1,9 +1,22 @@
 'use client';
 
+/**
+ * Wave 15 Wave 3 — /admin/lp/[id] mounts the new Visual Editor by default.
+ *
+ * Backwards compatibility (per spec §3a contract):
+ *   - `?legacy=1` query param keeps the OLD Wave 14b S2 form (LpForm) live.
+ *     This escape hatch MUST stay functional for ≥7 days post Wave 3 ship
+ *     before `admin-lp-form.tsx` retires (Wave 4).
+ *
+ * Public surface unchanged. The editor only mounts under /admin/* paths.
+ */
+
 import { use, useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Section } from '@kunacademy/ui/section';
 import { Card } from '@kunacademy/ui/card';
 import { LpForm, type LpFormState } from '@/components/lp/admin-lp-form';
+import { LpEditorMount } from '@/components/authoring/mounts/lp-editor-mount';
 
 interface LeadRow {
   id: string;
@@ -26,8 +39,14 @@ export default function AdminLpEditPage({
   const { locale, id } = use(params);
   const isAr = locale === 'ar';
   const headingFont = isAr ? 'var(--font-arabic-heading)' : 'var(--font-english-heading)';
+  const searchParams = useSearchParams();
+  // Wave 15 W3 escape hatch — `?legacy=1` keeps the old Wave 14b S2 form
+  // mounted instead of the new visual editor. Must remain functional
+  // ≥7 days post-Wave-3 ship.
+  const useLegacy = searchParams?.get('legacy') === '1';
 
   const [initial, setInitial] = useState<LpFormState | null>(null);
+  const [rawRow, setRawRow] = useState<Record<string, unknown> | null>(null);
   const [leads, setLeads] = useState<LeadRow[]>([]);
   const [error, setError] = useState<string | null>(null);
 
@@ -41,6 +60,7 @@ export default function AdminLpEditPage({
         }
         const b = await r.json();
         const lp = b.landing_page;
+        setRawRow(lp);
         const stringify = (v: unknown) =>
           v == null ? '' : typeof v === 'string' ? v : JSON.stringify(v, null, 2);
         setInitial({
@@ -68,7 +88,7 @@ export default function AdminLpEditPage({
       </Section>
     );
   }
-  if (!initial) {
+  if (!initial || !rawRow) {
     return (
       <Section variant="white">
         <p className="text-[var(--color-neutral-500)]">{isAr ? 'جارٍ التحميل…' : 'Loading…'}</p>
@@ -76,16 +96,33 @@ export default function AdminLpEditPage({
     );
   }
 
+  // ── New visual editor (default) ────────────────────────────────────────
+  if (!useLegacy) {
+    return <LpEditorMount row={rawRow} locale={locale} />;
+  }
+
+  // ── Legacy fallback (?legacy=1) ────────────────────────────────────────
   return (
     <Section variant="white">
       <div dir={isAr ? 'rtl' : 'ltr'}>
-        <div className="mb-6">
+        <div className="mb-2 flex items-center justify-between flex-wrap gap-2">
           <a
             href={`/${locale}/admin/lp`}
             className="text-sm text-[var(--color-neutral-500)] hover:text-[var(--color-primary)]"
           >
             {isAr ? '← القائمة' : '← Back to list'}
           </a>
+          <a
+            href={`/${locale}/admin/lp/${id}`}
+            className="text-xs rounded-lg border border-[var(--color-neutral-300)] px-2.5 py-1.5 text-[var(--color-neutral-700)] hover:border-[var(--color-primary)]"
+          >
+            {isAr ? 'فتح المحرّر الجديد ←' : 'Open new visual editor →'}
+          </a>
+        </div>
+        <div className="mb-4 rounded-lg bg-amber-50 border border-amber-200 p-3 text-amber-900 text-xs">
+          {isAr
+            ? 'أنت في النموذج التقليدي (?legacy=1). المحرّر البصريّ الجديد متاح للتجربة عبر الرابط أعلاه. سيُسحب هذا النموذج بعد ٧ أيام من تشغيل المحرّر الجديد.'
+            : 'You are in the legacy form (?legacy=1). The new visual editor is one click away. This form will be retired ≥7 days after the new editor ships clean.'}
         </div>
         <h1
           className="text-2xl md:text-3xl font-bold text-[var(--text-primary)] mb-2"
