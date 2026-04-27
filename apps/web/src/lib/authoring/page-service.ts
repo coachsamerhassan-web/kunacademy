@@ -543,9 +543,12 @@ async function loadRow(
   rowId: string,
 ): Promise<Record<string, unknown> | null> {
   const safeEntity = assertEntityKnown(entity);
+  // Drizzle pattern: sql template with sql.raw() for the whitelisted
+  // table identifier + parameterized values via ${} interpolation. This
+  // is the working pattern (Wave 2 deploy smoke caught that the older
+  // sql.raw(string) + [params] shape doesn't bind in Drizzle v0.45).
   const result = await adminDb.execute(
-    sql.raw(`SELECT * FROM ${safeEntity} WHERE id = $1 LIMIT 1`),
-    [rowId],
+    sql`SELECT * FROM ${sql.raw(safeEntity)} WHERE id = ${rowId}::uuid LIMIT 1`,
   );
   return rowsOf(result)[0] ?? null;
 }
@@ -557,8 +560,7 @@ async function loadRowForUpdate(
 ): Promise<Record<string, unknown> | null> {
   const safeEntity = assertEntityKnown(entity);
   const result = await adminDb.execute(
-    sql.raw(`SELECT * FROM ${safeEntity} WHERE id = $1 FOR UPDATE`),
-    [rowId],
+    sql`SELECT * FROM ${sql.raw(safeEntity)} WHERE id = ${rowId}::uuid FOR UPDATE`,
   );
   return rowsOf(result)[0] ?? null;
 }
@@ -576,18 +578,15 @@ async function updateStatusForEntity(
   // via the touch trigger on landing_pages, plus we explicitly set it here
   // for static_pages (its trigger is COALESCE'd) and blog_posts (no touch
   // trigger of its own — see verification note below).
-  await adminDb.execute(
-    sql.raw(
-      `UPDATE ${safeEntity}
-         SET status = $1,
-             last_edited_by = $2,
-             last_edited_by_kind = $3,
-             last_edited_by_name = $4,
-             last_edited_at = now()
-       WHERE id = $5`,
-    ),
-    [to, actor.id, actor.kind, actor.name, rowId],
-  );
+  await adminDb.execute(sql`
+    UPDATE ${sql.raw(safeEntity)}
+       SET status = ${to},
+           last_edited_by = ${actor.id}::uuid,
+           last_edited_by_kind = ${actor.kind},
+           last_edited_by_name = ${actor.name},
+           last_edited_at = now()
+     WHERE id = ${rowId}::uuid
+  `);
 }
 
 async function restoreRowBody(
@@ -604,67 +603,39 @@ async function restoreRowBody(
   //   - seo_meta_json (landing_pages + static_pages)
   // Per-entity branches for the columns that don't exist on every table.
   if (entity === 'blog_posts') {
-    await adminDb.execute(
-      sql.raw(
-        `UPDATE blog_posts
-           SET composition_json = $1::jsonb,
-               content_ar       = $2,
-               content_en       = $3,
-               excerpt_ar       = $4,
-               excerpt_en       = $5,
-               content_ar_rich  = $6::jsonb,
-               content_en_rich  = $7::jsonb,
-               excerpt_ar_rich  = $8::jsonb,
-               excerpt_en_rich  = $9::jsonb,
-               last_edited_by   = $10,
-               last_edited_by_kind = $11,
-               last_edited_by_name = $12,
-               last_edited_at   = now()
-         WHERE id = $13`,
-      ),
-      [
-        jsonOrNull(snap.composition_json),
-        snap.content_ar ?? null,
-        snap.content_en ?? null,
-        snap.excerpt_ar ?? null,
-        snap.excerpt_en ?? null,
-        jsonOrNull(snap.content_ar_rich),
-        jsonOrNull(snap.content_en_rich),
-        jsonOrNull(snap.excerpt_ar_rich),
-        jsonOrNull(snap.excerpt_en_rich),
-        actor.id,
-        actor.kind,
-        actor.name,
-        rowId,
-      ],
-    );
+    await adminDb.execute(sql`
+      UPDATE blog_posts
+         SET composition_json = ${jsonOrNull(snap.composition_json)}::jsonb,
+             content_ar       = ${snap.content_ar ?? null},
+             content_en       = ${snap.content_en ?? null},
+             excerpt_ar       = ${snap.excerpt_ar ?? null},
+             excerpt_en       = ${snap.excerpt_en ?? null},
+             content_ar_rich  = ${jsonOrNull(snap.content_ar_rich)}::jsonb,
+             content_en_rich  = ${jsonOrNull(snap.content_en_rich)}::jsonb,
+             excerpt_ar_rich  = ${jsonOrNull(snap.excerpt_ar_rich)}::jsonb,
+             excerpt_en_rich  = ${jsonOrNull(snap.excerpt_en_rich)}::jsonb,
+             last_edited_by   = ${actor.id}::uuid,
+             last_edited_by_kind = ${actor.kind},
+             last_edited_by_name = ${actor.name},
+             last_edited_at   = now()
+       WHERE id = ${rowId}::uuid
+    `);
     return;
   }
 
   // landing_pages OR static_pages
   const safeEntity = assertEntityKnown(entity);
-  await adminDb.execute(
-    sql.raw(
-      `UPDATE ${safeEntity}
-         SET composition_json = $1::jsonb,
-             hero_json        = $2::jsonb,
-             seo_meta_json    = $3::jsonb,
-             last_edited_by   = $4,
-             last_edited_by_kind = $5,
-             last_edited_by_name = $6,
-             last_edited_at   = now()
-       WHERE id = $7`,
-    ),
-    [
-      jsonOrNull(snap.composition_json),
-      jsonOrNull(snap.hero_json),
-      jsonOrNull(snap.seo_meta_json),
-      actor.id,
-      actor.kind,
-      actor.name,
-      rowId,
-    ],
-  );
+  await adminDb.execute(sql`
+    UPDATE ${sql.raw(safeEntity)}
+       SET composition_json = ${jsonOrNull(snap.composition_json)}::jsonb,
+           hero_json        = ${jsonOrNull(snap.hero_json)}::jsonb,
+           seo_meta_json    = ${jsonOrNull(snap.seo_meta_json)}::jsonb,
+           last_edited_by   = ${actor.id}::uuid,
+           last_edited_by_kind = ${actor.kind},
+           last_edited_by_name = ${actor.name},
+           last_edited_at   = now()
+     WHERE id = ${rowId}::uuid
+  `);
 }
 
 interface SnapshotInsertInput {
@@ -682,25 +653,15 @@ async function createSnapshotInTxn(
   adminDb: any,
   input: SnapshotInsertInput,
 ): Promise<string> {
-  const result = await adminDb.execute(
-    sql.raw(
-      `INSERT INTO content_page_snapshots
-         (entity, entity_id, snapshot, reason,
-          taken_by_kind, taken_by_id, taken_by_name, edit_id)
-       VALUES ($1, $2, $3::jsonb, $4, $5, $6, $7, $8)
-       RETURNING id`,
-    ),
-    [
-      input.entity,
-      input.entity_id,
-      JSON.stringify(input.snapshot ?? {}),
-      input.reason,
-      input.taken_by_kind,
-      input.taken_by_id,
-      input.taken_by_name,
-      input.edit_id,
-    ],
-  );
+  const snapJson = JSON.stringify(input.snapshot ?? {});
+  const result = await adminDb.execute(sql`
+    INSERT INTO content_page_snapshots
+      (entity, entity_id, snapshot, reason,
+       taken_by_kind, taken_by_id, taken_by_name, edit_id)
+    VALUES (${input.entity}, ${input.entity_id}::uuid, ${snapJson}::jsonb, ${input.reason},
+            ${input.taken_by_kind}, ${input.taken_by_id}::uuid, ${input.taken_by_name}, ${input.edit_id}::uuid)
+    RETURNING id
+  `);
   const r = rowsOf(result)[0];
   if (!r || !r.id) {
     throw new PageServiceError(
@@ -733,36 +694,22 @@ async function insertContentEditRow(
   adminDb: any,
   input: ContentEditInsertInput,
 ): Promise<void> {
-  await adminDb.execute(
-    sql.raw(
-      `INSERT INTO content_edits
-         (entity, entity_id, field,
-          editor_type, editor_id, editor_name,
-          previous_value, new_value,
-          change_kind, reason, ip_address, user_agent,
-          edit_source, metadata)
-       VALUES ($1, $2, $3, $4, $5, $6,
-               $7::jsonb, $8::jsonb,
-               $9, $10, $11, $12,
-               $13, $14::jsonb)`,
-    ),
-    [
-      input.entity,
-      input.entity_id,
-      input.field,
-      input.editor_type,
-      input.editor_id,
-      input.editor_name,
-      JSON.stringify(input.previous_value ?? null),
-      JSON.stringify(input.new_value ?? null),
-      input.change_kind,
-      input.reason,
-      input.ip_address,
-      input.user_agent,
-      input.edit_source,
-      input.metadata == null ? null : JSON.stringify(input.metadata),
-    ],
-  );
+  const prev = JSON.stringify(input.previous_value ?? null);
+  const next = JSON.stringify(input.new_value ?? null);
+  const meta = input.metadata == null ? null : JSON.stringify(input.metadata);
+  await adminDb.execute(sql`
+    INSERT INTO content_edits
+      (entity, entity_id, field,
+       editor_type, editor_id, editor_name,
+       previous_value, new_value,
+       change_kind, reason, ip_address, user_agent,
+       edit_source, metadata)
+    VALUES (${input.entity}, ${input.entity_id}::uuid, ${input.field},
+            ${input.editor_type}, ${input.editor_id}::uuid, ${input.editor_name},
+            ${prev}::jsonb, ${next}::jsonb,
+            ${input.change_kind}, ${input.reason}, ${input.ip_address}, ${input.user_agent},
+            ${input.edit_source}, ${meta}::jsonb)
+  `);
 }
 
 function jsonOrNull(v: unknown): string | null {

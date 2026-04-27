@@ -237,7 +237,10 @@ async function loadRowForLint(entity: string, id: string): Promise<Record<string
   // SECURITY: assertEntityKnown is canonical (DeepSeek W2 catch).
   const safe = assertEntityKnown(entity);
   return withAdminContext(async (adminDb) => {
-    const result = await adminDb.execute(sql.raw(`SELECT * FROM ${safe} WHERE id = $1 LIMIT 1`), [id]);
+    // Drizzle v0.45 pattern (Wave 2 deploy smoke fix).
+    const result = await adminDb.execute(
+      sql`SELECT * FROM ${sql.raw(safe)} WHERE id = ${id}::uuid LIMIT 1`,
+    );
     if (Array.isArray(result)) return (result[0] as Record<string, unknown>) ?? null;
     if (Array.isArray((result as any).rows)) return ((result as any).rows[0] as Record<string, unknown>) ?? null;
     return null;

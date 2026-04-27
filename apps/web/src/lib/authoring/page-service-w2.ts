@@ -82,9 +82,10 @@ async function loadRow(
   rowId: string,
 ): Promise<Record<string, unknown> | null> {
   const safe = assertEntityKnown(entity);
+  // Drizzle v0.45 pattern: sql template with sql.raw() for whitelisted
+  // table identifier + parameterized values via ${} interpolation.
   const result = await adminDb.execute(
-    sql.raw(`SELECT * FROM ${safe} WHERE id = $1 LIMIT 1`),
-    [rowId],
+    sql`SELECT * FROM ${sql.raw(safe)} WHERE id = ${rowId}::uuid LIMIT 1`,
   );
   return rowsOf(result)[0] ?? null;
 }
@@ -96,8 +97,7 @@ async function loadRowForUpdate(
 ): Promise<Record<string, unknown> | null> {
   const safe = assertEntityKnown(entity);
   const result = await adminDb.execute(
-    sql.raw(`SELECT * FROM ${safe} WHERE id = $1 FOR UPDATE`),
-    [rowId],
+    sql`SELECT * FROM ${sql.raw(safe)} WHERE id = ${rowId}::uuid FOR UPDATE`,
   );
   return rowsOf(result)[0] ?? null;
 }
@@ -175,72 +175,41 @@ export async function createPage(input: CreatePageInput): Promise<{ id: string; 
 
     if (safeEntity === 'static_pages') {
       const kind = input.kind ?? 'static';
-      result = await adminDb.execute(
-        sql.raw(`
-          INSERT INTO static_pages
-            (slug, kind, status, composition_json, hero_json, seo_meta_json,
-             created_by_kind, created_by_id,
-             last_edited_by_kind, last_edited_by_id, last_edited_by_name)
-          VALUES ($1, $2, 'draft', $3::jsonb, $4::jsonb, $5::jsonb,
-                  $6, $7, $8, $9, $10)
-          RETURNING id, slug, kind
-        `),
-        [
-          input.slug,
-          kind,
-          compJson,
-          heroJson,
-          seoJson,
-          actor.kind,
-          actor.id,
-          actor.kind,
-          actor.id,
-          actor.name,
-        ],
-      );
+      result = await adminDb.execute(sql`
+        INSERT INTO static_pages
+          (slug, kind, status, composition_json, hero_json, seo_meta_json,
+           created_by_kind, created_by_id,
+           last_edited_by_kind, last_edited_by_id, last_edited_by_name)
+        VALUES (${input.slug}, ${kind}, 'draft',
+                ${compJson}::jsonb, ${heroJson}::jsonb, ${seoJson}::jsonb,
+                ${actor.kind}, ${actor.id}::uuid,
+                ${actor.kind}, ${actor.id}::uuid, ${actor.name})
+        RETURNING id, slug, kind
+      `);
     } else if (safeEntity === 'landing_pages') {
       const pageType = (input.scalars ?? {}).page_type as string;
-      result = await adminDb.execute(
-        sql.raw(`
-          INSERT INTO landing_pages
-            (slug, page_type, status, composition_json, hero_json, seo_meta_json,
-             last_edited_by_kind, last_edited_by_name)
-          VALUES ($1, $2, 'draft', $3::jsonb, $4::jsonb, $5::jsonb, $6, $7)
-          RETURNING id, slug
-        `),
-        [
-          input.slug,
-          pageType,
-          compJson,
-          heroJson,
-          seoJson,
-          actor.kind,
-          actor.name,
-        ],
-      );
+      result = await adminDb.execute(sql`
+        INSERT INTO landing_pages
+          (slug, page_type, status, composition_json, hero_json, seo_meta_json,
+           last_edited_by_kind, last_edited_by_name)
+        VALUES (${input.slug}, ${pageType}, 'draft',
+                ${compJson}::jsonb, ${heroJson}::jsonb, ${seoJson}::jsonb,
+                ${actor.kind}, ${actor.name})
+        RETURNING id, slug
+      `);
     } else {
       // blog_posts
       const ttlAr = (input.scalars ?? {}).title_ar as string;
       const ttlEn = (input.scalars ?? {}).title_en as string;
       const kind = input.kind ?? 'blog_article';
-      result = await adminDb.execute(
-        sql.raw(`
-          INSERT INTO blog_posts
-            (slug, title_ar, title_en, kind, status, composition_json,
-             last_edited_by_kind, last_edited_by_name)
-          VALUES ($1, $2, $3, $4, 'draft', $5::jsonb, $6, $7)
-          RETURNING id, slug, kind
-        `),
-        [
-          input.slug,
-          ttlAr,
-          ttlEn,
-          kind,
-          compJson,
-          actor.kind,
-          actor.name,
-        ],
-      );
+      result = await adminDb.execute(sql`
+        INSERT INTO blog_posts
+          (slug, title_ar, title_en, kind, status, composition_json,
+           last_edited_by_kind, last_edited_by_name)
+        VALUES (${input.slug}, ${ttlAr}, ${ttlEn}, ${kind}, 'draft',
+                ${compJson}::jsonb, ${actor.kind}, ${actor.name})
+        RETURNING id, slug, kind
+      `);
     }
 
     const row = rowsOf(result)[0];
@@ -831,24 +800,15 @@ export async function schedulePublish(input: SchedulePublishInput): Promise<Reco
       );
     }
 
-    await adminDb.execute(
-      sql.raw(`
-        UPDATE ${safeEntity}
-           SET scheduled_publish_at = $1::timestamptz,
-               status = $2,
-               last_edited_by_kind = $3,
-               last_edited_by_name = $4,
-               last_edited_at = now()
-         WHERE id = $5
-      `),
-      [
-        input.scheduled_publish_at,
-        nextStatus,
-        input.actor.kind,
-        input.actor.name,
-        input.rowId,
-      ],
-    );
+    await adminDb.execute(sql`
+      UPDATE ${sql.raw(safeEntity)}
+         SET scheduled_publish_at = ${input.scheduled_publish_at}::timestamptz,
+             status = ${nextStatus},
+             last_edited_by_kind = ${input.actor.kind},
+             last_edited_by_name = ${input.actor.name},
+             last_edited_at = now()
+       WHERE id = ${input.rowId}::uuid
+    `);
 
     await insertContentEditRow(adminDb, {
       entity: safeEntity,
@@ -904,22 +864,15 @@ async function updateCompositionJson(
   actor: Actor,
 ): Promise<void> {
   const safe = assertEntityKnown(entity);
-  await adminDb.execute(
-    sql.raw(`
-      UPDATE ${safe}
-         SET composition_json = $1::jsonb,
-             last_edited_by_kind = $2,
-             last_edited_by_name = $3,
-             last_edited_at = now()
-       WHERE id = $4
-    `),
-    [
-      JSON.stringify(nextComp ?? {}),
-      actor.kind,
-      actor.name,
-      rowId,
-    ],
-  );
+  const compJson = JSON.stringify(nextComp ?? {});
+  await adminDb.execute(sql`
+    UPDATE ${sql.raw(safe)}
+       SET composition_json = ${compJson}::jsonb,
+           last_edited_by_kind = ${actor.kind},
+           last_edited_by_name = ${actor.name},
+           last_edited_at = now()
+     WHERE id = ${rowId}::uuid
+  `);
 }
 
 interface ContentEditInsertInput {
@@ -943,36 +896,22 @@ async function insertContentEditRow(
   adminDb: any,
   input: ContentEditInsertInput,
 ): Promise<void> {
-  await adminDb.execute(
-    sql.raw(`
-      INSERT INTO content_edits
-        (entity, entity_id, field,
-         editor_type, editor_id, editor_name,
-         previous_value, new_value,
-         change_kind, reason, ip_address, user_agent,
-         edit_source, metadata)
-      VALUES ($1, $2, $3, $4, $5, $6,
-              $7::jsonb, $8::jsonb,
-              $9, $10, $11, $12,
-              $13, $14::jsonb)
-    `),
-    [
-      input.entity,
-      input.entity_id,
-      input.field,
-      input.editor_type,
-      input.editor_id,
-      input.editor_name,
-      JSON.stringify(input.previous_value ?? null),
-      JSON.stringify(input.new_value ?? null),
-      input.change_kind,
-      input.reason,
-      input.ip_address,
-      input.user_agent,
-      input.edit_source,
-      input.metadata == null ? null : JSON.stringify(input.metadata),
-    ],
-  );
+  const prev = JSON.stringify(input.previous_value ?? null);
+  const next = JSON.stringify(input.new_value ?? null);
+  const meta = input.metadata == null ? null : JSON.stringify(input.metadata);
+  await adminDb.execute(sql`
+    INSERT INTO content_edits
+      (entity, entity_id, field,
+       editor_type, editor_id, editor_name,
+       previous_value, new_value,
+       change_kind, reason, ip_address, user_agent,
+       edit_source, metadata)
+    VALUES (${input.entity}, ${input.entity_id}::uuid, ${input.field},
+            ${input.editor_type}, ${input.editor_id}::uuid, ${input.editor_name},
+            ${prev}::jsonb, ${next}::jsonb,
+            ${input.change_kind}, ${input.reason}, ${input.ip_address}, ${input.user_agent},
+            ${input.edit_source}, ${meta}::jsonb)
+  `);
 }
 
 // Re-export PageServiceError so route handlers can import from one module.

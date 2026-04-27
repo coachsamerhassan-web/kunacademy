@@ -128,7 +128,9 @@ function fakeExecute(queryObj: any, params?: any[]) {
   // We do this by touching the row in updateStatus + sql.raw paths.
 
   // ── SELECT row ──────────────────────────────────────────────────────────
-  let m = /^SELECT \* FROM (\w+) WHERE id = \$1(?: FOR UPDATE)?(?: LIMIT \d+)?$/i.exec(raw);
+  // Wave 2: drizzle-template form `SELECT * FROM <table> WHERE id = ?::uuid LIMIT 1`
+  // (table name inlined via sql.raw, id via parameterized binding)
+  let m = /^SELECT \* FROM (\w+) WHERE id = \?::uuid(?: FOR UPDATE| LIMIT \d+)?$/i.exec(raw);
   if (m) {
     const [, entity] = m;
     const rid = values[0];
@@ -137,7 +139,7 @@ function fakeExecute(queryObj: any, params?: any[]) {
   }
 
   // ── UPDATE status ───────────────────────────────────────────────────────
-  m = /^UPDATE (\w+) SET status = \$1, last_edited_by = \$2, last_edited_by_kind = \$3, last_edited_by_name = \$4, last_edited_at = now\(\) WHERE id = \$5$/i.exec(
+  m = /^UPDATE (\w+) SET status = \?, last_edited_by = \?::uuid, last_edited_by_kind = \?, last_edited_by_name = \?, last_edited_at = now\(\) WHERE id = \?::uuid$/i.exec(
     raw,
   );
   if (m) {
@@ -150,7 +152,6 @@ function fakeExecute(queryObj: any, params?: any[]) {
     row.last_edited_by_kind = editorKind;
     row.last_edited_by_name = editorName;
     row.last_edited_at = new Date().toISOString();
-    // sync trigger
     if (status === 'published') {
       row.published = true;
       row.published_at = row.published_at ?? new Date().toISOString();
@@ -162,7 +163,7 @@ function fakeExecute(queryObj: any, params?: any[]) {
   }
 
   // ── UPDATE body restore (landing_pages / static_pages) ──────────────────
-  m = /^UPDATE (landing_pages|static_pages) SET composition_json = \$1::jsonb, hero_json = \$2::jsonb, seo_meta_json = \$3::jsonb, last_edited_by = \$4, last_edited_by_kind = \$5, last_edited_by_name = \$6, last_edited_at = now\(\) WHERE id = \$7$/i.exec(
+  m = /^UPDATE (landing_pages|static_pages) SET composition_json = \?::jsonb, hero_json = \?::jsonb, seo_meta_json = \?::jsonb, last_edited_by = \?::uuid, last_edited_by_kind = \?, last_edited_by_name = \?, last_edited_at = now\(\) WHERE id = \?::uuid$/i.exec(
     raw,
   );
   if (m) {
@@ -180,8 +181,32 @@ function fakeExecute(queryObj: any, params?: any[]) {
     return { rows: [] };
   }
 
+  // ── UPDATE blog body restore (Wave 1 W2 pattern) ────────────────────────
+  m = /^UPDATE blog_posts SET composition_json = \?::jsonb, content_ar = \?, content_en = \?, excerpt_ar = \?, excerpt_en = \?, content_ar_rich = \?::jsonb, content_en_rich = \?::jsonb, excerpt_ar_rich = \?::jsonb, excerpt_en_rich = \?::jsonb, last_edited_by = \?::uuid, last_edited_by_kind = \?, last_edited_by_name = \?, last_edited_at = now\(\) WHERE id = \?::uuid$/i.exec(
+    raw,
+  );
+  if (m) {
+    const [comp, ca, ce, ea, ee, car, cer, ear, eer, editorId, editorKind, editorName, rid] = values;
+    const row = tables.blog_posts?.find((r) => r.id === rid);
+    if (!row) return { rows: [] };
+    row.composition_json = parseMaybeJSON(comp);
+    (row as any).content_ar = ca;
+    (row as any).content_en = ce;
+    (row as any).excerpt_ar = ea;
+    (row as any).excerpt_en = ee;
+    (row as any).content_ar_rich = parseMaybeJSON(car);
+    (row as any).content_en_rich = parseMaybeJSON(cer);
+    (row as any).excerpt_ar_rich = parseMaybeJSON(ear);
+    (row as any).excerpt_en_rich = parseMaybeJSON(eer);
+    row.last_edited_by = editorId;
+    row.last_edited_by_kind = editorKind;
+    row.last_edited_by_name = editorName;
+    row.last_edited_at = new Date().toISOString();
+    return { rows: [] };
+  }
+
   // ── INSERT content_page_snapshots ───────────────────────────────────────
-  m = /^INSERT INTO content_page_snapshots \(entity, entity_id, snapshot, reason, taken_by_kind, taken_by_id, taken_by_name, edit_id\) VALUES \(\$1, \$2, \$3::jsonb, \$4, \$5, \$6, \$7, \$8\) RETURNING id$/i.exec(
+  m = /^INSERT INTO content_page_snapshots \(entity, entity_id, snapshot, reason, taken_by_kind, taken_by_id, taken_by_name, edit_id\) VALUES \(\?, \?::uuid, \?::jsonb, \?, \?, \?::uuid, \?, \?::uuid\) RETURNING id$/i.exec(
     raw,
   );
   if (m) {
@@ -290,17 +315,40 @@ const originalRequire = (Module.prototype as any).require;
     };
   }
   if (request === 'drizzle-orm') {
-    // sql template literal → returns a tiny shape with .queryChunks-like.
-    // sql.raw → returns the same with the literal string.
+    // Mock that mirrors Drizzle's runtime semantics:
+    //   - sql.raw('TABLE')                          → embeds 'TABLE' as raw string in queryChunks
+    //   - sql`SELECT * FROM ${sql.raw('TABLE')}`    → expands to literal 'SELECT * FROM TABLE'
+    //   - sql`... WHERE id = ${val}`                → ${val} becomes '?', val collected in values[]
+    //   - mixing both                               → identifier inlined, value parameterized
+    //
+    // Detection of sql.raw fragments inside template values is via the
+    // `_isRaw: true` marker on the chunk; otherwise the value is treated
+    // as a parameterized binding.
     const sql: any = (strings: TemplateStringsArray, ...values: any[]) => {
       const queryChunks: any[] = [];
+      const collectedValues: any[] = [];
       strings.forEach((s, i) => {
         queryChunks.push(s);
-        if (i < values.length) queryChunks.push({ value: '?' });
+        if (i < values.length) {
+          const v = values[i];
+          if (v && typeof v === 'object' && (v as any)._isRaw === true) {
+            // Inline the raw identifier as part of the SQL string
+            queryChunks.push((v as any).sql);
+          } else if (v && typeof v === 'object' && Array.isArray((v as any).queryChunks)) {
+            // Nested sql template — splice its chunks + values
+            queryChunks.push(...(v as any).queryChunks);
+            if (Array.isArray((v as any).values)) {
+              collectedValues.push(...(v as any).values);
+            }
+          } else {
+            queryChunks.push({ value: '?' });
+            collectedValues.push(v);
+          }
+        }
       });
-      return { queryChunks, values };
+      return { queryChunks, values: collectedValues };
     };
-    sql.raw = (s: string) => ({ queryChunks: [s], sql: s });
+    sql.raw = (s: string) => ({ queryChunks: [s], sql: s, _isRaw: true });
     return { sql };
   }
   return originalRequire.call(this, request);

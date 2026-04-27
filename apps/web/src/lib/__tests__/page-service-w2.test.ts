@@ -124,7 +124,7 @@ function seedRow(
   return row;
 }
 
-function fakeExecute(queryObj: any, params?: any[]) {
+function fakeExecute(queryObj: any, _params?: any[]) {
   let raw =
     queryObj?.queryChunks
       ?.map((c: any) => (typeof c === 'string' ? c : c?.value ?? '?'))
@@ -132,10 +132,10 @@ function fakeExecute(queryObj: any, params?: any[]) {
   if (!raw) raw = queryObj?.sql ?? '';
   if (!raw && typeof queryObj === 'string') raw = queryObj;
   raw = (raw as string).replace(/\s+/g, ' ').trim();
-  const values: any[] = params ?? queryObj?.values ?? [];
+  const values: any[] = queryObj?.values ?? [];
 
-  // SELECT * FROM <ent> WHERE id = $1 [LIMIT 1 | FOR UPDATE]
-  let m = /^SELECT \* FROM (\w+) WHERE id = \$1(?: FOR UPDATE)?(?: LIMIT \d+)?$/i.exec(raw);
+  // ── SELECT * FROM <ent> WHERE id = ?::uuid [LIMIT 1 | FOR UPDATE] ──────
+  let m = /^SELECT \* FROM (\w+) WHERE id = \?::uuid(?: FOR UPDATE| LIMIT \d+)?$/i.exec(raw);
   if (m) {
     const ent = m[1];
     const rid = values[0];
@@ -143,7 +143,7 @@ function fakeExecute(queryObj: any, params?: any[]) {
     return { rows: row ? [row] : [] };
   }
 
-  // INSERT INTO static_pages (...) VALUES (...) RETURNING id, slug, kind
+  // ── INSERT INTO static_pages ───────────────────────────────────────────
   m = /^INSERT INTO static_pages /i.exec(raw);
   if (m) {
     const row: PageRow = {
@@ -168,7 +168,7 @@ function fakeExecute(queryObj: any, params?: any[]) {
     return { rows: [{ id: row.id, slug: row.slug, kind: row.kind }] };
   }
 
-  // INSERT INTO landing_pages (...) VALUES (...) RETURNING id, slug
+  // ── INSERT INTO landing_pages ──────────────────────────────────────────
   m = /^INSERT INTO landing_pages /i.exec(raw);
   if (m) {
     const row: PageRow = {
@@ -191,7 +191,7 @@ function fakeExecute(queryObj: any, params?: any[]) {
     return { rows: [{ id: row.id, slug: row.slug }] };
   }
 
-  // INSERT INTO blog_posts (...) VALUES (...) RETURNING id, slug, kind
+  // ── INSERT INTO blog_posts ─────────────────────────────────────────────
   m = /^INSERT INTO blog_posts /i.exec(raw);
   if (m) {
     const row: PageRow = {
@@ -216,8 +216,8 @@ function fakeExecute(queryObj: any, params?: any[]) {
     return { rows: [{ id: row.id, slug: row.slug, kind: row.kind }] };
   }
 
-  // UPDATE composition_json (Wave 2 ops)
-  m = /^UPDATE (\w+) SET composition_json = \$1::jsonb, last_edited_by_kind = \$2, last_edited_by_name = \$3, last_edited_at = now\(\) WHERE id = \$4$/i.exec(raw);
+  // ── UPDATE composition_json (Wave 2 section ops) ───────────────────────
+  m = /^UPDATE (\w+) SET composition_json = \?::jsonb, last_edited_by_kind = \?, last_edited_by_name = \?, last_edited_at = now\(\) WHERE id = \?::uuid$/i.exec(raw);
   if (m) {
     const ent = m[1];
     const [comp, kind, name, rid] = values;
@@ -230,8 +230,8 @@ function fakeExecute(queryObj: any, params?: any[]) {
     return { rows: [] };
   }
 
-  // UPDATE status (delegated to transitionStatus from page-service.ts)
-  m = /^UPDATE (\w+) SET status = \$1, last_edited_by = \$2, last_edited_by_kind = \$3, last_edited_by_name = \$4, last_edited_at = now\(\) WHERE id = \$5$/i.exec(raw);
+  // ── UPDATE status (delegated to transitionStatus) ──────────────────────
+  m = /^UPDATE (\w+) SET status = \?, last_edited_by = \?::uuid, last_edited_by_kind = \?, last_edited_by_name = \?, last_edited_at = now\(\) WHERE id = \?::uuid$/i.exec(raw);
   if (m) {
     const ent = m[1];
     const [status, editorId, editorKind, editorName, rid] = values;
@@ -252,8 +252,8 @@ function fakeExecute(queryObj: any, params?: any[]) {
     return { rows: [] };
   }
 
-  // UPDATE schedule (Wave 2 schedulePublish)
-  m = /^UPDATE (\w+) SET scheduled_publish_at = \$1::timestamptz, status = \$2, last_edited_by_kind = \$3, last_edited_by_name = \$4, last_edited_at = now\(\) WHERE id = \$5$/i.exec(raw);
+  // ── UPDATE schedule (Wave 2 schedulePublish) ───────────────────────────
+  m = /^UPDATE (\w+) SET scheduled_publish_at = \?::timestamptz, status = \?, last_edited_by_kind = \?, last_edited_by_name = \?, last_edited_at = now\(\) WHERE id = \?::uuid$/i.exec(raw);
   if (m) {
     const ent = m[1];
     const [ts, status, kind, name, rid] = values;
@@ -370,15 +370,28 @@ const originalRequire = (Module.prototype as any).require;
     };
   }
   if (request === 'drizzle-orm') {
+    // Mirrors W1 mock exactly — see page-service.test.ts for full doc.
     const sql: any = (strings: TemplateStringsArray, ...values: any[]) => {
       const queryChunks: any[] = [];
+      const collectedValues: any[] = [];
       strings.forEach((s, i) => {
         queryChunks.push(s);
-        if (i < values.length) queryChunks.push({ value: '?' });
+        if (i < values.length) {
+          const v = values[i];
+          if (v && typeof v === 'object' && (v as any)._isRaw === true) {
+            queryChunks.push((v as any).sql);
+          } else if (v && typeof v === 'object' && Array.isArray((v as any).queryChunks)) {
+            queryChunks.push(...(v as any).queryChunks);
+            if (Array.isArray((v as any).values)) collectedValues.push(...(v as any).values);
+          } else {
+            queryChunks.push({ value: '?' });
+            collectedValues.push(v);
+          }
+        }
       });
-      return { queryChunks, values };
+      return { queryChunks, values: collectedValues };
     };
-    sql.raw = (s: string) => ({ queryChunks: [s], sql: s });
+    sql.raw = (s: string) => ({ queryChunks: [s], sql: s, _isRaw: true });
     return { sql };
   }
   return originalRequire.call(this, request);
