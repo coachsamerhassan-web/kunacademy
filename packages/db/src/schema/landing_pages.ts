@@ -1,4 +1,5 @@
 import { pgTable, boolean, text, timestamp, uuid, jsonb, index } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
 import { profiles } from './profiles';
 import { programs } from './programs';
 
@@ -45,12 +46,32 @@ export const landing_pages = pgTable("landing_pages", {
   last_edited_at: timestamp("last_edited_at", { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
   created_at: timestamp("created_at", { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
   updated_at: timestamp("updated_at", { withTimezone: true, mode: 'string' }).notNull().defaultNow(),
+  // ── Wave 15 Wave 1 (migration 0066) ────────────────────────────────────
+  // Status state machine. CHECK in {'draft','review','published','archived'}
+  // at DB level. `published` boolean is mirrored via the sync trigger; write
+  // status, not published.
+  status: text("status").notNull().default('draft'),
+  // When set + status='review', the publish-cron flips status='published'
+  // at or after this time (Wave 15 D13).
+  scheduled_publish_at: timestamp("scheduled_publish_at", { withTimezone: true, mode: 'string' }),
+  // Authorship discriminator for last_edited_by. CHECK in
+  // {'human','agent','system'} at DB level.
+  // - 'human'  → last_edited_by uuid resolves to profiles.id (existing FK)
+  // - 'agent'  → last_edited_by uuid resolves to agent_tokens.id (no FK; polymorphic)
+  // - 'system' → last_edited_by is NULL
+  last_edited_by_kind: text("last_edited_by_kind").notNull().default('human'),
+  last_edited_by_name: text("last_edited_by_name"),
 }, (t) => ({
   slugIdx: index("landing_pages_slug_idx").on(t.slug),
   programSlugIdx: index("landing_pages_program_slug_idx").on(t.program_slug),
   programIdIdx: index("landing_pages_program_id_idx").on(t.program_id),
   publishedIdx: index("landing_pages_published_idx").on(t.published),
   pageTypeIdx: index("landing_pages_page_type_idx").on(t.page_type),
+  // ── Wave 15 Wave 1 indexes ────────────────────────────────────────────
+  statusIdx: index("landing_pages_status_idx").on(t.status),
+  scheduledIdx: index("landing_pages_scheduled_idx")
+    .on(t.scheduled_publish_at)
+    .where(sql`${t.scheduled_publish_at} IS NOT NULL`),
 }));
 
 export type LandingPage = typeof landing_pages.$inferSelect;
