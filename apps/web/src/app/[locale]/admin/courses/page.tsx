@@ -65,7 +65,7 @@ export default function AdminCoursesPage() {
 
   useEffect(() => {
     if (authLoading) return;
-    if (!user || profile?.role !== 'admin') { router.push('/' + locale + '/auth/login'); return; }
+    if (!user || (profile?.role !== 'admin' && profile?.role !== 'super_admin')) { router.push('/' + locale + '/auth/login'); return; }
     loadCourses();
   }, [user, profile, authLoading]);
 

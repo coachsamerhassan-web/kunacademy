@@ -90,7 +90,7 @@ export default function AdminGraduatesPage() {
   // Auth guard
   useEffect(() => {
     if (authLoading) return;
-    if (!user || profile?.role !== 'admin') {
+    if (!user || (profile?.role !== 'admin' && profile?.role !== 'super_admin')) {
       router.push('/' + locale + '/auth/login');
     }
   }, [user, profile, authLoading]);

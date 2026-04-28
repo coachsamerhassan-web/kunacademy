@@ -83,7 +83,7 @@ export default function AdminContentPage() {
 
   useEffect(() => {
     if (authLoading) return;
-    if (!user || profile?.role !== 'admin') { router.push('/' + locale + '/auth/login'); return; }
+    if (!user || (profile?.role !== 'admin' && profile?.role !== 'super_admin')) { router.push('/' + locale + '/auth/login'); return; }
   }, [user, profile, authLoading]);
 
   if (authLoading) return <Section><p className="text-center py-12">Loading...</p></Section>;

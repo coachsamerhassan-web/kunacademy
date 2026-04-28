@@ -176,7 +176,7 @@ export default function AdminCommissionsPage() {
 
   useEffect(() => {
     if (authLoading) return;
-    if (!user || profile?.role !== 'admin') {
+    if (!user || (profile?.role !== 'admin' && profile?.role !== 'super_admin')) {
       router.push('/' + locale + '/auth/login');
       return;
     }
