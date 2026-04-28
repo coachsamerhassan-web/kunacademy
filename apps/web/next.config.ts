@@ -82,36 +82,30 @@ const nextConfig: NextConfig = {
       {
         source: '/(.*)',
         headers: [
-          // DENY on all routes by default.
-          // LP / blog public routes override this to SAMEORIGIN via the
-          // more-specific rule listed AFTER this one (Next.js applies all
-          // matching rules; when the same key appears multiple times, the last
-          // matching rule wins).
-          { key: 'X-Frame-Options', value: 'DENY' },
+          // Bug B fix (Wave 15 W3 canary v2 respin):
+          // Changed DENY → SAMEORIGIN globally.
+          //
+          // SAMEORIGIN is the correct setting here: it blocks any external
+          // (cross-origin) site from iframing our pages while allowing the
+          // admin preview panel (/ar/admin/preview/[entity]/[id]) — which lives
+          // on the SAME origin (kuncoaching.me) — to iframe public LP and blog
+          // pages.
+          //
+          // DENY was blocking the admin preview iframe. Next.js headers() does
+          // not override duplicate keys across multiple matching rules; it appends
+          // them, so the "override with SAMEORIGIN in a later rule" approach does
+          // not work — both headers are emitted and browsers take the DENY.
+          //
+          // Security posture: SAMEORIGIN still prevents all cross-origin framing
+          // attacks (clickjacking via a third-party site embedding our pages).
+          // The only new capability granted is same-origin iframing, which is
+          // only possible for authenticated sessions on our own domain.
+          { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
           { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
           { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
           { key: 'Content-Security-Policy', value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://connect.facebook.net https://www.google-analytics.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https: http:; connect-src 'self' https://www.google-analytics.com https://region1.google-analytics.com https://www.facebook.com https://connect.facebook.net; frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://js.stripe.com https://checkout.tabby.ai; object-src 'none'; base-uri 'self'; form-action 'self'" },
-        ],
-      },
-      {
-        // Bug B fix (Wave 15 W3 canary v2 respin):
-        // Public LP / blog routes must be embeddable in the same-origin admin
-        // preview iframe at /ar/admin/preview/[entity]/[id].  The catch-all DENY
-        // above blocks them.  Override to SAMEORIGIN for these paths only.
-        //
-        // AFTER the global rule so Next.js last-match semantics make this win.
-        // Admin, API, and all other routes still get DENY from the rule above.
-        source: '/:locale(ar|en)/lp/:slug*',
-        headers: [
-          { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
-        ],
-      },
-      {
-        source: '/:locale(ar|en)/blog/:slug*',
-        headers: [
-          { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
         ],
       },
       {
