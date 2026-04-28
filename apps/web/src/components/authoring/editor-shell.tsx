@@ -1,32 +1,20 @@
 /**
- * Wave 15 Wave 3 — Visual editor shell.
+ * Wave 15 Wave 3 — Visual editor shell (post-canary Wave 3 complete).
  *
- * Composes top bar + page tree (left) + canvas (center) + side panel (right)
- * for landing_pages, blog_posts, and static_pages. The same shell serves all
- * three entity types per spec §2.1 sibling-tables architecture.
- *
- * Wave 3 canary scope (post-canary refinement noted inline):
- *   ✓ Layout (canvas + side-panel + page-tree)
- *   ✓ Section selection bound to side panel
- *   ✓ Drag-reorder (page tree)
- *   ✓ Add section via picker (page tree footer button)
- *   ✓ Live preview (canvas re-renders on every state change)
- *   ✓ AR ⇄ EN toggle (canvas locale state)
- *   ✓ Autosave (5s idle / 30s active via useAutoSave)
- *   ✓ Submit-for-review + Publish via /transition (lint surfaces in panel)
- *
- *   POST-CANARY refinement:
- *   - DOM-rect overlay markers on canvas (Hakawati §6.2 affordances)
- *   - Per-agent accent borders on canvas section borders
- *   - Inline AI invocation (Hakawati §6.5 "Ask 🤖")
- *   - Diff view from content_edits.previous_value/new_value
- *   - Multi-agent coordination strip
- *   - 768px tablet drawer + <768px full-screen overlay (panel collapse)
+ * All post-canary refinement items wired:
+ *   ✓ DOM-rect overlay markers on canvas (Hakawati §6.2) — Item 1
+ *   ✓ React.memo per section + field debounce — Item 2 (via use-debounced-section)
+ *   ✓ Inline AI invocation footer "Ask 🤖" — Item 3
+ *   ✓ Diff view from content_edits — Item 4
+ *   ✓ Multi-agent coordination strip — Item 5
+ *   ✓ Tablet drawer (768–1023px) + mobile full-screen overlay (<768px) — Item 6
+ *   ✓ AR-first RTL polish + 250ms locale crossfade — Item 7
+ *   ✓ Brand language polish (Cosmic Latte/Platinum surfaces, Mandarin accent only) — Item 8
  */
 
 'use client';
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import type { LpComposition, LpSection } from '@/lib/lp/composition-types';
 import { TopBar, type RowStatus } from './top-bar';
@@ -35,19 +23,16 @@ import { Canvas, type EntityKind } from './canvas';
 import { SidePanel } from './side-panel';
 import { useAutoSave } from './use-autosave';
 import { SectionTypePicker } from './section-type-picker';
+import { MultiAgentStrip } from './multi-agent-strip';
 
 interface EditorShellProps {
   entity: EntityKind;
-  /** Row UUID — currently consumed by the mount components for fetch URLs;
-   *  the EditorShell stores it for future per-section endpoints (post-canary). */
   rowId?: string;
   slug: string;
   title: string;
   initialStatus: RowStatus;
   initialComposition: LpComposition;
-  /** ETag — server's row.updated_at ISO string at load time. */
   initialEtag?: string | null;
-  /** Blog scalar fields (only used when entity=blog_posts). */
   initialBlogFields?: {
     title_ar: string | null;
     title_en: string | null;
@@ -55,17 +40,14 @@ interface EditorShellProps {
     content_en: string | null;
     featured_image_url: string | null;
   };
-  /** Per-section provenance map index → agent identity. */
   initialProvenance?: Record<number, AgentIdentity | null>;
-  /** Save handler — called by autosave. Returns the new etag on success. */
   onSave: (composition: LpComposition, blogFields: EditorShellProps['initialBlogFields'], etag?: string | null) => Promise<string | null>;
-  /** Transition handler — called for submit-for-review / publish. Returns
-   *  the response body (success row OR lint_block details). */
   onTransition: (to: 'review' | 'published') => Promise<TransitionResult>;
-  /** Public preview href (e.g. /ar/lp/foo). Renders as "Open ↗" fallback when
-   *  device-preview isn't wired. */
   previewHref: string | null;
   locale: string;
+  /** AR-first default locale. When true (default for AR LPs), the canvas
+   *  opens in AR. When false (EN LPs), opens in EN. Per Hakawati §6.1. */
+  defaultLocaleFirst?: 'ar' | 'en';
 }
 
 export interface TransitionResult {
@@ -99,31 +81,45 @@ export function EditorShell({
   onTransition,
   previewHref,
   locale,
+  defaultLocaleFirst,
 }: EditorShellProps) {
   const router = useRouter();
   const isAr = locale === 'ar';
 
-  // Wave 15 W3 canary v2 (Issue 5B) — device-preview href.
-  // When a rowId is available, link to the new preview-in-new-tab route with
-  // device-size toggle. Fallback: keep the public previewHref.
-  const devicePreviewHref = rowId ? `/${locale}/admin/preview/${entity}/${rowId}?as=draft` : null;
+  // Device preview href (wave 3 canary v2 Issue 5B).
+  const devicePreviewHref = rowId
+    ? `/${locale}/admin/preview/${entity}/${rowId}?as=draft`
+    : null;
 
-  // ── Authored state ─────────────────────────────────────────────────────
+  // ── Authored state ──────────────────────────────────────────────────────
   const [composition, setComposition] = useState<LpComposition>(initialComposition);
-  // Blog scalar fields. setBlogFields is held for post-canary scalar editing
-  // (the blog scalar form lands in the side panel as a "Page-level" tab).
   const [blogFields] = useState(initialBlogFields ?? null);
   const [status, setStatus] = useState<RowStatus>(initialStatus);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+  const [pickerAfterIndex, setPickerAfterIndex] = useState<number | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
 
-  // Locale toggle. Initialized from URL locale; sticky during the session.
-  const [canvasLocale, setCanvasLocale] = useState<'ar' | 'en'>(locale === 'ar' ? 'ar' : 'en');
+  // AR-first locale: per Hakawati §6.1, AR-default LPs open in AR.
+  // defaultLocaleFirst comes from the mount (derived from landing_pages.default_locale).
+  const initialCanvasLocale = (defaultLocaleFirst ?? (locale === 'ar' ? 'ar' : 'en')) as 'ar' | 'en';
+  const [canvasLocale, setCanvasLocale] = useState<'ar' | 'en'>(initialCanvasLocale);
 
-  // Wave 15 W3 canary v2 (Issue 5A): page-tree icon-rail collapse.
-  // Defaults to collapsed = stage gets the visual breathing room Samer
-  // requested. Hamburger toggles to full-tree mode. Sticky per-session
-  // via localStorage (best-effort — safe fallback if storage is denied).
+  // Item 7: 250ms locale crossfade — fade-cross on locale switch.
+  const [localeFading, setLocaleFading] = useState(false);
+  const prevLocaleRef = useRef<'ar' | 'en'>(canvasLocale);
+
+  function toggleLocale() {
+    const next = canvasLocale === 'ar' ? 'en' : 'ar';
+    setLocaleFading(true);
+    prevLocaleRef.current = canvasLocale;
+    // Apply the new locale after the first half of the crossfade.
+    setTimeout(() => {
+      setCanvasLocale(next);
+      setTimeout(() => setLocaleFading(false), 125);
+    }, 125);
+  }
+
+  // Tree collapse state (sticky localStorage).
   const [treeCollapsed, setTreeCollapsed] = useState<boolean>(() => {
     if (typeof window === 'undefined') return true;
     try {
@@ -133,36 +129,58 @@ export function EditorShell({
       return true;
     }
   });
+
   const toggleTreeCollapsed = useCallback(() => {
     setTreeCollapsed((c) => {
       const next = !c;
-      try {
-        window.localStorage.setItem('kun:editor:tree-collapsed', next ? '1' : '0');
-      } catch {
-        /* localStorage may be denied — stickiness is best-effort */
-      }
+      try { window.localStorage.setItem('kun:editor:tree-collapsed', next ? '1' : '0'); }
+      catch { /* storage denied */ }
       return next;
     });
   }, []);
 
-  // Lint state (last-known from a transition attempt).
+  // Item 6: Responsive panel state.
+  // viewport: 'desktop' ≥1024px, 'tablet' 768–1023px, 'mobile' <768px
+  const [viewport, setViewport] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
+  const [panelOpen, setPanelOpen] = useState(false); // tablet/mobile panel open state
+
+  useEffect(() => {
+    function measure() {
+      const w = window.innerWidth;
+      if (w >= 1024) setViewport('desktop');
+      else if (w >= 768) setViewport('tablet');
+      else setViewport('mobile');
+    }
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, []);
+
+  // Auto-open panel on tablet/mobile when a section is selected.
+  const prevSelectedIndexRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (
+      viewport !== 'desktop' &&
+      selectedIndex !== null &&
+      selectedIndex !== prevSelectedIndexRef.current
+    ) {
+      setPanelOpen(true);
+    }
+    prevSelectedIndexRef.current = selectedIndex;
+  }, [selectedIndex, viewport]);
+
+  // Lint state.
   const [lintViolations, setLintViolations] = useState<TransitionResult['lints'] | null>(null);
   const [transitionError, setTransitionError] = useState<string | null>(null);
 
-  // Sections derive from composition; canonical edits flow through composition.
   const sections: LpSection[] = composition.sections ?? [];
 
-  // ── Autosave wiring ────────────────────────────────────────────────────
+  // ── Autosave ─────────────────────────────────────────────────────────────
   const saveValue = useMemo(() => ({ composition, blogFields }), [composition, blogFields]);
 
   const saveHandler = useCallback(
-    async (v: typeof saveValue, etag?: string | null) => {
-      // onSave's blogFields type is the prop's initialBlogFields type
-      // (object | undefined) — pass through, normalizing nullable state to
-      // undefined for type compatibility.
-      const next = await onSave(v.composition, v.blogFields ?? undefined, etag ?? null);
-      return next;
-    },
+    async (v: typeof saveValue, etag?: string | null) =>
+      onSave(v.composition, v.blogFields ?? undefined, etag ?? null),
     [onSave],
   );
 
@@ -172,94 +190,127 @@ export function EditorShell({
     onSave: saveHandler,
   });
 
-  // ── Mutation helpers ───────────────────────────────────────────────────
+  // ── Mutation helpers ──────────────────────────────────────────────────────
   const updateSections = useCallback((next: LpSection[]) => {
     setComposition((prev) => ({ ...prev, sections: next }));
   }, []);
 
-  const handleSectionChange = useCallback((next: LpSection) => {
-    if (selectedIndex === null) return;
-    setComposition((prev) => {
-      const cur = prev.sections ?? [];
-      const updated = cur.slice();
-      updated[selectedIndex] = next;
-      return { ...prev, sections: updated };
-    });
-  }, [selectedIndex]);
+  const handleSectionChange = useCallback(
+    (next: LpSection) => {
+      if (selectedIndex === null) return;
+      setComposition((prev) => {
+        const cur = prev.sections ?? [];
+        const updated = cur.slice();
+        updated[selectedIndex] = next;
+        return { ...prev, sections: updated };
+      });
+    },
+    [selectedIndex],
+  );
 
   const handleAddSection = useCallback((newSection: LpSection) => {
     setComposition((prev) => {
       const cur = prev.sections ?? [];
-      const next = [...cur, newSection];
-      // Auto-select the newly-added section.
-      setSelectedIndex(next.length - 1);
+      const insertAfter = pickerAfterIndex !== null && pickerAfterIndex >= 0
+        ? pickerAfterIndex
+        : cur.length - 1;
+      const next = [
+        ...cur.slice(0, insertAfter + 1),
+        newSection,
+        ...cur.slice(insertAfter + 1),
+      ];
+      setSelectedIndex(insertAfter + 1);
       return { ...prev, sections: next };
     });
-  }, []);
+    setPickerAfterIndex(null);
+  }, [pickerAfterIndex]);
 
-  const handleDeleteSection = useCallback(() => {
-    if (selectedIndex === null) return;
-    if (
-      !window.confirm(
-        isAr
-          ? `حذف القسم #${selectedIndex + 1}؟`
-          : `Delete section #${selectedIndex + 1}?`,
-      )
-    ) return;
-    setComposition((prev) => {
-      const cur = prev.sections ?? [];
-      const next = cur.slice();
-      next.splice(selectedIndex, 1);
-      return { ...prev, sections: next };
-    });
-    setSelectedIndex(null);
-  }, [selectedIndex, isAr]);
+  const handleDeleteSection = useCallback(
+    (indexOverride?: number) => {
+      const idx = indexOverride ?? selectedIndex;
+      if (idx === null) return;
+      if (
+        !window.confirm(
+          isAr ? `حذف القسم #${idx + 1}؟` : `Delete section #${idx + 1}?`,
+        )
+      ) return;
+      setComposition((prev) => {
+        const cur = prev.sections ?? [];
+        const next = cur.slice();
+        next.splice(idx, 1);
+        return { ...prev, sections: next };
+      });
+      setSelectedIndex(null);
+    },
+    [selectedIndex, isAr],
+  );
 
-  const handleDuplicateSection = useCallback(() => {
-    if (selectedIndex === null) return;
-    setComposition((prev) => {
-      const cur = prev.sections ?? [];
-      const target = cur[selectedIndex];
-      if (!target) return prev;
-      const copy = JSON.parse(JSON.stringify(target));
-      const next = cur.slice();
-      next.splice(selectedIndex + 1, 0, copy);
-      setSelectedIndex(selectedIndex + 1);
-      return { ...prev, sections: next };
-    });
-  }, [selectedIndex]);
+  const handleDuplicateSection = useCallback(
+    (indexOverride?: number) => {
+      const idx = indexOverride ?? selectedIndex;
+      if (idx === null) return;
+      setComposition((prev) => {
+        const cur = prev.sections ?? [];
+        const target = cur[idx];
+        if (!target) return prev;
+        const copy = JSON.parse(JSON.stringify(target)) as LpSection;
+        const next = cur.slice();
+        next.splice(idx + 1, 0, copy);
+        setSelectedIndex(idx + 1);
+        return { ...prev, sections: next };
+      });
+    },
+    [selectedIndex],
+  );
 
-  // Transition handler — submits to /transition; surfaces lint violations.
-  const doTransition = useCallback(async (to: 'review' | 'published') => {
-    // Save first to ensure the server lints the latest body.
-    const savedOk = await saveNow();
-    if (!savedOk && saveStatus === 'error') {
-      setTransitionError(isAr ? 'فشل الحفظ قبل الإرسال' : 'Save failed before transition');
-      return;
-    }
-    setTransitionError(null);
-    const result = await onTransition(to);
-    if (result.ok) {
-      setStatus(result.status ?? (to === 'review' ? 'review' : 'published'));
-      setLintViolations(result.lints ?? null);
-      // Refresh the page on publish so server-driven state (published,
-      // published_at) reflects in the URL/preview.
-      if (to === 'published') router.refresh();
-    } else {
-      setLintViolations(result.lints ?? null);
-      setTransitionError(result.error ?? null);
-    }
-  }, [saveNow, saveStatus, onTransition, isAr, router]);
+  const doTransition = useCallback(
+    async (to: 'review' | 'published') => {
+      const savedOk = await saveNow();
+      if (!savedOk && saveStatus === 'error') {
+        setTransitionError(isAr ? 'فشل الحفظ قبل الإرسال' : 'Save failed before transition');
+        return;
+      }
+      setTransitionError(null);
+      const result = await onTransition(to);
+      if (result.ok) {
+        setStatus(result.status ?? (to === 'review' ? 'review' : 'published'));
+        setLintViolations(result.lints ?? null);
+        if (to === 'published') router.refresh();
+      } else {
+        setLintViolations(result.lints ?? null);
+        setTransitionError(result.error ?? null);
+      }
+    },
+    [saveNow, saveStatus, onTransition, isAr, router],
+  );
 
   const lintHardBlock = (lintViolations?.hard_blocks ?? 0) > 0;
 
+  // ── Render ────────────────────────────────────────────────────────────────
+
+  // Item 7: Canvas wrapper gets 250ms opacity crossfade on locale switch.
+  const canvasStyle: React.CSSProperties = localeFading
+    ? { opacity: 0.1, transition: 'opacity 125ms ease-in-out' }
+    : { opacity: 1, transition: 'opacity 125ms ease-in-out' };
+
+  const isTablet = viewport === 'tablet';
+  const isMobile = viewport === 'mobile';
+  const isNarrow = isTablet || isMobile;
+
   return (
-    <div className="flex flex-col h-[calc(100vh-0px)] bg-white" data-wave-15-w3-editor>
+    // Item 8: Brand surface — Cosmic Latte bg for the full shell outer shell.
+    <div
+      className="flex flex-col bg-[#FFF5E9]"
+      style={{ height: '100dvh' }}
+      data-wave-15-w3-editor
+      dir={isAr ? 'rtl' : 'ltr'}
+    >
+      {/* Top bar */}
       <TopBar
         title={title || slug}
         status={status}
         canvasLocale={canvasLocale}
-        onLocaleToggle={() => setCanvasLocale((c) => (c === 'ar' ? 'en' : 'ar'))}
+        onLocaleToggle={toggleLocale}
         previewHref={previewHref}
         devicePreviewHref={devicePreviewHref}
         saveStatus={saveStatus}
@@ -272,6 +323,20 @@ export function EditorShell({
         locale={locale}
       />
 
+      {/* Multi-agent coordination strip (Item 5) */}
+      {rowId && (
+        <MultiAgentStrip
+          entityId={rowId}
+          entityKind={entity}
+          locale={locale}
+          onJumpToSection={(i) => {
+            setSelectedIndex(i);
+            if (isNarrow) setPanelOpen(true);
+          }}
+        />
+      )}
+
+      {/* Lint / transition error banners */}
       {transitionError && (
         <div className="bg-red-50 border-b border-red-200 px-4 py-2 text-sm text-red-800">
           {transitionError}
@@ -279,10 +344,12 @@ export function EditorShell({
       )}
       {lintHardBlock && (
         <div className="bg-red-50 border-b border-red-200 px-4 py-2 text-sm text-red-900">
-          <span className="font-semibold">⛔ {isAr ? 'النشر محظور' : 'Publish blocked'}:</span>{' '}
+          <span className="font-semibold">
+            ⛔ {isAr ? 'النشر محظور' : 'Publish blocked'}:
+          </span>{' '}
           {isAr
-            ? `${lintViolations?.hard_blocks} تنبيه/تنبيهات صلبة. حلّها قبل الإرسال للمراجعة.`
-            : `${lintViolations?.hard_blocks} hard-block lint violation${(lintViolations?.hard_blocks ?? 0) === 1 ? '' : 's'}. Resolve before retrying.`}
+            ? `${lintViolations?.hard_blocks} تنبيه/تنبيهات صلبة.`
+            : `${lintViolations?.hard_blocks} hard-block violation${(lintViolations?.hard_blocks ?? 0) === 1 ? '' : 's'}.`}
           <span className="ms-2 text-xs text-red-700">
             {(lintViolations?.details ?? [])
               .filter((d) => d.severity === 'hard_block')
@@ -293,48 +360,200 @@ export function EditorShell({
         </div>
       )}
 
-      <div className="flex-1 flex overflow-hidden">
-        <PageTree
-          sections={sections}
-          selectedIndex={selectedIndex}
-          onSelect={setSelectedIndex}
-          onChange={updateSections}
-          locale={locale}
-          provenance={initialProvenance}
-          onAdd={() => setPickerOpen(true)}
-          collapsed={treeCollapsed}
-          onToggleCollapsed={toggleTreeCollapsed}
-        />
-        <Canvas
-          entity={entity}
-          slug={slug}
-          locale={canvasLocale}
-          composition={composition}
-          blogFields={blogFields ?? undefined}
-          selectedIndex={selectedIndex}
-          onSelectSection={setSelectedIndex}
-        />
-        <SidePanel
-          section={selectedIndex !== null ? sections[selectedIndex] ?? null : null}
-          sectionIndex={selectedIndex}
-          onChange={handleSectionChange}
-          onDelete={handleDeleteSection}
-          onDuplicate={handleDuplicateSection}
-          canvasLocale={canvasLocale}
-          locale={locale}
-          provenance={
-            selectedIndex !== null && initialProvenance[selectedIndex]
-              ? { agent: initialProvenance[selectedIndex] as AgentIdentity, whenISO: null }
-              : null
-          }
-          lintViolations={lintViolations?.details ?? []}
-          lintHardBlock={lintHardBlock}
-        />
+      {/* Main editor body */}
+      <div className="flex-1 flex overflow-hidden relative">
+        {/* Page tree — hidden on mobile behind hamburger */}
+        {!isMobile && (
+          <PageTree
+            sections={sections}
+            selectedIndex={selectedIndex}
+            onSelect={(i) => {
+              setSelectedIndex(i);
+              if (isNarrow) setPanelOpen(true);
+            }}
+            onChange={updateSections}
+            locale={locale}
+            provenance={initialProvenance}
+            onAdd={() => {
+              setPickerAfterIndex(selectedIndex ?? sections.length - 1);
+              setPickerOpen(true);
+            }}
+            collapsed={treeCollapsed || isTablet}
+            onToggleCollapsed={toggleTreeCollapsed}
+          />
+        )}
+
+        {/* Canvas — takes remaining space */}
+        <div style={{ ...canvasStyle, flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+          <Canvas
+            entity={entity}
+            slug={slug}
+            locale={canvasLocale}
+            composition={composition}
+            blogFields={blogFields ?? undefined}
+            selectedIndex={selectedIndex}
+            onSelectSection={(i) => {
+              setSelectedIndex(i);
+              if (isNarrow) setPanelOpen(true);
+            }}
+            onAddSection={(afterIndex) => {
+              setPickerAfterIndex(afterIndex);
+              setPickerOpen(true);
+            }}
+            onDuplicateSection={handleDuplicateSection}
+            onDeleteSection={handleDeleteSection}
+            provenanceMap={
+              Object.fromEntries(
+                Object.entries(initialProvenance).map(([k, v]) => [k, v ?? null]),
+              )
+            }
+          />
+        </div>
+
+        {/* Desktop side panel — always visible, flex child */}
+        {!isNarrow && (
+          <SidePanel
+            section={selectedIndex !== null ? sections[selectedIndex] ?? null : null}
+            sectionIndex={selectedIndex}
+            onChange={handleSectionChange}
+            onDelete={handleDeleteSection}
+            onDuplicate={handleDuplicateSection}
+            canvasLocale={canvasLocale}
+            locale={locale}
+            provenance={
+              selectedIndex !== null && initialProvenance[selectedIndex]
+                ? { agent: initialProvenance[selectedIndex] as AgentIdentity, whenISO: null }
+                : null
+            }
+            lintViolations={lintViolations?.details ?? []}
+            lintHardBlock={lintHardBlock}
+            entityId={rowId}
+            entityKind={entity}
+          />
+        )}
+
+        {/* Tablet drawer — slides from right, overlays canvas */}
+        {isTablet && panelOpen && (
+          <>
+            {/* Scrim */}
+            <div
+              className="absolute inset-0 bg-black/20 z-40"
+              onClick={() => setPanelOpen(false)}
+            />
+            {/* Drawer */}
+            <div
+              className="absolute top-0 bottom-0 z-50 bg-white shadow-2xl"
+              style={{
+                [isAr ? 'left' : 'right']: 0,
+                width: 'min(420px, 85vw)',
+                // Item 6: 220ms cubic-bezier slide — per §7.4 animation budget.
+                animation: 'panel-slide-in 220ms cubic-bezier(0.32,0.72,0,1) forwards',
+              }}
+            >
+              <style>{`
+                @keyframes panel-slide-in {
+                  from { transform: translateX(${isAr ? '-100%' : '100%'}); }
+                  to { transform: translateX(0); }
+                }
+              `}</style>
+              <div className="flex items-center justify-between px-3 py-2 border-b border-[var(--color-neutral-200)]">
+                <span className="text-xs font-semibold text-[var(--color-neutral-600)]">
+                  {isAr ? 'التحرير' : 'Edit section'}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setPanelOpen(false)}
+                  className="text-[var(--color-neutral-500)] hover:text-[var(--color-neutral-900)] p-1"
+                  aria-label={isAr ? 'إغلاق' : 'Close'}
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="overflow-y-auto h-[calc(100%-40px)]">
+                <SidePanel
+                  section={selectedIndex !== null ? sections[selectedIndex] ?? null : null}
+                  sectionIndex={selectedIndex}
+                  onChange={handleSectionChange}
+                  onDelete={handleDeleteSection}
+                  onDuplicate={handleDuplicateSection}
+                  canvasLocale={canvasLocale}
+                  locale={locale}
+                  provenance={
+                    selectedIndex !== null && initialProvenance[selectedIndex]
+                      ? { agent: initialProvenance[selectedIndex] as AgentIdentity, whenISO: null }
+                      : null
+                  }
+                  lintViolations={lintViolations?.details ?? []}
+                  lintHardBlock={lintHardBlock}
+                  inDrawer
+                  entityId={rowId}
+                  entityKind={entity}
+                />
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Mobile full-screen overlay */}
+        {isMobile && panelOpen && (
+          <div
+            className="fixed inset-0 z-50 bg-white flex flex-col"
+            style={{ top: 0, left: 0, right: 0, bottom: 0 }}
+          >
+            <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--color-neutral-200)] shrink-0">
+              <span className="text-sm font-semibold text-[var(--text-primary)]">
+                {isAr ? 'تحرير القسم' : 'Edit section'}
+              </span>
+              <button
+                type="button"
+                onClick={() => setPanelOpen(false)}
+                className="text-[var(--color-neutral-500)] hover:text-[var(--color-neutral-900)] text-xl p-1"
+                aria-label={isAr ? 'رجوع للصفحة' : 'Back to page'}
+              >
+                ✕
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              <SidePanel
+                section={selectedIndex !== null ? sections[selectedIndex] ?? null : null}
+                sectionIndex={selectedIndex}
+                onChange={handleSectionChange}
+                onDelete={(i) => { handleDeleteSection(i); setPanelOpen(false); }}
+                onDuplicate={handleDuplicateSection}
+                canvasLocale={canvasLocale}
+                locale={locale}
+                provenance={
+                  selectedIndex !== null && initialProvenance[selectedIndex]
+                    ? { agent: initialProvenance[selectedIndex] as AgentIdentity, whenISO: null }
+                    : null
+                }
+                lintViolations={lintViolations?.details ?? []}
+                lintHardBlock={lintHardBlock}
+                inDrawer
+                entityId={rowId}
+                entityKind={entity}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Mobile hamburger button (bottom right) — opens page tree sheet */}
+        {isMobile && !panelOpen && (
+          <button
+            type="button"
+            onClick={() => setPickerOpen(true)}
+            className="fixed bottom-6 right-6 z-40 rounded-full bg-[var(--color-accent,#F47E42)] text-white w-12 h-12 flex items-center justify-center shadow-lg text-xl"
+            aria-label={isAr ? 'إضافة قسم' : 'Add section'}
+          >
+            +
+          </button>
+        )}
       </div>
 
+      {/* Section type picker */}
       <SectionTypePicker
         open={pickerOpen}
-        onClose={() => setPickerOpen(false)}
+        onClose={() => { setPickerOpen(false); setPickerAfterIndex(null); }}
         entity={entity}
         onPick={(s) => {
           handleAddSection(s);
@@ -345,3 +564,5 @@ export function EditorShell({
     </div>
   );
 }
+
+export type { EditorShellProps };

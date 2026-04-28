@@ -18,6 +18,8 @@
 
 import { useState, type ReactNode } from 'react';
 import type { LpSection } from '@/lib/lp/composition-types';
+import { AIInvocationFooter, type AIRevisionResult } from './ai-invocation-footer';
+import { DiffView, useDiffState, type FieldDiff } from './diff-view';
 import { VOCAB_BY_ID, LP_TYPE_DESCRIPTIONS } from '@/lib/authoring/section-vocabulary';
 import { SECTION_TYPE_LABELS } from '../admin/lp-editor/_shared';
 import { MirrorForm } from '../admin/lp-editor/forms/mirror-form';
@@ -41,8 +43,8 @@ interface SidePanelProps {
   section: LpSection | null;
   sectionIndex: number | null;
   onChange: (next: LpSection) => void;
-  onDelete: () => void;
-  onDuplicate: () => void;
+  onDelete: (indexOverride?: number) => void;
+  onDuplicate: (indexOverride?: number) => void;
   /** Locale this admin is currently authoring in (canvas-mirrored). */
   canvasLocale: 'ar' | 'en';
   locale: string;
@@ -52,6 +54,12 @@ interface SidePanelProps {
   lintViolations?: Array<{ rule_id: string; severity: string; message: string; path: string }>;
   /** Current page-level lint state. */
   lintHardBlock?: boolean;
+  /** Entity id (rowId) for AI invocation — optional, enables AI footer. */
+  entityId?: string;
+  /** Entity kind for AI invocation. */
+  entityKind?: 'landing_pages' | 'blog_posts' | 'static_pages';
+  /** When true, suppresses the desktop flex sizing (renders as plain flex-col). */
+  inDrawer?: boolean;
 }
 
 const AGENT_ACCENT_BORDER: Record<AgentIdentity, string> = {
@@ -98,15 +106,68 @@ export function SidePanel({
   provenance,
   lintViolations = [],
   lintHardBlock = false,
+  entityId,
+  entityKind,
+  inDrawer = false,
 }: SidePanelProps) {
   const isAr = locale === 'ar';
 
   // Locale mode — initialized to canvas locale; sticky during the panel session.
   const [localeMode, setLocaleMode] = useState<LocaleMode>(canvasLocale);
 
+  // AI invocation + diff state (Item 3 + Item 4).
+  const [showDiff, setShowDiff] = useState(false);
+  const [diffAgent, setDiffAgent] = useState<import('./ai-invocation-footer').AgentId>('hakima');
+  const [diffRevisedAt, setDiffRevisedAt] = useState<string | null>(null);
+  const [pendingRevision, setPendingRevision] = useState<AIRevisionResult | null>(null);
+  const { fields: diffFields, acceptField, rejectField, acceptAll, rejectAll } = useDiffState(
+    pendingRevision
+      ? Object.entries(pendingRevision.fields).map(([field, newValue]) => ({
+          field,
+          label: field.replace(/_/g, ' '),
+          previousValue: (section as unknown as Record<string, string>)[field] ?? '',
+          newValue,
+        } satisfies FieldDiff))
+      : [],
+  );
+
+  function handleRevisionReady(result: AIRevisionResult) {
+    setPendingRevision(result);
+    setDiffAgent(result.agent);
+    setDiffRevisedAt(new Date().toISOString());
+    setShowDiff(true);
+  }
+
+  function handleAcceptAll() {
+    if (!pendingRevision) return;
+    acceptAll();
+    const patch = pendingRevision.fields;
+    onChange({ ...(section as unknown as Record<string, unknown>), ...patch } as unknown as LpSection);
+    setShowDiff(false);
+    setPendingRevision(null);
+  }
+
+  function handleRejectAll() {
+    rejectAll();
+    setShowDiff(false);
+    setPendingRevision(null);
+  }
+
+  function handleFieldDecision(field: string, accepted: boolean) {
+    if (accepted) {
+      acceptField(field);
+      const value = pendingRevision?.fields[field];
+      if (value !== undefined) {
+        onChange({ ...(section as unknown as Record<string, unknown>), [field]: value } as unknown as LpSection);
+      }
+    } else {
+      rejectField(field);
+    }
+  }
+
   if (!section || sectionIndex === null) {
     return (
-      <PanelShell isAr={isAr}>
+      <PanelShell isAr={isAr} inDrawer={inDrawer}>
         <div className="p-6 text-center text-sm text-[var(--color-neutral-500)]">
           {isAr
             ? 'اختر قسمًا من القائمة على اليسار للتحرير، أو اضغط «إضافة قسم» لإنشاء قسم جديد.'
@@ -145,7 +206,7 @@ export function SidePanel({
   );
 
   return (
-    <PanelShell isAr={isAr}>
+    <PanelShell isAr={isAr} inDrawer={inDrawer}>
       {/* Header strip (48px) — accent stripe on left + section type + provenance */}
       <div
         className="flex items-stretch gap-0 border-b border-[var(--color-neutral-200)] bg-[var(--color-surface,#FFF5E9)]/40"
@@ -208,6 +269,39 @@ export function SidePanel({
         ))}
       </div>
 
+      {/* Item 7 §6.5 — Mixed-content flag in Both mode.
+          If a section has content in both AR and EN locales, show a Mandarin
+          warning stripe + tooltip in Both mode. Not a hard error. */}
+      {localeMode === 'both' && (() => {
+        const s = section as unknown as Record<string, string | null>;
+        const hasAr = !!(s.title_ar || s.body_ar || s.text_ar || s.subtitle_ar);
+        const hasEn = !!(s.title_en || s.body_en || s.text_en || s.subtitle_en);
+        if (hasAr && hasEn) {
+          return (
+            <div
+              className="px-3 py-1.5 text-[11px] flex items-center gap-2"
+              style={{
+                background: 'rgba(244,126,66,0.08)',
+                borderBottom: '1px solid rgba(244,126,66,0.3)',
+                color: '#B45309',
+              }}
+              role="note"
+              title={isAr
+                ? 'هذا القسم يحتوي على محتوى بالعربية والإنجليزية. تأكد أن ذلك مقصود.'
+                : 'Section has content in both AR and EN. Make sure that\'s intentional.'}
+            >
+              <span style={{ color: '#F47E42' }}>⚠</span>
+              <span>
+                {isAr
+                  ? 'محتوى مختلط (عربي + إنجليزي)'
+                  : 'Mixed content (AR + EN)'}
+              </span>
+            </div>
+          );
+        }
+        return null;
+      })()}
+
       {/* Lint banner — section-level violations from the most recent
           publish/review attempt. Surfaced per spec §3f. */}
       {sectionViolations.length > 0 && (
@@ -246,6 +340,41 @@ export function SidePanel({
         <FormDispatcher section={section} onChange={onChange} locale={locale} localeMode={localeMode} />
       </div>
 
+      {/* Diff view — shown after AI revision (Item 4) */}
+      {showDiff && pendingRevision && diffFields.length > 0 && (
+        <div className="border-t border-[var(--color-neutral-200)]">
+          <DiffView
+            agent={diffAgent}
+            revisedAt={diffRevisedAt}
+            fields={diffFields}
+            locale={locale}
+            onFieldDecision={handleFieldDecision}
+            onAcceptAll={handleAcceptAll}
+            onRejectAll={handleRejectAll}
+            onEditBeforeAccepting={() => {
+              // Load agent version into form and close diff view.
+              if (pendingRevision) {
+                const patch = pendingRevision.fields;
+                onChange({ ...(section as unknown as Record<string, unknown>), ...patch } as unknown as LpSection);
+              }
+              setShowDiff(false);
+            }}
+          />
+        </div>
+      )}
+
+      {/* AI invocation footer (Item 3) — shown when entityId is available */}
+      {entityId && entityKind && sectionIndex !== null && !showDiff && (
+        <AIInvocationFooter
+          sectionType={section.type}
+          entityId={entityId}
+          entityKind={entityKind}
+          sectionIndex={sectionIndex}
+          locale={locale}
+          onRevisionReady={handleRevisionReady}
+        />
+      )}
+
       {/* Footer (sticky) */}
       <div
         className="border-t border-[var(--color-neutral-200)] bg-white px-3 py-2 flex items-center justify-between flex-wrap gap-2 sticky bottom-0"
@@ -254,14 +383,14 @@ export function SidePanel({
         <div className="flex gap-2">
           <button
             type="button"
-            onClick={onDuplicate}
+            onClick={() => onDuplicate()}
             className="rounded-lg border border-[var(--color-neutral-300)] px-3 py-1.5 text-sm text-[var(--color-neutral-700)] hover:border-[var(--color-primary)]"
           >
             {isAr ? 'مضاعفة' : 'Duplicate'}
           </button>
           <button
             type="button"
-            onClick={onDelete}
+            onClick={() => onDelete()}
             className="rounded-lg border border-red-200 px-3 py-1.5 text-sm text-red-700 hover:bg-red-50"
           >
             {isAr ? 'حذف' : 'Delete'}
@@ -277,10 +406,27 @@ export function SidePanel({
   );
 }
 
-function PanelShell({ isAr, children }: { isAr: boolean; children: ReactNode }) {
-  // Wave 15 W3 canary v2 (Issue 5A): widened to ~1/3 of viewport on desktop
-  // (was 420px fixed). Stage takes 2/3, panel takes 1/3 — matches WP fullscreen
-  // editor proportions. Min-width 360px keeps BilingualRichEditor readable.
+function PanelShell({
+  isAr,
+  children,
+  inDrawer = false,
+}: {
+  isAr: boolean;
+  children: ReactNode;
+  inDrawer?: boolean;
+}) {
+  if (inDrawer) {
+    // Drawer mode: flex-col, full height, no desktop sizing constraints.
+    return (
+      <section
+        className="flex flex-col h-full bg-[var(--color-neutral-50)]"
+        aria-label={isAr ? 'لوحة التحرير' : 'Editing panel'}
+      >
+        {children}
+      </section>
+    );
+  }
+  // Desktop mode: Wave 15 W3 canary v2 (Issue 5A) proportions.
   return (
     <section
       className="hidden md:flex md:flex-col md:basis-1/3 md:max-w-[520px] md:min-w-[360px] md:shrink-0 md:border-s md:border-[var(--color-neutral-200)] bg-[var(--color-neutral-50)]"

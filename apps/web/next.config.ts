@@ -1,7 +1,21 @@
+import { execSync } from 'child_process';
 import createNextIntlPlugin from 'next-intl/plugin';
 import type { NextConfig } from "next";
 
 const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
+
+// Build hash: baked into the binary at build time so the live server can
+// expose it as an HTTP response header (X-Build-Hash). Used by kun-deploy.sh
+// to verify "is the live bundle the one I built?" after every deploy.
+// Falls back to 'unknown' in local dev (no git).
+let BUILD_HASH = 'unknown';
+try {
+  BUILD_HASH = execSync('git rev-parse --short HEAD', { stdio: ['pipe', 'pipe', 'ignore'] })
+    .toString()
+    .trim();
+} catch {
+  // git not available (e.g., Docker layer without .git)
+}
 
 const nextConfig: NextConfig = {
   // output: 'standalone',
@@ -100,6 +114,10 @@ const nextConfig: NextConfig = {
           // attacks (clickjacking via a third-party site embedding our pages).
           // The only new capability granted is same-origin iframing, which is
           // only possible for authenticated sessions on our own domain.
+          // Wave 15 W3 post-canary (Item 11): deploy chain verification header.
+          // kun-deploy.sh curls this after every deploy to verify the live
+          // bundle is the one we just built: `curl -sI ... | grep X-Build-Hash`
+          { key: 'X-Build-Hash', value: BUILD_HASH },
           { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },

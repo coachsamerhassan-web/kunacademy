@@ -149,6 +149,37 @@ const R2_INTERNAL_PROMPTS: PatternEntry[] = [
   },
 ];
 
+/**
+ * R11 — URL/embed safety.
+ *
+ * Two sub-rules:
+ *
+ * R11.embed_src — for video/embed section src fields: must be from the
+ *   approved set (YouTube, YouTube-nocookie, Vimeo, Loom, Google Slides).
+ *   Applied at the API layer by walking composition_json sections where
+ *   section.type is 'video' or 'embed' and checking section.src.
+ *
+ * R11.bg_image_src — for per-section background.image.src: blocks protocol
+ *   injection only (javascript:, data:, vbscript:, ftp:). Legitimate CDN
+ *   image URLs (Supabase, kuncoaching.me, Google, etc.) pass freely.
+ *   Added Wave 15 W3 post-canary — canary v2 introduced per-section
+ *   background image support; this rule closes the injection vector.
+ *
+ * Both sub-rules are HARD BLOCK.
+ */
+const R11_EMBED_ALLOWLIST: PatternEntry[] = [
+  {
+    id: 'R11.bg_image_unsafe_protocol',
+    // Blocks javascript:, data:, vbscript:, ftp: in any field whose path
+    // ends in .src or .url — catches background.image.src specifically.
+    // The walkJsonb visitor passes the full path; we check the path suffix
+    // in the visitor below rather than in the regex (regex only flags the
+    // protocol pattern so it can be combined with path filtering).
+    re: /^(?:javascript|data|vbscript|ftp):/iu,
+    why: 'Protocol injection detected in image/URL field. Only http(s):// and relative paths allowed.',
+  },
+];
+
 /** R3 — Proprietary framework attribution to AI. */
 const R3_FRAMEWORK_ATTRIBUTION: PatternEntry[] = [
   // We catch "X was developed by AI / Claude / GPT / [...]" patterns
@@ -173,6 +204,7 @@ const ALL_RULES: Record<string, PatternEntry[]> = {
   R1: R1_METHODOLOGY_BEATS,
   R2: R2_INTERNAL_PROMPTS,
   R3: R3_FRAMEWORK_ATTRIBUTION,
+  R11: R11_EMBED_ALLOWLIST,
 };
 
 /** Strings that are checked at every walked node. */
@@ -248,6 +280,67 @@ function walkJsonb(
   }
 }
 
+/**
+ * Walk composition_json sections and apply R11 specifically to:
+ *   - section.background.image.src
+ *   - section.src (for video/embed type sections)
+ *   - section.image_url (for image-type universal sections)
+ *
+ * Called explicitly from lintRowBody so we can target only URL-bearing
+ * fields without running the R11 protocol-injection pattern against every
+ * string in the composition (which would produce false positives on, e.g.,
+ * rich-text that starts with "data:" in a legitimate context).
+ */
+function lintBackgroundImageSrc(
+  row: Record<string, unknown>,
+  rules: Record<string, PatternEntry[]>,
+  out: LintViolation[],
+): void {
+  const r11Patterns = rules['R11'];
+  if (!r11Patterns || r11Patterns.length === 0) return;
+
+  // Wrap the R11 patterns as a single-key rules object so checkText can
+  // iterate them as [ruleId, patterns[]] pairs.
+  const r11Rules: Record<string, PatternEntry[]> = { R11: r11Patterns };
+
+  const composition = row['composition_json'];
+  if (!composition || typeof composition !== 'object') return;
+
+  const sections = (composition as Record<string, unknown>)['sections'];
+  if (!Array.isArray(sections)) return;
+
+  sections.forEach((section: unknown, idx: number) => {
+    if (!section || typeof section !== 'object') return;
+    const s = section as Record<string, unknown>;
+
+    // Check background.image.src
+    const bg = s['background'];
+    if (bg && typeof bg === 'object') {
+      const bgObj = bg as Record<string, unknown>;
+      const img = bgObj['image'];
+      if (img && typeof img === 'object') {
+        const imgObj = img as Record<string, unknown>;
+        const src = imgObj['src'];
+        if (typeof src === 'string' && src.length > 0) {
+          checkText(src, `composition_json.sections[${idx}].background.image.src`, r11Rules, out);
+        }
+      }
+    }
+
+    // Check section.src (video / embed sections)
+    const sectionSrc = s['src'];
+    if (typeof sectionSrc === 'string' && sectionSrc.length > 0) {
+      checkText(sectionSrc, `composition_json.sections[${idx}].src`, r11Rules, out);
+    }
+
+    // Check section.image_url (universal image-type sections)
+    const imgUrl = s['image_url'];
+    if (typeof imgUrl === 'string' && imgUrl.length > 0) {
+      checkText(imgUrl, `composition_json.sections[${idx}].image_url`, r11Rules, out);
+    }
+  });
+}
+
 // ── Public surface ──────────────────────────────────────────────────────
 //
 // Two helpers:
@@ -265,7 +358,16 @@ export function lintRowBody(target: LintTarget, opts: LintRowOptions = {}): Lint
   const out: LintViolation[] = [];
   const rules = opts.rules ?? ALL_RULES;
 
-  const visit = (text: string, path: string) => checkText(text, path, rules, out);
+  // The main walkJsonb path runs all rules EXCEPT R11, because R11's
+  // bg_image_unsafe_protocol pattern fires on URL strings that also appear
+  // in non-URL contexts (the regex matches `javascript:` anywhere, including
+  // in rich-text body content like "avoid javascript: protocols"). R11 is
+  // applied surgically in lintBackgroundImageSrc only against known URL fields.
+  const rulesWithoutR11 = Object.fromEntries(
+    Object.entries(rules).filter(([k]) => k !== 'R11'),
+  ) as Record<string, PatternEntry[]>;
+
+  const visit = (text: string, path: string) => checkText(text, path, rulesWithoutR11, out);
 
   // Scalar string columns we always lint when present
   const scalarKeys = [
@@ -298,6 +400,13 @@ export function lintRowBody(target: LintTarget, opts: LintRowOptions = {}): Lint
     const v = (target.row as Record<string, unknown>)[k];
     walkJsonb(v, k, visit);
   }
+
+  // R11 — Per-section background.image.src (Wave 15 W3 post-canary).
+  // Walk composition_json sections and apply R11.bg_image_unsafe_protocol
+  // specifically to background.image.src fields. We do NOT run this through
+  // walkJsonb because walkJsonb would fire the pattern on ALL strings in the
+  // composition; we want it only on URL-bearing fields.
+  lintBackgroundImageSrc(target.row, rules, out);
 
   return out;
 }
