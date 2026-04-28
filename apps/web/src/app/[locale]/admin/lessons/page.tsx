@@ -18,7 +18,7 @@ import { useAuth } from '@kunacademy/auth';
 import { Section } from '@kunacademy/ui/section';
 import { Card } from '@kunacademy/ui/card';
 import { useEffect, useState, useCallback } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, usePathname } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 
 // ─── Types ────────────────────────────────────────────────────────────────
@@ -88,6 +88,7 @@ export default function AdminLessonsPage() {
   const { locale } = useParams<{ locale: string }>();
   const { user, profile, loading: authLoading } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
   const isAr = locale === 'ar';
 
   const [view, setView] = useState<View>('list');
@@ -110,7 +111,7 @@ export default function AdminLessonsPage() {
     if (authLoading) return;
     const role: string = (profile?.role as string | undefined) ?? '';
     if (!user || !['admin', 'super_admin'].includes(role)) {
-      router.push('/' + locale + '/auth/login');
+      router.push('/' + locale + '/auth/login?redirect=' + encodeURIComponent(pathname));
       return;
     }
     loadLessons();

@@ -4,7 +4,7 @@ import { useAuth } from '@kunacademy/auth';
 import { useEffect, useState } from 'react';
 import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, usePathname } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 
 interface ReferralCode {
@@ -44,6 +44,7 @@ export default function AdminReferralsPage() {
   const { locale } = useParams<{ locale: string }>();
   const { user, profile, loading: authLoading } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
   const [codes, setCodes] = useState<ReferralCode[]>([]);
   const [transactions, setTransactions] = useState<CreditTransaction[]>([]);
   const [loading, setLoading] = useState(true);
@@ -69,7 +70,7 @@ export default function AdminReferralsPage() {
 
   useEffect(() => {
     if (authLoading) return;
-    if (!user || (profile?.role !== 'admin' && profile?.role !== 'super_admin')) { router.push('/' + locale + '/auth/login'); return; }
+    if (!user || (profile?.role !== 'admin' && profile?.role !== 'super_admin')) { router.push('/' + locale + '/auth/login?redirect=' + encodeURIComponent(pathname)); return; }
     fetchData();
   }, [user, profile, authLoading]);
 

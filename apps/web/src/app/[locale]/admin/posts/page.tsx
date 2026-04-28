@@ -5,7 +5,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
 import { Button } from '@kunacademy/ui/button';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, usePathname } from 'next/navigation';
 import { ArrowLeft, Plus, Pencil, Trash2, X, ExternalLink } from 'lucide-react';
 
 interface Post {
@@ -49,6 +49,7 @@ export default function AdminPostsPage() {
   const { locale } = useParams<{ locale: string }>();
   const { user, profile, loading: authLoading } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
   const isAr = locale === 'ar';
 
   const [items, setItems] = useState<Post[]>([]);
@@ -74,7 +75,7 @@ export default function AdminPostsPage() {
 
   useEffect(() => {
     if (authLoading) return;
-    if (!user || (profile?.role !== 'admin' && profile?.role !== 'super_admin')) { router.push('/' + locale + '/auth/login'); return; }
+    if (!user || (profile?.role !== 'admin' && profile?.role !== 'super_admin')) { router.push('/' + locale + '/auth/login?redirect=' + encodeURIComponent(pathname)); return; }
     load();
   }, [user, profile, authLoading, load, locale, router]);
 

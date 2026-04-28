@@ -17,7 +17,7 @@
 
 import { use, useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@kunacademy/auth';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
@@ -71,6 +71,7 @@ export default function ProgramOverridesPage({
   const isAr = locale === 'ar';
   const { user, profile, loading: authLoading } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
 
   const [program, setProgram] = useState<ProgramSummary | null>(null);
   const [overrides, setOverrides] = useState<Override[]>([]);
@@ -93,7 +94,7 @@ export default function ProgramOverridesPage({
     if (authLoading) return;
     const role = (profile as { role?: string } | null)?.role;
     if (!user || (role !== 'admin' && role !== 'super_admin')) {
-      router.push(`/${locale}/auth/login`);
+      router.push(`/${locale}/auth/login?redirect=` + encodeURIComponent(pathname));
     }
   }, [user, profile, authLoading, locale, router]);
 

@@ -4,7 +4,7 @@ import { useAuth } from '@kunacademy/auth';
 import { useEffect, useState, useCallback } from 'react';
 import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, usePathname } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
@@ -57,6 +57,7 @@ export default function AdminGraduatesPage() {
   const { locale } = useParams<{ locale: string }>();
   const { user, profile, loading: authLoading } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
   const isAr = locale === 'ar';
 
   // Data state
@@ -91,7 +92,7 @@ export default function AdminGraduatesPage() {
   useEffect(() => {
     if (authLoading) return;
     if (!user || (profile?.role !== 'admin' && profile?.role !== 'super_admin')) {
-      router.push('/' + locale + '/auth/login');
+      router.push('/' + locale + '/auth/login?redirect=' + encodeURIComponent(pathname));
     }
   }, [user, profile, authLoading]);
 
@@ -105,7 +106,7 @@ export default function AdminGraduatesPage() {
       if (emailFilter !== 'all') params.set('has_email', emailFilter);
 
       const res = await fetch(`/api/admin/graduates?${params}`);
-      if (res.status === 403) { router.push('/' + locale + '/auth/login'); return; }
+      if (res.status === 403) { router.push('/' + locale + '/auth/login?redirect=' + encodeURIComponent(pathname)); return; }
       const data = await res.json();
       setMembers(data.members ?? []);
       if (data.pagination) setPagination(data.pagination);

@@ -4,7 +4,7 @@ import { useAuth } from '@kunacademy/auth';
 import { useEffect, useState } from 'react';
 import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, usePathname } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 
 interface Payment {
@@ -29,6 +29,7 @@ export default function AdminOrdersPage() {
   const { locale } = useParams<{ locale: string }>();
   const { user, profile, loading: authLoading } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<string>('all');
@@ -36,7 +37,7 @@ export default function AdminOrdersPage() {
 
   useEffect(() => {
     if (authLoading) return;
-    if (!user || (profile?.role !== 'admin' && profile?.role !== 'super_admin')) { router.push('/' + locale + '/auth/login'); return; }
+    if (!user || (profile?.role !== 'admin' && profile?.role !== 'super_admin')) { router.push('/' + locale + '/auth/login?redirect=' + encodeURIComponent(pathname)); return; }
 
     fetch('/api/admin/payments')
       .then(r => r.json())

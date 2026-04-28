@@ -4,7 +4,7 @@ import { useAuth } from '@kunacademy/auth';
 import { useEffect, useState } from 'react';
 import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, usePathname } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 
 // Schema uses: name_ar, name_en, is_admin_only (NOT title_ar/title_en/is_public)
@@ -24,6 +24,7 @@ export default function AdminCommunityPage() {
   const { locale } = useParams<{ locale: string }>();
   const { user, profile, loading: authLoading } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
   const [boards, setBoards] = useState<Board[]>([]);
   const [postCount, setPostCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -31,7 +32,7 @@ export default function AdminCommunityPage() {
 
   useEffect(() => {
     if (authLoading) return;
-    if (!user || (profile?.role !== 'admin' && profile?.role !== 'super_admin')) { router.push('/' + locale + '/auth/login'); return; }
+    if (!user || (profile?.role !== 'admin' && profile?.role !== 'super_admin')) { router.push('/' + locale + '/auth/login?redirect=' + encodeURIComponent(pathname)); return; }
 
     Promise.all([
       fetch('/api/admin/community-boards'),

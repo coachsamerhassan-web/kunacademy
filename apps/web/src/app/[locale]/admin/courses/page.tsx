@@ -4,7 +4,7 @@ import { useAuth } from '@kunacademy/auth';
 import { Section } from '@kunacademy/ui/section';
 import { Card } from '@kunacademy/ui/card';
 import { useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, usePathname } from 'next/navigation';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 
 interface CourseRow {
@@ -47,6 +47,7 @@ export default function AdminCoursesPage() {
   const { locale } = useParams<{ locale: string }>();
   const { user, profile, loading: authLoading } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
   const isAr = locale === 'ar';
 
   const [view, setView] = useState<View>('list');
@@ -65,7 +66,7 @@ export default function AdminCoursesPage() {
 
   useEffect(() => {
     if (authLoading) return;
-    if (!user || (profile?.role !== 'admin' && profile?.role !== 'super_admin')) { router.push('/' + locale + '/auth/login'); return; }
+    if (!user || (profile?.role !== 'admin' && profile?.role !== 'super_admin')) { router.push('/' + locale + '/auth/login?redirect=' + encodeURIComponent(pathname)); return; }
     loadCourses();
   }, [user, profile, authLoading]);
 

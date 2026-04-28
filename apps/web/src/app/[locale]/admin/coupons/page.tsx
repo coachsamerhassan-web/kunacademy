@@ -13,7 +13,7 @@
 
 import { useAuth } from '@kunacademy/auth';
 import { useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, usePathname } from 'next/navigation';
 import { ArrowLeft, Plus, X, Download, ExternalLink } from 'lucide-react';
 
 interface Coupon {
@@ -99,6 +99,7 @@ export default function AdminCouponsPage() {
   const { locale } = useParams<{ locale: string }>();
   const { user, profile, loading: authLoading } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
   const isAr = locale === 'ar';
   const dir = isAr ? 'rtl' : 'ltr';
 
@@ -186,7 +187,7 @@ export default function AdminCouponsPage() {
   useEffect(() => {
     if (authLoading) return;
     if (!user || (profile?.role !== 'admin' && profile?.role !== 'super_admin')) {
-      router.push('/' + locale + '/auth/login');
+      router.push('/' + locale + '/auth/login?redirect=' + encodeURIComponent(pathname));
       return;
     }
     fetchAll();

@@ -5,7 +5,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
 import { Button } from '@kunacademy/ui/button';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, usePathname } from 'next/navigation';
 import { ArrowLeft, Plus, Pencil, Trash2, X } from 'lucide-react';
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -68,6 +68,7 @@ export default function AdminCorporateBenefitsPage() {
   const { locale } = useParams<{ locale: string }>();
   const { user, profile, loading: authLoading } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
   const isAr = locale === 'ar';
 
   const [tab, setTab] = useState<'directions' | 'benefits'>('directions');
@@ -112,7 +113,7 @@ export default function AdminCorporateBenefitsPage() {
   useEffect(() => {
     if (authLoading) return;
     if (!user || (profile?.role !== 'admin' && profile?.role !== 'super_admin')) {
-      router.push('/' + locale + '/auth/login');
+      router.push('/' + locale + '/auth/login?redirect=' + encodeURIComponent(pathname));
       return;
     }
     load();

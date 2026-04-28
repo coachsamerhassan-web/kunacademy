@@ -4,7 +4,7 @@ import { useAuth } from '@kunacademy/auth';
 import { useEffect } from 'react';
 import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, usePathname } from 'next/navigation';
 import { ArrowLeft, ExternalLink } from 'lucide-react';
 
 const CMS_SHEET_URL = 'https://docs.google.com/spreadsheets/d/1CLChiKTXGvUDmPFHcjCpa3TmmC6F0KG5RnFCsCiBLIg/edit';
@@ -79,11 +79,12 @@ export default function AdminContentPage() {
   const { locale } = useParams<{ locale: string }>();
   const { user, profile, loading: authLoading } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
   const isAr = locale === 'ar';
 
   useEffect(() => {
     if (authLoading) return;
-    if (!user || (profile?.role !== 'admin' && profile?.role !== 'super_admin')) { router.push('/' + locale + '/auth/login'); return; }
+    if (!user || (profile?.role !== 'admin' && profile?.role !== 'super_admin')) { router.push('/' + locale + '/auth/login?redirect=' + encodeURIComponent(pathname)); return; }
   }, [user, profile, authLoading]);
 
   if (authLoading) return <Section><p className="text-center py-12">Loading...</p></Section>;

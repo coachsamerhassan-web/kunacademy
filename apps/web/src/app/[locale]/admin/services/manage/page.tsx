@@ -4,7 +4,7 @@ import { useAuth } from '@kunacademy/auth';
 import { useEffect, useState } from 'react';
 import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, usePathname } from 'next/navigation';
 import { ArrowLeft, Plus } from 'lucide-react';
 import { KUN_LEVELS } from '@kunacademy/db/enums';
 
@@ -147,6 +147,7 @@ export default function AdminServicesManagePage() {
   const { locale } = useParams<{ locale: string }>();
   const { user, profile, loading: authLoading } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
   const isAr = locale === 'ar';
 
   const [services, setServices] = useState<Service[]>([]);
@@ -172,8 +173,8 @@ export default function AdminServicesManagePage() {
 
   useEffect(() => {
     if (authLoading) return;
-    if (!user || profile?.role !== 'admin') {
-      router.push('/' + locale + '/auth/login');
+    if (!user || (profile?.role !== 'admin' && profile?.role !== 'super_admin')) {
+      router.push('/' + locale + '/auth/login?redirect=' + encodeURIComponent(pathname));
       return;
     }
     fetchData();

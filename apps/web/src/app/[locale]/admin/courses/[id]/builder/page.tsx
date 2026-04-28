@@ -14,7 +14,7 @@ import { useAuth } from '@kunacademy/auth';
 import { Section } from '@kunacademy/ui/section';
 import { Card } from '@kunacademy/ui/card';
 import { useEffect, useState, useCallback } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, usePathname } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 
 // ─── Types ────────────────────────────────────────────────────────────────
@@ -64,6 +64,7 @@ export default function CourseBuilderPage() {
   const { locale, id: courseId } = useParams<{ locale: string; id: string }>();
   const { user, profile, loading: authLoading } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
   const isAr = locale === 'ar';
 
   const [course, setCourse] = useState<CourseRow | null>(null);
@@ -81,7 +82,7 @@ export default function CourseBuilderPage() {
     if (authLoading) return;
     const role: string = (profile?.role as string | undefined) ?? '';
     if (!user || !['admin', 'super_admin'].includes(role)) {
-      router.push('/' + locale + '/auth/login');
+      router.push('/' + locale + '/auth/login?redirect=' + encodeURIComponent(pathname));
       return;
     }
     loadAll();

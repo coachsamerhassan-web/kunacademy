@@ -16,7 +16,7 @@ import { useAuth } from '@kunacademy/auth';
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, usePathname } from 'next/navigation';
 import { ArrowLeft, Plus, Save, Eye, Upload } from 'lucide-react';
 
 interface Version {
@@ -68,6 +68,7 @@ export default function AdminPathfinderTreePage() {
   const { locale } = useParams<{ locale: string }>();
   const { user, profile, loading: authLoading } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
   const isAr = locale === 'ar';
 
   const [versions, setVersions] = useState<Version[]>([]);
@@ -85,7 +86,7 @@ export default function AdminPathfinderTreePage() {
   useEffect(() => {
     if (authLoading) return;
     if (!user || (profile?.role !== 'admin' && profile?.role !== 'super_admin')) {
-      router.push('/' + locale + '/auth/login');
+      router.push('/' + locale + '/auth/login?redirect=' + encodeURIComponent(pathname));
     }
   }, [user, profile, authLoading, locale, router]);
 

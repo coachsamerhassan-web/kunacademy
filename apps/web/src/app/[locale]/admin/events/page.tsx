@@ -11,7 +11,7 @@ import { useAuth } from '@kunacademy/auth';
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Plus, Pencil, Trash2, Check, X, ExternalLink } from 'lucide-react';
 
@@ -41,6 +41,7 @@ export default function AdminEventsPage() {
   const { locale } = useParams<{ locale: string }>();
   const { user, profile, loading: authLoading } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
   const isAr = locale === 'ar';
 
   const [items, setItems] = useState<EventRow[]>([]);
@@ -71,7 +72,7 @@ export default function AdminEventsPage() {
     if (authLoading) return;
     const role = (profile as { role?: string } | null)?.role;
     if (!user || (role !== 'admin' && role !== 'super_admin')) {
-      router.push(`/${locale}/auth/login`);
+      router.push(`/${locale}/auth/login?redirect=` + encodeURIComponent(pathname));
       return;
     }
     load();

@@ -4,7 +4,7 @@ import { useAuth } from '@kunacademy/auth';
 import { useEffect, useState } from 'react';
 import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, usePathname } from 'next/navigation';
 import type { CommissionRate, Earning, PayoutRequest, CoachProfile } from '@/types/commission-system';
 import { ArrowLeft } from 'lucide-react';
 
@@ -56,6 +56,7 @@ export default function AdminCommissionsPage() {
   const { locale } = useParams<{ locale: string }>();
   const { user, profile, loading: authLoading } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
   const isAr = locale === 'ar';
 
   const [rates, setRates] = useState<CommissionRate[]>([]);
@@ -177,7 +178,7 @@ export default function AdminCommissionsPage() {
   useEffect(() => {
     if (authLoading) return;
     if (!user || (profile?.role !== 'admin' && profile?.role !== 'super_admin')) {
-      router.push('/' + locale + '/auth/login');
+      router.push('/' + locale + '/auth/login?redirect=' + encodeURIComponent(pathname));
       return;
     }
     fetchAll();

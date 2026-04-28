@@ -5,7 +5,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { Section } from '@kunacademy/ui/section';
 import { Heading } from '@kunacademy/ui/heading';
 import { Button } from '@kunacademy/ui/button';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Star, Eye, X, Plus, Pencil } from 'lucide-react';
 
@@ -43,6 +43,7 @@ export default function AdminTestimonialsPage() {
   const { locale } = useParams<{ locale: string }>();
   const { user, profile, loading: authLoading } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
   const isAr = locale === 'ar';
 
   const [items, setItems] = useState<Testimonial[]>([]);
@@ -66,7 +67,7 @@ export default function AdminTestimonialsPage() {
   useEffect(() => {
     if (authLoading) return;
     const role = (profile as { role?: string } | null)?.role;
-    if (!user || (role !== 'admin' && role !== 'super_admin')) { router.push('/' + locale + '/auth/login'); return; }
+    if (!user || (role !== 'admin' && role !== 'super_admin')) { router.push('/' + locale + '/auth/login?redirect=' + encodeURIComponent(pathname)); return; }
     load();
   }, [user, profile, authLoading, load, locale, router]);
 
