@@ -23,68 +23,13 @@
 
 import type { AspectRatio } from './panels/styling-types';
 import { aspectToCss } from './panels/styling-types';
-
-export interface ParsedVideo {
-  provider: 'youtube' | 'vimeo' | 'loom' | 'gdrive';
-  id: string;
-  /** Final iframe src (privacy-respecting). */
-  src: string;
-}
-
-const YT_RE = /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube-nocookie\.com\/embed\/)([A-Za-z0-9_-]{6,20})/i;
-const VIMEO_RE = /vimeo\.com\/(?:video\/)?(\d{6,12})/i;
-const LOOM_RE = /loom\.com\/(?:share|embed)\/([a-f0-9]{24,40})/i;
-const GDRIVE_RE = /drive\.google\.com\/file\/d\/([A-Za-z0-9_-]{20,80})/i;
-
-/**
- * Parse a user-supplied video URL into a normalized embed src.
- * Returns null when the URL doesn't match any allowlisted provider.
- *
- * Mirror behaviour of `packages/ui/src/rich-editor/sanitizer.ts`'s
- * `parseVideoEmbed` for consistency. The two implementations are intentionally
- * decoupled (this one for the universal video section, that one for inline
- * rich-text videos) but share the same provider matrix.
- */
-export function parseVideoSrc(input: string | undefined | null): ParsedVideo | null {
-  if (!input || typeof input !== 'string') return null;
-  const url = input.trim();
-  if (!url) return null;
-  // Reject anything not http(s)
-  if (!/^https?:\/\//i.test(url)) return null;
-  let m = url.match(YT_RE);
-  if (m) {
-    return {
-      provider: 'youtube',
-      id: m[1],
-      src: `https://www.youtube-nocookie.com/embed/${m[1]}`,
-    };
-  }
-  m = url.match(VIMEO_RE);
-  if (m) {
-    return {
-      provider: 'vimeo',
-      id: m[1],
-      src: `https://player.vimeo.com/video/${m[1]}`,
-    };
-  }
-  m = url.match(LOOM_RE);
-  if (m) {
-    return {
-      provider: 'loom',
-      id: m[1],
-      src: `https://www.loom.com/embed/${m[1]}`,
-    };
-  }
-  m = url.match(GDRIVE_RE);
-  if (m) {
-    return {
-      provider: 'gdrive',
-      id: m[1],
-      src: `https://drive.google.com/file/d/${m[1]}/preview`,
-    };
-  }
-  return null;
-}
+// Import + re-export the pure parser from the shared module (no 'use client')
+// so Server Components (universal-sections.tsx) can call parseVideoSrc without
+// crossing the client/server module boundary.  The local import of ParsedVideo
+// is needed for the VideoEmbedPreview props type below.
+import type { ParsedVideo } from './parse-video-src';
+export type { ParsedVideo } from './parse-video-src';
+export { parseVideoSrc } from './parse-video-src';
 
 interface VideoEmbedPreviewProps {
   parsed: ParsedVideo;

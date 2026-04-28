@@ -262,7 +262,11 @@ function widthCssForAlign(a: ImageAlign, pct: number): string {
 }
 
 // ─── Video section renderer ────────────────────────────────────────────────
-import { parseVideoSrc } from '../../../authoring/video-embed-preview';
+// Import from the pure shared module (no 'use client') — NOT from
+// video-embed-preview.tsx which carries 'use client' for its React component.
+// Bug A fix (canary v2 respin): importing from a 'use client' module in a
+// Server Component throws "Attempted to call parseVideoSrc() from the server."
+import { parseVideoSrc } from '../../../authoring/parse-video-src';
 
 export function UniversalVideoSection({ section, isAr }: { section: AnyRecord; isAr: boolean }) {
   const u = asUniversal(section);
