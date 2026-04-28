@@ -62,7 +62,8 @@ interface EditorShellProps {
   /** Transition handler — called for submit-for-review / publish. Returns
    *  the response body (success row OR lint_block details). */
   onTransition: (to: 'review' | 'published') => Promise<TransitionResult>;
-  /** Public preview href (e.g. /ar/lp/foo). Renders as "Preview ↗". */
+  /** Public preview href (e.g. /ar/lp/foo). Renders as "Open ↗" fallback when
+   *  device-preview isn't wired. */
   previewHref: string | null;
   locale: string;
 }
@@ -86,7 +87,7 @@ export interface TransitionResult {
 
 export function EditorShell({
   entity,
-  rowId: _rowId,
+  rowId,
   slug,
   title,
   initialStatus,
@@ -99,9 +100,13 @@ export function EditorShell({
   previewHref,
   locale,
 }: EditorShellProps) {
-  void _rowId; // reserved for post-canary per-section endpoint wiring
   const router = useRouter();
   const isAr = locale === 'ar';
+
+  // Wave 15 W3 canary v2 (Issue 5B) — device-preview href.
+  // When a rowId is available, link to the new preview-in-new-tab route with
+  // device-size toggle. Fallback: keep the public previewHref.
+  const devicePreviewHref = rowId ? `/${locale}/admin/preview/${entity}/${rowId}?as=draft` : null;
 
   // ── Authored state ─────────────────────────────────────────────────────
   const [composition, setComposition] = useState<LpComposition>(initialComposition);
@@ -114,6 +119,31 @@ export function EditorShell({
 
   // Locale toggle. Initialized from URL locale; sticky during the session.
   const [canvasLocale, setCanvasLocale] = useState<'ar' | 'en'>(locale === 'ar' ? 'ar' : 'en');
+
+  // Wave 15 W3 canary v2 (Issue 5A): page-tree icon-rail collapse.
+  // Defaults to collapsed = stage gets the visual breathing room Samer
+  // requested. Hamburger toggles to full-tree mode. Sticky per-session
+  // via localStorage (best-effort — safe fallback if storage is denied).
+  const [treeCollapsed, setTreeCollapsed] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return true;
+    try {
+      const stored = window.localStorage.getItem('kun:editor:tree-collapsed');
+      return stored === null ? true : stored === '1';
+    } catch {
+      return true;
+    }
+  });
+  const toggleTreeCollapsed = useCallback(() => {
+    setTreeCollapsed((c) => {
+      const next = !c;
+      try {
+        window.localStorage.setItem('kun:editor:tree-collapsed', next ? '1' : '0');
+      } catch {
+        /* localStorage may be denied — stickiness is best-effort */
+      }
+      return next;
+    });
+  }, []);
 
   // Lint state (last-known from a transition attempt).
   const [lintViolations, setLintViolations] = useState<TransitionResult['lints'] | null>(null);
@@ -231,6 +261,7 @@ export function EditorShell({
         canvasLocale={canvasLocale}
         onLocaleToggle={() => setCanvasLocale((c) => (c === 'ar' ? 'en' : 'ar'))}
         previewHref={previewHref}
+        devicePreviewHref={devicePreviewHref}
         saveStatus={saveStatus}
         lastSavedAt={lastSavedAt}
         onSaveNow={() => { void saveNow(); }}
@@ -271,6 +302,8 @@ export function EditorShell({
           locale={locale}
           provenance={initialProvenance}
           onAdd={() => setPickerOpen(true)}
+          collapsed={treeCollapsed}
+          onToggleCollapsed={toggleTreeCollapsed}
         />
         <Canvas
           entity={entity}

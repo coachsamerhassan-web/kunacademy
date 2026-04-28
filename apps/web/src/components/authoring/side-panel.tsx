@@ -18,7 +18,7 @@
 
 import { useState, type ReactNode } from 'react';
 import type { LpSection } from '@/lib/lp/composition-types';
-import { VOCAB_BY_ID } from '@/lib/authoring/section-vocabulary';
+import { VOCAB_BY_ID, LP_TYPE_DESCRIPTIONS } from '@/lib/authoring/section-vocabulary';
 import { SECTION_TYPE_LABELS } from '../admin/lp-editor/_shared';
 import { MirrorForm } from '../admin/lp-editor/forms/mirror-form';
 import { ReframeForm } from '../admin/lp-editor/forms/reframe-form';
@@ -117,13 +117,21 @@ export function SidePanel({
   }
 
   const universal = VOCAB_BY_ID[section.type];
+  const lpDesc = LP_TYPE_DESCRIPTIONS[section.type as keyof typeof LP_TYPE_DESCRIPTIONS];
   const lpLabel = SECTION_TYPE_LABELS[section.type];
   const label = universal
     ? isAr ? universal.label_ar : universal.label_en
+    : lpDesc
+    ? isAr ? lpDesc.label_ar : lpDesc.label_en
     : lpLabel
     ? isAr ? lpLabel.ar : lpLabel.en
     : section.type;
-  const icon = universal?.icon ?? '▢';
+  const description = universal
+    ? isAr ? universal.description_ar : universal.description_en
+    : lpDesc
+    ? isAr ? lpDesc.description_ar : lpDesc.description_en
+    : null;
+  const icon = universal?.icon ?? lpDesc?.icon ?? '▢';
 
   const accentColor = provenance ? AGENT_ACCENT_BORDER[provenance.agent] : 'transparent';
   const showAccent = provenance && provenance.agent !== 'human';
@@ -150,8 +158,8 @@ export function SidePanel({
             background: showAccent ? accentColor : 'transparent',
           }}
         />
-        <div className="flex-1 flex items-center gap-2 px-3 py-2 min-w-0">
-          <span aria-hidden className="text-base leading-none shrink-0">{icon}</span>
+        <div className="flex-1 flex items-start gap-2 px-3 py-2 min-w-0">
+          <span aria-hidden className="text-base leading-none shrink-0 mt-0.5">{icon}</span>
           <div className="flex-1 min-w-0">
             <div className="text-[11px] font-semibold uppercase tracking-wider text-[var(--color-neutral-600)]">
               {label}
@@ -159,6 +167,11 @@ export function SidePanel({
                 #{sectionIndex + 1}
               </span>
             </div>
+            {description && (
+              <div className="text-[11px] leading-snug text-[var(--color-neutral-500)] mt-0.5">
+                {description}
+              </div>
+            )}
             {provenance && agentName && (
               <div className="text-[11px] text-[var(--color-neutral-500)] mt-0.5 truncate">
                 {isAr
@@ -265,9 +278,12 @@ export function SidePanel({
 }
 
 function PanelShell({ isAr, children }: { isAr: boolean; children: ReactNode }) {
+  // Wave 15 W3 canary v2 (Issue 5A): widened to ~1/3 of viewport on desktop
+  // (was 420px fixed). Stage takes 2/3, panel takes 1/3 — matches WP fullscreen
+  // editor proportions. Min-width 360px keeps BilingualRichEditor readable.
   return (
     <section
-      className="hidden md:flex md:flex-col md:w-[420px] md:shrink-0 md:border-s md:border-[var(--color-neutral-200)] bg-[var(--color-neutral-50)]"
+      className="hidden md:flex md:flex-col md:basis-1/3 md:max-w-[520px] md:min-w-[360px] md:shrink-0 md:border-s md:border-[var(--color-neutral-200)] bg-[var(--color-neutral-50)]"
       aria-label={isAr ? 'لوحة التحرير' : 'Editing panel'}
     >
       {children}

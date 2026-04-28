@@ -18,6 +18,14 @@ import {
   DefaultProseSection,
   type DefaultSectionProps,
 } from './sections/default';
+import {
+  UniversalImageSection,
+  UniversalVideoSection,
+  UniversalHeaderSection,
+  UniversalBodySection,
+  UniversalQuoteSection,
+  UniversalDividerSection,
+} from './sections/default/universal-sections';
 
 interface LpRendererProps {
   slug: string;
@@ -115,7 +123,29 @@ function LpDefaultRenderer({
 
 // ── Section dispatcher (default theme) ────────────────────────────────────
 function DefaultSectionDispatcher(props: DefaultSectionProps) {
-  const { section } = props;
+  const { section, isAr } = props;
+  // Universal section types added in Wave 15 W3 canary v2 (image/video/etc.)
+  // — these aren't in the LpSectionType union but live in composition_json
+  // at runtime. Match the runtime discriminator string.
+  const t = section.type as unknown as string;
+  if (t === 'image') {
+    return <UniversalImageSection section={section as unknown as Record<string, unknown>} isAr={isAr} />;
+  }
+  if (t === 'video') {
+    return <UniversalVideoSection section={section as unknown as Record<string, unknown>} isAr={isAr} />;
+  }
+  if (t === 'header') {
+    return <UniversalHeaderSection section={section as unknown as Record<string, unknown>} isAr={isAr} />;
+  }
+  if (t === 'body') {
+    return <UniversalBodySection section={section as unknown as Record<string, unknown>} isAr={isAr} />;
+  }
+  if (t === 'quote') {
+    return <UniversalQuoteSection section={section as unknown as Record<string, unknown>} isAr={isAr} />;
+  }
+  if (t === 'divider') {
+    return <UniversalDividerSection section={section as unknown as Record<string, unknown>} isAr={isAr} />;
+  }
   const Comp = SECTION_COMPONENTS[section.type] ?? DefaultProseSection;
   return <Comp {...props} />;
 }

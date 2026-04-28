@@ -6,8 +6,18 @@
  *   - id (matches LpSectionType for landing carry-forward where applicable)
  *   - label_ar / label_en (display in picker + tree)
  *   - icon (single emoji glyph for picker thumbnails)
+ *   - description_ar / description_en (1-line clarifier per WP Inserter
+ *     pattern — see WP UX research §8 in
+ *     `Workspace/CTO/output/2026-04-28-wp-ux-research.md`).
  *   - default-empty payload (for "+Add section")
  *   - applicableEntities (which sibling tables the type can live in)
+ *
+ * Canary v2 (2026-04-28) addition: Issue 7 — Section labels + descriptions.
+ * Descriptions for all section types are EN-default placeholders ready for
+ * Samer review. The full draft list (universals + 15 LP types) ships at
+ * `Project Memory/KUN-Features/Workspace/CTO/output/2026-04-28-section-descriptions-DRAFT.md`
+ * for Samer to revise before final lock-in. Methodology language is HIS voice;
+ * we ship sensible defaults so the editor isn't blank.
  *
  * Wave 3 ships the 8 universal subset (per §8 Wave 3 phasing). Wave 14b's
  * 15 LP section types remain authorable via the existing `forms/{type}.tsx`
@@ -190,6 +200,138 @@ export const LP_SECTION_TYPES_ORDERED: ReadonlyArray<LpSectionType> = [
   'cta',
   'custom',
 ];
+
+/**
+ * Wave 15 Wave 3 canary v2 — LP-type descriptions registry.
+ *
+ * Maps each of the 15 carry-forward LpSectionType values to a Title-Case
+ * label + 1-2 sentence description. Used by the section picker (when a
+ * landing_page entity is being edited) and by the side panel header strip.
+ *
+ * These are EN-default placeholders pending Samer's voice revision at the
+ * canary v2 review boundary. Full draft + AR translations live at
+ * `Workspace/CTO/output/2026-04-28-section-descriptions-DRAFT.md` —
+ * `replace these with Samer's revised copy` before Wave 4 lock-in.
+ *
+ * The AR strings here are Hakima/Hakawati's natural-voice short captions;
+ * the EN strings are bridging copy. None are methodology-recipe language
+ * (per CLAUDE.md IP rule R2). They describe the FUNCTION + USE-WHEN.
+ */
+export interface LpTypeDescription {
+  label_ar: string;
+  label_en: string;
+  icon: string;
+  description_ar: string;
+  description_en: string;
+}
+
+export const LP_TYPE_DESCRIPTIONS: Record<LpSectionType, LpTypeDescription> = {
+  mirror: {
+    label_ar: 'مرآة',
+    label_en: 'Mirror',
+    icon: '🪞',
+    description_ar: 'تعكس على القارئ تجربته الحالية بدقّة. استخدمها كأوّل قسم بعد البطل.',
+    description_en: 'Reflect the reader\'s current experience back to them precisely. Use as the first section after the hero.',
+  },
+  reframe: {
+    label_ar: 'إعادة تأطير',
+    label_en: 'Reframe',
+    icon: '🔄',
+    description_ar: 'تحوّل من المشكلة إلى منظور جديد. تأتي بعد المرآة عادةً.',
+    description_en: 'Pivot from the problem to a new perspective. Typically follows the mirror.',
+  },
+  description: {
+    label_ar: 'الوصف',
+    label_en: 'Description',
+    icon: '📝',
+    description_ar: 'وصف ما هو البرنامج أو الفعالية بنصّ ثري متواصل.',
+    description_en: 'Long-form description of what the program or event is.',
+  },
+  benefits: {
+    label_ar: 'الفوائد',
+    label_en: 'Benefits',
+    icon: '✨',
+    description_ar: 'قائمة فوائد قصيرة بأسلوب نقطيّ مع أيقونات اختيارية.',
+    description_en: 'Bulleted list of benefits with optional icons.',
+  },
+  carry_out: {
+    label_ar: 'ما تحمله معك',
+    label_en: 'Carry-Out',
+    icon: '🎒',
+    description_ar: 'ما الذي يأخذه القارئ معه عند الانتهاء — ملموس ومحدّد.',
+    description_en: 'What the reader takes with them when they finish — tangible and specific.',
+  },
+  who_for: {
+    label_ar: 'لمن',
+    label_en: 'Who For',
+    icon: '👥',
+    description_ar: 'من هم المعنيون بهذا — قائمة مؤهّلة بصدق.',
+    description_en: 'Who this is for — a list that qualifies honestly.',
+  },
+  who_not_for: {
+    label_ar: 'ليس لمن',
+    label_en: 'Who Not For',
+    icon: '🚫',
+    description_ar: 'من لا يجد قيمته هنا — قائمة قصيرة وحادّة.',
+    description_en: 'Who will not find value here — short and sharp.',
+  },
+  format: {
+    label_ar: 'الشكل',
+    label_en: 'Format',
+    icon: '📅',
+    description_ar: 'اللوجستيات — التواريخ والمواعيد والأمكنة والوسيلة (حضوري / أونلاين).',
+    description_en: 'Logistics — dates, times, location, and modality (in-person / online).',
+  },
+  price: {
+    label_ar: 'السعر',
+    label_en: 'Price',
+    icon: '💰',
+    description_ar: 'الاستثمار في الفرصة، مع شرائح مبكر/عاديّ/متأخّر اختيارية.',
+    description_en: 'Investment in the opportunity, with optional early/regular/late tiers.',
+  },
+  group_alumni: {
+    label_ar: 'مجموعة + خرّيجون',
+    label_en: 'Group + Alumni',
+    icon: '🎓',
+    description_ar: 'هويّة المجموعة وأصواتُ خرّيجين سابقين.',
+    description_en: 'The group identity + voices from past alumni.',
+  },
+  credibility: {
+    label_ar: 'المصداقية',
+    label_en: 'Credibility',
+    icon: '🏆',
+    description_ar: 'سيرة المعلّم/المدرّب وما يجعله مؤهّلًا — موجز.',
+    description_en: 'The teacher\'s background and qualification — concise.',
+  },
+  objections: {
+    label_ar: 'الاعتراضات',
+    label_en: 'Objections',
+    icon: '⚖️',
+    description_ar: 'مواجهة المخاوف الحقيقية للقارئ بصدق وبدون مراوغة.',
+    description_en: 'Address the reader\'s real hesitations honestly, no dodging.',
+  },
+  faq: {
+    label_ar: 'أسئلة شائعة',
+    label_en: 'FAQ',
+    icon: '❓',
+    description_ar: 'أسئلة لوجستيّة شائعة وأجوبتها — سؤال/جواب.',
+    description_en: 'Common logistical questions and their answers.',
+  },
+  cta: {
+    label_ar: 'دعوة للفعل',
+    label_en: 'Call to Action',
+    icon: '🎯',
+    description_ar: 'دعوة واضحة للفعل التالي — تسجيل، موعد، استفسار.',
+    description_en: 'A clear call to next action — register, schedule, inquire.',
+  },
+  custom: {
+    label_ar: 'مخصّص',
+    label_en: 'Custom',
+    icon: '✨',
+    description_ar: 'قسم حرّ لمحتوى لا يندرج تحت الأنواع الأخرى.',
+    description_en: 'Open-ended section for content that doesn\'t fit other types.',
+  },
+};
 
 /** Filter vocabulary by entity. Used by the section type picker per
  *  Hakawati §5.2 (per-page-kind filtering — hide non-applicable types). */

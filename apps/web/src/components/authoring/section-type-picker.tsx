@@ -14,10 +14,10 @@
 import type { LpSection } from '@/lib/lp/composition-types';
 import {
   LP_SECTION_TYPES_ORDERED,
+  LP_TYPE_DESCRIPTIONS,
   vocabularyForEntity,
   type EntityTarget,
 } from '@/lib/authoring/section-vocabulary';
-import { SECTION_TYPE_LABELS } from '../admin/lp-editor/_shared';
 
 interface SectionTypePickerProps {
   open: boolean;
@@ -118,8 +118,8 @@ export function SectionTypePicker({ open, onClose, entity, onPick, locale }: Sec
                   // De-dupe with universal: skip mirror + cta from this list because they're already in universal.
                   .filter((t) => !['mirror', 'cta'].includes(t))
                   .map((type) => {
-                    const labels = SECTION_TYPE_LABELS[type];
-                    if (!labels) return null;
+                    const desc = LP_TYPE_DESCRIPTIONS[type];
+                    if (!desc) return null;
                     return (
                       <button
                         key={type}
@@ -127,12 +127,18 @@ export function SectionTypePicker({ open, onClose, entity, onPick, locale }: Sec
                         onClick={() => handlePick(type)}
                         className="text-start rounded-xl border border-[var(--color-neutral-200)] bg-white p-3 hover:border-[var(--color-primary)] hover:bg-[var(--color-primary-50)] transition-colors min-h-16"
                       >
-                        <div>
-                          <div className="font-semibold text-sm text-[var(--text-primary)]">
-                            {isAr ? labels.ar : labels.en}
-                          </div>
-                          <div className="text-[10px] text-[var(--color-neutral-400)] mt-0.5 font-mono">
-                            {type}
+                        <div className="flex items-start gap-2">
+                          <span className="text-lg leading-none shrink-0">{desc.icon}</span>
+                          <div className="flex-1 min-w-0">
+                            <div className="font-semibold text-sm text-[var(--text-primary)]">
+                              {isAr ? desc.label_ar : desc.label_en}
+                            </div>
+                            <div className="text-xs text-[var(--color-neutral-500)] mt-0.5">
+                              {isAr ? desc.description_ar : desc.description_en}
+                            </div>
+                            <div className="text-[10px] text-[var(--color-neutral-400)] mt-1 font-mono">
+                              {type}
+                            </div>
                           </div>
                         </div>
                       </button>

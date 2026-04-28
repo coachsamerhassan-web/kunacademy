@@ -19,6 +19,10 @@ interface TopBarProps {
   canvasLocale: 'ar' | 'en';
   onLocaleToggle: () => void;
   previewHref: string | null;
+  /** Wave 15 W3 canary v2 (Issue 5B) — when provided, renders a "Device preview"
+   *  button that opens `/admin/preview/[entity]/[id]` in a new tab with the
+   *  device-size toggle. When null, falls back to the simple `previewHref` link. */
+  devicePreviewHref?: string | null;
   saveStatus: AutoSaveStatus;
   lastSavedAt: Date | null;
   onSaveNow: () => void;
@@ -42,6 +46,7 @@ export function TopBar({
   canvasLocale,
   onLocaleToggle,
   previewHref,
+  devicePreviewHref,
   saveStatus,
   lastSavedAt,
   onSaveNow,
@@ -95,15 +100,27 @@ export function TopBar({
           {canvasLocale === 'ar' ? 'English' : 'العربية'}
         </button>
 
-        {/* Preview link */}
-        {previewHref && (
+        {/* Preview — device toggle (Issue 5B) */}
+        {devicePreviewHref && (
+          <Link
+            href={devicePreviewHref}
+            target="_blank"
+            rel="noopener"
+            className="rounded-lg border border-[var(--color-neutral-300)] px-2.5 py-1.5 text-xs font-medium text-[var(--color-neutral-700)] hover:border-[var(--color-primary)]"
+            title={isAr ? 'معاينة في تبويب جديد مع تبديل الجهاز' : 'Preview in new tab with device toggle'}
+          >
+            {isAr ? 'معاينة ↗' : 'Preview ↗'}
+          </Link>
+        )}
+        {/* Public link fallback when no device preview is wired. */}
+        {!devicePreviewHref && previewHref && (
           <Link
             href={previewHref}
             target="_blank"
             rel="noopener"
             className="rounded-lg border border-[var(--color-neutral-300)] px-2.5 py-1.5 text-xs font-medium text-[var(--color-neutral-700)] hover:border-[var(--color-primary)]"
           >
-            {isAr ? 'معاينة ↗' : 'Preview ↗'}
+            {isAr ? 'فتح ↗' : 'Open ↗'}
           </Link>
         )}
 

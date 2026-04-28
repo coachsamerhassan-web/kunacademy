@@ -51,6 +51,12 @@ interface PageTreeProps {
   provenance?: Record<number, AgentIdentity | null>;
   /** Optional onAdd handler — when provided, renders an "+ Add section" CTA at the bottom. */
   onAdd?: () => void;
+  /** Wave 15 W3 canary v2 (Issue 5A) — collapse to icon-rail.
+   *  When true, hide labels + reduce width to 56px; show only icon glyphs.
+   *  When undefined (default), behave as before — full 260px tree. */
+  collapsed?: boolean;
+  /** Toggle handler for the hamburger button at the top. */
+  onToggleCollapsed?: () => void;
 }
 
 export type AgentIdentity = 'human' | 'hakima' | 'shahira' | 'hakawati' | 'nashit' | 'sani' | 'amin' | 'rafik';
@@ -74,6 +80,8 @@ export function PageTree({
   locale,
   provenance = {},
   onAdd,
+  collapsed = false,
+  onToggleCollapsed,
 }: PageTreeProps) {
   const isAr = locale === 'ar';
 
@@ -103,24 +111,61 @@ export function PageTree({
 
   return (
     <aside
-      className="w-full md:w-[260px] shrink-0 border-e border-[var(--color-neutral-200)] bg-white overflow-y-auto"
+      className={`shrink-0 border-e border-[var(--color-neutral-200)] bg-white overflow-y-auto transition-[width] duration-200 ${
+        collapsed ? 'w-[56px]' : 'w-full md:w-[260px]'
+      }`}
       aria-label={isAr ? 'شجرة الصفحة' : 'Page tree'}
     >
-      <div className="px-3 py-2.5 border-b border-[var(--color-neutral-100)] sticky top-0 bg-white z-10">
-        <div className="text-[11px] font-semibold uppercase tracking-wider text-[var(--color-neutral-500)]">
-          {isAr ? 'الأقسام' : 'Sections'}
-        </div>
-        <div className="text-xs text-[var(--color-neutral-400)] mt-0.5">
-          {isAr
-            ? `${sections.length} ${sections.length === 1 ? 'قسم' : 'أقسام'}`
-            : `${sections.length} section${sections.length === 1 ? '' : 's'}`}
-        </div>
+      <div className="px-2 py-2 border-b border-[var(--color-neutral-100)] sticky top-0 bg-white z-10 flex items-center justify-between gap-1">
+        {!collapsed && (
+          <div className="min-w-0">
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-[var(--color-neutral-500)] truncate">
+              {isAr ? 'الأقسام' : 'Sections'}
+            </div>
+            <div className="text-xs text-[var(--color-neutral-400)] mt-0.5 truncate">
+              {isAr
+                ? `${sections.length} ${sections.length === 1 ? 'قسم' : 'أقسام'}`
+                : `${sections.length} section${sections.length === 1 ? '' : 's'}`}
+            </div>
+          </div>
+        )}
+        {onToggleCollapsed && (
+          <button
+            type="button"
+            onClick={onToggleCollapsed}
+            className="shrink-0 rounded-lg p-1.5 hover:bg-[var(--color-neutral-100)] text-[var(--color-neutral-500)] hover:text-[var(--color-neutral-700)]"
+            aria-label={
+              collapsed
+                ? isAr
+                  ? 'توسيع شجرة الأقسام'
+                  : 'Expand sections tree'
+                : isAr
+                ? 'طيّ شجرة الأقسام'
+                : 'Collapse sections tree'
+            }
+            title={
+              collapsed
+                ? isAr
+                  ? 'توسيع'
+                  : 'Expand'
+                : isAr
+                ? 'طيّ'
+                : 'Collapse'
+            }
+          >
+            <span aria-hidden className="text-base leading-none">
+              {collapsed ? '☰' : '←'}
+            </span>
+          </button>
+        )}
       </div>
 
       {sections.length === 0 ? (
-        <div className="p-4 text-xs text-[var(--color-neutral-500)]">
-          {isAr ? 'لا أقسام بعد' : 'No sections yet'}
-        </div>
+        !collapsed && (
+          <div className="p-4 text-xs text-[var(--color-neutral-500)]">
+            {isAr ? 'لا أقسام بعد' : 'No sections yet'}
+          </div>
+        )
       ) : (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <SortableContext items={rows.map((r) => r.__key)} strategy={verticalListSortingStrategy}>
@@ -135,6 +180,7 @@ export function PageTree({
                   onSelect={() => onSelect(row.__index)}
                   isAr={isAr}
                   agent={provenance[row.__index] ?? null}
+                  collapsed={collapsed}
                 />
               ))}
             </ul>
@@ -143,13 +189,17 @@ export function PageTree({
       )}
 
       {onAdd && (
-        <div className="px-3 pb-3 pt-1 border-t border-[var(--color-neutral-100)] sticky bottom-0 bg-white">
+        <div className="px-2 pb-2 pt-1 border-t border-[var(--color-neutral-100)] sticky bottom-0 bg-white">
           <button
             type="button"
             onClick={onAdd}
-            className="w-full rounded-lg border border-dashed border-[var(--color-neutral-300)] py-2 text-sm text-[var(--color-neutral-600)] hover:border-[var(--color-accent)] hover:bg-[var(--color-accent-50,#fef4ec)] hover:text-[var(--color-accent)]"
+            title={isAr ? 'إضافة قسم' : 'Add section'}
+            aria-label={isAr ? 'إضافة قسم' : 'Add section'}
+            className={`w-full rounded-lg border border-dashed border-[var(--color-neutral-300)] py-2 text-sm text-[var(--color-neutral-600)] hover:border-[var(--color-accent)] hover:bg-[var(--color-accent-50,#fef4ec)] hover:text-[var(--color-accent)] ${
+              collapsed ? 'px-0 text-center' : 'px-3 text-start'
+            }`}
           >
-            + {isAr ? 'إضافة قسم' : 'Add section'}
+            {collapsed ? '+' : `+ ${isAr ? 'إضافة قسم' : 'Add section'}`}
           </button>
         </div>
       )}
@@ -165,9 +215,10 @@ interface TreeRowProps {
   onSelect: () => void;
   isAr: boolean;
   agent: AgentIdentity | null;
+  collapsed?: boolean;
 }
 
-function TreeRow({ rowKey, index, section, isSelected, onSelect, isAr, agent }: TreeRowProps) {
+function TreeRow({ rowKey, index, section, isSelected, onSelect, isAr, agent, collapsed = false }: TreeRowProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: rowKey,
   });
@@ -210,39 +261,45 @@ function TreeRow({ rowKey, index, section, isSelected, onSelect, isAr, agent }: 
         <button
           type="button"
           onClick={onSelect}
-          className={`flex-1 flex items-center gap-2 px-3 py-2 min-h-11 text-start ${
+          title={collapsed ? `${index + 1}. ${label}${titlePreview ? ' — ' + titlePreview : ''}` : undefined}
+          aria-label={collapsed ? `${index + 1}. ${label}` : undefined}
+          className={`flex-1 flex items-center gap-2 px-2 py-2 min-h-11 text-start ${
             isSelected
               ? 'text-[var(--color-accent)] font-semibold'
               : 'text-[var(--color-neutral-700)]'
           }`}
         >
-          {/* Drag handle */}
-          <span
-            aria-label={isAr ? 'اسحب لإعادة الترتيب' : 'Drag to reorder'}
-            {...attributes}
-            {...listeners}
-            className="shrink-0 cursor-grab active:cursor-grabbing text-[var(--color-neutral-400)] hover:text-[var(--color-neutral-700)] text-base leading-none -ms-1"
-            onClick={(e) => e.stopPropagation()}
-          >
-            ⋮⋮
-          </span>
+          {/* Drag handle — hidden when collapsed (icon-rail mode) */}
+          {!collapsed && (
+            <span
+              aria-label={isAr ? 'اسحب لإعادة الترتيب' : 'Drag to reorder'}
+              {...attributes}
+              {...listeners}
+              className="shrink-0 cursor-grab active:cursor-grabbing text-[var(--color-neutral-400)] hover:text-[var(--color-neutral-700)] text-base leading-none -ms-1"
+              onClick={(e) => e.stopPropagation()}
+            >
+              ⋮⋮
+            </span>
+          )}
           <span aria-hidden className="shrink-0 text-base leading-none w-5 text-center">
             {icon}
           </span>
-          <div className="flex-1 min-w-0">
-            <div className="text-xs leading-tight">
-              <span className="font-medium">{label}</span>
-              <span className="text-[var(--color-neutral-400)] font-mono ms-1">#{index + 1}</span>
-            </div>
-            {titlePreview && (
-              <div
-                className="text-xs text-[var(--color-neutral-500)] truncate mt-0.5"
-                dir={isAr ? 'rtl' : 'ltr'}
-              >
-                {titlePreview}
+          {!collapsed && (
+            <div className="flex-1 min-w-0">
+              <div className="text-xs leading-tight">
+                <span className="font-medium">{label}</span>
+                <span className="text-[var(--color-neutral-400)] font-mono ms-1">#{index + 1}</span>
               </div>
-            )}
-          </div>
+              {titlePreview && (
+                <div
+                  className="text-xs text-[var(--color-neutral-500)] truncate mt-0.5"
+                  dir={isAr ? 'rtl' : 'ltr'}
+                >
+                  {titlePreview}
+                </div>
+              )}
+            </div>
+          )}
         </button>
       </div>
     </li>

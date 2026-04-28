@@ -18,8 +18,14 @@
 
 'use client';
 
+import { useState } from 'react';
 import type { LpSection } from '@/lib/lp/composition-types';
 import type { LocaleMode } from './side-panel';
+import type { SectionBackground, ImageStyling } from './panels/styling-types';
+import { BackgroundPanel } from './panels/background-panel';
+import { ImageStylingPanel } from './panels/image-styling-panel';
+import { MediaPickerDialog, type MediaPickerSelection } from './media-picker-dialog';
+import { VideoEmbedPreview, parseVideoSrc } from './video-embed-preview';
 
 interface Props {
   section: LpSection;
@@ -43,6 +49,8 @@ export function UniversalSectionForm({ section, onChange, locale, localeMode }: 
   const isAr = locale === 'ar';
   const showAr = localeMode === 'ar' || localeMode === 'both';
   const showEn = localeMode === 'en' || localeMode === 'both';
+  const uiLocale = (locale === 'ar' ? 'ar' : 'en') as 'ar' | 'en';
+  const [mediaOpen, setMediaOpen] = useState(false);
 
   // Read fields off section as a permissive Record. LpSection has a closed
   // discriminator; for universals we treat it as open via unknown bridge.
@@ -55,6 +63,16 @@ export function UniversalSectionForm({ section, onChange, locale, localeMode }: 
   // The discriminator is typed strictly as LpSectionType; cast to a wider
   // string for runtime branch matching against universal types.
   const t = section.type as unknown as UniversalKey | string;
+
+  // Shared per-element background panel (Issue 3).
+  const renderBgPanel = () => (
+    <BackgroundPanel
+      value={(s.background as SectionBackground | undefined) ?? undefined}
+      onChange={(next) => patch({ background: next })}
+      isAr={isAr}
+      uiLocale={uiLocale}
+    />
+  );
 
   switch (t) {
     case 'header':
@@ -95,6 +113,7 @@ export function UniversalSectionForm({ section, onChange, locale, localeMode }: 
             />
           )}
           <AnchorRow value={(s.anchor_id as string) ?? ''} onChange={(v) => patch({ anchor_id: v || undefined })} isAr={isAr} />
+          {renderBgPanel()}
         </div>
       );
 
@@ -122,19 +141,67 @@ export function UniversalSectionForm({ section, onChange, locale, localeMode }: 
             />
           )}
           <AnchorRow value={(s.anchor_id as string) ?? ''} onChange={(v) => patch({ anchor_id: v || undefined })} isAr={isAr} />
+          {renderBgPanel()}
         </div>
       );
 
-    case 'image':
+    case 'image': {
+      const imageUrl = (s.image_url as string) ?? '';
+      const onMediaSelect = (sel: MediaPickerSelection) => {
+        patch({
+          image_url: sel.src,
+          alt_ar: sel.alt_ar ?? (s.alt_ar as string) ?? '',
+          alt_en: sel.alt_en ?? (s.alt_en as string) ?? '',
+          media_id: sel.mediaId ?? null,
+        });
+        setMediaOpen(false);
+      };
       return (
         <div className="space-y-3">
-          <ScalarField
-            label={isAr ? 'رابط الصورة' : 'Image URL'}
-            value={(s.image_url as string) ?? ''}
-            onChange={(v) => patch({ image_url: v })}
-            dir="ltr"
-            placeholder="/uploads/media/2026/04/file.jpg"
-          />
+          {/* Add Media UX (Issue 1) — replaces bare URL field */}
+          <div>
+            <div className="text-xs font-semibold text-[var(--color-neutral-700)] mb-1">
+              {isAr ? 'الصورة' : 'Image'}
+            </div>
+            {imageUrl ? (
+              <div className="flex items-start gap-2">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={imageUrl}
+                  alt={(isAr ? (s.alt_ar as string) : (s.alt_en as string)) ?? ''}
+                  className="w-24 h-24 rounded-lg object-cover bg-[var(--color-neutral-100)] border border-[var(--color-neutral-200)]"
+                />
+                <div className="flex-1 min-w-0">
+                  <div className="text-[11px] text-[var(--color-neutral-500)] truncate">{imageUrl}</div>
+                  <div className="flex gap-2 mt-2">
+                    <button
+                      type="button"
+                      onClick={() => setMediaOpen(true)}
+                      className="rounded-lg border border-[var(--color-neutral-300)] px-2 py-1 text-xs hover:bg-[var(--color-neutral-50)]"
+                    >
+                      {isAr ? 'استبدال' : 'Replace'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => patch({ image_url: '', media_id: null })}
+                      className="rounded-lg border border-red-200 px-2 py-1 text-xs text-red-700 hover:bg-red-50"
+                    >
+                      {isAr ? 'إزالة' : 'Remove'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setMediaOpen(true)}
+                className="w-full rounded-xl border-2 border-dashed border-[var(--color-neutral-300)] px-3 py-4 text-sm text-[var(--color-neutral-600)] hover:border-[var(--color-accent,#F47E42)] hover:bg-[var(--color-neutral-50)]"
+              >
+                {isAr ? '+ إضافة وسائط' : '+ Add Media'}
+              </button>
+            )}
+          </div>
+
           {showAr && (
             <ScalarField
               label={isAr ? 'النصّ البديل (عربي) — مطلوب' : 'Alt text (Arabic) — required'}
@@ -169,25 +236,68 @@ export function UniversalSectionForm({ section, onChange, locale, localeMode }: 
               dir="ltr"
             />
           )}
+
+          {/* Issue 2 — Image styling panel (alignment / fit / aspect / overlay) */}
+          <ImageStylingPanel
+            value={(s.styling as ImageStyling | undefined) ?? undefined}
+            onChange={(next) => patch({ styling: next })}
+            isAr={isAr}
+          />
+
           <AnchorRow value={(s.anchor_id as string) ?? ''} onChange={(v) => patch({ anchor_id: v || undefined })} isAr={isAr} />
+
+          {/* Issue 3 — Background panel */}
+          {renderBgPanel()}
+
+          <MediaPickerDialog
+            open={mediaOpen}
+            onClose={() => setMediaOpen(false)}
+            onSelect={onMediaSelect}
+            locale={uiLocale}
+          />
         </div>
       );
+    }
 
-    case 'video':
+    case 'video': {
+      const embedUrl = (s.embed_url as string) ?? '';
+      const parsed = parseVideoSrc(embedUrl);
+      const styling = (s.styling as ImageStyling | undefined) ?? undefined;
       return (
         <div className="space-y-3">
           <ScalarField
             label={isAr ? 'رابط الفيديو (يوتيوب / فيميو / لووم)' : 'Embed URL (YouTube / Vimeo / Loom)'}
-            value={(s.embed_url as string) ?? ''}
+            value={embedUrl}
             onChange={(v) => patch({ embed_url: v })}
             dir="ltr"
-            placeholder="https://youtube.com/embed/..."
+            placeholder="https://youtube.com/watch?v=..."
           />
           <p className="text-[11px] text-[var(--color-neutral-500)]">
             {isAr
               ? 'يجب أن يكون الرابط من قائمة موثوقة (يوتيوب / فيميو / لووم / Google Slides). فحص R11 سيمنع النشر إن لم يكن.'
               : 'URL must be on the allowlist (YouTube / Vimeo / Loom / Google Slides). R11 lint blocks publish otherwise.'}
           </p>
+
+          {/* Issue 6 — embedded preview thumbnail in editor */}
+          {parsed && (
+            <div>
+              <div className="text-[11px] font-medium text-[var(--color-neutral-700)] mb-1">
+                {isAr ? 'معاينة' : 'Preview'}
+              </div>
+              <VideoEmbedPreview parsed={parsed} aspect={styling?.aspect ?? '16/9'} />
+              <div className="text-[10px] text-[var(--color-neutral-500)] mt-1">
+                {parsed.provider} · {parsed.id}
+              </div>
+            </div>
+          )}
+
+          {/* Issue 6 — size + aspect controls (re-uses ImageStylingPanel for align + width + aspect) */}
+          <ImageStylingPanel
+            value={styling}
+            onChange={(next) => patch({ styling: next })}
+            isAr={isAr}
+          />
+
           {showAr && (
             <ScalarField
               label={isAr ? 'تسمية (عربي)' : 'Caption (Arabic)'}
@@ -205,8 +315,10 @@ export function UniversalSectionForm({ section, onChange, locale, localeMode }: 
             />
           )}
           <AnchorRow value={(s.anchor_id as string) ?? ''} onChange={(v) => patch({ anchor_id: v || undefined })} isAr={isAr} />
+          {renderBgPanel()}
         </div>
       );
+    }
 
     case 'quote':
       return (
@@ -248,6 +360,7 @@ export function UniversalSectionForm({ section, onChange, locale, localeMode }: 
             />
           )}
           <AnchorRow value={(s.anchor_id as string) ?? ''} onChange={(v) => patch({ anchor_id: v || undefined })} isAr={isAr} />
+          {renderBgPanel()}
         </div>
       );
 
@@ -260,6 +373,7 @@ export function UniversalSectionForm({ section, onChange, locale, localeMode }: 
               : 'Visual divider — no editable fields. You can delete it or drag it to another position.'}
           </p>
           <AnchorRow value={(s.anchor_id as string) ?? ''} onChange={(v) => patch({ anchor_id: v || undefined })} isAr={isAr} />
+          {renderBgPanel()}
         </div>
       );
 

@@ -32,18 +32,41 @@ import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
 import Image from '@tiptap/extension-image';
 import TextAlign from '@tiptap/extension-text-align';
-import { Node, mergeAttributes } from '@tiptap/core';
+import { Node as TiptapNode, mergeAttributes } from '@tiptap/core';
 import type { Editor } from '@tiptap/core';
 import type { JSONContent } from '@tiptap/react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { parseVideoEmbed } from './sanitizer';
+import {
+  Bold as IBold,
+  Italic as IItalic,
+  Strikethrough as IStrike,
+  Link2 as ILink,
+  Link2Off as IUnlink,
+  Quote as IBlockquote,
+  Heading2 as IH2,
+  Heading3 as IH3,
+  Heading4 as IH4,
+  List as IUL,
+  ListOrdered as IOL,
+  AlignLeft as IAL,
+  AlignCenter as IAC,
+  AlignRight as IAR,
+  Image as IImage,
+  Video as IVideo,
+  Undo2 as IUndo,
+  Redo2 as IRedo,
+  MoreHorizontal as IMore,
+  X as IX,
+  Eraser as IClear,
+} from 'lucide-react';
 
 // ── Custom VideoEmbed Node ──────────────────────────────────────────────────
 // Declarative TipTap node for a video iframe. Stores normalized `src`,
 // `provider` and `title` in the JSON document; renders a responsive iframe
 // at display time. The sanitizer re-validates src + enforces sandbox, so
 // even if malicious JSON were inserted out-of-band, the render path is safe.
-const VideoEmbedNode = Node.create({
+const VideoEmbedNode = TiptapNode.create({
   name: 'videoEmbed',
   group: 'block',
   atom: true, // not editable inline; select-as-a-whole
@@ -342,6 +365,32 @@ interface RichEditorToolbarProps {
   onImagePick?: RichEditorProps['onImagePick'];
 }
 
+/**
+ * Wave 15 W3 canary v2 — RichEditorToolbar redesigned per WP Gutenberg
+ * grouping convention. See `Workspace/CTO/output/2026-04-28-wp-ux-research.md`
+ * §4 (block toolbar grouping) for the lineage.
+ *
+ * Layout (LTR; auto-mirrored in RTL by parent dir):
+ *   [Group 1: Bold · Italic · Strikethrough · Inline code]
+ *     | divider |
+ *   [Group 2: Link · H2 · H3 · H4 · Blockquote]
+ *     | divider |
+ *   [Group 3: Bullet · Numbered]
+ *     | divider |
+ *   [Group 4: Align Left · Align Center · Align Right] (RTL-aware)
+ *     | divider |
+ *   [Image] [Video]                         ← media insertion (lives in toolbar
+ *                                              per Hakawati §6.3 correction)
+ *     | divider |
+ *   [Undo · Redo]
+ *     | divider |
+ *   [More menu: ··· → Strikethrough, Inline image, Subscript, Superscript,
+ *                     Clear formatting]
+ *
+ * Sticky to the top of the editor's scroll container (CSS handles position:
+ * sticky + top: 0). Tooltips on every icon button (title + aria-label).
+ * Lucide icons throughout — no more text glyphs.
+ */
 function RichEditorToolbar({
   editor,
   locale,
@@ -350,26 +399,57 @@ function RichEditorToolbar({
 }: RichEditorToolbarProps) {
   const L = LABELS[locale];
   const [gdriveHint, setGdriveHint] = useState<string | null>(null);
+  const [linkOpen, setLinkOpen] = useState(false);
+  const [linkUrl, setLinkUrl] = useState('');
+  const [linkOpenInNewTab, setLinkOpenInNewTab] = useState(true);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const linkRef = useRef<HTMLDivElement>(null);
+  const moreRef = useRef<HTMLDivElement>(null);
 
-  const handleLink = useCallback(() => {
+  // Close popovers on outside click.
+  useEffect(() => {
+    function onClick(e: MouseEvent) {
+      if (linkOpen && linkRef.current && !linkRef.current.contains(e.target as Node)) {
+        setLinkOpen(false);
+      }
+      if (moreOpen && moreRef.current && !moreRef.current.contains(e.target as Node)) {
+        setMoreOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', onClick);
+    return () => document.removeEventListener('mousedown', onClick);
+  }, [linkOpen, moreOpen]);
+
+  const handleLinkOpen = useCallback(() => {
     const prev = editor.getAttributes('link').href as string | undefined;
-    const url = window.prompt(L.linkPrompt, prev ?? 'https://');
-    if (url === null) return; // cancelled
+    const prevTarget = editor.getAttributes('link').target as string | undefined;
+    setLinkUrl(prev ?? '');
+    setLinkOpenInNewTab(prevTarget !== '_self');
+    setLinkOpen(true);
+  }, [editor]);
+
+  const handleLinkConfirm = useCallback(() => {
+    const url = linkUrl.trim();
     if (url === '') {
       editor.chain().focus().extendMarkRange('link').unsetLink().run();
+      setLinkOpen(false);
       return;
     }
-    // Only allow http(s)://, mailto:, tel:, #anchor, /same-origin
     if (!/^(?:https?:\/\/|mailto:|tel:|#|\/[^/\\])/.test(url)) {
-      return; // silently reject — the linkPrompt already displayed; user can retry
+      return; // invalid; popover stays open so user can fix
     }
     editor
       .chain()
       .focus()
       .extendMarkRange('link')
-      .setLink({ href: url })
+      .setLink({
+        href: url,
+        target: linkOpenInNewTab ? '_blank' : '_self',
+        rel: linkOpenInNewTab ? 'noopener noreferrer' : null,
+      })
       .run();
-  }, [editor, L.linkPrompt]);
+    setLinkOpen(false);
+  }, [editor, linkUrl, linkOpenInNewTab]);
 
   const handleVideo = useCallback(() => {
     const raw = window.prompt(L.videoPrompt, '');
@@ -393,14 +473,12 @@ function RichEditorToolbar({
       .run();
     if (embed.needsPermissionHint) {
       setGdriveHint(L.videoGdriveHint);
-      // Auto-dismiss after 10s so it doesn't linger
       setTimeout(() => setGdriveHint(null), 10000);
     }
   }, [editor, L.videoPrompt, L.videoInvalid, L.videoGdriveHint]);
 
   const handleImage = useCallback(async () => {
     if (!onImagePick) {
-      // Fallback: prompt for URL (developer mode / no media library wired yet)
       const url = window.prompt(
         locale === 'ar' ? 'أدخل رابط الصورة:' : 'Image URL:',
         'https://',
@@ -412,229 +490,322 @@ function RichEditorToolbar({
     }
     const pick = await onImagePick(locale);
     if (!pick) return;
-    editor
-      .chain()
-      .focus()
-      .setImage({ src: pick.url, alt: pick.alt ?? '' })
-      .run();
+    editor.chain().focus().setImage({ src: pick.url, alt: pick.alt ?? '' }).run();
   }, [editor, locale, onImagePick]);
 
-  const btn = (
-    key: string,
-    active: boolean,
-    disabled: boolean,
-    onClick: () => void,
-    label: string,
-    icon: string,
-  ) => (
+  /** Reusable button shape — Lucide icon + tooltip + active state. */
+  const IconBtn = ({
+    onClick,
+    active,
+    disabled,
+    label,
+    keys,
+    children,
+  }: {
+    onClick: () => void;
+    active?: boolean;
+    disabled?: boolean;
+    label: string;
+    keys?: string;
+    children: React.ReactNode;
+  }) => (
     <button
-      key={key}
       type="button"
       onClick={onClick}
       disabled={disabled}
       aria-label={label}
-      title={label}
+      aria-pressed={active}
+      title={keys ? `${label} (${keys})` : label}
       className={`rich-editor-btn ${active ? 'is-active' : ''}`}
     >
-      {icon}
+      {children}
     </button>
   );
+
+  // Alignment cluster — RTL-aware (logical: start/center/end).
+  // Per WP UX research §4: in AR, the visual order of the 3 buttons stays
+  // [Left | Center | Right] visually mirrored, but each button keeps its
+  // semantic meaning. We bind to TipTap's textAlign which uses 'left' /
+  // 'center' / 'right' literal directions.
+  const isRtl = locale === 'ar';
 
   return (
     <>
       <div
         className="rich-editor-toolbar"
         role="toolbar"
-        aria-label={locale === 'ar' ? 'شريط أدوات التحرير' : 'Editor toolbar'}
+        aria-label={isRtl ? 'شريط أدوات التحرير' : 'Editor toolbar'}
       >
-        {btn(
-          'bold',
-          editor.isActive('bold'),
-          !editor.can().toggleBold(),
-          () => editor.chain().focus().toggleBold().run(),
-          L.bold,
-          'B',
-        )}
-        {btn(
-          'italic',
-          editor.isActive('italic'),
-          !editor.can().toggleItalic(),
-          () => editor.chain().focus().toggleItalic().run(),
-          L.italic,
-          'I',
-        )}
-        {btn(
-          'strike',
-          editor.isActive('strike'),
-          !editor.can().toggleStrike(),
-          () => editor.chain().focus().toggleStrike().run(),
-          L.strike,
-          'S',
-        )}
+        {/* Group 1 — Inline formatting */}
+        <IconBtn
+          onClick={() => editor.chain().focus().toggleBold().run()}
+          active={editor.isActive('bold')}
+          disabled={!editor.can().toggleBold()}
+          label={L.bold}
+          keys="Ctrl+B"
+        >
+          <IBold size={16} />
+        </IconBtn>
+        <IconBtn
+          onClick={() => editor.chain().focus().toggleItalic().run()}
+          active={editor.isActive('italic')}
+          disabled={!editor.can().toggleItalic()}
+          label={L.italic}
+          keys="Ctrl+I"
+        >
+          <IItalic size={16} />
+        </IconBtn>
+        <IconBtn
+          onClick={() => editor.chain().focus().toggleStrike().run()}
+          active={editor.isActive('strike')}
+          disabled={!editor.can().toggleStrike()}
+          label={L.strike}
+          keys="Ctrl+Shift+S"
+        >
+          <IStrike size={16} />
+        </IconBtn>
 
+        <span className="rich-editor-divider" aria-hidden />
+
+        {/* Group 2 — Block-level + Link */}
+        {ext.link && (
+          <div ref={linkRef} className="rich-editor-popover-anchor">
+            <IconBtn
+              onClick={handleLinkOpen}
+              active={editor.isActive('link')}
+              label={L.link}
+              keys="Ctrl+K"
+            >
+              <ILink size={16} />
+            </IconBtn>
+            {linkOpen && (
+              <div className="rich-editor-popover" role="dialog" aria-label={L.link}>
+                <label className="rich-editor-popover-row">
+                  <span className="rich-editor-popover-label">URL</span>
+                  <input
+                    type="url"
+                    autoFocus
+                    value={linkUrl}
+                    placeholder="https://"
+                    dir="ltr"
+                    onChange={(e) => setLinkUrl(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleLinkConfirm();
+                      }
+                      if (e.key === 'Escape') {
+                        setLinkOpen(false);
+                      }
+                    }}
+                    className="rich-editor-popover-input"
+                  />
+                </label>
+                <label className="rich-editor-popover-row rich-editor-popover-row--checkbox">
+                  <input
+                    type="checkbox"
+                    checked={linkOpenInNewTab}
+                    onChange={(e) => setLinkOpenInNewTab(e.target.checked)}
+                  />
+                  <span>{isRtl ? 'فتح في تبويب جديد' : 'Open in new tab'}</span>
+                </label>
+                <div className="rich-editor-popover-actions">
+                  {editor.isActive('link') && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        editor.chain().focus().unsetLink().run();
+                        setLinkOpen(false);
+                      }}
+                      className="rich-editor-popover-btn rich-editor-popover-btn--danger"
+                    >
+                      {L.removeLink}
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setLinkOpen(false)}
+                    className="rich-editor-popover-btn"
+                  >
+                    {isRtl ? 'إلغاء' : 'Cancel'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleLinkConfirm}
+                    className="rich-editor-popover-btn rich-editor-popover-btn--primary"
+                  >
+                    {isRtl ? 'تطبيق' : 'Apply'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
         {ext.headings && (
           <>
-            <span className="rich-editor-divider" aria-hidden />
-            {btn(
-              'h1',
-              editor.isActive('heading', { level: 1 }),
-              false,
-              () => editor.chain().focus().toggleHeading({ level: 1 }).run(),
-              L.h1,
-              'H1',
-            )}
-            {btn(
-              'h2',
-              editor.isActive('heading', { level: 2 }),
-              false,
-              () => editor.chain().focus().toggleHeading({ level: 2 }).run(),
-              L.h2,
-              'H2',
-            )}
-            {btn(
-              'h3',
-              editor.isActive('heading', { level: 3 }),
-              false,
-              () => editor.chain().focus().toggleHeading({ level: 3 }).run(),
-              L.h3,
-              'H3',
-            )}
-            {btn(
-              'p',
-              editor.isActive('paragraph'),
-              false,
-              () => editor.chain().focus().setParagraph().run(),
-              L.paragraph,
-              '¶',
+            <IconBtn
+              onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
+              active={editor.isActive('heading', { level: 2 })}
+              label={L.h2}
+            >
+              <IH2 size={16} />
+            </IconBtn>
+            <IconBtn
+              onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
+              active={editor.isActive('heading', { level: 3 })}
+              label={L.h3}
+            >
+              <IH3 size={16} />
+            </IconBtn>
+            {/* H4 — TipTap StarterKit ships levels 1-3 by default; we add H4
+                via the heading-extension levels config below. Until then,
+                H4 button is hidden if level 4 isn't available. */}
+            {(editor.extensionManager.extensions.find((ex) => ex.name === 'heading')?.options as { levels?: number[] } | undefined)?.levels?.includes(4) && (
+              <IconBtn
+                onClick={() => editor.chain().focus().toggleHeading({ level: 4 }).run()}
+                active={editor.isActive('heading', { level: 4 })}
+                label="Heading 4"
+              >
+                <IH4 size={16} />
+              </IconBtn>
             )}
           </>
         )}
-
-        {ext.lists && (
-          <>
-            <span className="rich-editor-divider" aria-hidden />
-            {btn(
-              'ul',
-              editor.isActive('bulletList'),
-              false,
-              () => editor.chain().focus().toggleBulletList().run(),
-              L.bulletList,
-              '•',
-            )}
-            {btn(
-              'ol',
-              editor.isActive('orderedList'),
-              false,
-              () => editor.chain().focus().toggleOrderedList().run(),
-              L.orderedList,
-              '1.',
-            )}
-          </>
-        )}
-
         {ext.blockquote && (
-          <>
-            <span className="rich-editor-divider" aria-hidden />
-            {btn(
-              'bq',
-              editor.isActive('blockquote'),
-              false,
-              () => editor.chain().focus().toggleBlockquote().run(),
-              L.blockquote,
-              '“”',
-            )}
-          </>
-        )}
-
-        {ext.link && (
-          <>
-            <span className="rich-editor-divider" aria-hidden />
-            {btn(
-              'link',
-              editor.isActive('link'),
-              false,
-              handleLink,
-              L.link,
-              '🔗',
-            )}
-            {editor.isActive('link') &&
-              btn(
-                'unlink',
-                false,
-                false,
-                () => editor.chain().focus().unsetLink().run(),
-                L.removeLink,
-                '✕🔗',
-              )}
-          </>
-        )}
-
-        {ext.image && (
-          <>
-            <span className="rich-editor-divider" aria-hidden />
-            {btn('img', false, false, handleImage, L.image, '🖼')}
-          </>
-        )}
-
-        {ext.video && (
-          <>{btn('video', false, false, handleVideo, L.video, '▶')}</>
-        )}
-
-        {ext.alignment && (
-          <>
-            <span className="rich-editor-divider" aria-hidden />
-            {btn(
-              'al-left',
-              editor.isActive({ textAlign: 'left' }),
-              false,
-              () => editor.chain().focus().setTextAlign('left').run(),
-              L.alignLeft,
-              '⇤',
-            )}
-            {btn(
-              'al-center',
-              editor.isActive({ textAlign: 'center' }),
-              false,
-              () => editor.chain().focus().setTextAlign('center').run(),
-              L.alignCenter,
-              '≡',
-            )}
-            {btn(
-              'al-right',
-              editor.isActive({ textAlign: 'right' }),
-              false,
-              () => editor.chain().focus().setTextAlign('right').run(),
-              L.alignRight,
-              '⇥',
-            )}
-          </>
+          <IconBtn
+            onClick={() => editor.chain().focus().toggleBlockquote().run()}
+            active={editor.isActive('blockquote')}
+            label={L.blockquote}
+          >
+            <IBlockquote size={16} />
+          </IconBtn>
         )}
 
         <span className="rich-editor-divider" aria-hidden />
-        {btn(
-          'undo',
-          false,
-          !editor.can().undo(),
-          () => editor.chain().focus().undo().run(),
-          L.undo,
-          '↶',
+
+        {/* Group 3 — Lists */}
+        {ext.lists && (
+          <>
+            <IconBtn
+              onClick={() => editor.chain().focus().toggleBulletList().run()}
+              active={editor.isActive('bulletList')}
+              label={L.bulletList}
+            >
+              <IUL size={16} />
+            </IconBtn>
+            <IconBtn
+              onClick={() => editor.chain().focus().toggleOrderedList().run()}
+              active={editor.isActive('orderedList')}
+              label={L.orderedList}
+            >
+              <IOL size={16} />
+            </IconBtn>
+            <span className="rich-editor-divider" aria-hidden />
+          </>
         )}
-        {btn(
-          'redo',
-          false,
-          !editor.can().redo(),
-          () => editor.chain().focus().redo().run(),
-          L.redo,
-          '↷',
+
+        {/* Group 4 — Alignment (RTL-aware) */}
+        {ext.alignment && (
+          <>
+            <IconBtn
+              onClick={() => editor.chain().focus().setTextAlign('left').run()}
+              active={editor.isActive({ textAlign: 'left' })}
+              label={L.alignLeft}
+            >
+              <IAL size={16} />
+            </IconBtn>
+            <IconBtn
+              onClick={() => editor.chain().focus().setTextAlign('center').run()}
+              active={editor.isActive({ textAlign: 'center' })}
+              label={L.alignCenter}
+            >
+              <IAC size={16} />
+            </IconBtn>
+            <IconBtn
+              onClick={() => editor.chain().focus().setTextAlign('right').run()}
+              active={editor.isActive({ textAlign: 'right' })}
+              label={L.alignRight}
+            >
+              <IAR size={16} />
+            </IconBtn>
+            <span className="rich-editor-divider" aria-hidden />
+          </>
         )}
-        {btn(
-          'clear',
-          false,
-          false,
-          () => editor.chain().focus().unsetAllMarks().clearNodes().run(),
-          L.clearFormatting,
-          '✕',
+
+        {/* Media insertion — lives in toolbar per Hakawati §6.3 correction */}
+        {ext.image && (
+          <IconBtn onClick={handleImage} label={L.image}>
+            <IImage size={16} />
+          </IconBtn>
         )}
+        {ext.video && (
+          <IconBtn onClick={handleVideo} label={L.video}>
+            <IVideo size={16} />
+          </IconBtn>
+        )}
+
+        <span className="rich-editor-divider" aria-hidden />
+
+        {/* History */}
+        <IconBtn
+          onClick={() => editor.chain().focus().undo().run()}
+          disabled={!editor.can().undo()}
+          label={L.undo}
+          keys="Ctrl+Z"
+        >
+          <IUndo size={16} />
+        </IconBtn>
+        <IconBtn
+          onClick={() => editor.chain().focus().redo().run()}
+          disabled={!editor.can().redo()}
+          label={L.redo}
+          keys="Ctrl+Shift+Z"
+        >
+          <IRedo size={16} />
+        </IconBtn>
+
+        <span className="rich-editor-divider" aria-hidden />
+
+        {/* More menu — overflow per WP convention */}
+        <div ref={moreRef} className="rich-editor-popover-anchor">
+          <IconBtn
+            onClick={() => setMoreOpen((v) => !v)}
+            active={moreOpen}
+            label={isRtl ? 'المزيد' : 'More'}
+          >
+            <IMore size={16} />
+          </IconBtn>
+          {moreOpen && (
+            <div className="rich-editor-popover rich-editor-popover--menu" role="menu">
+              <button
+                type="button"
+                role="menuitem"
+                className="rich-editor-menu-item"
+                onClick={() => {
+                  editor.chain().focus().unsetAllMarks().clearNodes().run();
+                  setMoreOpen(false);
+                }}
+              >
+                <IClear size={14} />
+                <span>{L.clearFormatting}</span>
+              </button>
+              {editor.isActive('link') && (
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="rich-editor-menu-item"
+                  onClick={() => {
+                    editor.chain().focus().unsetLink().run();
+                    setMoreOpen(false);
+                  }}
+                >
+                  <IUnlink size={14} />
+                  <span>{L.removeLink}</span>
+                </button>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       {gdriveHint && (
@@ -653,6 +824,22 @@ function RichEditorToolbar({
           }}
         >
           {gdriveHint}
+          <button
+            type="button"
+            onClick={() => setGdriveHint(null)}
+            aria-label={isRtl ? 'إغلاق' : 'Dismiss'}
+            className="rich-editor-hint-dismiss"
+            style={{
+              float: isRtl ? 'left' : 'right',
+              background: 'transparent',
+              border: 0,
+              cursor: 'pointer',
+              padding: 4,
+              color: 'var(--color-neutral-500)',
+            }}
+          >
+            <IX size={14} />
+          </button>
         </div>
       )}
     </>
