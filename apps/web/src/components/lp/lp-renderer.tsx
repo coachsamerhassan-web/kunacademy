@@ -26,6 +26,16 @@ import {
   UniversalQuoteSection,
   UniversalDividerSection,
 } from './sections/default/universal-sections';
+import {
+  StaticFaqAccordionSection,
+  StaticMethodologyPillarSection,
+  StaticPhilosophyStatementSection,
+  StaticContactFormSection,
+  StaticTeamGridSection,
+  StaticTestimonialGridSection,
+  StaticProgramCardStripSection,
+} from './sections/default/static-sections';
+import type { StaticSectionData } from './sections/default/static-section-data';
 
 interface LpRendererProps {
   slug: string;
@@ -33,6 +43,20 @@ interface LpRendererProps {
   composition: LpComposition;
   leadCaptureConfig?: LpLeadCaptureConfig | null;
   analyticsConfig?: LpAnalyticsConfig | null;
+  /**
+   * Wave 4 PRECURSOR — pre-resolved data for DB-reading static sections.
+   * Pre-fetched at the route-level page.tsx (Server Component) using
+   * `preloadStaticSectionData(composition.sections)` and threaded through
+   * here. Keyed by section index. Undefined = editor canvas / no preload —
+   * DB-reading sections render their preview placeholder.
+   *
+   * The boundary contract preserves lp-renderer.tsx as a "neutral" tree-
+   * mountable component (works in both server and client trees). All
+   * server-only imports (`@kunacademy/cms/server`) live in
+   * `static-section-data.ts` (`import 'server-only'`), reachable only
+   * from page.tsx → never bundled into the client.
+   */
+  staticData?: Map<number, StaticSectionData>;
 }
 
 /**
@@ -72,6 +96,7 @@ function LpDefaultRenderer({
   composition,
   leadCaptureConfig,
   analyticsConfig,
+  staticData,
 }: LpRendererProps) {
   const isAr = locale === 'ar';
   const dir = isAr ? 'rtl' : 'ltr';
@@ -95,6 +120,7 @@ function LpDefaultRenderer({
           locale={locale}
           leadCaptureConfig={leadCaptureConfig ?? null}
           conversionEventName={conversionEventName}
+          staticDataForSection={staticData?.get(i)}
         />
       ))}
 
@@ -122,30 +148,98 @@ function LpDefaultRenderer({
 }
 
 // ── Section dispatcher (default theme) ────────────────────────────────────
-function DefaultSectionDispatcher(props: DefaultSectionProps) {
-  const { section, isAr } = props;
-  // Universal section types added in Wave 15 W3 canary v2 (image/video/etc.)
-  // — these aren't in the LpSectionType union but live in composition_json
+//
+// Wave 15 W3 canary v2 — added universal types (image/video/header/body/quote/divider).
+// Wave 4 PRECURSOR (2026-04-29) — added 7 static-specific types (faq_accordion,
+// team_grid, methodology_pillar, philosophy_statement, contact_form,
+// testimonial_grid, program_card_strip). DB-reading types (team_grid,
+// testimonial_grid, program_card_strip) consume pre-resolved data passed
+// via `staticDataForSection` from the route-level page.tsx (which calls
+// `preloadStaticSectionData` from `static-section-data.ts`). The renderer
+// itself stays neutral — no DB / no `'server-only'` — so it remains
+// importable from the editor canvas (use client) without dragging
+// googleapis / node:net into the client bundle.
+interface DispatcherProps extends DefaultSectionProps {
+  staticDataForSection?: StaticSectionData;
+}
+
+function DefaultSectionDispatcher(props: DispatcherProps) {
+  const { section, isAr, locale, staticDataForSection } = props;
+  // These aren't in the LpSectionType union but live in composition_json
   // at runtime. Match the runtime discriminator string.
   const t = section.type as unknown as string;
+  const sectionRecord = section as unknown as Record<string, unknown>;
+
+  // Universal types
   if (t === 'image') {
-    return <UniversalImageSection section={section as unknown as Record<string, unknown>} isAr={isAr} />;
+    return <UniversalImageSection section={sectionRecord} isAr={isAr} />;
   }
   if (t === 'video') {
-    return <UniversalVideoSection section={section as unknown as Record<string, unknown>} isAr={isAr} />;
+    return <UniversalVideoSection section={sectionRecord} isAr={isAr} />;
   }
   if (t === 'header') {
-    return <UniversalHeaderSection section={section as unknown as Record<string, unknown>} isAr={isAr} />;
+    return <UniversalHeaderSection section={sectionRecord} isAr={isAr} />;
   }
   if (t === 'body') {
-    return <UniversalBodySection section={section as unknown as Record<string, unknown>} isAr={isAr} />;
+    return <UniversalBodySection section={sectionRecord} isAr={isAr} />;
   }
   if (t === 'quote') {
-    return <UniversalQuoteSection section={section as unknown as Record<string, unknown>} isAr={isAr} />;
+    return <UniversalQuoteSection section={sectionRecord} isAr={isAr} />;
   }
   if (t === 'divider') {
-    return <UniversalDividerSection section={section as unknown as Record<string, unknown>} isAr={isAr} />;
+    return <UniversalDividerSection section={sectionRecord} isAr={isAr} />;
   }
+
+  // Wave 4 PRECURSOR — Static-specific types
+  if (t === 'faq_accordion') {
+    return <StaticFaqAccordionSection section={sectionRecord} isAr={isAr} locale={locale} />;
+  }
+  if (t === 'methodology_pillar') {
+    return <StaticMethodologyPillarSection section={sectionRecord} isAr={isAr} />;
+  }
+  if (t === 'philosophy_statement') {
+    return <StaticPhilosophyStatementSection section={sectionRecord} isAr={isAr} />;
+  }
+  if (t === 'contact_form') {
+    return <StaticContactFormSection section={sectionRecord} isAr={isAr} />;
+  }
+  // DB-reading types — pull pre-resolved data slice from props.
+  if (t === 'testimonial_grid') {
+    const testimonials =
+      staticDataForSection?.kind === 'testimonial_grid' ? staticDataForSection.testimonials : [];
+    return (
+      <StaticTestimonialGridSection
+        section={sectionRecord}
+        isAr={isAr}
+        testimonials={testimonials}
+      />
+    );
+  }
+  if (t === 'team_grid') {
+    const coaches =
+      staticDataForSection?.kind === 'team_grid' ? staticDataForSection.coaches : [];
+    return (
+      <StaticTeamGridSection
+        section={sectionRecord}
+        isAr={isAr}
+        locale={locale}
+        coaches={coaches}
+      />
+    );
+  }
+  if (t === 'program_card_strip') {
+    const programs =
+      staticDataForSection?.kind === 'program_card_strip' ? staticDataForSection.programs : [];
+    return (
+      <StaticProgramCardStripSection
+        section={sectionRecord}
+        isAr={isAr}
+        locale={locale}
+        programs={programs}
+      />
+    );
+  }
+
   const Comp = SECTION_COMPONENTS[section.type] ?? DefaultProseSection;
   return <Comp {...props} />;
 }

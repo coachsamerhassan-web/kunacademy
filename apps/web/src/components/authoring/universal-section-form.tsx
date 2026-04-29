@@ -14,6 +14,12 @@
  * canary we render BOTH locales side-by-side regardless of localeMode and
  * let the panel's own tab strip be the visible cue. Refinement to per-tab
  * field hiding is post-canary.
+ *
+ * Wave 4 PRECURSOR (2026-04-29) — added forms for the 7 static-specific
+ * section types (faq_accordion, team_grid, methodology_pillar,
+ * philosophy_statement, contact_form, testimonial_grid, program_card_strip).
+ * Same locale-naive convention; bilingual fields side-by-side at ≥1280px,
+ * stacked on tablet/mobile (panel handles the layout, form just renders fields).
  */
 
 'use client';
@@ -39,7 +45,23 @@ interface Props {
 // LpSectionType union — the type field on the row is open to any string in
 // composition_json, even though TS narrows it). Authors author universal
 // types; the LP-strict union covers only the 15 LP types.
-type UniversalKey = 'header' | 'body' | 'image' | 'video' | 'quote' | 'divider';
+//
+// Wave 4 PRECURSOR — added the 7 static-specific types alongside the 6
+// universals. Form branches dispatch on the same string discriminator.
+type UniversalKey =
+  | 'header'
+  | 'body'
+  | 'image'
+  | 'video'
+  | 'quote'
+  | 'divider'
+  | 'faq_accordion'
+  | 'team_grid'
+  | 'methodology_pillar'
+  | 'philosophy_statement'
+  | 'contact_form'
+  | 'testimonial_grid'
+  | 'program_card_strip';
 
 const INPUT_CLASS =
   'block w-full rounded-lg border border-[var(--color-neutral-200)] bg-white px-3 py-2 text-sm text-[var(--color-neutral-800)] focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary-50)] focus:outline-none';
@@ -377,6 +399,346 @@ export function UniversalSectionForm({ section, onChange, locale, localeMode }: 
         </div>
       );
 
+    // ── Wave 4 PRECURSOR: Static-specific section forms ─────────────────
+    case 'faq_accordion':
+      return (
+        <FaqAccordionForm
+          s={s}
+          patch={patch}
+          showAr={showAr}
+          showEn={showEn}
+          isAr={isAr}
+          renderBgPanel={renderBgPanel}
+        />
+      );
+
+    case 'methodology_pillar':
+      return (
+        <div className="space-y-3">
+          <ScalarField
+            label={isAr ? 'أيقونة (إيموجي / حرف)' : 'Icon (emoji or short label)'}
+            value={(s.icon as string) ?? ''}
+            onChange={(v) => patch({ icon: v })}
+            dir="ltr"
+            placeholder="🏛️"
+          />
+          {showAr && (
+            <ScalarField
+              label={isAr ? 'العنوان (عربي)' : 'Title (Arabic)'}
+              value={(s.title_ar as string) ?? ''}
+              onChange={(v) => patch({ title_ar: v })}
+              dir="rtl"
+            />
+          )}
+          {showEn && (
+            <ScalarField
+              label={isAr ? 'العنوان (إنجليزي)' : 'Title (English)'}
+              value={(s.title_en as string) ?? ''}
+              onChange={(v) => patch({ title_en: v })}
+              dir="ltr"
+            />
+          )}
+          {showAr && (
+            <ScalarField
+              label={isAr ? 'النصّ (عربي)' : 'Body (Arabic)'}
+              value={(s.body_ar as string) ?? ''}
+              onChange={(v) => patch({ body_ar: v })}
+              dir="rtl"
+              variant="textarea"
+              rows={4}
+            />
+          )}
+          {showEn && (
+            <ScalarField
+              label={isAr ? 'النصّ (إنجليزي)' : 'Body (English)'}
+              value={(s.body_en as string) ?? ''}
+              onChange={(v) => patch({ body_en: v })}
+              dir="ltr"
+              variant="textarea"
+              rows={4}
+            />
+          )}
+          <AnchorRow value={(s.anchor_id as string) ?? ''} onChange={(v) => patch({ anchor_id: v || undefined })} isAr={isAr} />
+          {renderBgPanel()}
+        </div>
+      );
+
+    case 'philosophy_statement':
+      return (
+        <div className="space-y-3">
+          <div
+            className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-900"
+            role="note"
+          >
+            {isAr
+              ? '⚠ لا تكشف عن أسماء أُطر الملكية الفكرية في النصّ المنشور. للتفاصيل: يبقى ذلك في المواصفات الداخلية.'
+              : '⚠ Do not expose proprietary framework names in published copy. Keep that detail in internal specs only.'}
+          </div>
+          {showAr && (
+            <ScalarField
+              label={isAr ? 'النصّ (عربي)' : 'Body (Arabic)'}
+              value={(s.body_ar as string) ?? ''}
+              onChange={(v) => patch({ body_ar: v })}
+              dir="rtl"
+              variant="textarea"
+              rows={10}
+            />
+          )}
+          {showEn && (
+            <ScalarField
+              label={isAr ? 'النصّ (إنجليزي)' : 'Body (English)'}
+              value={(s.body_en as string) ?? ''}
+              onChange={(v) => patch({ body_en: v })}
+              dir="ltr"
+              variant="textarea"
+              rows={10}
+            />
+          )}
+          {showAr && (
+            <ScalarField
+              label={isAr ? 'اقتباس بارز (عربي) — اختياري' : 'Pull-quote (Arabic) — optional'}
+              value={(s.pullquote_ar as string) ?? ''}
+              onChange={(v) => patch({ pullquote_ar: v })}
+              dir="rtl"
+              variant="textarea"
+              rows={2}
+            />
+          )}
+          {showEn && (
+            <ScalarField
+              label={isAr ? 'اقتباس بارز (إنجليزي) — اختياري' : 'Pull-quote (English) — optional'}
+              value={(s.pullquote_en as string) ?? ''}
+              onChange={(v) => patch({ pullquote_en: v })}
+              dir="ltr"
+              variant="textarea"
+              rows={2}
+            />
+          )}
+          <AnchorRow value={(s.anchor_id as string) ?? ''} onChange={(v) => patch({ anchor_id: v || undefined })} isAr={isAr} />
+          {renderBgPanel()}
+        </div>
+      );
+
+    case 'contact_form':
+      return (
+        <div className="space-y-3">
+          {showAr && (
+            <ScalarField
+              label={isAr ? 'العنوان (عربي)' : 'Title (Arabic)'}
+              value={(s.title_ar as string) ?? ''}
+              onChange={(v) => patch({ title_ar: v })}
+              dir="rtl"
+            />
+          )}
+          {showEn && (
+            <ScalarField
+              label={isAr ? 'العنوان (إنجليزي)' : 'Title (English)'}
+              value={(s.title_en as string) ?? ''}
+              onChange={(v) => patch({ title_en: v })}
+              dir="ltr"
+            />
+          )}
+          {showAr && (
+            <ScalarField
+              label={isAr ? 'الترويسة الفرعية (عربي)' : 'Subtitle (Arabic)'}
+              value={(s.subtitle_ar as string) ?? ''}
+              onChange={(v) => patch({ subtitle_ar: v })}
+              dir="rtl"
+              variant="textarea"
+              rows={2}
+            />
+          )}
+          {showEn && (
+            <ScalarField
+              label={isAr ? 'الترويسة الفرعية (إنجليزي)' : 'Subtitle (English)'}
+              value={(s.subtitle_en as string) ?? ''}
+              onChange={(v) => patch({ subtitle_en: v })}
+              dir="ltr"
+              variant="textarea"
+              rows={2}
+            />
+          )}
+          {showAr && (
+            <ScalarField
+              label={isAr ? 'تسمية زر الإرسال (عربي)' : 'Submit button label (Arabic)'}
+              value={(s.submit_label_ar as string) ?? ''}
+              onChange={(v) => patch({ submit_label_ar: v })}
+              dir="rtl"
+            />
+          )}
+          {showEn && (
+            <ScalarField
+              label={isAr ? 'تسمية زر الإرسال (إنجليزي)' : 'Submit button label (English)'}
+              value={(s.submit_label_en as string) ?? ''}
+              onChange={(v) => patch({ submit_label_en: v })}
+              dir="ltr"
+            />
+          )}
+          {showAr && (
+            <ScalarField
+              label={isAr ? 'رسالة النجاح (عربي)' : 'Success message (Arabic)'}
+              value={(s.success_message_ar as string) ?? ''}
+              onChange={(v) => patch({ success_message_ar: v })}
+              dir="rtl"
+              variant="textarea"
+              rows={2}
+            />
+          )}
+          {showEn && (
+            <ScalarField
+              label={isAr ? 'رسالة النجاح (إنجليزي)' : 'Success message (English)'}
+              value={(s.success_message_en as string) ?? ''}
+              onChange={(v) => patch({ success_message_en: v })}
+              dir="ltr"
+              variant="textarea"
+              rows={2}
+            />
+          )}
+          <AnchorRow value={(s.anchor_id as string) ?? ''} onChange={(v) => patch({ anchor_id: v || undefined })} isAr={isAr} />
+          {renderBgPanel()}
+        </div>
+      );
+
+    case 'testimonial_grid':
+      return (
+        <div className="space-y-3">
+          {showAr && (
+            <ScalarField
+              label={isAr ? 'العنوان (عربي)' : 'Title (Arabic)'}
+              value={(s.title_ar as string) ?? ''}
+              onChange={(v) => patch({ title_ar: v })}
+              dir="rtl"
+            />
+          )}
+          {showEn && (
+            <ScalarField
+              label={isAr ? 'العنوان (إنجليزي)' : 'Title (English)'}
+              value={(s.title_en as string) ?? ''}
+              onChange={(v) => patch({ title_en: v })}
+              dir="ltr"
+            />
+          )}
+          <ScalarField
+            label={isAr ? 'تصفية حسب البرنامج (اختيارية)' : 'Program filter (optional)'}
+            value={(s.program_filter as string) ?? ''}
+            onChange={(v) => patch({ program_filter: v.length > 0 ? v : null })}
+            dir="ltr"
+            placeholder="e.g. STCE / Pathfinder"
+          />
+          <p className="text-[11px] text-[var(--color-neutral-500)] -mt-2">
+            {isAr
+              ? 'يطابق محتوى عمود البرنامج في جدول الشهادات (مطابقة فضفاضة).'
+              : 'Loose match against testimonials.program column.'}
+          </p>
+          <BoolRow
+            value={s.featured_only !== false}
+            onChange={(v) => patch({ featured_only: v })}
+            label={isAr ? 'الشهادات المميّزة فقط' : 'Featured testimonials only'}
+            isAr={isAr}
+          />
+          <NumberRow
+            value={typeof s.max_count === 'number' ? s.max_count : 6}
+            onChange={(v) => patch({ max_count: v })}
+            label={isAr ? 'الحدّ الأقصى للعرض' : 'Max count'}
+            min={1}
+            max={24}
+          />
+          <AnchorRow value={(s.anchor_id as string) ?? ''} onChange={(v) => patch({ anchor_id: v || undefined })} isAr={isAr} />
+          {renderBgPanel()}
+        </div>
+      );
+
+    case 'team_grid':
+      return (
+        <div className="space-y-3">
+          {showAr && (
+            <ScalarField
+              label={isAr ? 'العنوان (عربي)' : 'Title (Arabic)'}
+              value={(s.title_ar as string) ?? ''}
+              onChange={(v) => patch({ title_ar: v })}
+              dir="rtl"
+            />
+          )}
+          {showEn && (
+            <ScalarField
+              label={isAr ? 'العنوان (إنجليزي)' : 'Title (English)'}
+              value={(s.title_en as string) ?? ''}
+              onChange={(v) => patch({ title_en: v })}
+              dir="ltr"
+            />
+          )}
+          <SlugListRow
+            value={(s.coach_slugs as string[] | undefined) ?? []}
+            onChange={(v) => patch({ coach_slugs: v })}
+            label={isAr ? 'مُعرّفات المدرّبين (slugs)' : 'Coach slugs'}
+            isAr={isAr}
+            placeholder="samer-hassan"
+            helperText={isAr
+              ? 'فارغ = إظهار جميع المدرّبين القابلين للحجز بالترتيب الافتراضي.'
+              : 'Empty = show all bookable coaches in default order.'}
+          />
+          <NumberRow
+            value={typeof s.max_count === 'number' ? s.max_count : null}
+            onChange={(v) => patch({ max_count: v })}
+            label={isAr ? 'الحدّ الأقصى (اختياري)' : 'Max count (optional)'}
+            min={1}
+            max={48}
+            allowNull
+          />
+          <AnchorRow value={(s.anchor_id as string) ?? ''} onChange={(v) => patch({ anchor_id: v || undefined })} isAr={isAr} />
+          {renderBgPanel()}
+        </div>
+      );
+
+    case 'program_card_strip':
+      return (
+        <div className="space-y-3">
+          <div
+            className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-[11px] text-blue-900"
+            role="note"
+          >
+            {isAr
+              ? 'ℹ تُقرأ بيانات البرامج من جدول البرامج (المصدر الموثوق). لا تُكتب يدويّاً هنا.'
+              : 'ℹ Program data reads from the programs table (source of truth). Never hardcoded here.'}
+          </div>
+          {showAr && (
+            <ScalarField
+              label={isAr ? 'العنوان (عربي)' : 'Title (Arabic)'}
+              value={(s.title_ar as string) ?? ''}
+              onChange={(v) => patch({ title_ar: v })}
+              dir="rtl"
+            />
+          )}
+          {showEn && (
+            <ScalarField
+              label={isAr ? 'العنوان (إنجليزي)' : 'Title (English)'}
+              value={(s.title_en as string) ?? ''}
+              onChange={(v) => patch({ title_en: v })}
+              dir="ltr"
+            />
+          )}
+          <SlugListRow
+            value={(s.program_slugs as string[] | undefined) ?? []}
+            onChange={(v) => patch({ program_slugs: v })}
+            label={isAr ? 'مُعرّفات البرامج (slugs)' : 'Program slugs'}
+            isAr={isAr}
+            placeholder="stce-level-2-staic"
+            helperText={isAr
+              ? 'فارغ = إظهار البرامج المميّزة بالترتيب الافتراضي.'
+              : 'Empty = show featured programs in default order.'}
+          />
+          <NumberRow
+            value={typeof s.max_count === 'number' ? s.max_count : 4}
+            onChange={(v) => patch({ max_count: v })}
+            label={isAr ? 'الحدّ الأقصى للعرض' : 'Max count'}
+            min={1}
+            max={12}
+          />
+          <AnchorRow value={(s.anchor_id as string) ?? ''} onChange={(v) => patch({ anchor_id: v || undefined })} isAr={isAr} />
+          {renderBgPanel()}
+        </div>
+      );
+
     default:
       // Defensive fallback — render JSON view for unknown types so admins
       // can fix data without crashing the editor.
@@ -451,6 +813,289 @@ function AnchorRow({ value, onChange, isAr }: { value: string; onChange: (v: str
       <p className="text-[11px] text-[var(--color-neutral-500)] mt-1">
         {isAr ? 'معرّف اختياري للوصل المباشر إلى هذا القسم' : 'Optional anchor for direct deep-link to this section.'}
       </p>
+    </div>
+  );
+}
+
+// ── Wave 4 PRECURSOR sub-components ──────────────────────────────────────
+
+interface FaqItem {
+  q_ar?: string;
+  q_en?: string;
+  a_ar?: string;
+  a_en?: string;
+}
+
+function FaqAccordionForm({
+  s,
+  patch,
+  showAr,
+  showEn,
+  isAr,
+  renderBgPanel,
+}: {
+  s: Record<string, unknown>;
+  patch: (p: Record<string, unknown>) => void;
+  showAr: boolean;
+  showEn: boolean;
+  isAr: boolean;
+  renderBgPanel: () => React.ReactNode;
+}) {
+  const itemsRaw = s.items;
+  const items: FaqItem[] = Array.isArray(itemsRaw) ? (itemsRaw as FaqItem[]) : [];
+
+  function updateItem(idx: number, field: keyof FaqItem, value: string) {
+    const next = [...items];
+    next[idx] = { ...next[idx], [field]: value };
+    patch({ items: next });
+  }
+
+  function addItem() {
+    patch({ items: [...items, { q_ar: '', q_en: '', a_ar: '', a_en: '' }] });
+  }
+
+  function removeItem(idx: number) {
+    patch({ items: items.filter((_, i) => i !== idx) });
+  }
+
+  function moveItem(idx: number, delta: -1 | 1) {
+    const target = idx + delta;
+    if (target < 0 || target >= items.length) return;
+    const next = [...items];
+    const [removed] = next.splice(idx, 1);
+    next.splice(target, 0, removed);
+    patch({ items: next });
+  }
+
+  return (
+    <div className="space-y-3">
+      {showAr && (
+        <ScalarField
+          label={isAr ? 'العنوان (عربي)' : 'Title (Arabic)'}
+          value={(s.title_ar as string) ?? ''}
+          onChange={(v) => patch({ title_ar: v })}
+          dir="rtl"
+        />
+      )}
+      {showEn && (
+        <ScalarField
+          label={isAr ? 'العنوان (إنجليزي)' : 'Title (English)'}
+          value={(s.title_en as string) ?? ''}
+          onChange={(v) => patch({ title_en: v })}
+          dir="ltr"
+        />
+      )}
+
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <span className={LABEL_CLASS}>
+            {isAr ? `الأسئلة (${items.length})` : `Questions (${items.length})`}
+          </span>
+          <button
+            type="button"
+            onClick={addItem}
+            className="rounded-lg border border-[var(--color-neutral-300)] px-2.5 py-1 text-xs text-[var(--color-neutral-700)] hover:border-[var(--color-primary)] hover:bg-[var(--color-primary-50)]"
+          >
+            {isAr ? '+ إضافة سؤال' : '+ Add question'}
+          </button>
+        </div>
+
+        {items.length === 0 && (
+          <p className="text-xs text-[var(--color-neutral-500)] italic">
+            {isAr ? 'لا توجد أسئلة بعد. أضف واحداً للبدء.' : 'No questions yet. Add one to begin.'}
+          </p>
+        )}
+
+        <div className="space-y-3">
+          {items.map((item, idx) => (
+            <div
+              key={idx}
+              className="rounded-lg border border-[var(--color-neutral-200)] bg-white p-3 space-y-2"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-mono text-[var(--color-neutral-500)]">
+                  #{idx + 1}
+                </span>
+                <div className="flex gap-1">
+                  <button
+                    type="button"
+                    onClick={() => moveItem(idx, -1)}
+                    disabled={idx === 0}
+                    className="rounded px-1.5 py-0.5 text-xs text-[var(--color-neutral-600)] hover:bg-[var(--color-neutral-100)] disabled:opacity-30 disabled:cursor-not-allowed"
+                    aria-label={isAr ? 'تحريك للأعلى' : 'Move up'}
+                  >
+                    ↑
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => moveItem(idx, 1)}
+                    disabled={idx === items.length - 1}
+                    className="rounded px-1.5 py-0.5 text-xs text-[var(--color-neutral-600)] hover:bg-[var(--color-neutral-100)] disabled:opacity-30 disabled:cursor-not-allowed"
+                    aria-label={isAr ? 'تحريك للأسفل' : 'Move down'}
+                  >
+                    ↓
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => removeItem(idx)}
+                    className="rounded px-1.5 py-0.5 text-xs text-red-600 hover:bg-red-50"
+                    aria-label={isAr ? 'حذف' : 'Delete'}
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+              {showAr && (
+                <ScalarField
+                  label={isAr ? 'السؤال (عربي)' : 'Question (Arabic)'}
+                  value={item.q_ar ?? ''}
+                  onChange={(v) => updateItem(idx, 'q_ar', v)}
+                  dir="rtl"
+                />
+              )}
+              {showEn && (
+                <ScalarField
+                  label={isAr ? 'السؤال (إنجليزي)' : 'Question (English)'}
+                  value={item.q_en ?? ''}
+                  onChange={(v) => updateItem(idx, 'q_en', v)}
+                  dir="ltr"
+                />
+              )}
+              {showAr && (
+                <ScalarField
+                  label={isAr ? 'الجواب (عربي)' : 'Answer (Arabic)'}
+                  value={item.a_ar ?? ''}
+                  onChange={(v) => updateItem(idx, 'a_ar', v)}
+                  dir="rtl"
+                  variant="textarea"
+                  rows={3}
+                />
+              )}
+              {showEn && (
+                <ScalarField
+                  label={isAr ? 'الجواب (إنجليزي)' : 'Answer (English)'}
+                  value={item.a_en ?? ''}
+                  onChange={(v) => updateItem(idx, 'a_en', v)}
+                  dir="ltr"
+                  variant="textarea"
+                  rows={3}
+                />
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <AnchorRow value={(s.anchor_id as string) ?? ''} onChange={(v) => patch({ anchor_id: v || undefined })} isAr={isAr} />
+      {renderBgPanel()}
+    </div>
+  );
+}
+
+function BoolRow({
+  value,
+  onChange,
+  label,
+  isAr,
+}: {
+  value: boolean;
+  onChange: (v: boolean) => void;
+  label: string;
+  isAr: boolean;
+}) {
+  void isAr;
+  return (
+    <label className="flex items-center gap-2 cursor-pointer">
+      <input
+        type="checkbox"
+        checked={value}
+        onChange={(e) => onChange(e.target.checked)}
+        className="rounded border-[var(--color-neutral-300)] text-[var(--color-primary)] focus:ring-[var(--color-primary-50)]"
+      />
+      <span className="text-sm text-[var(--color-neutral-800)]">{label}</span>
+    </label>
+  );
+}
+
+function NumberRow({
+  value,
+  onChange,
+  label,
+  min,
+  max,
+  allowNull = false,
+}: {
+  value: number | null;
+  onChange: (v: number | null) => void;
+  label: string;
+  min?: number;
+  max?: number;
+  allowNull?: boolean;
+}) {
+  return (
+    <div>
+      <label className={LABEL_CLASS}>{label}</label>
+      <input
+        type="number"
+        value={value ?? ''}
+        onChange={(e) => {
+          const raw = e.target.value;
+          if (raw === '') {
+            onChange(allowNull ? null : (min ?? 0));
+            return;
+          }
+          const n = Number(raw);
+          if (Number.isFinite(n)) {
+            onChange(n);
+          }
+        }}
+        min={min}
+        max={max}
+        dir="ltr"
+        className={INPUT_CLASS}
+      />
+    </div>
+  );
+}
+
+function SlugListRow({
+  value,
+  onChange,
+  label,
+  isAr,
+  placeholder,
+  helperText,
+}: {
+  value: string[];
+  onChange: (v: string[]) => void;
+  label: string;
+  isAr: boolean;
+  placeholder?: string;
+  helperText?: string;
+}) {
+  void isAr;
+  // Stored as string[]; UI shows comma-or-newline separated.
+  const text = value.join('\n');
+  return (
+    <div>
+      <label className={LABEL_CLASS}>{label}</label>
+      <textarea
+        value={text}
+        onChange={(e) => {
+          const next = e.target.value
+            .split(/[\n,]+/)
+            .map((s) => s.trim())
+            .filter((s) => s.length > 0);
+          onChange(next);
+        }}
+        rows={3}
+        placeholder={placeholder}
+        dir="ltr"
+        className={`${INPUT_CLASS} resize-y font-mono text-xs`}
+      />
+      {helperText && (
+        <p className="text-[11px] text-[var(--color-neutral-500)] mt-1">{helperText}</p>
+      )}
     </div>
   );
 }

@@ -25,6 +25,18 @@
  * authoritative SOURCE for the picker; it does NOT retire the 15 LP types
  * (those retire in Wave 4 per spec §3b carry-forward inventory).
  *
+ * Wave 4 PRECURSOR (2026-04-29) — adds 7 static-specific section types per
+ * spec §7.1 (faq_accordion, team_grid, methodology_pillar, philosophy_statement,
+ * contact_form, testimonial_grid, program_card_strip). These live in their
+ * own STATIC_SECTION_VOCABULARY array (bucket separation per Hakima §7.1)
+ * but are merged into vocabularyForEntity() output for static_pages so the
+ * picker shows them under a "Static-page sections" group. They render via
+ * Universal*Section components in lp-renderer.tsx's DefaultSectionDispatcher
+ * (single dispatch surface — no theme branching needed since static pages
+ * use the default theme exclusively). DB-reading types (testimonial_grid,
+ * team_grid, program_card_strip) consume the existing testimonials,
+ * instructors, and programs tables respectively — zero new migrations.
+ *
  * Authoring contract: the side panel renders the LP form component for any
  * section whose `type` is one of the 15 carry-forward LP types; for the 8
  * universal types this file's `formComponentName` indicates which generic
@@ -56,9 +68,24 @@ export type UniversalSectionType =
   | 'mirror'
   | 'cta';
 
+/** Wave 4 PRECURSOR (spec §7.1) — Static-page-specific section types.
+ *  Live in STATIC_SECTION_VOCABULARY; merged with universals for the
+ *  picker when entity=static_pages. Distinct namespace per Hakima bucket
+ *  separation. */
+export type StaticSectionType =
+  | 'faq_accordion'
+  | 'team_grid'
+  | 'methodology_pillar'
+  | 'philosophy_statement'
+  | 'contact_form'
+  | 'testimonial_grid'
+  | 'program_card_strip';
+
+export type AnySectionType = UniversalSectionType | StaticSectionType;
+
 export interface SectionVocabularyEntry {
   /** Section type id. Matches the discriminator in section.type. */
-  id: UniversalSectionType;
+  id: AnySectionType;
   label_ar: string;
   label_en: string;
   /** Emoji glyph used in the section type picker thumbnails. */
@@ -74,6 +101,10 @@ export interface SectionVocabularyEntry {
   /** Default empty payload — written to composition_json when admin clicks
    *  "+Add" for this type. Each shape is permissive (all fields optional). */
   defaultPayload: () => Record<string, unknown>;
+  /** Wave 4 PRECURSOR — bucket grouping in the picker.
+   *  'universal' (default) → "Universal" section header in picker.
+   *  'static' → "Static-page sections" header (only when entity=static_pages). */
+  bucket?: 'universal' | 'static';
 }
 
 export const UNIVERSAL_SECTION_VOCABULARY: ReadonlyArray<SectionVocabularyEntry> = [
@@ -195,9 +226,184 @@ export const UNIVERSAL_SECTION_VOCABULARY: ReadonlyArray<SectionVocabularyEntry>
   },
 ];
 
-/** Map section type → vocabulary entry. */
+/**
+ * Wave 4 PRECURSOR (2026-04-29) — Static-page-specific section vocabulary.
+ *
+ * The 7 types from spec §7.1 that are unique to static pages:
+ *   faq_accordion, team_grid, methodology_pillar, philosophy_statement,
+ *   contact_form, testimonial_grid, program_card_strip.
+ *
+ * Each is `applicableEntities: ['static_pages']` only — the picker hides
+ * them on landing_pages and blog_posts. Default payloads are permissive
+ * (all fields optional or empty arrays) — the editor's required-field
+ * validation surfaces in the form components, not here.
+ *
+ * Three of the seven (team_grid, testimonial_grid, program_card_strip)
+ * read from existing DB tables (instructors, testimonials, programs)
+ * at render time. Their composition_json payload stores ONLY:
+ *   - filter / sort criteria (e.g. is_featured, display_order, slug list)
+ *   - presentation flags (count limit, layout density)
+ * NEVER hardcode coach / testimonial / program metadata in composition_json.
+ * That preserves PROGRAM-CANON.md as source of truth (R2 lint will guard
+ * once it's wired into the lints walker — see §7.4).
+ *
+ * IP boundary: philosophy_statement is the only type that can carry
+ * methodology-adjacent prose. Its R12 (methodology-adjacent route to
+ * Hakima) lint is on the roadmap; meanwhile authors are reminded via
+ * the form-level placeholder copy that proprietary framework names belong
+ * in private specs only (CLAUDE.md non-negotiable, 2026-04-23).
+ */
+export const STATIC_SECTION_VOCABULARY: ReadonlyArray<SectionVocabularyEntry> = [
+  {
+    id: 'faq_accordion',
+    label_ar: 'أسئلة شائعة',
+    label_en: 'FAQ Accordion',
+    icon: '❓',
+    description_ar: 'قائمة أسئلة وأجوبة قابلة للطيّ — مع ترميز Schema.org تلقائيّ.',
+    description_en: 'Expandable Q&A list with single-open accordion + automatic Schema.org markup.',
+    example_ar: 'هل أحصل على شهادة؟ · هل يمكن الدفع على دفعات؟',
+    example_en: 'Will I get a certificate? · Can I pay in installments?',
+    applicableEntities: ['static_pages'],
+    bucket: 'static',
+    defaultPayload: () => ({
+      type: 'faq_accordion',
+      title_ar: '',
+      title_en: '',
+      items: [{ q_ar: '', q_en: '', a_ar: '', a_en: '' }],
+    }),
+  },
+  {
+    id: 'team_grid',
+    label_ar: 'شبكة الفريق',
+    label_en: 'Team Grid',
+    icon: '👥',
+    description_ar: 'بطاقات المدرّبين — صورة + اسم + دور + رابط للملفّ الشخصيّ.',
+    description_en: 'Coach cards with photo + name + role + slug-link to /coaches/{slug}.',
+    example_ar: 'سامر حسن · رنا مالك · ليلى عبد العزيز',
+    example_en: 'Samer Hassan · Rana Malek · Layla Abdulaziz',
+    applicableEntities: ['static_pages'],
+    bucket: 'static',
+    defaultPayload: () => ({
+      type: 'team_grid',
+      title_ar: '',
+      title_en: '',
+      // Slugs reference instructors.slug — renderer fetches metadata from DB.
+      // Empty array = show all visible instructors (filter by is_visible).
+      coach_slugs: [],
+      // Optional: limit count for "preview strip" use.
+      max_count: null,
+    }),
+  },
+  {
+    id: 'methodology_pillar',
+    label_ar: 'ركيزة منهجيّة',
+    label_en: 'Methodology Pillar',
+    icon: '🏛️',
+    description_ar: 'بلاطة ركيزة — أيقونة + عنوان + نصّ. تُستعمل ضمن شبكة على صفحة المنهجية.',
+    description_en: 'Pillar tile — icon + title + body. Used as a grid block on methodology pages.',
+    example_ar: 'الحضور الحسّي · الإصغاء العميق · إذن الجسد',
+    example_en: 'Embodied presence · Deep listening · Body permission',
+    applicableEntities: ['static_pages'],
+    bucket: 'static',
+    defaultPayload: () => ({
+      type: 'methodology_pillar',
+      icon: '',
+      title_ar: '',
+      title_en: '',
+      body_ar: '',
+      body_en: '',
+    }),
+  },
+  {
+    id: 'philosophy_statement',
+    label_ar: 'بيان فلسفيّ',
+    label_en: 'Philosophy Statement',
+    icon: '💭',
+    description_ar: 'فقرة طويلة بصوت سامر — مع اقتباس بارز اختياريّ. تجنّب الكشف عن أسماء أُطر الملكية الفكرية.',
+    description_en: 'Long-form bilingual prose in Samer\'s voice with optional pull-quote. Do not expose proprietary framework names.',
+    example_ar: 'الكوتشينج الذي يخدم القارئ يبدأ من إذن الجسد، لا من السكربت.',
+    example_en: 'Coaching that serves begins from body permission, not from a script.',
+    applicableEntities: ['static_pages'],
+    bucket: 'static',
+    defaultPayload: () => ({
+      type: 'philosophy_statement',
+      body_ar: '',
+      body_en: '',
+      pullquote_ar: '',
+      pullquote_en: '',
+    }),
+  },
+  {
+    id: 'contact_form',
+    label_ar: 'نموذج تواصل',
+    label_en: 'Contact Form',
+    icon: '✉️',
+    description_ar: 'حقول الاسم + البريد + الرسالة، مع حماية ضد البوتات.',
+    description_en: 'Name + email + message fields with honeypot anti-spam.',
+    example_ar: 'تواصل معنا — سنردّ خلال يومين عمل.',
+    example_en: 'Get in touch — we reply within 2 business days.',
+    applicableEntities: ['static_pages'],
+    bucket: 'static',
+    defaultPayload: () => ({
+      type: 'contact_form',
+      title_ar: '',
+      title_en: '',
+      subtitle_ar: '',
+      subtitle_en: '',
+      submit_label_ar: 'إرسال',
+      submit_label_en: 'Send',
+      success_message_ar: 'شكراً — وصلتنا رسالتك.',
+      success_message_en: 'Thank you — we received your message.',
+    }),
+  },
+  {
+    id: 'testimonial_grid',
+    label_ar: 'شبكة الشهادات',
+    label_en: 'Testimonial Grid',
+    icon: '⭐',
+    description_ar: 'بطاقات شهادات تُقرأ من جدول الشهادات — تصفية حسب البرنامج / مميّز / ترتيب العرض.',
+    description_en: 'Testimonial cards reading from the testimonials table — filter by program / featured / display order.',
+    example_ar: 'بدّل التدريب طريقتي — نزار، الدفعة ٢٠٢٤',
+    example_en: 'It changed how I coach. — Nizar, 2024 cohort',
+    applicableEntities: ['static_pages'],
+    bucket: 'static',
+    defaultPayload: () => ({
+      type: 'testimonial_grid',
+      title_ar: '',
+      title_en: '',
+      // Filter criteria — renderer fetches from `testimonials` table.
+      // null = no filter; show all featured testimonials by display_order.
+      program_filter: null,
+      featured_only: true,
+      max_count: 6,
+    }),
+  },
+  {
+    id: 'program_card_strip',
+    label_ar: 'شريط بطاقات البرامج',
+    label_en: 'Program Card Strip',
+    icon: '📚',
+    description_ar: 'صفّ بطاقات البرامج — يقرأ من جدول البرامج (المصدر الموثوق). لا تُكتب البيانات يدوياً.',
+    description_en: 'Program card row reading from the programs table (source of truth). Never hardcode program metadata.',
+    example_ar: 'STCE المستوى ٢ · Pathfinder · GPS',
+    example_en: 'STCE Level 2 · Pathfinder · GPS',
+    applicableEntities: ['static_pages'],
+    bucket: 'static',
+    defaultPayload: () => ({
+      type: 'program_card_strip',
+      title_ar: '',
+      title_en: '',
+      // Slugs reference programs.slug — renderer fetches metadata from canon.
+      // Empty array = show featured programs by display_order.
+      program_slugs: [],
+      max_count: 4,
+    }),
+  },
+];
+
+/** Map section type → vocabulary entry. Includes universal + static buckets. */
 export const VOCAB_BY_ID: Record<string, SectionVocabularyEntry> = Object.fromEntries(
-  UNIVERSAL_SECTION_VOCABULARY.map((e) => [e.id, e]),
+  [...UNIVERSAL_SECTION_VOCABULARY, ...STATIC_SECTION_VOCABULARY].map((e) => [e.id, e]),
 );
 
 /** All LpSectionType values from Wave 14b — picker shows these for landing_pages
@@ -385,9 +591,28 @@ export const LP_TYPE_DESCRIPTIONS: Record<LpSectionType, LpTypeDescription> = {
 };
 
 /** Filter vocabulary by entity. Used by the section type picker per
- *  Hakawati §5.2 (per-page-kind filtering — hide non-applicable types). */
+ *  Hakawati §5.2 (per-page-kind filtering — hide non-applicable types).
+ *
+ *  Wave 4 PRECURSOR: returns universals first, then statics. Picker UI
+ *  groups by `bucket` ('universal' | 'static') for visual separation. */
 export function vocabularyForEntity(entity: EntityTarget): ReadonlyArray<SectionVocabularyEntry> {
+  const universals = UNIVERSAL_SECTION_VOCABULARY.filter((e) => e.applicableEntities.includes(entity));
+  const statics = STATIC_SECTION_VOCABULARY.filter((e) => e.applicableEntities.includes(entity));
+  return [...universals, ...statics];
+}
+
+/** Filter ONLY universal-bucket vocabulary entries for an entity.
+ *  Used by the picker when it wants to render universals + statics in
+ *  separate visual groups. */
+export function universalVocabularyForEntity(entity: EntityTarget): ReadonlyArray<SectionVocabularyEntry> {
   return UNIVERSAL_SECTION_VOCABULARY.filter((e) => e.applicableEntities.includes(entity));
+}
+
+/** Filter ONLY static-bucket vocabulary entries for an entity.
+ *  Returns [] for landing_pages and blog_posts — static types are
+ *  static_pages-only by design. */
+export function staticVocabularyForEntity(entity: EntityTarget): ReadonlyArray<SectionVocabularyEntry> {
+  return STATIC_SECTION_VOCABULARY.filter((e) => e.applicableEntities.includes(entity));
 }
 
 /** Resolve a section's display label given its `type`. Falls back to the

@@ -15,7 +15,8 @@ import type { LpSection } from '@/lib/lp/composition-types';
 import {
   LP_SECTION_TYPES_ORDERED,
   LP_TYPE_DESCRIPTIONS,
-  vocabularyForEntity,
+  universalVocabularyForEntity,
+  staticVocabularyForEntity,
   type EntityTarget,
 } from '@/lib/authoring/section-vocabulary';
 
@@ -30,9 +31,14 @@ interface SectionTypePickerProps {
 export function SectionTypePicker({ open, onClose, entity, onPick, locale }: SectionTypePickerProps) {
   if (!open) return null;
   const isAr = locale === 'ar';
-  const universalForEntity = vocabularyForEntity(entity);
+  const universalForEntity = universalVocabularyForEntity(entity);
+  // Wave 4 PRECURSOR — static-page-specific section types (faq_accordion,
+  // team_grid, methodology_pillar, philosophy_statement, contact_form,
+  // testimonial_grid, program_card_strip). Surface only when entity=static_pages.
+  const staticForEntity = staticVocabularyForEntity(entity);
   // For LPs: also expose the 15 carry-forward LP types (§3b).
   const showLpTypes = entity === 'landing_pages';
+  const showStaticTypes = staticForEntity.length > 0;
 
   function handlePick(type: string, defaultPayload?: Record<string, unknown>) {
     const payload = defaultPayload ?? { type };
@@ -106,6 +112,42 @@ export function SectionTypePicker({ open, onClose, entity, onPick, locale }: Sec
               ))}
             </div>
           </div>
+
+          {/* Wave 4 PRECURSOR — Static-page-specific types. Only when entity=static_pages.
+              Renders under its own group so authors can visually separate the
+              universal "any page" types from the static-page-specific ones. */}
+          {showStaticTypes && (
+            <div>
+              <h3 className="text-[11px] font-semibold uppercase tracking-wider text-[var(--color-neutral-500)] mb-2">
+                {isAr ? 'أقسام الصفحات الثابتة' : 'Static-page sections'}
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {staticForEntity.map((entry) => (
+                  <button
+                    key={entry.id}
+                    type="button"
+                    onClick={() => handlePick(entry.id, entry.defaultPayload())}
+                    className="text-start rounded-xl border border-[var(--color-neutral-200)] bg-white p-3 hover:border-[var(--color-primary)] hover:bg-[var(--color-primary-50)] transition-colors min-h-16"
+                  >
+                    <div className="flex items-start gap-2">
+                      <span className="text-lg leading-none shrink-0">{entry.icon}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-semibold text-sm text-[var(--text-primary)]">
+                          {isAr ? entry.label_ar : entry.label_en}
+                        </div>
+                        <div className="text-xs text-[var(--color-neutral-500)] mt-0.5">
+                          {isAr ? entry.description_ar : entry.description_en}
+                        </div>
+                        <div className="text-[10px] text-[var(--color-neutral-400)] mt-1 font-mono">
+                          {entry.id}
+                        </div>
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* LP-specific types — only when entity=landing_pages */}
           {showLpTypes && (
