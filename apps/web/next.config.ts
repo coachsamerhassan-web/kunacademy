@@ -87,7 +87,10 @@ const nextConfig: NextConfig = {
       { source: '/:locale/privacy-policy', destination: '/:locale/legal/privacy', permanent: true },
       { source: '/:locale/terms-of-service', destination: '/:locale/legal/terms', permanent: true },
       { source: '/:locale/refund-policy', destination: '/:locale/legal/refund', permanent: true },
-      { source: '/:locale/faq', destination: '/:locale/contact', permanent: true },
+      // Wave 15 Wave 4 Route 1 (2026-04-29): /:locale/faq → /:locale/contact 308 removed.
+      // /faq is now a real static_pages-backed page. The transitional Cache-Control
+      // header in headers() below clears stale 308s in browser/CDN caches; remove it
+      // ~30 days from deploy date (TTL: 2026-05-29).
     ];
   },
 
@@ -131,6 +134,19 @@ const nextConfig: NextConfig = {
         source: '/images/(.*)',
         headers: [
           { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
+        ],
+      },
+      {
+        // Wave 15 Wave 4 Route 1 (2026-04-29) — transitional cache-clearing for /faq.
+        // The previous /:locale/faq → /:locale/contact 308 was permanent and may
+        // remain cached in browsers + CDNs for an unbounded period. By emitting a
+        // short-lived no-cache header on the new /faq response we force browsers
+        // to revalidate against the live origin, which now returns 200 instead of
+        // 308. Remove this rule on 2026-05-29 (~30 days post-deploy) once stale
+        // caches are reasonably purged. Tracked on TTL list.
+        source: '/:locale/faq',
+        headers: [
+          { key: 'Cache-Control', value: 'no-cache, no-store, must-revalidate' },
         ],
       },
     ];
