@@ -42,8 +42,11 @@ describe('PortalSidebar / data arrays preserved (regression guards)', () => {
     assert.equal(__testOnly.coachNav.length, 10, 'coachNav entry count must not regress');
   });
 
-  test('adminNav has 26 entries (per dispatch — accidental deletion guard)', () => {
-    assert.equal(__testOnly.adminNav.length, 26, 'adminNav entry count must not regress — dispatch said 26');
+  test('adminNav has 27 entries (Phase 1d-B added Quick Access — accidental deletion guard)', () => {
+    // Phase 1d-B (2026-04-30) added "Quick Access / الوصول السريع" to adminNav,
+    // raising the count from 26 → 27. Update this guard whenever entries are
+    // intentionally added or removed (with the subtract-before-add note).
+    assert.equal(__testOnly.adminNav.length, 27, 'adminNav entry count must not regress — Phase 1d-B added Quick Access (27 total)');
   });
 
   test('every adminNav entry has the four required NavItem fields', () => {
