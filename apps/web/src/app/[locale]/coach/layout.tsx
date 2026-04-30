@@ -1,4 +1,4 @@
-// Coach portal layout (authenticated)
+// Coach portal layout (authenticated) — Stitch×Kun shell, 2026-04-30
 import { AuthProvider } from '@kunacademy/auth';
 import { getAuthUser } from '@kunacademy/auth/server';
 import { db } from '@kunacademy/db';
@@ -37,19 +37,15 @@ export default async function CoachLayout({
 
   return (
     <AuthProvider>
-      <div className="min-h-screen bg-[var(--color-surface-dim)]">
-        <div className="mx-auto max-w-[var(--max-content-width)] px-4 py-8">
-          <div className="flex flex-col md:flex-row gap-6">
-            <PortalSidebar locale={locale} variant="coach" canOfferCourses={canOfferCourses} />
-            <div className="flex-1 min-w-0">
-              {/* Canon Phase 2 grandfather banner — renders only for L3/L4
-                  coaches during 2026-04-24 → 2026-05-24. Auto-expires via
-                  date gate in coach-tier-labels.ts. L1+L2: returns null. */}
-              <TierGrandfatherBanner locale={locale} />
-              {children}
-            </div>
-          </div>
-        </div>
+      <div className="kun-shell min-h-screen flex flex-col md:flex-row">
+        <PortalSidebar locale={locale} variant="coach" canOfferCourses={canOfferCourses} />
+        <main className="flex-1 min-w-0 overflow-y-auto p-4 md:p-8">
+          {/* Canon Phase 2 grandfather banner — renders only for L3/L4
+              coaches during 2026-04-24 → 2026-05-24. Auto-expires via
+              date gate in coach-tier-labels.ts. L1+L2: returns null. */}
+          <TierGrandfatherBanner locale={locale} />
+          {children}
+        </main>
       </div>
     </AuthProvider>
   );

@@ -1,4 +1,6 @@
-// Admin portal layout (authenticated)
+// Admin portal layout (authenticated) — Stitch×Kun shell, 2026-04-30
+// Sidebar is sticky full-height on desktop; mobile uses a horizontal scroll bar
+// rendered inside PortalSidebar itself.
 import { AuthProvider } from '@kunacademy/auth';
 import { PortalSidebar } from '@/components/portal-sidebar';
 
@@ -15,13 +17,11 @@ export default async function AdminLayout({
 
   return (
     <AuthProvider>
-      <div className="min-h-screen bg-[var(--color-surface-dim)]">
-        <div className="mx-auto max-w-[var(--max-content-width)] px-4 py-8">
-          <div className="flex flex-col md:flex-row gap-6">
-            <PortalSidebar locale={locale} variant="admin" />
-            <div className="flex-1 min-w-0">{children}</div>
-          </div>
-        </div>
+      <div className="kun-shell min-h-screen flex flex-col md:flex-row">
+        <PortalSidebar locale={locale} variant="admin" />
+        <main className="flex-1 min-w-0 overflow-y-auto p-4 md:p-8">
+          {children}
+        </main>
       </div>
     </AuthProvider>
   );

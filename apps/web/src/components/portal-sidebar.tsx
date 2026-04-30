@@ -64,6 +64,22 @@ const adminNav: NavItem[] = [
   { href: '/admin/membership', labelAr: 'الاشتراكات', labelEn: 'Membership', icon: 'M13 10V3L4 14h7v7l9-11h-7z' },
 ];
 
+/**
+ * Mid-list dividers — split the nav into "operations" (top group) and
+ * "content" (bottom group) for visual scannability. Per Stitch dashboard
+ * pattern — a hairline border between distinct functional groups.
+ *
+ * Index = position AFTER which the divider appears.
+ *  - dashboardNav:  divider after Bookings (index 2) — pre = personal, post = library/orders/etc
+ *  - coachNav:      divider after Earnings (index 4) — pre = work intake, post = analytics/payouts/profile
+ *  - adminNav:      divider after Discount Codes (index 8) — pre = operations, post = content
+ */
+const NAV_DIVIDERS: Record<'dashboard' | 'coach' | 'admin', number> = {
+  dashboard: 2,
+  coach: 4,
+  admin: 8,
+};
+
 interface PortalSidebarProps {
   locale: string;
   variant: 'dashboard' | 'coach' | 'admin';
@@ -73,7 +89,7 @@ interface PortalSidebarProps {
 
 export function PortalSidebar({ locale, variant, canOfferCourses }: PortalSidebarProps) {
   const pathname = usePathname();
-  const { signOut } = useAuth();
+  const { signOut, user } = useAuth();
   const isAr = locale === 'ar';
 
   let baseItems = variant === 'dashboard' ? dashboardNav : variant === 'coach' ? coachNav : adminNav;
@@ -84,44 +100,168 @@ export function PortalSidebar({ locale, variant, canOfferCourses }: PortalSideba
   }
 
   const items = baseItems;
+  const dividerAfter = NAV_DIVIDERS[variant];
+
+  // Greeting — fall back gracefully if user/name not yet loaded
+  const displayName = user?.name?.trim() || user?.email?.split('@')[0] || '';
+  const greeting = isAr
+    ? displayName
+      ? `مرحباً، ${displayName}`
+      : 'مرحباً'
+    : displayName
+      ? `Welcome, ${displayName}`
+      : 'Welcome';
+
+  // Avatar — first letter of name/email, fallback to a neutral glyph
+  const avatarSeed = displayName || user?.email || '';
+  const avatarChar = avatarSeed ? avatarSeed.charAt(0).toUpperCase() : '·';
+
+  const variantLabel = isAr
+    ? variant === 'admin'
+      ? 'الإدارة'
+      : variant === 'coach'
+        ? 'الكوتش'
+        : 'الطالب'
+    : variant === 'admin'
+      ? 'Admin'
+      : variant === 'coach'
+        ? 'Coach'
+        : 'Student';
 
   return (
-    <nav className="w-full md:w-56 shrink-0">
-      {/* Mobile: horizontal scroll */}
-      <div className="flex md:flex-col gap-1 overflow-x-auto md:overflow-visible pb-2 md:pb-0 -mx-1 px-1">
-        {items.map((item) => {
-          const fullHref = `/${locale}${item.href}`;
-          const isActive = pathname === fullHref || (item.href !== '/dashboard' && item.href !== '/coach' && item.href !== '/admin' && pathname.startsWith(fullHref));
+    <>
+      {/* Mobile horizontal scroll bar — preserved from prior shell.
+          Desktop sidebar (Stitch×Kun) below is hidden on small screens. */}
+      <nav
+        className="md:hidden w-full kun-shell-card mb-4 px-2 py-2"
+        aria-label={isAr ? 'القائمة' : 'Navigation'}
+      >
+        <div className="flex gap-1 overflow-x-auto pb-1 -mx-1 px-1">
+          {items.map((item) => {
+            const fullHref = `/${locale}${item.href}`;
+            const isActive = pathname === fullHref || (item.href !== '/dashboard' && item.href !== '/coach' && item.href !== '/admin' && pathname.startsWith(fullHref));
+            return (
+              <a
+                key={item.href}
+                href={fullHref}
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors min-h-[44px] ${
+                  isActive
+                    ? 'bg-[var(--color-accent)] text-white'
+                    : 'text-[var(--color-neutral-700)] hover:bg-[var(--color-surface-low)]'
+                }`}
+              >
+                <svg aria-hidden="true" className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d={item.icon} />
+                </svg>
+                <span>{isAr ? item.labelAr : item.labelEn}</span>
+              </a>
+            );
+          })}
+          <button
+            type="button"
+            onClick={signOut}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors min-h-[44px] text-[var(--color-neutral-700)] hover:bg-red-50 hover:text-red-600"
+          >
+            <svg aria-hidden="true" className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+            <span>{isAr ? 'تسجيل الخروج' : 'Sign Out'}</span>
+          </button>
+        </div>
+      </nav>
 
-          return (
-            <a
-              key={item.href}
-              href={fullHref}
-              className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors min-h-[44px] ${
-                isActive
-                  ? 'bg-[var(--color-primary)] text-white shadow-sm'
-                  : 'text-[var(--color-neutral-600)] hover:bg-white hover:text-[var(--color-primary)]'
-              }`}
+      {/* Desktop sidebar — Stitch layout, Kun palette */}
+      <aside
+        className="hidden md:flex kun-shell-sidebar w-64 shrink-0 flex-col h-screen sticky top-0 self-start"
+        aria-label={isAr ? 'القائمة الجانبية' : 'Sidebar navigation'}
+      >
+        {/* User profile header */}
+        <div className="px-6 py-5 flex items-center gap-3 kun-shell-sidebar-divider border-b">
+          {user?.image ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={user.image}
+              alt={displayName || 'User'}
+              className="w-10 h-10 rounded-full object-cover bg-[var(--shell-tile-mandarin-bg)]"
+            />
+          ) : (
+            <div
+              className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold text-white"
+              style={{ background: 'var(--shell-sidebar-active-bg)' }}
+              aria-hidden="true"
             >
-              <svg aria-hidden="true" className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d={item.icon} />
-              </svg>
-              <span>{isAr ? item.labelAr : item.labelEn}</span>
-            </a>
-          );
-        })}
-        <div className="hidden md:block h-px bg-[var(--color-neutral-200)] my-2" aria-hidden="true" />
-        <button
-          type="button"
-          onClick={signOut}
-          className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors min-h-[44px] text-[var(--color-neutral-600)] hover:bg-red-50 hover:text-red-600 w-full text-start"
-        >
-          <svg aria-hidden="true" className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-          </svg>
-          <span>{isAr ? 'تسجيل الخروج' : 'Sign Out'}</span>
-        </button>
-      </div>
-    </nav>
+              {avatarChar}
+            </div>
+          )}
+          <div className="min-w-0 flex-1">
+            <div className="text-sm font-medium text-white truncate">{greeting}</div>
+            <div className="text-[11px] text-[var(--shell-sidebar-text)] opacity-80 truncate">{variantLabel}</div>
+          </div>
+        </div>
+
+        {/* Nav list with mid-divider */}
+        <nav className="flex-1 overflow-y-auto py-4 text-sm" aria-label={isAr ? 'القائمة' : 'Navigation'}>
+          <ul className="space-y-1">
+            {items.map((item, idx) => {
+              const fullHref = `/${locale}${item.href}`;
+              const isActive = pathname === fullHref || (item.href !== '/dashboard' && item.href !== '/coach' && item.href !== '/admin' && pathname.startsWith(fullHref));
+              const node = (
+                <li key={item.href}>
+                  <a
+                    href={fullHref}
+                    aria-current={isActive ? 'page' : undefined}
+                    className={`flex items-center gap-3 px-6 py-2.5 ${
+                      isActive
+                        ? `kun-shell-sidebar-link-active ${isAr ? 'rounded-s-full mr-4' : 'rounded-e-full ml-4'}`
+                        : 'kun-shell-sidebar-link'
+                    }`}
+                  >
+                    <svg aria-hidden="true" className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d={item.icon} />
+                    </svg>
+                    <span>{isAr ? item.labelAr : item.labelEn}</span>
+                  </a>
+                </li>
+              );
+              // Inject divider AFTER the item at index `dividerAfter`
+              if (idx === dividerAfter) {
+                return (
+                  <span key={`${item.href}-with-divider`}>
+                    {node}
+                    <li className="pt-3 pb-2" aria-hidden="true">
+                      <div className="kun-shell-sidebar-divider mx-6" />
+                    </li>
+                  </span>
+                );
+              }
+              return node;
+            })}
+          </ul>
+        </nav>
+
+        {/* Sign-out footer */}
+        <div className="px-6 py-5 mt-auto kun-shell-sidebar-divider border-t">
+          <button
+            type="button"
+            onClick={signOut}
+            className="flex items-center gap-3 text-sm kun-shell-sidebar-link w-full text-start"
+          >
+            <svg aria-hidden="true" className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+            <span>{isAr ? 'تسجيل الخروج' : 'Sign Out'}</span>
+          </button>
+        </div>
+      </aside>
+    </>
   );
 }
+
+// Test-only exports — used by structural regression tests to guard against
+// accidental data deletion (per dispatch). NOT consumed by render code.
+export const __testOnly = {
+  dashboardNav,
+  coachNav,
+  adminNav,
+  NAV_DIVIDERS,
+};
