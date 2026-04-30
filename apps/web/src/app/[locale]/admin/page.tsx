@@ -20,12 +20,38 @@ interface RecentBooking {
   service: { name_ar: string | null; name_en: string | null } | null;
 }
 
+interface QuickAccessTile {
+  id: string;
+  label_ar: string;
+  label_en: string;
+  href: string;
+  icon_path: string;
+  color_token: string;
+  sort_order: number;
+  is_active: boolean;
+}
+
+interface PlatformMetrics {
+  top_courses: Array<{ course_id: string; title_ar: string; title_en: string; enrollments: number }>;
+  new_signups_daily: Array<{ day: string; count: number }>;
+  outstanding_payments: { total_count: number; by_currency: Array<{ currency: string; count: number; amount: number }> };
+  active_coaches_daily: Array<{ day: string; count: number }>;
+}
+
 /**
  * Admin landing page — Stitch×Kun shell, 2026-04-30
  *
  * Layout adopts Stitch's dashboard pattern (header + 4 stat cards +
- * quick-access tile grid + sales chart + recent bookings list) but uses
+ * quick-access tile grid + 4-KPI panel + recent bookings list) but uses
  * Kun's brand palette throughout. Cream-latte canvas with white cards.
+ *
+ * Phase 1d-B (2026-04-30): quick-access tiles now fetched from
+ * /api/admin/quick-access (DB-backed, admin-managed via /admin/quick-access).
+ *
+ * Phase 1d-C (2026-04-30): the placeholder PlatformChart is replaced by a
+ * 4-KPI panel reading real time-series and aggregates from
+ * /api/admin/platform-metrics (Samer's picks: top courses, new signups,
+ * outstanding payments, active coaches).
  */
 export default function AdminDashboardPage() {
   const { locale } = useParams<{ locale: string }>();
@@ -34,8 +60,12 @@ export default function AdminDashboardPage() {
 
   const [stats, setStats] = useState<Stats>({ students: 0, coaches: 0, enrollments: 0, bookings: 0, payments: 0 });
   const [bookingsList, setBookingsList] = useState<RecentBooking[]>([]);
+  const [tiles, setTiles] = useState<QuickAccessTile[]>([]);
+  const [metrics, setMetrics] = useState<PlatformMetrics | null>(null);
   const [statsLoading, setStatsLoading] = useState(true);
   const [bookingsLoading, setBookingsLoading] = useState(true);
+  const [tilesLoading, setTilesLoading] = useState(true);
+  const [metricsLoading, setMetricsLoading] = useState(true);
 
   useEffect(() => {
     fetch('/api/admin/stats')
@@ -63,6 +93,31 @@ export default function AdminDashboardPage() {
         setBookingsLoading(false);
       })
       .catch(() => setBookingsLoading(false));
+  }, []);
+
+  useEffect(() => {
+    fetch('/api/admin/quick-access', { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.items) {
+          const active = (data.items as QuickAccessTile[])
+            .filter((t) => t.is_active)
+            .sort((a, b) => a.sort_order - b.sort_order);
+          setTiles(active);
+        }
+        setTilesLoading(false);
+      })
+      .catch(() => setTilesLoading(false));
+  }, []);
+
+  useEffect(() => {
+    fetch('/api/admin/platform-metrics', { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data) setMetrics(data as PlatformMetrics);
+        setMetricsLoading(false);
+      })
+      .catch(() => setMetricsLoading(false));
   }, []);
 
   const today = useMemo(() => {
@@ -118,99 +173,8 @@ export default function AdminDashboardPage() {
     },
   ];
 
-  // 9 quick-access tiles — Kun secondary palette tints
-  const tiles = [
-    {
-      href: `/${locale}/admin/instructors`,
-      labelAr: 'الكوتشز',
-      labelEn: 'Coaches',
-      hintAr: `${stats.coaches} كوتش`,
-      hintEn: `${stats.coaches} coaches`,
-      bg: 'var(--shell-tile-mandarin-bg)',
-      iconBg: 'var(--shell-tile-mandarin-icon)',
-      icon: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z',
-    },
-    {
-      href: `/${locale}/admin/orders`,
-      labelAr: 'الطلبات',
-      labelEn: 'Orders',
-      hintAr: `${stats.payments} طلب`,
-      hintEn: `${stats.payments} orders`,
-      bg: 'var(--shell-tile-sky-bg)',
-      iconBg: 'var(--shell-tile-sky-icon)',
-      icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4',
-    },
-    {
-      href: `/${locale}/admin/courses`,
-      labelAr: 'الدورات',
-      labelEn: 'Courses',
-      hintAr: `${stats.enrollments} تسجيل`,
-      hintEn: `${stats.enrollments} enrollments`,
-      bg: 'var(--shell-tile-primary-bg)',
-      iconBg: 'var(--shell-tile-primary-icon)',
-      icon: 'M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253',
-    },
-    {
-      href: `/${locale}/admin/products`,
-      labelAr: 'المنتجات',
-      labelEn: 'Products',
-      hintAr: '',
-      hintEn: '',
-      bg: 'var(--shell-tile-charleston-bg)',
-      iconBg: 'var(--shell-tile-charleston-icon)',
-      icon: 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4',
-    },
-    {
-      href: `/${locale}/admin/testimonials`,
-      labelAr: 'التوصيات',
-      labelEn: 'Testimonials',
-      hintAr: '',
-      hintEn: '',
-      bg: 'var(--shell-tile-rose-bg)',
-      iconBg: 'var(--shell-tile-rose-icon)',
-      icon: 'M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z',
-    },
-    {
-      href: `/${locale}/admin/content`,
-      labelAr: 'المحتوى',
-      labelEn: 'Content',
-      hintAr: '',
-      hintEn: '',
-      bg: 'var(--shell-tile-deepsky-bg)',
-      iconBg: 'var(--shell-tile-deepsky-icon)',
-      icon: 'M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z',
-    },
-    {
-      href: `/${locale}/admin/community`,
-      labelAr: 'المجتمع',
-      labelEn: 'Community',
-      hintAr: '',
-      hintEn: '',
-      bg: 'var(--shell-tile-sand-bg)',
-      iconBg: 'var(--shell-tile-sand-icon)',
-      icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z',
-    },
-    {
-      href: `/${locale}/admin/email-outbox`,
-      labelAr: 'رسائل فاشلة',
-      labelEn: 'Email Outbox',
-      hintAr: '',
-      hintEn: '',
-      bg: 'var(--shell-tile-mist-bg)',
-      iconBg: 'var(--shell-tile-mist-icon)',
-      icon: 'M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z',
-    },
-    {
-      href: `/${locale}/admin/lessons`,
-      labelAr: 'مكتبة الدروس',
-      labelEn: 'Lesson Library',
-      hintAr: '',
-      hintEn: '',
-      bg: 'var(--shell-tile-violet-bg)',
-      iconBg: 'var(--shell-tile-violet-icon)',
-      icon: 'M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253',
-    },
-  ];
+  // Quick-access tiles are now DB-backed (admin_quick_access table).
+  // Admins manage at /admin/quick-access. See Phase 1d-B (2026-04-30).
 
   // Greeting wired so dashboard mirrors sidebar greeting once user resolves
   const displayName = user?.name?.trim() || user?.email?.split('@')[0] || '';
@@ -275,55 +239,74 @@ export default function AdminDashboardPage() {
 
       {/* Lower grid: quick-access (1 col) + main column (2 cols) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
-        {/* Quick-access tile grid */}
+        {/* Quick-access tile grid — DB-backed, admin-managed at /admin/quick-access */}
         <section className="kun-shell-card p-5 md:p-6" aria-label={isAr ? 'الوصول السريع' : 'Quick access'}>
-          <h2 className="text-base md:text-lg font-bold text-[var(--text-primary)] mb-4 md:mb-6">
-            {isAr ? 'الوصول السريع' : 'Quick Access'}
-          </h2>
-          <div className="grid grid-cols-3 gap-3 md:gap-4">
-            {tiles.map((tile) => (
-              <a
-                key={tile.href}
-                href={tile.href}
-                className="rounded-xl p-3 md:p-4 flex flex-col items-center justify-center text-center aspect-square cursor-pointer transition-transform hover:-translate-y-0.5 hover:shadow-sm"
-                style={{ background: tile.bg }}
-              >
-                <div
-                  className="w-9 h-9 md:w-10 md:h-10 rounded-lg flex items-center justify-center text-white mb-2 shadow-sm"
-                  style={{ background: tile.iconBg }}
-                  aria-hidden="true"
-                >
-                  <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d={tile.icon} />
-                  </svg>
-                </div>
-                <div className="font-bold text-[var(--text-primary)] text-xs md:text-sm leading-tight">
-                  {isAr ? tile.labelAr : tile.labelEn}
-                </div>
-                {(isAr ? tile.hintAr : tile.hintEn) && (
-                  <div className="text-[10px] text-[var(--color-neutral-600)] mt-0.5">
-                    {isAr ? tile.hintAr : tile.hintEn}
-                  </div>
-                )}
-              </a>
-            ))}
+          <div className="flex items-center justify-between mb-4 md:mb-6">
+            <h2 className="text-base md:text-lg font-bold text-[var(--text-primary)]">
+              {isAr ? 'الوصول السريع' : 'Quick Access'}
+            </h2>
+            <a
+              href={`/${locale}/admin/quick-access`}
+              className="text-xs font-medium text-[var(--color-accent)] hover:text-[var(--color-accent-600)]"
+              aria-label={isAr ? 'إدارة الوصول السريع' : 'Manage quick access'}
+            >
+              {isAr ? 'إدارة' : 'Manage'} →
+            </a>
           </div>
+          {tilesLoading ? (
+            <div className="py-8 text-center text-sm text-[var(--color-neutral-500)]">
+              {isAr ? 'جاري التحميل...' : 'Loading...'}
+            </div>
+          ) : tiles.length === 0 ? (
+            <div className="py-8 text-center text-sm text-[var(--color-neutral-500)]">
+              {isAr ? 'لا توجد اختصارات.' : 'No tiles configured.'}{' '}
+              <a href={`/${locale}/admin/quick-access`} className="text-[var(--color-accent)] underline">
+                {isAr ? 'أضف الأول' : 'Add the first one'}
+              </a>
+            </div>
+          ) : (
+            <div className="grid grid-cols-3 gap-3 md:gap-4">
+              {tiles.map((tile) => {
+                const href = tile.href.startsWith('http') ? tile.href : `/${locale}${tile.href}`;
+                return (
+                  <a
+                    key={tile.id}
+                    href={href}
+                    className="rounded-xl p-3 md:p-4 flex flex-col items-center justify-center text-center aspect-square cursor-pointer transition-transform hover:-translate-y-0.5 hover:shadow-sm"
+                    style={{ background: `var(--shell-tile-${tile.color_token}-bg)` }}
+                  >
+                    <div
+                      className="w-9 h-9 md:w-10 md:h-10 rounded-lg flex items-center justify-center text-white mb-2 shadow-sm"
+                      style={{ background: `var(--shell-tile-${tile.color_token}-icon)` }}
+                      aria-hidden="true"
+                    >
+                      <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d={tile.icon_path} />
+                      </svg>
+                    </div>
+                    <div className="font-bold text-[var(--text-primary)] text-xs md:text-sm leading-tight">
+                      {isAr ? tile.label_ar : tile.label_en}
+                    </div>
+                  </a>
+                );
+              })}
+            </div>
+          )}
         </section>
 
-        {/* Main column: sales chart + recent bookings */}
+        {/* Main column: 4-KPI panel + recent bookings */}
         <div className="lg:col-span-2 space-y-4 md:space-y-6">
-          {/* Sales / activity chart — placeholder area, real chart wires later */}
-          <section className="kun-shell-card p-5 md:p-6" aria-label={isAr ? 'أداء المبيعات' : 'Sales performance'}>
+          {/* 4-KPI panel — Phase 1d-C real-data wiring (top courses + signups + outstanding payments + active coaches) */}
+          <section className="kun-shell-card p-5 md:p-6" aria-label={isAr ? 'أداء المنصة' : 'Platform performance'}>
             <div className="mb-4">
               <h2 className="text-base md:text-lg font-bold text-[var(--text-primary)]">
                 {isAr ? 'أداء المنصة' : 'Platform performance'}
               </h2>
               <p className="text-xs md:text-sm text-[var(--color-neutral-600)] mt-1">
-                {isAr ? 'نظرة عامة على نشاط الشهر' : 'Month-to-date activity overview'}
+                {isAr ? 'مؤشرات حقيقية — آخر 30 يوماً' : 'Live indicators — last 30 days'}
               </p>
             </div>
-            <PlatformChart isAr={isAr} />
-            {/* TODO: wire real time-series data once /api/admin/stats-timeseries lands */}
+            <PlatformKPIPanel isAr={isAr} loading={metricsLoading} metrics={metrics} />
           </section>
 
           {/* Recent bookings */}
@@ -419,62 +402,169 @@ function SparkProgress({ color, pct }: { color: string; pct: number }) {
   );
 }
 
-function PlatformChart({ isAr }: { isAr: boolean }) {
-  const yLabels = ['800', '600', '400', '200', '0'];
-  const xLabelsEn = ['Jan', 'Feb', 'Mar', 'Apr', 'May'];
-  const xLabelsAr = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو'];
+function PlatformKPIPanel({
+  isAr,
+  loading,
+  metrics,
+}: {
+  isAr: boolean;
+  loading: boolean;
+  metrics: PlatformMetrics | null;
+}) {
+  if (loading) {
+    return (
+      <div className="py-12 text-center text-sm text-[var(--color-neutral-500)]">
+        {isAr ? 'جاري تحميل المؤشرات...' : 'Loading metrics...'}
+      </div>
+    );
+  }
+  if (!metrics) {
+    return (
+      <div className="py-12 text-center text-sm text-[var(--color-neutral-500)]">
+        {isAr ? 'تعذّر تحميل المؤشرات' : 'Could not load metrics'}
+      </div>
+    );
+  }
+
   return (
-    <div className="h-48 md:h-64 relative">
-      <div className="absolute inset-0 flex flex-col justify-between text-xs text-[var(--color-neutral-500)] z-0">
-        {yLabels.map((l, i) => (
-          <div key={i} className="border-b border-[var(--color-neutral-100)] pb-1 text-start w-8">
-            {l}
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
+      {/* E. Top 5 courses by enrollments this month */}
+      <div className="bg-[var(--color-neutral-50)] rounded-xl p-4">
+        <div className="text-xs font-semibold text-[var(--color-neutral-700)] uppercase tracking-wide mb-2">
+          {isAr ? 'أعلى 5 دورات (الشهر)' : 'Top 5 Courses (this month)'}
+        </div>
+        {metrics.top_courses.length === 0 ? (
+          <div className="text-sm text-[var(--color-neutral-500)] py-4">
+            {isAr ? 'لا توجد تسجيلات هذا الشهر' : 'No enrollments this month'}
           </div>
-        ))}
+        ) : (
+          <ul className="space-y-2">
+            {metrics.top_courses.map((c) => {
+              const max = metrics.top_courses[0]?.enrollments || 1;
+              const pct = Math.round((c.enrollments / max) * 100);
+              return (
+                <li key={c.course_id} className="text-sm">
+                  <div className="flex items-baseline justify-between gap-2 mb-1">
+                    <span className="truncate text-[var(--text-primary)]">
+                      {(isAr ? c.title_ar : c.title_en) || (isAr ? '(بدون عنوان)' : '(untitled)')}
+                    </span>
+                    <span className="font-bold text-[var(--color-accent)] tabular-nums shrink-0">
+                      {c.enrollments.toLocaleString(isAr ? 'ar-EG' : 'en-US')}
+                    </span>
+                  </div>
+                  <div className="h-1.5 rounded-full bg-[var(--color-neutral-100)] overflow-hidden">
+                    <div className="h-full rounded-full bg-[var(--color-accent)]" style={{ width: `${pct}%` }} />
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
       </div>
-      <div className="absolute bottom-0 inset-x-8 flex justify-between text-xs text-[var(--color-neutral-500)] pt-2 z-0">
-        {(isAr ? xLabelsAr : xLabelsEn).map((l) => (
-          <span key={l}>{l}</span>
-        ))}
+
+      {/* D. Outstanding payments — count + amount by currency */}
+      <div className="bg-[var(--color-neutral-50)] rounded-xl p-4">
+        <div className="text-xs font-semibold text-[var(--color-neutral-700)] uppercase tracking-wide mb-2">
+          {isAr ? 'مدفوعات قيد الانتظار' : 'Outstanding Payments'}
+        </div>
+        <div className="flex items-baseline gap-2 mb-3">
+          <span className="text-3xl font-bold text-[var(--text-primary)] tabular-nums">
+            {metrics.outstanding_payments.total_count.toLocaleString(isAr ? 'ar-EG' : 'en-US')}
+          </span>
+          <span className="text-sm text-[var(--color-neutral-600)]">
+            {isAr ? 'دفعة' : 'pending'}
+          </span>
+        </div>
+        {metrics.outstanding_payments.by_currency.length === 0 ? (
+          <div className="text-sm text-[var(--color-neutral-500)]">
+            {isAr ? 'لا شيء مستحق' : 'Nothing pending'}
+          </div>
+        ) : (
+          <ul className="space-y-1 text-sm">
+            {metrics.outstanding_payments.by_currency.map((c) => (
+              <li key={c.currency} className="flex items-baseline justify-between gap-2">
+                <span className="text-[var(--color-neutral-700)] uppercase font-medium">{c.currency}</span>
+                <span className="tabular-nums text-[var(--text-primary)] font-semibold">
+                  {c.amount.toLocaleString(isAr ? 'ar-EG' : 'en-US')}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
-      <svg
-        className="absolute inset-y-0 inset-x-8 w-[calc(100%-64px)] h-[calc(100%-24px)] z-10"
-        preserveAspectRatio="none"
-        viewBox="0 0 100 100"
-      >
-        <defs>
-          <linearGradient id="platformGradAccent" x1="0%" x2="0%" y1="0%" y2="100%">
-            <stop offset="0%" stopColor="var(--color-accent)" stopOpacity="0.25" />
-            <stop offset="100%" stopColor="var(--color-accent)" stopOpacity="0" />
-          </linearGradient>
-          <linearGradient id="platformGradPrimary" x1="0%" x2="0%" y1="0%" y2="100%">
-            <stop offset="0%" stopColor="var(--color-primary)" stopOpacity="0.25" />
-            <stop offset="100%" stopColor="var(--color-primary)" stopOpacity="0" />
-          </linearGradient>
-        </defs>
-        <path
-          d="M0,60 C20,60 30,30 50,50 C70,70 80,20 100,40 L100,100 L0,100 Z"
-          fill="url(#platformGradAccent)"
-        />
-        <path
-          d="M0,60 C20,60 30,30 50,50 C70,70 80,20 100,40"
+
+      {/* B. New signups daily — sparkline */}
+      <KPISparkline
+        isAr={isAr}
+        labelAr="تسجيلات جديدة (30 يوم)"
+        labelEn="New Signups (30d)"
+        data={metrics.new_signups_daily}
+        color="var(--color-primary)"
+      />
+
+      {/* C. Active coaches daily — sparkline */}
+      <KPISparkline
+        isAr={isAr}
+        labelAr="كوتشز نشطون (30 يوم)"
+        labelEn="Active Coaches (30d)"
+        data={metrics.active_coaches_daily}
+        color="var(--color-accent)"
+      />
+    </div>
+  );
+}
+
+function KPISparkline({
+  isAr,
+  labelAr,
+  labelEn,
+  data,
+  color,
+}: {
+  isAr: boolean;
+  labelAr: string;
+  labelEn: string;
+  data: Array<{ day: string; count: number }>;
+  color: string;
+}) {
+  const total = data.reduce((s, d) => s + d.count, 0);
+  const max = data.reduce((m, d) => Math.max(m, d.count), 1);
+  const last = data[data.length - 1]?.count ?? 0;
+
+  // Build sparkline points; if data is empty, show a flat line at zero.
+  const points = data.length > 0
+    ? data.map((d, i) => {
+        const x = (i / Math.max(1, data.length - 1)) * 100;
+        const y = 100 - (d.count / max) * 100;
+        return `${x.toFixed(2)},${y.toFixed(2)}`;
+      }).join(' ')
+    : '0,100 100,100';
+
+  return (
+    <div className="bg-[var(--color-neutral-50)] rounded-xl p-4">
+      <div className="text-xs font-semibold text-[var(--color-neutral-700)] uppercase tracking-wide mb-2">
+        {isAr ? labelAr : labelEn}
+      </div>
+      <div className="flex items-baseline justify-between gap-2 mb-2">
+        <div>
+          <div className="text-3xl font-bold text-[var(--text-primary)] tabular-nums">
+            {total.toLocaleString(isAr ? 'ar-EG' : 'en-US')}
+          </div>
+          <div className="text-xs text-[var(--color-neutral-600)]">
+            {isAr ? `اليوم: ${last.toLocaleString('ar-EG')}` : `Today: ${last.toLocaleString('en-US')}`}
+          </div>
+        </div>
+      </div>
+      <svg viewBox="0 0 100 30" className="w-full h-12" preserveAspectRatio="none">
+        <polyline
+          points={points}
           fill="none"
-          stroke="var(--color-accent)"
+          stroke={color}
+          strokeWidth="1.5"
           strokeLinecap="round"
           strokeLinejoin="round"
-          strokeWidth="2"
-        />
-        <path
-          d="M0,80 C20,90 40,20 60,60 C80,100 90,10 100,30 L100,100 L0,100 Z"
-          fill="url(#platformGradPrimary)"
-        />
-        <path
-          d="M0,80 C20,90 40,20 60,60 C80,100 90,10 100,30"
-          fill="none"
-          stroke="var(--color-primary)"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth="2"
+          vectorEffect="non-scaling-stroke"
+          transform="scale(1, 0.3)"
         />
       </svg>
     </div>

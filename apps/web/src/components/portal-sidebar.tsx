@@ -63,6 +63,7 @@ const adminNav: NavItem[] = [
   { href: '/admin/corporate-benefits', labelAr: 'مزايا الشركات', labelEn: 'Corporate Benefits', icon: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4' },
   { href: '/admin/scholarships', labelAr: 'المنح', labelEn: 'Scholarships', icon: 'M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7' },
   { href: '/admin/membership', labelAr: 'الاشتراكات', labelEn: 'Membership', icon: 'M13 10V3L4 14h7v7l9-11h-7z' },
+  { href: '/admin/quick-access', labelAr: 'الوصول السريع', labelEn: 'Quick Access', icon: 'M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z' },
 ];
 
 /**

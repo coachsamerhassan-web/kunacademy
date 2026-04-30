@@ -112,3 +112,5 @@ export * from './membership_lifecycle_events';
 // Wave 15 Wave 1 — static_pages + content_page_snapshots (migrations 0065 + 0067)
 export * from './static_pages';
 export * from './content_page_snapshots';
+// Phase 1d-B (2026-04-30) — admin_quick_access (migration 0068)
+export * from './admin_quick_access';
