@@ -58,7 +58,9 @@ export async function GET() {
       .limit(5);
 
     // ── B. New signups daily, last 30 days ─────────────────────────────────
-    const signupsRows = await db.execute<{ day: string; count: string }>(sql`
+    // db.execute() returns { rows, rowCount, ... } — NOT a plain array.
+    // Access .rows for the result set.
+    const signupsResult = await db.execute(sql`
       SELECT to_char(date_trunc('day', created_at) AT TIME ZONE 'UTC', 'YYYY-MM-DD') AS day,
              COUNT(*)::text AS count
         FROM profiles
@@ -66,7 +68,7 @@ export async function GET() {
     GROUP BY date_trunc('day', created_at)
     ORDER BY day ASC
     `);
-    const signupsDaily = (signupsRows as unknown as Array<{ day: string; count: string }>).map((r) => ({
+    const signupsDaily = (signupsResult.rows as unknown as Array<{ day: string; count: string }>).map((r) => ({
       day: r.day,
       count: Number(r.count),
     }));
@@ -92,7 +94,7 @@ export async function GET() {
     };
 
     // ── C. Active coaches daily, last 30 days ──────────────────────────────
-    const activeCoachesRows = await db.execute<{ day: string; count: string }>(sql`
+    const activeCoachesResult = await db.execute(sql`
       SELECT to_char(date_trunc('day', start_time) AT TIME ZONE 'UTC', 'YYYY-MM-DD') AS day,
              COUNT(DISTINCT coach_id)::text AS count
         FROM bookings
@@ -101,7 +103,7 @@ export async function GET() {
     GROUP BY date_trunc('day', start_time)
     ORDER BY day ASC
     `);
-    const activeCoachesDaily = (activeCoachesRows as unknown as Array<{ day: string; count: string }>).map((r) => ({
+    const activeCoachesDaily = (activeCoachesResult.rows as unknown as Array<{ day: string; count: string }>).map((r) => ({
       day: r.day,
       count: Number(r.count),
     }));
