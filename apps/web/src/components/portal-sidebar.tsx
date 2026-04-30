@@ -1,5 +1,6 @@
 'use client';
 
+import { Fragment } from 'react';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@kunacademy/auth';
 
@@ -212,7 +213,7 @@ export function PortalSidebar({ locale, variant, canOfferCourses }: PortalSideba
                     aria-current={isActive ? 'page' : undefined}
                     className={`flex items-center gap-3 px-6 py-2.5 ${
                       isActive
-                        ? `kun-shell-sidebar-link-active ${isAr ? 'rounded-s-full mr-4' : 'rounded-e-full ml-4'}`
+                        ? 'kun-shell-sidebar-link-active rounded-e-full me-4'
                         : 'kun-shell-sidebar-link'
                     }`}
                   >
@@ -223,15 +224,16 @@ export function PortalSidebar({ locale, variant, canOfferCourses }: PortalSideba
                   </a>
                 </li>
               );
-              // Inject divider AFTER the item at index `dividerAfter`
+              // Inject divider AFTER the item at index `dividerAfter`.
+              // Use Fragment with key — <span> cannot be a child of <ul>.
               if (idx === dividerAfter) {
                 return (
-                  <span key={`${item.href}-with-divider`}>
+                  <Fragment key={`${item.href}-with-divider`}>
                     {node}
                     <li className="pt-3 pb-2" aria-hidden="true">
                       <div className="kun-shell-sidebar-divider mx-6" />
                     </li>
-                  </span>
+                  </Fragment>
                 );
               }
               return node;
