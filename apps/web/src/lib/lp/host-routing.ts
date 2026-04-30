@@ -181,15 +181,57 @@ export function isStagingAnonAllowed(pathname: string): boolean {
 }
 
 // ── Staging-logged-in role allowlist ────────────────────────────────────────
-const STAGING_GATED_ROLES: ReadonlyArray<string> = [
+//
+// Phase 1d-D (2026-04-30) — Samer directive: "I cannot access dashboard, which
+// is wrong behaviour. Coming-soon should only be for new visitors."
+//
+// Before: only admin/super_admin/content_editor bypassed coming-soon (which
+// kept coaches and students stuck on the splash even when authenticated).
+// After:  ANY authenticated session bypasses coming-soon. The mental model
+//         is "if you logged in successfully, you're past the bouncer." The
+//         splash is for anonymous traffic only.
+//
+// Kept STAGING_GATED_ROLES as documentation of which roles existed at the
+// time of original design; not used at runtime anymore.
+export const STAGING_GATED_ROLES: ReadonlyArray<string> = [
   'admin',
   'super_admin',
   'content_editor',
+  'provider',     // coach
+  'mentor_manager',
+  'student',
 ];
 
+/** Returns true if the request has an authenticated session of any role.
+ *  Anonymous (no role) → false → still see coming-soon. */
 export function isStagingRoleAllowed(role: string | undefined | null): boolean {
   if (!role) return false;
-  return STAGING_GATED_ROLES.includes(role);
+  // Any non-empty role = authenticated user. Bypass coming-soon.
+  return true;
+}
+
+// ── Global coming-soon kill-switch ──────────────────────────────────────────
+//
+// Phase 1d-D (2026-04-30) — Samer directive: "we need to be able to disable
+// it and enable it easily so we can disable when we are ready."
+//
+// COMING_SOON_MODE env var:
+//   unset | "on" | "true"  → coming-soon active (current behavior)
+//   "off" | "false" | "0"  → coming-soon DISABLED site-wide; all visitors
+//                            (including anonymous) see the live site.
+//
+// Read at process startup via process.env. Flip workflow:
+//   1. SSH into VPS
+//   2. Edit apps/web/.env.local — set COMING_SOON_MODE=off
+//   3. Run `bash kun-deploy.sh` to rebuild + restart pm2
+//   4. Verify by curling / from anonymous client — should NOT rewrite to
+//      /coming-soon.
+//
+// Why not a DB flag: middleware runs on every request; adding a DB lookup
+// (even cached) would impose latency on the hot path for a flip-once event.
+export function isComingSoonDisabled(): boolean {
+  const v = (process.env.COMING_SOON_MODE ?? '').toLowerCase().trim();
+  return v === 'off' || v === 'false' || v === '0' || v === 'disabled';
 }
 
 // ── Decisions (one call per request) ────────────────────────────────────────
@@ -249,11 +291,16 @@ export function decideHost(params: {
   }
 
   if (host === 'staging') {
+    // Global kill-switch — when COMING_SOON_MODE=off, the splash is disabled
+    // and all visitors (anon + authed) see the live site.
+    if (isComingSoonDisabled()) {
+      return { action: 'allow', reason: 'coming-soon-mode-off' };
+    }
     if (isStagingAnonAllowed(pathname)) {
       return { action: 'allow', reason: 'staging-anon-allowlist' };
     }
     if (isStagingRoleAllowed(role)) {
-      return { action: 'allow', reason: `staging-role-${role}` };
+      return { action: 'allow', reason: `staging-authed-${role ?? 'session'}` };
     }
     return { action: 'rewrite-coming-soon', reason: 'staging-no-session' };
   }
