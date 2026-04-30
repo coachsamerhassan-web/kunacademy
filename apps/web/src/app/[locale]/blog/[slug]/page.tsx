@@ -86,41 +86,53 @@ export default async function BlogPostPage({ params }: Props) {
           modifiedAt: post.last_edited_at || post.published_at,
         })}
       />
-      {/* Hero */}
-      <section className="relative overflow-hidden py-12 md:py-20">
-        {post.featured_image_url ? (
-          <>
-            <div className="absolute inset-0">
-              <Image src={post.featured_image_url} alt="" fill className="object-cover" style={{ filter: 'brightness(0.25)' }} priority />
-              <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[rgba(29,26,61,0.9)]" />
-            </div>
-          </>
-        ) : (
-          <div className="absolute inset-0 bg-[var(--color-background)]" />
-        )}
+      {/*
+        Phase 2 (2026-04-30) — Hero redesign per Samer feedback.
+
+        REPLACED:
+          - Darkened-background hero (filter: brightness(0.25)) where the
+            featured image was rendered as `<Image fill object-cover>` behind
+            white-on-dark text + gradient overlay + GeometricPattern.
+            Caused: portrait images (e.g. 1122x1600 ink-portrait-meditation.jpg)
+            cropped to a thin horizontal band, darkened, then overlaid with a
+            geometric pattern + gradient. Read as "blurry/pixelated face image
+            with image-on-image overlay" by Samer. ALSO triggered Next.js
+            Image's "received null" warning on this specific JPEG.
+          - All `post.featured_image_url ? 'text-white' : '...'` ternaries
+            (no longer needed since text always renders on light cream now).
+          - The 'absolute inset-0' image render layer entirely.
+
+        ADDED:
+          - Clean editorial layout: text-only hero on cream background, then
+            featured image rendered ONCE below as a clean `<figure>` at its
+            natural 16:9 aspect ratio. The image is the only image on the page.
+            Subtle GeometricPattern texture preserved for editorial feel,
+            faded to invisibility at the edges.
+      */}
+      <section className="relative overflow-hidden py-10 md:py-14 bg-[var(--color-background)]">
         <GeometricPattern pattern="flower-of-life" opacity={0.05} fade="both" />
         <div className="relative z-10 mx-auto max-w-3xl px-4 md:px-6">
           <div className="flex flex-wrap items-center gap-3 mb-4">
             {post.category && (
-              <span className={`text-xs font-medium uppercase tracking-wider ${post.featured_image_url ? 'text-[var(--color-accent)]' : 'text-[var(--color-accent)]'}`}>
+              <span className="text-xs font-medium uppercase tracking-wider text-[var(--color-accent)]">
                 {CATEGORY_LABELS[post.category.toLowerCase()]?.[isAr ? 'ar' : 'en'] || post.category}
               </span>
             )}
             {post.published_at && (
-              <span className={`text-sm ${post.featured_image_url ? 'text-white/60' : 'text-[var(--color-neutral-500)]'}`}>
+              <span className="text-sm text-[var(--color-neutral-500)]">
                 {new Date(post.published_at + 'T00:00:00').toLocaleDateString(isAr ? 'ar-SA' : 'en-US', {
                   year: 'numeric', month: 'long', day: 'numeric',
                 })}
               </span>
             )}
             {post.reading_time_minutes && (
-              <span className={`text-sm ${post.featured_image_url ? 'text-white/60' : 'text-[var(--color-neutral-500)]'}`}>
+              <span className="text-sm text-[var(--color-neutral-500)]">
                 · {post.reading_time_minutes} {isAr ? 'دقائق قراءة' : 'min read'}
               </span>
             )}
           </div>
           <h1
-            className={`text-[1.75rem] md:text-[2.5rem] font-bold leading-[1.15] ${post.featured_image_url ? 'text-[#FFF5E9]' : 'text-[var(--text-primary)]'}`}
+            className="text-[1.75rem] md:text-[2.5rem] font-bold leading-[1.15] text-[var(--text-primary)]"
             style={{ fontFamily: isAr ? 'var(--font-arabic-heading)' : 'var(--font-english-heading)' }}
           >
             {title}
@@ -130,11 +142,7 @@ export default async function BlogPostPage({ params }: Props) {
           {hasOtherLang && (
             <a
               href={`/${otherLocale}/blog/${slug}`}
-              className={`inline-flex items-center gap-2 mt-4 px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                post.featured_image_url
-                  ? 'bg-white/10 text-white/80 hover:bg-white/20 hover:text-white'
-                  : 'bg-[var(--color-neutral-100)] text-[var(--color-neutral-600)] hover:bg-[var(--color-neutral-200)]'
-              }`}
+              className="inline-flex items-center gap-2 mt-4 px-4 py-2 rounded-full text-sm font-medium transition-colors bg-[var(--color-neutral-100)] text-[var(--color-neutral-600)] hover:bg-[var(--color-neutral-200)]"
             >
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
               {isAr ? 'Read in English' : 'اقرأ بالعربية'}
@@ -144,7 +152,7 @@ export default async function BlogPostPage({ params }: Props) {
           {/* Author */}
           {author && (
             <div className="flex items-center gap-3 mt-6">
-              <div className="h-10 w-10 rounded-full overflow-hidden bg-[var(--color-neutral-200)]">
+              <div className="h-10 w-10 rounded-full overflow-hidden bg-[var(--color-neutral-200)] relative">
                 {author.photo_url ? (
                   <Image src={author.photo_url} alt={authorName || ''} fill className="object-cover" sizes="40px" />
                 ) : (
@@ -156,17 +164,35 @@ export default async function BlogPostPage({ params }: Props) {
               <div>
                 <a
                   href={`/${locale}/coaches/${author.slug}`}
-                  className={`font-medium text-sm hover:underline ${post.featured_image_url ? 'text-white' : 'text-[var(--text-primary)]'}`}
+                  className="font-medium text-sm hover:underline text-[var(--text-primary)]"
                 >
                   {authorName}
                 </a>
                 {(isAr ? author.title_ar : author.title_en) && (
-                  <p className={`text-xs ${post.featured_image_url ? 'text-white/60' : 'text-[var(--color-neutral-500)]'}`}>
+                  <p className="text-xs text-[var(--color-neutral-500)]">
                     {isAr ? author.title_ar : author.title_en}
                   </p>
                 )}
               </div>
             </div>
+          )}
+
+          {/* Featured image — ONE render, clean, natural 16:9 figure.
+              Single source of truth for this article's hero image. */}
+          {post.featured_image_url && (
+            <figure className="mt-8 -mx-4 md:mx-0">
+              <div className="relative w-full aspect-[16/9] overflow-hidden md:rounded-2xl bg-[var(--color-neutral-100)]">
+                <Image
+                  src={post.featured_image_url}
+                  alt={title || ''}
+                  fill
+                  sizes="(max-width: 768px) 100vw, 768px"
+                  className="object-cover"
+                  priority
+                  unoptimized
+                />
+              </div>
+            </figure>
           )}
         </div>
       </section>
