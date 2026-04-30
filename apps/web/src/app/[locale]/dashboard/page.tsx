@@ -1,7 +1,6 @@
 'use client';
 
 import { useAuth } from '@kunacademy/auth';
-import { Section } from '@kunacademy/ui/section';
 import { Card } from '@kunacademy/ui/card';
 import { Button } from '@kunacademy/ui/button';
 import { useState, useEffect, use } from 'react';
@@ -61,8 +60,8 @@ export default function DashboardPage({ params }: { params: Promise<{ locale: st
   ];
 
   return (
-    <Section variant="white">
-      <div className="flex items-center justify-between mb-8">
+    <div className="space-y-6 max-w-[1400px]">
+      <div className="kun-shell-card p-5 md:p-6 flex items-center justify-between mb-2">
         <div>
           <h1
             className="text-2xl md:text-3xl font-bold text-[var(--text-primary)]"
@@ -99,6 +98,7 @@ export default function DashboardPage({ params }: { params: Promise<{ locale: st
       </div>
 
       {/* Quick Actions */}
+      <div className="kun-shell-card p-5 md:p-6">
       <h2 className="text-lg font-bold text-[var(--text-primary)] mb-4">
         {isAr ? 'إجراءات سريعة' : 'Quick Actions'}
       </h2>
@@ -148,6 +148,7 @@ export default function DashboardPage({ params }: { params: Promise<{ locale: st
           </span>
         </a>
       </div>
-    </Section>
+      </div>
+    </div>
   );
 }

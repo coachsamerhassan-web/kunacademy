@@ -1,7 +1,6 @@
 'use client';
 
 import { useAuth } from '@kunacademy/auth';
-import { Section } from '@kunacademy/ui/section';
 import { Card } from '@kunacademy/ui/card';
 import { useState, useEffect, use } from 'react';
 
@@ -40,10 +39,12 @@ export default function CoachDashboardPage({ params }: { params: Promise<{ local
   ];
 
   return (
-    <Section variant="white">
-      <h1 className="text-2xl md:text-3xl font-bold text-[var(--text-primary)] mb-8" style={{ fontFamily: isAr ? 'var(--font-arabic-heading)' : 'var(--font-english-heading)' }}>
+    <div className="space-y-6 max-w-[1400px]">
+      <div className="kun-shell-card p-5 md:p-6">
+      <h1 className="text-2xl md:text-3xl font-bold text-[var(--text-primary)]" style={{ fontFamily: isAr ? 'var(--font-arabic-heading)' : 'var(--font-english-heading)' }}>
         {isAr ? `مرحبًا${name ? ` ${name}` : ''}` : `Welcome${name ? `, ${name}` : ''}`}
       </h1>
+      </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {cards.map((card) => (
@@ -65,6 +66,7 @@ export default function CoachDashboardPage({ params }: { params: Promise<{ local
         ))}
       </div>
 
+      <div className="kun-shell-card p-5 md:p-6">
       <h2 className="text-lg font-bold text-[var(--text-primary)] mb-4">{isAr ? 'إجراءات سريعة' : 'Quick Actions'}</h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <a href={`/${locale}/coach/schedule`} className="flex items-center gap-3 rounded-xl border border-[var(--color-neutral-200)] bg-white p-4 hover:border-[var(--color-primary)] hover:bg-[var(--color-primary-50)] transition-all min-h-[56px]">
@@ -76,6 +78,7 @@ export default function CoachDashboardPage({ params }: { params: Promise<{ local
           <span className="text-sm font-medium text-[var(--text-primary)]">{isAr ? 'تعديل الملف الشخصي' : 'Edit Profile'}</span>
         </a>
       </div>
-    </Section>
+      </div>
+    </div>
   );
 }
