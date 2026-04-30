@@ -57,6 +57,10 @@ const adminNav: NavItem[] = [
   { href: '/admin/content', labelAr: 'المحتوى', labelEn: 'Content', icon: 'M4 6h16M4 10h16M4 14h16M4 18h16' },
   { href: '/admin/lp', labelAr: 'صفحات الهبوط', labelEn: 'Landing Pages', icon: 'M4 5a1 1 0 011-1h14a1 1 0 011 1v4H4V5zm0 6h16v8a1 1 0 01-1 1H5a1 1 0 01-1-1v-8zm3 3h4v2H7v-2z' },
   { href: '/admin/static-pages', labelAr: 'صفحات الموقع', labelEn: 'Site Pages', icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
+  { href: '/admin/programs', labelAr: 'البرامج', labelEn: 'Programs', icon: 'M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14zm-4 6v-7.5l4-2.222' },
+  { href: '/admin/events', labelAr: 'الفعاليات', labelEn: 'Events', icon: 'M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z' },
+  { href: '/admin/corporate-benefits', labelAr: 'مزايا الشركات', labelEn: 'Corporate Benefits', icon: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4' },
+  { href: '/admin/scholarships', labelAr: 'المنح', labelEn: 'Scholarships', icon: 'M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7' },
   { href: '/admin/membership', labelAr: 'الاشتراكات', labelEn: 'Membership', icon: 'M13 10V3L4 14h7v7l9-11h-7z' },
 ];
 
