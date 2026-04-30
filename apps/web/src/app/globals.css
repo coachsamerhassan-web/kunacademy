@@ -120,6 +120,59 @@
   /* Transitions — Stitch: "slow and intentional" */
   --transition-slow: 600ms ease-out;
   --transition-medium: 400ms ease-out;
+
+  /* ============================================
+     Dashboard Shell Tokens (Stitch×Kun, 2026-04-30)
+     Used by logged-in dashboards: admin, dashboard, coach, portal.
+     Public pages remain on the existing tokens above.
+     ============================================ */
+
+  /* Shell surfaces (Kun cream-latte replaces Stitch's #f4f7fa cool-grey) */
+  --shell-bg: #FFF5E9;                    /* Cosmic Latte — main canvas */
+  --shell-card-bg: #FFFFFF;               /* White card on cream */
+  --shell-card-border: rgba(31, 27, 20, 0.06);
+  --shell-card-shadow: 0 10px 30px rgba(31, 27, 20, 0.05);
+  --shell-card-radius: 1rem;              /* 16px — rounded-2xl */
+
+  /* Sidebar (Kun primary deep replaces Stitch's #1e1b4b indigo-navy) */
+  --shell-sidebar-bg: #2B265C;            /* primary-700 — deep, branded */
+  --shell-sidebar-border: rgba(255, 245, 233, 0.10);
+  --shell-sidebar-text: #C8C4D3;          /* outline-variant — muted on dark */
+  --shell-sidebar-text-hover: #FFFFFF;
+  --shell-sidebar-text-active: #FFFFFF;
+  --shell-sidebar-active-bg: linear-gradient(90deg, #E4601E 0%, #C85522 100%);
+  /* Mandarin gradient — replaces Stitch's teal #14b8a6→#0d9488 */
+
+  /* Quick-access tile tint colors (Kun palette replaces Stitch's pastel rainbow) */
+  --shell-tile-mandarin-bg: #FEF0E8;      /* accent-50 */
+  --shell-tile-mandarin-icon: #E4601E;    /* accent */
+  --shell-tile-sky-bg: #EDF6FC;           /* secondary-50 */
+  --shell-tile-sky-icon: #2E96CC;         /* secondary-500 */
+  --shell-tile-primary-bg: #EEEDFA;       /* primary-50 */
+  --shell-tile-primary-icon: #474099;     /* primary */
+  --shell-tile-charleston-bg: #F0E7DB;    /* surface-high — warm tint */
+  --shell-tile-charleston-icon: #1F1B14;  /* charleston / text */
+  --shell-tile-rose-bg: #FDE1D1;          /* accent-100 */
+  --shell-tile-rose-icon: #B54C18;        /* accent-600 */
+  --shell-tile-deepsky-bg: #DBEEF9;       /* secondary-100 */
+  --shell-tile-deepsky-icon: #1B5A7A;     /* secondary-700 */
+  --shell-tile-sand-bg: #FCF2E6;          /* surface-low */
+  --shell-tile-sand-icon: #873912;        /* accent-700 */
+  --shell-tile-mist-bg: #D5D3F2;          /* primary-100 */
+  --shell-tile-mist-icon: #2B265C;        /* primary-700 */
+  --shell-tile-violet-bg: #ABA7E5;        /* primary-200 */
+  --shell-tile-violet-icon: #1D1A3D;      /* primary-800 */
+
+  /* Stat-card mini-viz strokes (Kun palette) */
+  --shell-spark-primary: #5F58BD;         /* primary-400 */
+  --shell-spark-accent: #E4601E;          /* accent */
+  --shell-spark-secondary: #55AEDC;       /* secondary-400 */
+  --shell-spark-success: #2E96CC;         /* secondary-500 */
+
+  /* Status pill (replaces Stitch's teal "registered" pill) */
+  --shell-pill-active-bg: #DBEEF9;        /* secondary-100 */
+  --shell-pill-active-text: #1B5A7A;      /* secondary-700 */
+  --shell-pill-active-dot: #2E96CC;       /* secondary-500 */
 }
 
 @theme {
@@ -181,6 +234,14 @@
 
   /* Spacing */
   --radius-card: var(--card-radius);
+
+  /* Dashboard shell tokens (Stitch×Kun) — wired into Tailwind theme so
+     Tailwind utilities like bg-[var(--shell-bg)] or rounded-[var(--shell-card-radius)]
+     are not strictly required; you can also use bg-shell or rounded-shell-card etc.
+     Public pages keep using the existing tokens (--color-background, etc.). */
+  --color-shell-bg: var(--shell-bg);
+  --color-shell-card: var(--shell-card-bg);
+  --color-shell-sidebar: var(--shell-sidebar-bg);
 }
 
 body {
@@ -190,6 +251,51 @@ body {
   font-size: var(--text-body);
   line-height: 1.6;
   /* Stitch: Never use pure black */
+}
+
+/* ============================================
+   Dashboard Shell Utilities (Stitch×Kun, 2026-04-30)
+   Used by admin/dashboard/coach/portal logged-in dashboards.
+   ============================================ */
+.kun-shell {
+  background: var(--shell-bg);
+  font-family: var(--font-cairo), var(--font-tajawal), var(--font-inter), 'Cairo', sans-serif;
+  color: var(--foreground);
+}
+[dir="rtl"] .kun-shell,
+html[lang="ar"] .kun-shell {
+  font-family: var(--font-cairo), var(--font-tajawal), 'Cairo', sans-serif;
+}
+.kun-shell-card {
+  background: var(--shell-card-bg);
+  border: 1px solid var(--shell-card-border);
+  border-radius: var(--shell-card-radius);
+  box-shadow: var(--shell-card-shadow);
+}
+.kun-shell-sidebar {
+  background: var(--shell-sidebar-bg);
+  color: var(--shell-sidebar-text);
+}
+.kun-shell-sidebar-divider {
+  border-top: 1px solid var(--shell-sidebar-border);
+}
+.kun-shell-sidebar-link {
+  color: var(--shell-sidebar-text);
+  transition: color 200ms ease-out, background 200ms ease-out;
+}
+.kun-shell-sidebar-link:hover {
+  color: var(--shell-sidebar-text-hover);
+}
+.kun-shell-sidebar-link-active {
+  background: var(--shell-sidebar-active-bg);
+  color: var(--shell-sidebar-text-active);
+}
+.kun-shell-pill-active {
+  background: var(--shell-pill-active-bg);
+  color: var(--shell-pill-active-text);
+}
+.kun-shell-pill-active-dot {
+  background: var(--shell-pill-active-dot);
 }
 
 /* RTL support */

@@ -27,7 +27,7 @@ export const cairo = Cairo({
   weight: ['400', '600', '700'],
   variable: '--font-cairo',
   display: 'swap',
-  preload: false, // fallback only — don't preload
+  preload: true, // Promoted to first-class body font for logged-in dashboards (Stitch×Kun shell, 2026-04-30)
 });
 
 export const notoNaskhArabic = Noto_Naskh_Arabic({
@@ -56,10 +56,12 @@ export const stixTwoText = STIX_Two_Text({
 });
 
 // Combined className for <body>
-// Cairo + Noto Naskh excluded — fallback only, not preloaded or injected
+// Noto Naskh excluded — fallback only, not preloaded or injected
 // STIX excluded — English heading font, loaded on-demand via CSS
+// Cairo promoted (2026-04-30) — primary body font for logged-in dashboard shells (Stitch×Kun)
 export const fontVariables = [
   noor.variable,
   tajawal.variable,
+  cairo.variable,
   inter.variable,
 ].join(' ');
